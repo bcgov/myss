@@ -1,0 +1,28 @@
+#root {
+    background-color: rgb(250, 249, 248);
+    color: var(--typography-color-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+}
+
+main {
+    flex: 1 1 auto;
+    padding: var(--layout-padding-xlarge);
+    width: 100%;
+    max-width: 1100px;
+}
+
+@media (max-width: 991px) {
+    main {
+        padding: var(--layout-padding-xlarge) var(--layout-padding-xlarge);
+    }
+}
+
+@media (max-width: 576px) {
+    main {
+        padding: var(--layout-padding-xlarge) var(--layout-padding-medium);
+    }
+}
