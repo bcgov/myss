@@ -1,0 +1,36 @@
+# ── .NET / backend ──────────────────────────────────────────
+# Build output
+bin/
+obj/
+
+# Local configuration (loaded last as overrides, must never be committed)
+appsettings.local.json
+
+# ── Node / frontend ─────────────────────────────────────────
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local environment overrides (.env.sample is committed)
+.env
+.env.local
+.env.*.local
+
+# openapi-ts error logs
+openapi-ts-error-*.log
+
+# ── Editors / OS / misc ─────────────────────────────────────
+*.user
+*.suo
+.vs/
+.idea/
+.vscode/
+
+# Test results
+[Tt]est[Rr]esult*/
+
+# OS cruft
+.DS_Store
+Thumbs.db
