@@ -1,0 +1,63 @@
+namespace Myss.Api.Configuration.Models
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
+    using OpenTelemetry.Exporter;
+
+    /// <summary>
+    /// Provides configuration data for OpenTelemetry.
+    /// </summary>
+    public class OpenTelemetryConfig
+    {
+        /// <summary>
+        /// Gets or sets a value indicating whether Open Telemetry is enabled.
+        /// </summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the names of activity sources to monitor.
+        /// </summary>
+        public IList<string> Sources { get; set; } = [];
+
+        /// <summary>
+        /// Gets or sets the name to use for the service.
+        /// </summary>
+        public string? ServiceName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the version to use for the service.
+        /// </summary>
+        public string? ServiceVersion { get; set; }
+
+        /// <summary>
+        /// Gets or sets the path prefixes that tracing will ignore.
+        /// </summary>
+        [SuppressMessage(
+            "Performance",
+            "CA1819:Properties should not return arrays",
+            Justification = "Configuration Binding"
+        )]
+        public string[] IgnorePathPrefixes { get; set; } = [];
+
+        /// <summary>
+        /// Gets or sets OpenTelemetry collector endpoint.
+        /// </summary>
+        public Uri? Endpoint { get; set; }
+
+        /// <summary>
+        /// Gets or sets OpenTelemetry export protocol.
+        /// </summary>
+        public OtlpExportProtocol ExportProtocol { get; set; } = OtlpExportProtocol.HttpProtobuf;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the console exporter for tracing is enabled, default to false.
+        /// </summary>
+        public bool TraceConsoleExporterEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the console exporter for metrics is enabled, default to false.
+        /// </summary>
+        public bool MetricsConsoleExporterEnabled { get; set; }
+    }
+}
