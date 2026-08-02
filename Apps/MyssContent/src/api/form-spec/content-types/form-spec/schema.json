@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "form_specs",
+  "info": {
+    "singularName": "form-spec",
+    "pluralName": "form-specs",
+    "displayName": "Form Spec",
+    "description": "Versioned Form.io specification. Published entries are not edited; a change to a form is a new entry with version + 1."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "formSpecId": {
+      "type": "string",
+      "required": true,
+      "regex": "^[a-z0-9-]+$"
+    },
+    "version": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "title": {
+      "type": "string"
+    },
+    "spec": {
+      "type": "json",
+      "required": true
+    }
+  }
+}

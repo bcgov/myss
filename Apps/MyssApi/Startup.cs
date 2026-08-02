@@ -2,9 +2,11 @@ namespace Myss.Api
 {
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
+    using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Myss.Api.Configuration;
+    using Myss.Api.Data;
     using Myss.Api.Providers;
     using Myss.Api.Services;
 
@@ -39,6 +41,12 @@ namespace Myss.Api
             // Configure the demo services
             services.AddTransient<IDemoService, DemoService>();
             services.AddSingleton<IDemoProvider, DemoProvider>();
+
+            // Configure the forms module (POC: spec proxy + versioned submissions)
+            services.AddDbContext<FormsDbContext>(options =>
+                options.UseNpgsql(this.startupConfig.Configuration.GetConnectionString("FormsDb")));
+            services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
+            services.AddScoped<IFormsService, FormsService>();
 
             // CORS services are required by the inline UseCors policy in
             // StartupConfiguration.UseHttp, which is driven by the AllowOrigins config.

@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "testing_collections",
+  "info": {
+    "singularName": "testing-collection",
+    "pluralName": "testing-collections",
+    "displayName": "TestingCollection"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "helloworldfield": {
+      "type": "string"
+    },
+    "toggletest": {
+      "type": "boolean",
+      "required": true
+    },
+    "numbertest": {
+      "type": "biginteger",
+      "conditions": {
+        "visible": {
+          "==": [
+            {
+              "var": "toggletest"
+            },
+            true
+          ]
+        }
+      }
+    }
+  }
+}
