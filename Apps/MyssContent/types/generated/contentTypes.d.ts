@@ -446,7 +446,7 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
 export interface ApiFormSpecFormSpec extends Struct.CollectionTypeSchema {
   collectionName: 'form_specs';
   info: {
-    description: 'Versioned Form.io specification. Entries are immutable once published \u2014 a change to a form is a NEW entry with version + 1, never an edit (version-per-entry model, forms-architecture.md \u00A78).';
+    description: 'Versioned Form.io specification. Published entries are not edited; a change to a form is a new entry with version + 1.';
     displayName: 'Form Spec';
     pluralName: 'form-specs';
     singularName: 'form-spec';
