@@ -24,7 +24,9 @@ services:
       retries: 10
 
   strapi:
-    build: ./Apps/MyssContent
+    build:
+      context: ./Apps/MyssContent
+      target: dev
     container_name: myss-strapi
     env_file: ./Apps/MyssContent/.env
     environment:
