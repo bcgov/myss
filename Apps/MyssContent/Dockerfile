@@ -19,6 +19,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 ENV NODE_ENV=production
+# The Strapi admin build needs more heap than Node allows itself by default
+# in a memory-limited build pod.
+ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN npm run build && npm prune --omit=dev
 
 FROM node:22-alpine AS production
