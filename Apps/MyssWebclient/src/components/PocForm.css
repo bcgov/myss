@@ -1,0 +1,68 @@
+/*
+ * Minimal Form.io → BC Gov visual bridge (POC).
+ *
+ * Form.io's default templates assume Bootstrap classes (.form-control etc.)
+ * that this app does not load. Native inputs still render via user-agent
+ * styles, but div-based widgets (the Choices.js select) come out invisible.
+ * This gives them a real box. Full design-system theming (BC Gov tokens
+ * across all components) is a later slice.
+ */
+
+.formio-form .form-control.dropdown {
+  background: #ffffff;
+  border: 1px solid #605e5c;
+  border-radius: 4px;
+  min-height: 2.5rem;
+  padding: 0.375rem 2rem 0.375rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.formio-form .choices__list--single {
+  display: flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0;
+}
+
+.formio-form .choices:focus-within .form-control.dropdown {
+  outline: 2px solid #2d2d2d;
+  outline-offset: 1px;
+}
+
+/*
+ * Disabled / read-only state (historical View Form). Native inputs grey out
+ * via user-agent styles; the div-based select only gets the `is-disabled`
+ * class, so it must be styled explicitly or it reads as editable.
+ */
+.formio-form .choices.is-disabled .form-control.dropdown {
+  background: #f1f1f1;
+  border-color: #c6c6c6;
+  color: #6f6f6f;
+  cursor: default;
+}
+
+.formio-form .choices.is-disabled::after {
+  display: none; /* hide the dropdown arrow; it suggests the field is editable */
+}
+
+.formio-form .choices.is-disabled .choices__button {
+  /* The per-item remove (×) button. !important is needed to beat the
+   * vendor rule `.choices[data-type*=select-one] … [data-deletable]
+   * :not([data-placeholder]) .choices__button`, which is 7 selectors deep. */
+  display: none !important;
+}
+
+/* The open dropdown panel gets the same box treatment as the field. */
+.formio-form .choices__list--dropdown,
+.formio-form .choices__list[aria-expanded] {
+  background: #ffffff;
+  border: 1px solid #605e5c;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.formio-form
+  .choices__list--dropdown
+  .choices__item--selectable.is-highlighted {
+  background: #f1f8fe;
+}

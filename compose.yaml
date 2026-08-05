@@ -1,0 +1,49 @@
+name: myss
+
+# Local development stack. POC scope: Postgres + Strapi.
+# Gotenberg, Keycloak, Redis, MinIO, ClamAV and Temporal get added later
+# alongside the work that needs them.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: myss-postgres
+    environment:
+      POSTGRES_USER: myss
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-myss-local-dev}
+      POSTGRES_DB: myss
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./Infra/Development/Postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myss -d myss"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  strapi:
+    build: ./Apps/MyssContent
+    container_name: myss-strapi
+    env_file: ./Apps/MyssContent/.env
+    environment:
+      DATABASE_HOST: postgres   # override localhost from .env inside the network
+    ports:
+      - "1337:1337"
+    volumes:
+      - ./Apps/MyssContent:/opt/app
+      - strapi-node-modules:/opt/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:1337/_health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+
+volumes:
+  postgres-data:
+  strapi-node-modules:

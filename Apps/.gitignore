@@ -34,3 +34,6 @@ openapi-ts-error-*.log
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# Vitest browser-mode failure screenshots
+**/__screenshots__/

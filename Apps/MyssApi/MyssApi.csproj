@@ -2,6 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
+        <Version>0.1.0</Version>
         <RootNamespace>Myss.Api</RootNamespace>
         <Nullable>enable</Nullable>
         <LangVersion>14.0</LangVersion>
@@ -15,6 +16,11 @@
     <ItemGroup>
         <!-- ASP.NET Core / API -->
         <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+          <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
 
         <!-- Observability: OpenTelemetry -->
