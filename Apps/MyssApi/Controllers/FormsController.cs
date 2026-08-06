@@ -5,6 +5,7 @@ namespace Myss.Api.Controllers
     using System.Threading;
     using System.Threading.Tasks;
     using Asp.Versioning;
+    using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Routing;
@@ -14,10 +15,12 @@ namespace Myss.Api.Controllers
 
     /// <summary>
     /// The forms controller: versioned specs and submissions.
+    /// Protected: forms are only available after the user has authenticated.
     /// </summary>
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/forms")]
     [ApiController]
+    [Authorize]
     public class FormsController : Controller
     {
         private readonly ILogger<FormsController> _logger;

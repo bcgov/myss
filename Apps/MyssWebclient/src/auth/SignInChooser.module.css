@@ -1,0 +1,11 @@
+.chooser {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium, 16px);
+    max-width: 360px;
+}
+
+.prompt {
+    font-weight: 700;
+    margin: 0;
+}

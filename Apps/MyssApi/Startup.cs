@@ -38,11 +38,18 @@ namespace Myss.Api
             this.startupConfig.ConfigureSwaggerServices(services);
             this.startupConfig.ConfigureTracing(services);
 
+            // Authentication is the Option 1 / Option 2 swap point; the policies and the
+            // typed caller below are permanent and unaffected by that choice.
+            this.startupConfig.ConfigureAuthentication(services);
+            services.AddMyssAuthorization();
+            services.AddTransient<ICurrentUserAccessor, CurrentUserAccessor>();
+
             // Configure the demo services
             services.AddTransient<IDemoService, DemoService>();
             services.AddSingleton<IDemoProvider, DemoProvider>();
 
-            // Configure the forms module (POC: spec proxy + versioned submissions)
+            // Configure the forms module (POC: spec proxy + versioned submissions).
+            // Protected behind authentication (see FormsController [Authorize]).
             services.AddDbContext<FormsDbContext>(options =>
                 options.UseNpgsql(this.startupConfig.Configuration.GetConnectionString("FormsDb")));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();

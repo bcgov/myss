@@ -1,0 +1,45 @@
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium, 16px);
+}
+
+/* Prod ".well" (myss override): flat light-grey panel, no border/shadow,
+   centred content. */
+.card {
+    background-color: var(--theme-gray-20, #f3f2f1);
+    border-radius: var(--layout-border-radius-medium, 4px);
+    padding: var(--layout-padding-large, 19px);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--layout-margin-small, 8px);
+    text-align: center;
+}
+
+.prompt {
+    margin: var(--layout-margin-small, 8px) 0 0;
+    text-align: center;
+}
+
+.card > .prompt:first-child {
+    margin-top: 0;
+}
+
+/* Both account buttons fill the panel width and centre their label, so they
+   are identical in size (prod renders them the same length). */
+.card :global(.bcds-react-aria-Button) {
+    width: 100%;
+    justify-content: center;
+}
+
+.helpLink {
+    color: var(--typography-color-link, #255a90);
+    text-decoration: none;
+    display: block;
+    text-align: center;
+}
+
+.helpLink:hover {
+    text-decoration: underline;
+}

@@ -1,0 +1,36 @@
+/* Prod centres the form in the middle columns of the grid. */
+.page {
+    max-width: 820px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-xxlarge, 40px);
+    margin-top: var(--layout-margin-large, 24px);
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium, 16px);
+}
+
+/* Each question is a prominent heading, like prod's <h2>. */
+.question {
+    font-size: 1.5rem;
+    font-weight: 500;
+    line-height: 1.1;
+    margin: 0;
+}
+
+/* Small inputs (e.g. dependent-children count) stay narrow like prod. */
+.narrowField {
+    max-width: 120px;
+}
+
+.actions {
+    padding-top: var(--layout-margin-small, 8px);
+}

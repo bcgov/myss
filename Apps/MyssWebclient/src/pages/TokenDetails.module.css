@@ -1,0 +1,99 @@
+/* Decoded-token inspector, styled after the BC Gov Keycloak OIDC playground:
+   larger readable text and a striped / bordered / hover claims table. */
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-margin-medium, 16px);
+  width: 100%;
+  font-size: 1.25rem;
+}
+
+/* Keep all seven tabs on a single row; allow horizontal scroll only if the
+   viewport is genuinely too narrow to fit them. */
+.details :global(.bcds-react-aria-ToggleButtonGroup) {
+  flex-wrap: nowrap;
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Bigger, bold tab labels. The design system sets its own font sizing on these
+   buttons, so override with !important (and target any nested label span) to
+   make sure it lands. Compact padding + no-wrap labels keep the row to one line. */
+.details :global(.bcds-react-aria-ToggleButton),
+.details :global(.bcds-react-aria-ToggleButton) * {
+  font-size: 1.125rem !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+}
+
+.details :global(.bcds-react-aria-ToggleButton) {
+  padding: 8px 12px !important;
+}
+
+/* The group's "Token view" label — a touch larger than the tab labels. */
+.details :global(.bcds-react-aria-ToggleButtonGroup--Label) {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+}
+
+.panel {
+  position: relative;
+  border: 1px solid var(--surface-color-border-default, #d5d5d5);
+  border-radius: 4px;
+  padding: var(--layout-padding-large, 24px);
+  background: var(--surface-color-background-light, #fff);
+  min-height: 120px;
+}
+
+/* Raw JWT / JSON blob: long, unbroken strings need to wrap. */
+.rawValue {
+  margin-top: var(--layout-margin-medium, 16px);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 1.1875rem;
+  line-height: 1.6;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.empty {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--typography-color-secondary, #474543);
+}
+
+/* Two-column key/value table for decoded claims, Bootstrap-table style:
+   full-width, bordered, zebra-striped rows, and a hover highlight. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.1875rem;
+}
+
+.table tr:nth-child(odd) {
+  background: var(--surface-color-background-light-gray, #f2f2f2);
+}
+
+.table tr:hover {
+  background: var(--surface-color-menu-hover, #e9e9e9);
+}
+
+.table td {
+  border: 1px solid var(--surface-color-border-default, #d5d5d5);
+  padding: 10px 14px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.claimKey {
+  font-weight: 700;
+  white-space: nowrap;
+  width: 1%;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.claimVal {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  word-break: break-all;
+}

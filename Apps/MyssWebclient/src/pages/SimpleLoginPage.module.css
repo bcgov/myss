@@ -1,0 +1,39 @@
+/* Harness layout, styled to read like the BC Gov Keycloak OIDC playground:
+   comfortable base font, a bold page title, and roomy spacing. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-margin-large, 24px);
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+  padding-top: var(--layout-padding-medium, 16px);
+  /* Larger base font than the design-system default so nested text (tables,
+     tokens, hints) all scale up to the playground's readable size. */
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+
+.title {
+  margin: 0;
+  font-size: 2.75rem;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  gap: var(--layout-margin-medium, 16px);
+  flex-wrap: wrap;
+}
+
+.error {
+  color: var(--typography-color-danger, #ce3e39);
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.hint {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--typography-color-secondary, #474543);
+}

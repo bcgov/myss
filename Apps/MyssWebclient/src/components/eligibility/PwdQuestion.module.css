@@ -1,0 +1,7 @@
+/* Prod renders each estimator question as an <h2>. */
+.question {
+    font-size: 1.5rem;
+    font-weight: 500;
+    line-height: 1.1;
+    margin: 0 0 var(--layout-margin-medium, 16px);
+}
