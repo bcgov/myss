@@ -6,6 +6,5 @@
 // /docker-entrypoint.d/40-write-runtime-config.sh
 //
 // During local development with `vite dev`, this file is served as-is and
-// src/constants.ts falls back to import.meta.env.VITE_MYSS_API_URL
-// (loaded from .env).
+// src/constants.ts falls back to import.meta.env.VITE_* (loaded from .env).
 window.APP_CONFIG = {};

@@ -1,0 +1,62 @@
+.wrapper {
+    border: 1px solid var(--surface-color-border-default, #d9d9d9);
+    border-radius: var(--layout-border-radius-medium, 4px);
+    overflow: hidden;
+}
+
+.header {
+    background-color: var(--surface-color-primary-default, #013366);
+    color: #ffffff;
+    text-align: center;
+    padding: var(--layout-padding-small, 8px);
+    font-weight: 700;
+}
+
+.monthNav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--layout-padding-small, 8px);
+}
+
+.monthNav button {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--typography-color-primary, #292929);
+    padding: 0 8px;
+}
+
+.monthNav button:disabled {
+    color: var(--typography-color-disabled, #b3b3b3);
+    cursor: default;
+}
+
+.calendar {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+.calendar th,
+.calendar td {
+    padding: 4px;
+}
+
+.calendar th {
+    color: var(--typography-color-secondary, #606060);
+    font-weight: 600;
+}
+
+.muted {
+    color: var(--typography-color-disabled, #9f9d9c);
+}
+
+.issueDay {
+    background-color: var(--surface-color-primary-default, #013366);
+    color: #ffffff;
+    font-weight: 700;
+    border-radius: 3px;
+}

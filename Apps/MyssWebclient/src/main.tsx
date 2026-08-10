@@ -1,10 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "react-router/dom";
 
 import { client } from "@/api/generated/client.gen";
-import App from "@/App.tsx";
+import { router } from "@/routes/router";
+import { AuthProvider } from "@/auth/AuthProvider";
 import { API_URL } from "@/constants.ts";
 import "@bcgov/design-tokens/css/variables.css";
 import "@/index.css";
@@ -15,11 +16,11 @@ client.setConfig({ baseUrl: API_URL });
 const queryClient = new QueryClient();
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
-  </StrictMode>,
+    <StrictMode>
+        <AuthProvider>
+            <QueryClientProvider client={queryClient}>
+                <RouterProvider router={router} />
+            </QueryClientProvider>
+        </AuthProvider>
+    </StrictMode>,
 );

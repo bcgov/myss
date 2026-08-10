@@ -5,6 +5,16 @@
         <link rel="icon" type="image/png" href="/favicon.ico" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>My Self Serve</title>
+
+        <!-- Production look: Bootstrap 3 bundle + Font Awesome 4 + gov/myss theme.
+             Order matters — theme overrides must load last. -->
+        <link rel="stylesheet" href="/vendor/bootstrap.css" />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+        />
+        <link rel="stylesheet" href="/vendor/myss-theme.css" />
+
         <!-- Runtime configuration. Generated at container startup. Must load before the app bundle. -->
         <script src="/config.js"></script>
     </head>

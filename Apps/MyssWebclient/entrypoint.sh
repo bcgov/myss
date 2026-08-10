@@ -16,6 +16,8 @@ set -eu
 
 cat > /usr/share/nginx/html/config.js <<EOF
 window.APP_CONFIG = {
-  MYSS_API_URL: "${MYSS_API_URL:-}"
+  MYSS_API_URL: "${MYSS_API_URL:-}",
+  OIDC_AUTHORITY: "${OIDC_AUTHORITY:-}",
+  OIDC_CLIENT_ID: "${OIDC_CLIENT_ID:-}"
 };
 EOF
