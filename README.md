@@ -8,7 +8,11 @@ Prerequisites: Docker, the .NET 10 SDK, Node 22+.
 
 ## Start the stack
 
+Strapi reads its configuration from a gitignored `.env` — create it from the
+example first (the committed values work as-is for local development):
+
 ```bash
+cp Apps/MyssContent/.env.example Apps/MyssContent/.env
 docker compose up -d --wait
 ```
 
@@ -47,7 +51,8 @@ compose Postgres.
 
 - API: `dotnet test Apps/MyssApi.Tests`
 - Webclient: `cd Apps/MyssWebclient && npm run test:unit` and
-  `npm run test:browser-headless`
+  `npm run test:browser-headless` — the browser tests need a one-time
+  `npx playwright install chromium`
 
 ## Reset
 
