@@ -10,10 +10,11 @@
 // Option 2 replaces this whole file with one line in main.tsx:
 //   client.setConfig({ credentials: "include" })
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useAuth } from "react-oidc-context";
 
 import { client } from "@/api/generated/client.gen";
+import { getAccessToken, setAccessToken } from "@/auth/accessToken";
 
 // Exported for unit testing. Returns a hey-api request interceptor that adds
 // `Authorization: Bearer <token>` when a token is available, reading it lazily
@@ -31,14 +32,17 @@ export function bearerInterceptor(getToken: () => string | undefined) {
 export function useApiAuth(): void {
     const auth = useAuth();
 
-    // Keep the freshest token in a ref so the interceptor (registered once)
-    // always reads the current value without re-registering on every renew.
-    const tokenRef = useRef<string | undefined>(undefined);
-    tokenRef.current = auth.user?.access_token;
+    // Publish the freshest token on every render so both readers below always
+    // see the current value without re-registering on every renew:
+    //   - the interceptor (registered once) for generated-client calls
+    //   - authHeaders() for the raw-fetch call sites in hooks/usePocForm.ts
+    // Signing out sets this back to undefined, so the token cannot outlive the
+    // session.
+    setAccessToken(auth.user?.access_token);
 
     useEffect(() => {
         const id = client.interceptors.request.use(
-            bearerInterceptor(() => tokenRef.current),
+            bearerInterceptor(getAccessToken),
         );
         return () => {
             client.interceptors.request.eject(id);

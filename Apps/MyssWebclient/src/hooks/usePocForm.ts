@@ -5,9 +5,15 @@ import type {
 } from "@formio/react/lib/components/Form";
 
 import { API_URL } from "@/constants";
+import { authHeaders } from "@/auth/accessToken";
 
 // These endpoints are not in the generated client yet. Once the forms API
 // stabilises, regenerate the schema and replace these fetches with the SDK.
+//
+// Because these are raw fetches, the Bearer interceptor in useApiAuth does not
+// apply to them — it only wraps the generated client. FormsController is
+// [Authorize], so every call here must carry authHeaders() explicitly or the
+// API answers 401. Drop the authHeaders() spreads when these move onto the SDK.
 
 export interface FormSpecPayload {
   formSpecId: string;
@@ -29,7 +35,9 @@ export function useFormSpec(formSpecId: string) {
   return useQuery({
     queryKey: ["form-spec", formSpecId],
     queryFn: async (): Promise<FormSpecPayload> => {
-      const res = await fetch(`${API_URL}/v1/forms/${formSpecId}/spec`);
+      const res = await fetch(`${API_URL}/v1/forms/${formSpecId}/spec`, {
+        headers: authHeaders(),
+      });
       if (!res.ok) throw new Error(`Spec fetch failed (${res.status})`);
       return (await res.json()).payload;
     },
@@ -47,7 +55,9 @@ export function useSubmissions(formSpecId: string) {
   return useQuery({
     queryKey: ["form-submissions", formSpecId],
     queryFn: async (): Promise<FormSubmissionSummary[]> => {
-      const res = await fetch(`${API_URL}/v1/forms/${formSpecId}/submissions`);
+      const res = await fetch(`${API_URL}/v1/forms/${formSpecId}/submissions`, {
+        headers: authHeaders(),
+      });
       if (!res.ok) throw new Error(`Submissions fetch failed (${res.status})`);
       return (await res.json()).payload;
     },
@@ -58,7 +68,9 @@ export function useSubmission(id: string) {
   return useQuery({
     queryKey: ["form-submission", id],
     queryFn: async (): Promise<FormSubmissionPayload> => {
-      const res = await fetch(`${API_URL}/v1/forms/submissions/${id}`);
+      const res = await fetch(`${API_URL}/v1/forms/submissions/${id}`, {
+        headers: authHeaders(),
+      });
       if (!res.ok) throw new Error(`Submission fetch failed (${res.status})`);
       return (await res.json()).payload;
     },
@@ -73,7 +85,7 @@ export function useSubmitForm(formSpecId: string) {
     }): Promise<FormSubmissionPayload> => {
       const res = await fetch(`${API_URL}/v1/forms/${formSpecId}/submissions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(input),
       });
       if (!res.ok) throw new Error(`Submission failed (${res.status})`);
