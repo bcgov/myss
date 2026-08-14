@@ -1,11 +1,14 @@
 namespace Myss.Api
 {
+    using System;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
     using Myss.Api.Configuration;
+    using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
     using Myss.Api.Providers;
     using Myss.Api.Services;
@@ -54,6 +57,36 @@ namespace Myss.Api
                 options.UseNpgsql(this.startupConfig.Configuration.GetConnectionString("FormsDb")));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
             services.AddScoped<IFormsService, FormsService>();
+
+            // Configure the attachments module: validate -> quarantined row ->
+            // ClamAV scan -> object store -> release. Protected behind
+            // authentication (see AttachmentsController [Authorize]).
+            IConfiguration configuration = this.startupConfig.Configuration;
+            services.Configure<AttachmentsConfig>(configuration.GetSection("Attachments"));
+            services.Configure<ClamAvConfig>(configuration.GetSection("ClamAv"));
+            services.Configure<ObjectStorageConfig>(configuration.GetSection("ObjectStorage"));
+            services.AddDbContext<AttachmentsDbContext>(options =>
+                options.UseNpgsql(
+                    configuration.GetConnectionString("AttachmentsDb")
+                        ?? configuration.GetConnectionString("FormsDb"),
+                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "attachments")));
+            services.AddSingleton<IVirusScanProvider, ClamAvScanProvider>();
+
+            // No storage config, no startup — same fail-closed idea as the
+            // mock-auth gate. Silently accepting files we can't store would be
+            // worse than crashing.
+            ObjectStorageConfig objectStorage = new();
+            configuration.GetSection("ObjectStorage").Bind(objectStorage);
+            if (!objectStorage.IsConfigured)
+            {
+                throw new InvalidOperationException(
+                    "ObjectStorage is not configured (ServiceUrl, Bucket, AccessKey and SecretKey are all required). "
+                    + "Locally: `docker compose up -d minio minio-init` and run with the Development settings. "
+                    + "Deployed: set Myss_ObjectStorage__ServiceUrl/Bucket/AccessKey/SecretKey from the secret.");
+            }
+
+            services.AddSingleton<IFileStorageProvider, S3FileStorageProvider>();
+            services.AddScoped<IAttachmentsService, AttachmentsService>();
 
             // CORS services are required by the inline UseCors policy in
             // StartupConfiguration.UseHttp, which is driven by the AllowOrigins config.

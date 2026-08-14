@@ -24,6 +24,9 @@
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
 
+        <!-- Object storage (S3-compatible: MinIO locally, any S3 endpoint deployed) -->
+        <PackageReference Include="AWSSDK.S3" Version="4.0.102.1" />
+
         <!-- Observability: OpenTelemetry -->
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.14.0" />
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0" />
