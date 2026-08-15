@@ -1,6 +1,7 @@
 namespace Myss.Api.Tests.Providers
 {
     using System.Net;
+    using System.Net.Http.Headers;
     using System.Text;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging.Abstractions;
@@ -122,10 +123,93 @@ namespace Myss.Api.Tests.Providers
             Assert.Contains("weird%20id%2F%26%3F", query);
         }
 
-        private StrapiFormSpecProvider NewProvider()
+        [Fact]
+        public async Task SendsTheConfiguredApiTokenAsABearerHeader()
         {
+            _http.Body = EntryBody;
+            StrapiFormSpecProvider provider = NewProvider("tok-abc123");
+
+            await provider.GetLatestAsync("poc-test-form", CancellationToken.None);
+
+            AuthenticationHeaderValue? auth = _http.LastRequest!.Headers.Authorization;
+            Assert.NotNull(auth);
+            Assert.Equal("Bearer", auth.Scheme);
+            Assert.Equal("tok-abc123", auth.Parameter);
+        }
+
+        [Fact]
+        public async Task SendsTheTokenOnVersionLookupsToo()
+        {
+            // GetVersionAsync is the path that renders historical submissions.
+            // It must be authenticated as well, or "View Form" breaks the moment
+            // the public grant is revoked.
+            _http.Body = EntryBody;
+            StrapiFormSpecProvider provider = NewProvider("tok-abc123");
+
+            await provider.GetVersionAsync("poc-test-form", 2, CancellationToken.None);
+
+            Assert.Equal("tok-abc123", _http.LastRequest!.Headers.Authorization?.Parameter);
+        }
+
+        [Fact]
+        public async Task TrimsWhitespaceAroundTheToken()
+        {
+            // Tokens are pasted out of the Strapi admin panel, a reliable source
+            // of stray whitespace and newlines.
+            _http.Body = EntryBody;
+            StrapiFormSpecProvider provider = NewProvider("  tok-abc123\n");
+
+            await provider.GetLatestAsync("poc-test-form", CancellationToken.None);
+
+            Assert.Equal("tok-abc123", _http.LastRequest!.Headers.Authorization?.Parameter);
+        }
+
+        [Fact]
+        public async Task NoToken_SendsNoAuthorizationHeader()
+        {
+            // Anonymous rather than a bogus header, so Strapi answers with a
+            // clean 403 that names the real problem.
+            _http.Body = EntryBody;
+            StrapiFormSpecProvider provider = NewProvider(apiToken: null);
+
+            await provider.GetLatestAsync("poc-test-form", CancellationToken.None);
+
+            Assert.Null(_http.LastRequest!.Headers.Authorization);
+        }
+
+        [Fact]
+        public async Task BlankToken_SendsNoAuthorizationHeader()
+        {
+            _http.Body = EntryBody;
+            StrapiFormSpecProvider provider = NewProvider("   ");
+
+            await provider.GetLatestAsync("poc-test-form", CancellationToken.None);
+
+            Assert.Null(_http.LastRequest!.Headers.Authorization);
+        }
+
+        [Fact]
+        public async Task Forbidden_Throws()
+        {
+            // A revoked or under-scoped token must surface as an error, not as
+            // a form that quietly went missing.
+            _http.Status = HttpStatusCode.Forbidden;
+            StrapiFormSpecProvider provider = NewProvider("tok-abc123");
+
+            await Assert.ThrowsAsync<HttpRequestException>(() =>
+                provider.GetLatestAsync("poc-test-form", CancellationToken.None));
+        }
+
+        private StrapiFormSpecProvider NewProvider(string? apiToken = null)
+        {
+            var settings = new Dictionary<string, string?> { ["Strapi:BaseUrl"] = "http://strapi.test" };
+            if (apiToken is not null)
+            {
+                settings["Strapi:ApiToken"] = apiToken;
+            }
+
             IConfiguration config = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?> { ["Strapi:BaseUrl"] = "http://strapi.test" })
+                .AddInMemoryCollection(settings)
                 .Build();
             return new StrapiFormSpecProvider(NullLogger<StrapiFormSpecProvider>.Instance, new HttpClient(_http), config);
         }

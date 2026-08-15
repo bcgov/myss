@@ -138,9 +138,15 @@ const testFormSpecV2: Json = {
   ],
 };
 
-async function grantPublicRead(strapi: Core.Strapi) {
-  // POC only: lets the MyssApi spec proxy read without a token. Switch to an
-  // API token before deploying beyond local dev.
+// Phase 0: form specs are read with a scoped, read-only Strapi API token held
+// by MyssApi (Strapi:ApiToken), so the Public role must NOT be able to read
+// them. This actively revokes the grant rather than merely no longer creating
+// it, because earlier boots of this app wrote those permission rows into the
+// database — removing the code that created them would leave the spec API
+// exactly as open as before, in a way that reads as fixed.
+//
+// Idempotent and safe on a fresh database: nothing to revoke is the normal case.
+async function revokePublicRead(strapi: Core.Strapi) {
   const publicRole = await strapi.db
     .query("plugin::users-permissions.role")
     .findOne({ where: { type: "public" } });
@@ -150,10 +156,11 @@ async function grantPublicRead(strapi: Core.Strapi) {
     const existing = await strapi.db
       .query("plugin::users-permissions.permission")
       .findOne({ where: { action, role: publicRole.id } });
-    if (!existing) {
+    if (existing) {
       await strapi.db
         .query("plugin::users-permissions.permission")
-        .create({ data: { action, role: publicRole.id } });
+        .delete({ where: { id: existing.id } });
+      strapi.log.info(`Revoked public permission ${action}`);
     }
   }
 }
@@ -189,7 +196,7 @@ export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
-    await grantPublicRead(strapi);
+    await revokePublicRead(strapi);
     await seedTestForm(strapi);
   },
 };

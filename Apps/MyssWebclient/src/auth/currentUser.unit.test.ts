@@ -15,13 +15,55 @@ describe("normalizeUser", () => {
         expect(user.roles).toEqual([]);
     });
 
-    it("prefers display_name and preferred_username when name is absent", () => {
+    it("falls back to display_name when name is absent", () => {
         expect(normalizeUser({ sub: "x", display_name: "Bob B" }).name).toBe(
             "Bob B",
         );
+    });
+
+    // BC Services Card sends no name and no display_name — it sends the given
+    // names under the PLURAL spelling, plus family_name. Observed on a real
+    // BCSC token 2026-08-13.
+    it("builds a name from given_names + family_name (BC Services Card)", () => {
         expect(
-            normalizeUser({ sub: "x", preferred_username: "bob@bceid" }).name,
-        ).toBe("bob@bceid");
+            normalizeUser({
+                sub: "x",
+                given_names: "GATEWAY Carlos",
+                family_name: "ELEVEN",
+                preferred_username: "r66eF0hnb8SsRs4UkuXxy3nEcQDR7FtDlqtGzd+kPkQ=",
+            }).name,
+        ).toBe("GATEWAY Carlos ELEVEN");
+    });
+
+    it("builds a name from the singular given_name spelling (IDIR / BCeID)", () => {
+        expect(
+            normalizeUser({
+                sub: "x",
+                given_name: "Alice",
+                family_name: "Applicant",
+            }).name,
+        ).toBe("Alice Applicant");
+    });
+
+    it("uses whichever half of the name is present", () => {
+        expect(normalizeUser({ sub: "x", family_name: "ELEVEN" }).name).toBe(
+            "ELEVEN",
+        );
+        expect(normalizeUser({ sub: "x", given_names: "Carlos" }).name).toBe(
+            "Carlos",
+        );
+    });
+
+    // Greeting a citizen with an opaque directed identifier is worse than
+    // greeting them with no name at all, so preferred_username is not a name
+    // source. AccountPanel renders a bare "Welcome back" when name is absent.
+    it("never uses preferred_username as a display name", () => {
+        expect(
+            normalizeUser({
+                sub: "x",
+                preferred_username: "r66eF0hnb8SsRs4UkuXxy3nEcQDR7FtDlqtGzd+kPkQ=",
+            }).name,
+        ).toBeUndefined();
     });
 
     it("collects roles from client_roles, realm_access and resource_access, de-duplicated", () => {
