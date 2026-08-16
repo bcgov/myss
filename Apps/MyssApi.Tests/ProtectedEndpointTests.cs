@@ -11,6 +11,7 @@ namespace Myss.Api.Tests
     using Microsoft.Extensions.DependencyInjection;
     using Myss.Api.Configuration;
     using Myss.Api.Services;
+    using Myss.Api.Tests.TestDoubles;
     using Xunit;
 
     /// <summary>
@@ -77,9 +78,8 @@ namespace Myss.Api.Tests
             this.factory
                 .WithWebHostBuilder(builder =>
                 {
-                    builder.UseSetting(MockAuthGate.AllowMockAuthKey, "true");
-                    builder.UseSetting(MockAuthGate.EnvironmentNameKey, "test");
-                    builder.UseSetting(MockAuthGate.MockAuthKey, "true");
+                    builder.UseMockAuthSettings(
+                        allowMockAuth: "true", environmentName: "test", mockAuth: "true");
                     builder.ConfigureServices(RegisterTestController);
                 })
                 .CreateClient();
@@ -87,7 +87,12 @@ namespace Myss.Api.Tests
         /// <summary>Host with the real bearer scheme, so an unauthenticated call is a 401.</summary>
         private HttpClient CreateBearerClient() =>
             this.factory
-                .WithWebHostBuilder(builder => builder.ConfigureServices(RegisterTestController))
+                .WithWebHostBuilder(builder =>
+                {
+                    builder.UseMockAuthSettings(
+                        allowMockAuth: "false", environmentName: "test", mockAuth: "false");
+                    builder.ConfigureServices(RegisterTestController);
+                })
                 .CreateClient();
 
         private static void RegisterTestController(IServiceCollection services)
@@ -223,11 +228,8 @@ namespace Myss.Api.Tests
         {
             // The deployment-accident guard: the host must refuse to build.
             using var productionFactory = this.factory.WithWebHostBuilder(builder =>
-            {
-                builder.UseSetting(MockAuthGate.AllowMockAuthKey, "true");
-                builder.UseSetting(MockAuthGate.EnvironmentNameKey, "production");
-                builder.UseSetting(MockAuthGate.MockAuthKey, "true");
-            });
+                builder.UseMockAuthSettings(
+                    allowMockAuth: "true", environmentName: "production", mockAuth: "true"));
 
             Assert.ThrowsAny<System.InvalidOperationException>(
                 () => productionFactory.CreateClient());

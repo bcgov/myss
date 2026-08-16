@@ -1,8 +1,8 @@
 name: myss
 
-# Local development stack. POC scope: Postgres + Strapi.
-# Gotenberg, Keycloak, Redis, MinIO, ClamAV and Temporal get added later
-# alongside the work that needs them.
+# Local development stack. POC scope: Postgres + Strapi, plus ClamAV and
+# MinIO for the attachments module. Gotenberg, Keycloak, Redis and Temporal
+# get added later alongside the work that needs them.
 
 services:
   postgres:
@@ -46,6 +46,64 @@ services:
       retries: 12
       start_period: 120s
 
+  # Same clamd major as the gitops manifest (manifests/apps/clamav). The API
+  # scans attachments against it over TCP 3310 (INSTREAM) before storing them.
+  clamav:
+    image: clamav/clamav:1.5.3
+    # clamav/clamav publishes amd64 only; on Apple Silicon this runs under
+    # Rosetta emulation, which is fine for dev-sized scans.
+    platform: linux/amd64
+    container_name: myss-clamav
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav-db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      # The first start downloads the signature databases, which takes a while.
+      start_period: 300s
+
+  # S3-compatible object store for attachments. Credentials match the
+  # ObjectStorage section in Apps/MyssApi/appsettings.Development.json.
+  minio:
+    image: minio/minio:latest
+    container_name: myss-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: myss
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-myss-local-dev}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # One-shot bucket creation; safe to re-run (mb --ignore-existing).
+  minio-init:
+    image: minio/mc:latest
+    container_name: myss-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 myss $${MINIO_ROOT_PASSWORD:-myss-local-dev} &&
+      mc mb --ignore-existing local/myss-attachments
+      "
+    environment:
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-myss-local-dev}
+    restart: "no"
+
 volumes:
   postgres-data:
   strapi-node-modules:
+  clamav-db:
+  minio-data:
