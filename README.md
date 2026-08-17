@@ -16,8 +16,10 @@ cp Apps/MyssContent/.env.example Apps/MyssContent/.env
 docker compose up -d --wait
 ```
 
-This brings up Postgres 17 and Strapi. The databases initialize themselves on
-the first start:
+This brings up Postgres 17, Strapi, ClamAV and MinIO (the ClamAV first start
+downloads its signature databases, so `--wait` can take a few minutes; the
+`minio-init` one-shot creates the `myss-attachments` bucket). The databases
+initialize themselves on the first start:
 
 - `myss` (the application database) is created by the Postgres image
   (`POSTGRES_DB`).
@@ -27,13 +29,14 @@ the first start:
 - Strapi applies its own schema migrations and seeds the POC form specs at
   boot.
 
-The forms schema in `myss` is **not** automatic. Apply the EF migrations once
-(and again after pulling new migrations):
+The forms and attachments schemas in `myss` are **not** automatic. Apply the
+EF migrations once (and again after pulling new migrations):
 
 ```bash
 cd Apps/MyssApi
 dotnet tool restore
 dotnet ef database update --context FormsDbContext
+dotnet ef database update --context AttachmentsDbContext
 ```
 
 The connection string in `appsettings.Development.json` already points at the
