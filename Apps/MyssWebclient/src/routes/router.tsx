@@ -9,6 +9,7 @@ import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
 import SubmissionView from "@/pages/SubmissionView";
+import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
 import RequireAuth from "@/auth/RequireAuth";
 import { paths } from "@/routes/paths";
 
@@ -57,6 +58,14 @@ export const router = createBrowserRouter([
                 element: (
                     <RequireAuth>
                         <SubmissionView />
+                    </RequireAuth>
+                ),
+            },
+            {
+                path: "techdemos/attachments",
+                element: (
+                    <RequireAuth>
+                        <AttachmentsTechDemo />
                     </RequireAuth>
                 ),
             },
