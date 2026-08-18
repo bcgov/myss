@@ -2,11 +2,8 @@ import { useRef } from "react";
 import { Button } from "@bcgov/design-system-react-components";
 
 import styles from "./AttachmentUpload.module.css";
-import {
-  AttachmentUploadError,
-  useAttachments,
-  useUploadAttachment,
-} from "@/hooks/useAttachments";
+import { AttachmentUploadError } from "@/api/attachments";
+import { useAttachments, useUploadAttachment } from "@/hooks/useAttachments";
 
 // Mirrors the backend allow-list (Attachments:AllowedContentTypes). The
 // native picker filter is a courtesy — the API re-checks type, magic bytes
