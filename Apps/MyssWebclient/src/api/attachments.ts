@@ -1,14 +1,12 @@
 import { API_URL } from "@/constants";
 import { authHeaders } from "@/auth/accessToken";
 
-// Transport layer for the attachments module — the frontend counterpart of a
-// backend provider. This is the only place that knows the URLs, the auth
-// header, the BaseResponseModel envelope and the ProblemDetails error shape;
-// hooks add react-query caching on top and components never see any of it.
+// Calls to the attachments API (/v1/attachments): list the signed-in user's
+// files and upload new ones. Responses come wrapped in the API's payload
+// envelope; upload rejections carry a dotted keyword like DOC.UPLOAD.INFECTED.
 //
-// Raw fetch for now (so the Bearer interceptor does not apply and authHeaders()
-// is spread explicitly). When the attachments API stabilises and the schema is
-// regenerated, the SDK swap happens inside this file only.
+// These endpoints are not in the generated client yet, hence the raw fetches
+// with authHeaders(). Swap for the SDK after regenerating the schema.
 
 export interface AttachmentPayload {
   id: string;
@@ -21,8 +19,8 @@ export interface AttachmentPayload {
 }
 
 /**
- * Upload rejection carrying the API's stable dotted keyword (e.g.
- * DOC.UPLOAD.INFECTED) so the UI can match on it instead of parsing prose.
+ * An upload the API refused: HTTP status, the error keyword when the response
+ * carried one, and the server's detail text as the message.
  */
 export class AttachmentUploadError extends Error {
   keyword?: string;

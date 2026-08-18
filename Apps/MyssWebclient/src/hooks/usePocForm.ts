@@ -7,8 +7,8 @@ import {
   submitForm,
 } from "@/api/forms";
 
-// Service layer for the forms module: react-query wiring only. The transport
-// (URLs, auth, envelope) lives in @/api/forms.
+// React-query hooks over the forms API: spec fetch, submission list and
+// detail, and the submit mutation.
 
 export type {
   FormSpecPayload,

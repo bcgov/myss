@@ -6,13 +6,12 @@ import type {
 import { API_URL } from "@/constants";
 import { authHeaders } from "@/auth/accessToken";
 
-// Transport layer for the forms module — the frontend counterpart of a
-// backend provider. Only this file knows the URLs, the auth header and the
-// BaseResponseModel envelope; hooks add react-query caching on top.
+// Calls to the forms API (/v1/forms): fetch form specs, list and read
+// submissions, and post new ones. Responses come wrapped in the API's
+// payload envelope.
 //
-// Raw fetch for now (so the Bearer interceptor does not apply and authHeaders()
-// is spread explicitly). When the forms API stabilises and the schema is
-// regenerated, the SDK swap happens inside this file only.
+// These endpoints are not in the generated client yet, hence the raw fetches
+// with authHeaders(). Swap for the SDK after regenerating the schema.
 
 export interface FormSpecPayload {
   formSpecId: string;

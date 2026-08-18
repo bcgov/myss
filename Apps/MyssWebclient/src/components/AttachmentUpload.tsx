@@ -5,14 +5,11 @@ import styles from "./AttachmentUpload.module.css";
 import { AttachmentUploadError } from "@/api/attachments";
 import { useAttachments, useUploadAttachment } from "@/hooks/useAttachments";
 
-// Mirrors the backend allow-list (Attachments:AllowedContentTypes). The
-// native picker filter is a courtesy — the API re-checks type, magic bytes
-// and size regardless.
+// Same allow-list as the backend. The picker filter is just a convenience;
+// the API re-checks type, magic bytes and size on every upload.
 const ACCEPT = "application/pdf,image/png,image/jpeg";
 
-// The API's stable keywords, mapped to display text. Keywords double as
-// content keys, so these strings move to Strapi once the string pipeline
-// exists (forms architecture §2.6).
+// Display text for each error keyword the API can return.
 const KEYWORD_MESSAGES: Record<string, string> = {
   "DOC.UPLOAD.EMPTY": "The selected file is empty.",
   "DOC.UPLOAD.TOO_LARGE": "The file is too large. The limit is 5 MB.",
@@ -36,9 +33,9 @@ function formatSize(sizeBytes: number): string {
 }
 
 /**
- * The upload tech demo: a button that opens the native file browser and
- * submits the chosen file to the attachments API (validate -> ClamAV scan ->
- * object storage), plus the caller's stored files.
+ * Upload button plus the user's stored files. The button opens the native
+ * file picker; the chosen file goes straight to the attachments API, and the
+ * list refreshes once it's scanned and stored.
  */
 export default function AttachmentUpload() {
   const inputRef = useRef<HTMLInputElement>(null);
