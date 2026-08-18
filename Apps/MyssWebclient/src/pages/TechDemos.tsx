@@ -26,6 +26,11 @@ export default function TechDemos() {
             Forms - Strapi-authored Form.io loop
           </Link>
         </li>
+        <li>
+          <Link to="/techdemos/attachments">
+            Attachments - scanned upload to object storage
+          </Link>
+        </li>
       </ul>
     </>
   );
