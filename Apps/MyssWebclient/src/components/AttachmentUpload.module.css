@@ -1,0 +1,17 @@
+/* Visually hidden but still in the accessibility tree and reachable by
+   tests — display:none would remove it from both. */
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.error {
+  color: var(--surface-color-primary-danger-button-default, #ce3e39);
+}
