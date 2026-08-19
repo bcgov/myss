@@ -6,6 +6,7 @@ import {
   seededFormSpecs,
   testFormSpecV1,
   testFormSpecV2,
+  testFormSpecV3,
   type Json,
 } from "./form-spec-seed-data";
 
@@ -22,7 +23,9 @@ import {
 
 interface Component {
   readonly key?: unknown;
+  readonly type?: unknown;
   readonly conditional?: { readonly when?: unknown };
+  readonly properties?: { readonly myssValidator?: unknown };
 }
 
 function isRecord(value: Json): value is { [key: string]: Json } {
@@ -40,6 +43,12 @@ function keysOf(spec: Json): string[] {
   return componentsOf(spec)
     .map((component) => component.key)
     .filter((key): key is string => typeof key === "string");
+}
+
+function componentByKey(spec: Json, key: string): Component {
+  const component = componentsOf(spec).find((candidate) => candidate.key === key);
+  if (!component) throw new Error(`no component with key "${key}"`);
+  return component;
 }
 
 describe("seeded form specs", () => {
@@ -94,5 +103,33 @@ describe("seeded form specs", () => {
     expect(v2).toEqual(expect.arrayContaining(v1));
     expect(v2.length).toBeGreaterThan(v1.length);
     expect(v2).toContain("contactEmail");
+  });
+
+  it("adds a field in v3 without removing any from v2", () => {
+    const v2 = keysOf(testFormSpecV2);
+    const v3 = keysOf(testFormSpecV3);
+
+    expect(v3).toEqual(expect.arrayContaining(v2));
+    expect(v3.length).toBeGreaterThan(v2.length);
+    expect(v3).toContain("sin");
+  });
+
+  /**
+   * The marker is the whole point of v3, and getting it wrong fails SILENTLY:
+   * Form.io ignores unknown `properties` keys, so a misspelled marker renders a
+   * perfectly good field whose answer never reaches the SIN rule. Nothing else
+   * in this repo would catch that, hence an assertion on the literal strings.
+   *
+   * `"sin"` and the `myssValidator` key are a contract with the `RuleFor`
+   * lookup in MyssApi/Services/FormSpecValidator.cs. Renaming either means
+   * changing both sides together.
+   */
+  it("marks the v3 SIN field for the server-side SIN validator", () => {
+    const sin = componentByKey(testFormSpecV3, "sin");
+
+    // A plain textfield, deliberately: the marker route is what lets an author
+    // add a validated field without the Phase 1 custom `sin` component.
+    expect(sin.type).toBe("textfield");
+    expect(sin.properties?.myssValidator).toBe("sin");
   });
 });

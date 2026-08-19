@@ -65,17 +65,27 @@ export function useIdleLogout(): { warning: boolean } {
     const { isAuthenticated, logout } = useSession();
     const [warning, setWarning] = useState(false);
 
-    // Keep the latest logout without restarting the effect each render.
+    // Keep the latest logout without restarting the timer effect each render.
+    //
+    // The write lives in an effect rather than in the render body: React may
+    // discard or re-run a render, so mutating a ref there is not guaranteed to
+    // correspond to committed UI (react-hooks/refs). Deferring it to commit is
+    // unobservable here because `logoutRef.current` is only ever read from the
+    // timer callback, never during render, and useRef already seeds the initial
+    // value so there is no gap on first mount.
     const logoutRef = useRef(logout);
-    logoutRef.current = logout;
+    useEffect(() => {
+        logoutRef.current = logout;
+    }, [logout]);
+
     const warningRef = useRef(false);
 
     useEffect(() => {
-        if (!isAuthenticated) {
-            warningRef.current = false;
-            setWarning(false);
-            return;
-        }
+        // Nothing to time while signed out. The warning is cleared by masking
+        // it on the way out (see the return below) rather than by calling
+        // setWarning here: a setState in an effect body triggers a cascading
+        // render, and there is no external state to synchronise with.
+        if (!isAuthenticated) return;
 
         const showWarning = () => {
             warningRef.current = true;
@@ -107,8 +117,20 @@ export function useIdleLogout(): { warning: boolean } {
             ACTIVITY_EVENTS.forEach((e) =>
                 window.removeEventListener(e, onActivity),
             );
+            warningRef.current = false;
         };
     }, [isAuthenticated]);
 
-    return { warning };
+    // Derived rather than stored. Every remaining setWarning call now sits in a
+    // callback — the timer firing or a DOM activity event — which is the shape
+    // the effect rules ask for: subscribe to an external system, set state from
+    // its callbacks.
+    //
+    // The `warning` state can therefore linger as true after sign-out. That is
+    // unobservable in practice: siteMinderLogout ends in
+    // window.location.assign, a full navigation that discards React state
+    // entirely, and signing back in is likewise a redirect. Masking here covers
+    // the gap between removeUser() flipping isAuthenticated and the browser
+    // actually leaving the page.
+    return { warning: isAuthenticated && warning };
 }
