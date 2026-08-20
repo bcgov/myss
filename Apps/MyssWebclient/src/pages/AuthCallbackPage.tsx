@@ -6,24 +6,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "react-oidc-context";
 
-import { paths } from "@/routes/paths";
-
-// Where to land after the callback. Callers may pass `state: { returnTo }` to
-// signinRedirect to come back to the page they started from; anything else
-// (including the plain sign-in chooser, which passes no state) goes home.
-// Only same-site absolute paths are honoured, so a tampered state cannot turn
-// the callback into an open redirect.
-export function resolveReturnTo(state: unknown): string {
-    const returnTo = (state as { returnTo?: unknown } | undefined)?.returnTo;
-    if (
-        typeof returnTo === "string" &&
-        returnTo.startsWith("/") &&
-        !returnTo.startsWith("//")
-    ) {
-        return returnTo;
-    }
-    return paths.home;
-}
+import { resolveReturnTo } from "@/auth/resolveReturnTo";
 
 export default function AuthCallbackPage() {
     const auth = useAuth();

@@ -25,8 +25,11 @@ namespace Myss.Api.Services
         /// <param name="formSpecId">The logical form identifier.</param>
         /// <param name="request">The submission payload.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The stored submission.</returns>
-        Task<FormSubmissionResponseModel> SubmitAsync(string formSpecId, FormSubmissionRequestModel request, CancellationToken cancellationToken);
+        /// <returns>
+        /// The stored submission, or the validation failures that stopped it
+        /// being stored. Nothing is persisted when the result is invalid.
+        /// </returns>
+        Task<FormSubmissionResultModel> SubmitAsync(string formSpecId, FormSubmissionRequestModel request, CancellationToken cancellationToken);
 
         /// <summary>
         /// Loads a submission together with the archived spec version that rendered it.

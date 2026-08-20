@@ -83,20 +83,40 @@ namespace Myss.Api.Controllers
             typeof(BaseResponseModel<FormSubmissionResponseModel>),
             StatusCodes.Status200OK
         )]
+        [ProducesResponseType(
+            typeof(BaseResponseModel<IReadOnlyList<ValidationErrorModel>>),
+            StatusCodes.Status422UnprocessableEntity
+        )]
         public async Task<ActionResult<BaseResponseModel<FormSubmissionResponseModel>>> Submit(
             string formSpecId,
             [FromBody] FormSubmissionRequestModel request,
             CancellationToken cancellationToken
         )
         {
-            FormSubmissionResponseModel stored = await _formsService.SubmitAsync(
+            FormSubmissionResultModel result = await _formsService.SubmitAsync(
                 formSpecId,
                 request,
                 cancellationToken
             );
+
+            // 422 rather than 400: the request was well-formed JSON the server
+            // understood, and was refused on its contents. The body carries the
+            // full error collection so the client can build the WCAG error
+            // summary in one pass instead of discovering faults one at a time.
+            if (!result.IsValid)
+            {
+                return UnprocessableEntity(
+                    new BaseResponseModel<IReadOnlyList<ValidationErrorModel>>
+                    {
+                        Payload = result.Errors,
+                        DatetimeRequested = DateTime.Now,
+                    }
+                );
+            }
+
             return new BaseResponseModel<FormSubmissionResponseModel>
             {
-                Payload = stored,
+                Payload = result.Submission!,
                 DatetimeRequested = DateTime.Now,
             };
         }

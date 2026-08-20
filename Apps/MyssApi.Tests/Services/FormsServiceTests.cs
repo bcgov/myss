@@ -4,6 +4,7 @@ namespace Myss.Api.Tests.Services
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging.Abstractions;
     using Myss.Api.Data;
+    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
@@ -64,26 +65,71 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task Submit_ResolvesTheClaimedVersion_NeverTheLatest()
+        {
+            // §7.2, non-negotiable: a citizen part-way through a form when a
+            // designer publishes a new version must be validated against the
+            // rules they were actually shown.
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 2, SpecWithFirstName);
+            _provider.LatestResult = FakeFormSpecProvider.Spec("poc-test-form", 3);
+            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+
+            await service.SubmitAsync("poc-test-form", Request(2, """{"firstName":"Grace"}"""), CancellationToken.None);
+
+            Assert.Equal([("poc-test-form", 2)], _provider.VersionCalls);
+            Assert.Empty(_provider.LatestCalls);
+        }
+
+        [Fact]
         public async Task Submit_StampsTheRenderedVersion_AndPersistsAnswers()
         {
             using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 2, SpecWithFirstName);
             var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
-            using JsonDocument answers = JsonDocument.Parse("""{"firstName":"Grace","monthlyIncome":2000}""");
-            var request = new FormSubmissionRequestModel
-            {
-                FormSpecVersion = 2,
-                Answers = answers.RootElement.Clone(),
-            };
 
-            FormSubmissionResponseModel stored = await service.SubmitAsync("poc-test-form", request, CancellationToken.None);
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "poc-test-form", Request(2, """{"firstName":"Grace","monthlyIncome":2000}"""), CancellationToken.None);
 
+            Assert.True(result.IsValid);
             FormSubmission row = Assert.Single(await db.FormSubmissions.ToListAsync());
-            Assert.Equal(stored.Id, row.Id);
+            Assert.Equal(result.Submission!.Id, row.Id);
             Assert.Equal("poc-test-form", row.FormSpecId);
             Assert.Equal(2, row.FormSpecVersion);
             Assert.Equal("Grace", row.Answers.RootElement.GetProperty("firstName").GetString());
-            Assert.True(stored.SubmittedAt <= DateTimeOffset.UtcNow);
-            Assert.True(stored.SubmittedAt > DateTimeOffset.UtcNow.AddMinutes(-1));
+            Assert.True(result.Submission.SubmittedAt <= DateTimeOffset.UtcNow);
+            Assert.True(result.Submission.SubmittedAt > DateTimeOffset.UtcNow.AddMinutes(-1));
+        }
+
+        [Fact]
+        public async Task Submit_UnknownOrUnpublishedVersion_IsRefused_AndNothingIsPersisted()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = null;
+            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "poc-test-form", Request(99, """{"firstName":"Grace"}"""), CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.Equal(ValidationKeywords.VersionUnknown, Assert.Single(result.Errors).Keyword);
+            Assert.Empty(await db.FormSubmissions.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_InvalidAnswers_AreRefused_AndNothingIsPersisted()
+        {
+            // The important half: a refused submission must leave no trace.
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 2, SpecWithFirstName);
+            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "poc-test-form", Request(2, """{"unknownField":"x"}"""), CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.Null(result.Submission);
+            Assert.Empty(await db.FormSubmissions.ToListAsync());
         }
 
         [Fact]
@@ -101,34 +147,32 @@ namespace Myss.Api.Tests.Services
             Assert.Equal([newer, older], list.Select(s => s.Id));
         }
 
+        /// <summary>A spec with one required field, for submit-path arrangements.</summary>
+        private const string SpecWithFirstName = """
+        {
+          "components": [
+            { "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } },
+            { "type": "number", "key": "monthlyIncome", "input": true }
+          ]
+        }
+        """;
+
+        private static FormSubmissionRequestModel Request(int version, string answersJson)
+        {
+            using JsonDocument answers = JsonDocument.Parse(answersJson);
+            return new FormSubmissionRequestModel
+            {
+                FormSpecVersion = version,
+                Answers = answers.RootElement.Clone(),
+            };
+        }
+
         private static FormsDbContext NewDb()
         {
             DbContextOptions<FormsDbContext> options = new DbContextOptionsBuilder<FormsDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
             return new InMemoryFormsDbContext(options);
-        }
-
-        /// <summary>
-        /// The InMemory provider cannot map <see cref="JsonDocument"/> (Npgsql
-        /// can), so tests store it as a raw JSON string instead.
-        /// </summary>
-        private sealed class InMemoryFormsDbContext : FormsDbContext
-        {
-            public InMemoryFormsDbContext(DbContextOptions<FormsDbContext> options)
-                : base(options)
-            {
-            }
-
-            protected override void OnModelCreating(ModelBuilder modelBuilder)
-            {
-                base.OnModelCreating(modelBuilder);
-                modelBuilder.Entity<FormSubmission>()
-                    .Property(s => s.Answers)
-                    .HasConversion(
-                        doc => doc.RootElement.GetRawText(),
-                        text => JsonDocument.Parse(text, default(JsonDocumentOptions)));
-            }
         }
 
         private static async Task<Guid> SeedSubmission(

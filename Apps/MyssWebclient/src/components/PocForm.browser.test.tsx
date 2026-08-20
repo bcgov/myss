@@ -35,7 +35,14 @@ const currentSpecV7 = {
   },
 };
 
-function stubFormApi() {
+/** A refusal as the API sends it: 422 carrying every reason at once. */
+interface ApiValidationError {
+  field: string;
+  keyword: string;
+  message: string;
+}
+
+function stubFormApi(options: { rejectWith?: ApiValidationError[] } = {}) {
   const posts: Array<{ url: string; body: unknown }> = [];
   vi.spyOn(window, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
@@ -51,6 +58,14 @@ function stubFormApi() {
     ) {
       const body = JSON.parse(String(init.body));
       posts.push({ url, body });
+
+      if (options.rejectWith) {
+        return new Response(JSON.stringify({ payload: options.rejectWith }), {
+          status: 422,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       return new Response(
         JSON.stringify({
           payload: {
@@ -114,4 +129,59 @@ test("submits the version it rendered with, and links to the stored submission",
     formSpecVersion: 7,
     answers: { firstName: "Ada" },
   });
+});
+
+/**
+ * The 422 body is the only place a citizen learns WHY a submission was
+ * refused. Asserting on the message rather than the status guards the
+ * regression this replaced: the hook used to throw away the response body and
+ * the page showed a bare "Submission failed (422)".
+ */
+test("shows the reasons the API refused the submission", async () => {
+  stubFormApi({
+    rejectWith: [
+      {
+        field: "firstName",
+        keyword: "FORM.FIELD.REQUIRED",
+        message: "Enter a first name.",
+      },
+    ],
+  });
+  const screen = await renderForm();
+
+  await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  await expect.element(screen.getByText("There is a problem")).toBeVisible();
+  await expect.element(screen.getByText("Enter a first name.")).toBeVisible();
+
+  // The form must stay on screen: a refused submission is a correction, not a
+  // dead end.
+  await expect
+    .element(screen.getByRole("textbox", { name: "First name" }))
+    .toBeVisible();
+});
+
+test("moves focus to the field an error belongs to", async () => {
+  stubFormApi({
+    rejectWith: [
+      {
+        field: "firstName",
+        keyword: "FORM.FIELD.REQUIRED",
+        message: "Enter a first name.",
+      },
+    ],
+  });
+  const screen = await renderForm();
+
+  await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  // Each summary entry is a button rather than a link: it moves focus within
+  // the page, and Form.io's element ids are regenerated per render so there is
+  // no stable fragment to target.
+  await screen.getByRole("button", { name: "Enter a first name." }).click();
+
+  const input = document.querySelector('[name="data[firstName]"]');
+  expect(document.activeElement).toBe(input);
 });
