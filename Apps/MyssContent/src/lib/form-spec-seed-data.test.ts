@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
+  ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   POC_FORM_SPEC_ID,
   POC_FORM_SPEC_TITLE,
+  seededForms,
   seededFormSpecs,
   testFormSpecV1,
   testFormSpecV2,
@@ -131,5 +134,41 @@ describe("seeded form specs", () => {
     // add a validated field without the Phase 1 custom `sin` component.
     expect(sin.type).toBe("textfield");
     expect(sin.properties?.myssValidator).toBe("sin");
+  });
+});
+
+describe("seeded forms collection", () => {
+  it("seeds the POC form and the eligibility estimator", () => {
+    const ids = seededForms.map((form) => form.formSpecId);
+    expect(ids).toContain(POC_FORM_SPEC_ID);
+    expect(ids).toContain(ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID);
+    // Every seeded form id is distinct — the bootstrap hook keys on it.
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("keeps the POC form's versions as the existing seededFormSpecs list", () => {
+    const poc = seededForms.find((form) => form.formSpecId === POC_FORM_SPEC_ID);
+    expect(poc?.title).toBe(POC_FORM_SPEC_TITLE);
+    expect(poc?.versions).toBe(seededFormSpecs);
+  });
+
+  it("seeds the eligibility estimator as a single v1", () => {
+    const estimator = seededForms.find(
+      (form) => form.formSpecId === ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
+    );
+    expect(estimator?.title).toBe(ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE);
+    expect(estimator?.versions.map((v) => v.version)).toEqual([1]);
+  });
+
+  it("gives every seeded form at least one version, each a valid Form.io form", () => {
+    for (const form of seededForms) {
+      expect(form.versions.length).toBeGreaterThan(0);
+      for (const { spec } of form.versions) {
+        expect(isRecord(spec) && spec.display).toBe("form");
+        const keys = keysOf(spec);
+        expect(keys.length).toBe(componentsOf(spec).length);
+        expect(new Set(keys).size).toBe(keys.length);
+      }
+    }
   });
 });

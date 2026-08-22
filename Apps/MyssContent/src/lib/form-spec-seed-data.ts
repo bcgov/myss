@@ -257,3 +257,205 @@ export const seededFormSpecs: readonly SeededFormSpec[] = [
   { version: 2, spec: testFormSpecV2 },
   { version: 3, spec: testFormSpecV3 },
 ];
+
+// ---------------------------------------------------------------------------
+// Eligibility Estimator form
+// ---------------------------------------------------------------------------
+//
+// The Pre-Eligibility Estimator (prod: https://myselfserve.gov.bc.ca/EligibilityEstimator),
+// converted from a hardcoded React form into content served from Strapi. Unlike
+// the POC form this one is NOT persisted: MyssApi renders it, the citizen submits,
+// and an eligibility amount is computed and shown — nothing is stored.
+//
+// Two things about this spec are deliberate and must not be "tidied":
+//
+//   1. The spouse fields (partnerPwd + the four partner financial fields) use an
+//      ADVANCED conditional (`conditional.json`, JSON-logic) because they must
+//      reveal for TWO relationship values — `married` OR `marriagelike`. Form.io's
+//      simple `{ when, eq }` conditional matches only one value.
+//
+//   2. Those same spouse fields carry NO `validate.required`. MyssApi's
+//      FormSpecValidator only recognises the SIMPLE `conditional.when` string when
+//      deciding whether to exempt a field from the server-side required check; an
+//      advanced-conditional field is treated as always-present. A single applicant
+//      never sees the spouse fields, so marking them required would reject that
+//      applicant server-side for leaving them blank. Client-side conditional
+//      required is sufficient for a public, non-persisted estimator.
+//
+// The component keys are a contract with the frontend mapper
+// (Apps/MyssWebclient src/api/eligibility.ts `mapAnswersToEstimate`) which turns
+// these answers into an EligibilityRequest for MyssApi's calculator.
+
+/** The logical identifier the estimator form is served under. */
+export const ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID = "eligibility-estimator";
+
+/** The human-readable title shown in the admin listing. */
+export const ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE = "Eligibility Estimator";
+
+/** Yes/No radio option set — value strings the mapper turns into booleans. */
+const yesNoValues: Json = [
+  { label: "Yes", value: "true" },
+  { label: "No", value: "false" },
+];
+
+/** Reveal the spouse fields for a partnered relationship (married OR marriage-like). */
+const partneredConditional: Json = {
+  json: { in: [{ var: "relationshipStatus" }, ["married", "marriagelike"]] },
+};
+
+export const eligibilityEstimatorSpecV1: Json = {
+  display: "form",
+  components: [
+    {
+      type: "radio",
+      key: "relationshipStatus",
+      label: "What is your relationship status?",
+      input: true,
+      values: [
+        { label: "Single and Never Married", value: "single" },
+        { label: "Married", value: "married" },
+        { label: "Marriage-Like Relationship", value: "marriagelike" },
+        { label: "Divorced", value: "divorced" },
+        { label: "Separated", value: "separated" },
+        { label: "Widowed", value: "widowed" },
+      ],
+      validate: { required: true },
+    },
+    {
+      type: "number",
+      key: "dependentChildren",
+      label: "How many dependent children under the age of 19 live with you?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "radio",
+      key: "pwd",
+      label:
+        "Do you plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      validate: { required: true },
+    },
+    {
+      // Advanced-conditional, NOT server-required — see the header note.
+      type: "radio",
+      key: "partnerPwd",
+      label:
+        "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "monthlyIncome",
+      label: "Your Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "number",
+      key: "vehicleValueMinusTransportation",
+      label:
+        "What is the value of your vehicle minus any amount owing that is used for day to day transportation needs",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "number",
+      key: "vehicleValue",
+      label:
+        "What is the value minus any amount owing of all your other vehicles?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "number",
+      key: "assetValue",
+      label:
+        "Your Combined Value of Other Assets (Property, Investments, Cash, or Savings)",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "number",
+      key: "partnerMonthlyIncome",
+      label: "Spouse's Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerVehicleValueMinusTransportation",
+      label:
+        "What is the value of your spouse's vehicle minus any amount owing that is used for day to day transportation needs",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerVehicleValue",
+      label:
+        "What is the value minus any amount owing of all your spouse's other vehicles?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerAssetValue",
+      label:
+        "Spouse's Combined Value of Other Assets (Property, Investments, Cash, or Savings)",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Get Estimate",
+      input: true,
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Everything the bootstrap hook seeds
+// ---------------------------------------------------------------------------
+
+/** A form the bootstrap hook seeds: a logical id, a title, and its versions. */
+export interface SeededForm {
+  readonly formSpecId: string;
+  readonly title: string;
+  readonly versions: readonly SeededFormSpec[];
+}
+
+/**
+ * Every form the bootstrap hook seeds. Adding a form here (or a version to an
+ * existing form's `versions`) is the only change needed to seed more content.
+ */
+export const seededForms: readonly SeededForm[] = [
+  {
+    formSpecId: POC_FORM_SPEC_ID,
+    title: POC_FORM_SPEC_TITLE,
+    versions: seededFormSpecs,
+  },
+  {
+    formSpecId: ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
+    title: ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
+    versions: [{ version: 1, spec: eligibilityEstimatorSpecV1 }],
+  },
+];
