@@ -1,10 +1,6 @@
 import type { Core } from "@strapi/strapi";
 
-import {
-  POC_FORM_SPEC_ID,
-  POC_FORM_SPEC_TITLE,
-  seededFormSpecs,
-} from "./lib/form-spec-seed-data";
+import { seededForms } from "./lib/form-spec-seed-data";
 
 const FORM_SPEC_UID = "api::form-spec.form-spec";
 
@@ -35,25 +31,27 @@ async function revokePublicRead(strapi: Core.Strapi) {
   }
 }
 
-// Creates any missing seeded versions, one entry per version. Existing
-// entries are left untouched.
-async function seedTestForm(strapi: Core.Strapi) {
-  for (const { version, spec } of seededFormSpecs) {
-    const existing = await strapi.documents(FORM_SPEC_UID).findFirst({
-      filters: { formSpecId: POC_FORM_SPEC_ID, version },
-    });
-    if (existing) continue;
+// Creates any missing seeded versions, one entry per version, across every
+// seeded form. Existing entries are left untouched.
+async function seedForms(strapi: Core.Strapi) {
+  for (const { formSpecId, title, versions } of seededForms) {
+    for (const { version, spec } of versions) {
+      const existing = await strapi.documents(FORM_SPEC_UID).findFirst({
+        filters: { formSpecId, version },
+      });
+      if (existing) continue;
 
-    await strapi.documents(FORM_SPEC_UID).create({
-      data: {
-        formSpecId: POC_FORM_SPEC_ID,
-        version,
-        title: POC_FORM_SPEC_TITLE,
-        spec,
-      },
-      status: "published",
-    });
-    strapi.log.info(`Seeded form-spec ${POC_FORM_SPEC_ID} v${version}`);
+      await strapi.documents(FORM_SPEC_UID).create({
+        data: {
+          formSpecId,
+          version,
+          title,
+          spec,
+        },
+        status: "published",
+      });
+      strapi.log.info(`Seeded form-spec ${formSpecId} v${version}`);
+    }
   }
 }
 
@@ -62,6 +60,6 @@ export default {
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await revokePublicRead(strapi);
-    await seedTestForm(strapi);
+    await seedForms(strapi);
   },
 };
