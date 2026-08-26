@@ -15,7 +15,7 @@ namespace Myss.Api.Tests.Providers
         [Fact]
         public async Task GenerateFromOdtAsync_RequestsTokenThenRendersPdf()
         {
-            // dummy data to pass to the provider
+            /// dummy data to pass to the provider
             byte[] expectedPdf = [1, 2, 3, 4, 5];
             var handler = new SequencedHttpHandler(
             [
@@ -70,7 +70,7 @@ namespace Myss.Api.Tests.Providers
         }
 
         [Fact]
-        public async Task GenerateFromHtmlAsync_ThrowsWhenRequiredConfigIsMissing()
+        public async Task GenerateFromOdtAsync_ThrowsWhenRequiredConfigIsMissing()
         {
             var settings = new Dictionary<string, string?>
             {

@@ -107,7 +107,7 @@ namespace Myss.Api.Providers
             response.EnsureSuccessStatusCode();
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            JsonDocument body = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            using JsonDocument body = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
             if (!body.RootElement.TryGetProperty("access_token", out JsonElement tokenElement))
             {
                 throw new InvalidOperationException("CDOGS token response did not include access_token.");
