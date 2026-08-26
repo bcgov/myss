@@ -56,6 +56,7 @@ namespace Myss.Api
             services.AddDbContext<FormsDbContext>(options =>
                 options.UseNpgsql(this.startupConfig.Configuration.GetConnectionString("FormsDb")));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
+            services.AddHttpClient<IPdfProvider, CdogsPdfProvider>();
             services.AddScoped<IFormsService, FormsService>();
 
             // Configure the attachments module: validate -> quarantined row ->
