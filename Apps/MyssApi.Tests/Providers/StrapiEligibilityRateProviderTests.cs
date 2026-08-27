@@ -153,6 +153,42 @@ namespace Myss.Api.Tests.Providers
         }
 
         [Fact]
+        public async Task GetRates_NegativeAmount_FallsBack()
+        {
+            // A complete 7-row table (so it passes the row-count check) but with one
+            // negative income amount must NOT be served: it would yield a nonsensical
+            // estimate. The provider treats it as invalid and serves the fallback.
+            _http.Body = """
+                {
+                  "data": [
+                    {
+                      "id": 1,
+                      "documentId": "rate-doc-negative",
+                      "effectiveDate": "2099-01-01",
+                      "incomeRows": [
+                        { "familySize": 1, "a": 0, "b": -111.5, "c": 0, "d": 222.5, "e": 0 },
+                        { "familySize": 2, "a": 10, "b": 20, "c": 30, "d": 40, "e": 50 },
+                        { "familySize": 3, "a": 11, "b": 21, "c": 31, "d": 41, "e": 51 },
+                        { "familySize": 4, "a": 12, "b": 22, "c": 32, "d": 42, "e": 52 },
+                        { "familySize": 5, "a": 13, "b": 23, "c": 33, "d": 43, "e": 53 },
+                        { "familySize": 6, "a": 14, "b": 24, "c": 34, "d": 44, "e": 54 },
+                        { "familySize": 7, "a": 15, "b": 25, "c": 35, "d": 45, "e": 55 }
+                      ],
+                      "assetLimits": { "a": 1, "b": 2, "c": 3, "d": 4 }
+                    }
+                  ],
+                  "meta": { "pagination": { "total": 1 } }
+                }
+                """;
+            StrapiEligibilityRateProvider provider = NewProvider();
+
+            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
+
+            Assert.Equal("2023-08-01", rates.EffectiveDate);
+            Assert.Equal(7, rates.IncomeRows.Count);
+        }
+
+        [Fact]
         public async Task GetRates_CachesTheFallback_SecondCallDoesNotReHitStrapi()
         {
             // During a Strapi outage the fallback is cached too, so a burst of

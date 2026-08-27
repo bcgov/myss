@@ -214,11 +214,11 @@ namespace Myss.Api.Providers
         }
 
         /// <summary>
-        /// Confirms a mapped table is safe to serve: a non-empty effective date and
-        /// exactly one income row for every family size 1..7. Individual A-E amounts
-        /// and A-D limits are already guaranteed by <see cref="Map"/> (a missing JSON
-        /// property throws and falls back), so this guards the one gap that would
-        /// otherwise pass silently: a published entry missing whole rows.
+        /// Confirms a mapped table is safe to serve: a non-empty effective date,
+        /// exactly one income row for every family size 1..7, and no negative amounts.
+        /// A missing JSON property already throws in <see cref="Map"/> and falls back,
+        /// so this guards the gaps that would otherwise pass silently: a published
+        /// entry missing whole rows, or one carrying a negative income/asset amount.
         /// </summary>
         private static bool IsComplete(EligibilityRatesModel rates, out string reason)
         {
@@ -238,6 +238,20 @@ namespace Myss.Api.Providers
                         : $"{matches} income rows for family size {size}";
                     return false;
                 }
+            }
+
+            // The incomeRows/assetLimits JSON columns have no value-level validation
+            // in Strapi, so an admin typo could publish a negative amount. A negative
+            // income limit or asset ceiling would yield a nonsensical estimate, so
+            // treat it as invalid and fall back. Zero is legitimate (family size 1 has
+            // no couple rates, so its A/C/E are 0), hence the strict < 0 test.
+            if (rates.IncomeRows.Any(row =>
+                    row.A < 0 || row.B < 0 || row.C < 0 || row.D < 0 || row.E < 0)
+                || rates.AssetLimits.A < 0 || rates.AssetLimits.B < 0
+                || rates.AssetLimits.C < 0 || rates.AssetLimits.D < 0)
+            {
+                reason = "negative income or asset amount";
+                return false;
             }
 
             reason = string.Empty;
