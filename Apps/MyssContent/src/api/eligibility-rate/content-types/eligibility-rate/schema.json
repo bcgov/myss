@@ -13,7 +13,7 @@
   "pluginOptions": {},
   "attributes": {
     "effectiveDate": {
-      "type": "string",
+      "type": "date",
       "required": true
     },
     "incomeRows": {
