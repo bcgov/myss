@@ -20,23 +20,29 @@ namespace Myss.Api.Data
 
         private const string RateNote = "FDD BR-D9-05";
 
+        // MYSS-25 (US-ELG-02) rate table. Client-type letters: A = couple neither PWD,
+        // B = single not PWD, C = couple either PWD, D = single PWD, E = couple both PWD
+        // (dependants feed family size only, never the type). Versus the old FDD table:
+        // the family-size-1 row is reassigned to the single types B/D, column C is
+        // +165.00 and column E is +113.50 at sizes 2-7. A/B/D at sizes 2-7 are unchanged.
+        // See document/MYSS-25-vs-169-EE-Values-Diff.md.
         private static readonly EligibilityRateRow[] Rates =
         [
-            Row(1, 1, 1060.00m, 0.00m, 1535.50m, 0.00m, 0.00m),
-            Row(2, 2, 1650.00m, 1405.00m, 2125.50m, 1880.50m, 2652.50m),
-            Row(3, 3, 1845.00m, 1500.00m, 2320.50m, 1975.50m, 2847.50m),
-            Row(4, 4, 1895.00m, 1550.00m, 2370.50m, 2025.50m, 2897.50m),
-            Row(5, 5, 1945.00m, 1600.00m, 2420.50m, 2075.50m, 2947.50m),
-            Row(6, 6, 1995.00m, 1650.00m, 2470.50m, 2125.50m, 2997.50m),
-            Row(7, 7, 2045.00m, 1700.00m, 2520.50m, 2175.50m, 3047.50m, RateNote + " (cap)"),
+            Row(1, 1,    0.00m, 1060.00m,    0.00m, 1535.50m,    0.00m),
+            Row(2, 2, 1650.00m, 1405.00m, 2290.50m, 1880.50m, 2766.00m),
+            Row(3, 3, 1845.00m, 1500.00m, 2485.50m, 1975.50m, 2961.00m),
+            Row(4, 4, 1895.00m, 1550.00m, 2535.50m, 2025.50m, 3011.00m),
+            Row(5, 5, 1945.00m, 1600.00m, 2585.50m, 2075.50m, 3061.00m),
+            Row(6, 6, 1995.00m, 1650.00m, 2635.50m, 2125.50m, 3111.00m),
+            Row(7, 7, 2045.00m, 1700.00m, 2685.50m, 2175.50m, 3161.00m, RateNote + " (cap)"),
         ];
 
         private static readonly EligibilityAssetLimit[] Limits =
         [
-            Limit(1, "A", 5000.00m, "Single, no dependants, not PWD"),
-            Limit(2, "B", 10000.00m, "Married or at least one dependant"),
-            Limit(3, "C", 100000.00m, "At least one PWD (not both)"),
-            Limit(4, "D", 200000.00m, "Both KP and spouse are PWD"),
+            Limit(1, "A",   5000.00m, "Asset category A — household mapping pending (MYSS-169 blocker; MYSS-25 does not define asset categories)"),
+            Limit(2, "B",  10000.00m, "Asset category B — household mapping pending"),
+            Limit(3, "C", 100000.00m, "Asset category C — household mapping pending"),
+            Limit(4, "D", 200000.00m, "Asset category D — household mapping pending"),
         ];
 
         private static readonly EligibilityRates Lookup = new(Rates, Limits);

@@ -152,12 +152,12 @@ describe("seeded forms collection", () => {
     expect(poc?.versions).toBe(seededFormSpecs);
   });
 
-  it("seeds the eligibility estimator as a single v1", () => {
+  it("seeds the eligibility estimator with v1 and v2", () => {
     const estimator = seededForms.find(
       (form) => form.formSpecId === ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     );
     expect(estimator?.title).toBe(ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE);
-    expect(estimator?.versions.map((v) => v.version)).toEqual([1]);
+    expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2]);
   });
 
   it("gives every seeded form at least one version, each a valid Form.io form", () => {
