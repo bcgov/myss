@@ -9,7 +9,6 @@
         <AnalysisMode>Recommended</AnalysisMode>
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <NoWarn>CS8974;CS1591</NoWarn>
         <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
     </PropertyGroup>
 

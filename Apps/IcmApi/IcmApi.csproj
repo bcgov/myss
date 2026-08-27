@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Version>0.1.0</Version>
+        <RootNamespace>Icm.Api</RootNamespace>
+        <Nullable>enable</Nullable>
+        <LangVersion>14.0</LangVersion>
+        <AnalysisMode>Recommended</AnalysisMode>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+        <UserSecretsId>21c32ae2-b147-46e6-9895-e20c9996f3cc</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Refit" Version="15.2.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The Refit interfaces and the Siebel/OAuth wire contracts are internal: the
+             published boundary is Repositories + Services + Models (ADR-0002 reads the
+             module-boundary rule in .NET terms, and InternalsVisibleTo is one of the
+             mechanisms it names). The test project needs to reach them to assert on what
+             actually goes on the wire. -->
+        <InternalsVisibleTo Include="IcmApi.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Not compiled. Listed so they appear in the IDE beside the code, and so a
+             change to ICM's spec lands in the same diff as the client that follows it. -->
+        <None Include="README.md" />
+        <None Include="docs\integration\SR_OpenApi.json" />
+    </ItemGroup>
+
+</Project>

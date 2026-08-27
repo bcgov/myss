@@ -1,0 +1,1842 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "SblDtServiceRequestServiceRequest",
+        "description": "OpenAPI specification for SiebelData - API : data/ServiceRequest/ServiceRequest",
+        "contact": {
+            "email": "sample@sample.com"
+        },
+        "version": "1.0"
+    },
+    "externalDocs": {
+        "description": "OpenAPI",
+        "url": "https://openapis.org"
+    },
+    "servers": [
+        {
+            "url": "https://sit1-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+        },
+        {
+            "url": "http://sit1-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+        }
+    ],
+    "tags": [
+        {
+            "name": "data/ServiceRequest/ServiceRequest/"
+        },
+        {
+            "name": "data/ServiceRequest/ServiceRequest/{servicerequest_key}/"
+        }
+    ],
+    "paths": {
+        "/data/ServiceRequest/ServiceRequest/": {
+            "get": {
+                "tags": [
+                    "data/ServiceRequest/ServiceRequest/"
+                ],
+                "operationId": "data_ServiceRequest_ServiceRequest__get",
+                "parameters": [
+                    {
+                        "name": "childlinks",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "uniformresponse",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "default": "Y",
+                            "enum": [
+                                "Y"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "searchspec",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sortspec",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "fields",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "PageSize",
+                        "in": "query",
+                        "schema": {
+                            "maximum": 100,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "StartRowNum",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0
+                        }
+                    },
+                    {
+                        "name": "pagination",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "Y",
+                            "enum": [
+                                "Y",
+                                "N"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "ViewMode",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "Sales Rep"
+                        }
+                    },
+                    {
+                        "name": "recordcountneeded",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "name": "ExecutionMode",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "BiDirectional"
+                        }
+                    },
+                    {
+                        "name": "excludeEmptyFieldsInResponse",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "false"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_get_all_response"
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_get_all_response"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "No Resource Found",
+                        "content": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {}
+                    },
+                    "404": {
+                        "description": "There is no data for the requested resource",
+                        "content": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {}
+                    }
+                },
+                "security": [
+                    {
+                        "basicAuth": [],
+                        "oAuth2.0": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "data/ServiceRequest/ServiceRequest/"
+                ],
+                "operationId": "data_ServiceRequest_ServiceRequest__put",
+                "parameters": [
+                    {
+                        "name": "excludeEmptyFieldsInResponse",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "false"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_"
+                            }
+                        },
+                        "application/xml": {
+                            "schema": {
+                                "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_put_post_response"
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_put_post_response"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "No Resource Found",
+                        "content": {}
+                    },
+                    "304": {
+                        "description": "Not Modified",
+                        "content": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {}
+                    },
+                    "404": {
+                        "description": "There is no data for the requested resource",
+                        "content": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {}
+                    }
+                },
+                "security": [
+                    {
+                        "basicAuth": [],
+                        "oAuth2.0": []
+                    }
+                ],
+                "x-codegen-request-body-name": "body"
+            },
+            "post": {
+                "tags": [
+                    "data/ServiceRequest/ServiceRequest/"
+                ],
+                "operationId": "data_ServiceRequest_ServiceRequest__post",
+                "parameters": [
+                    {
+                        "name": "excludeEmptyFieldsInResponse",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "false"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_"
+                            }
+                        },
+                        "application/xml": {
+                            "schema": {
+                                "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_put_post_response"
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_put_post_response"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "No Resource Found",
+                        "content": {}
+                    },
+                    "304": {
+                        "description": "Not Modified",
+                        "content": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {}
+                    },
+                    "404": {
+                        "description": "There is no data for the requested resource",
+                        "content": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {}
+                    }
+                },
+                "security": [
+                    {
+                        "basicAuth": [],
+                        "oAuth2.0": []
+                    }
+                ],
+                "x-codegen-request-body-name": "body"
+            }
+        },
+        "/data/ServiceRequest/ServiceRequest/{servicerequest_key}/": {
+            "get": {
+                "tags": [
+                    "data/ServiceRequest/ServiceRequest/{servicerequest_key}/"
+                ],
+                "operationId": "data_ServiceRequest_ServiceRequest_{servicerequest_key}__get",
+                "parameters": [
+                    {
+                        "name": "servicerequest_key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "childlinks",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "fields",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "ViewMode",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "Sales Rep"
+                        }
+                    },
+                    {
+                        "name": "excludeEmptyFieldsInResponse",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "false"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_get_one_response"
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_get_one_response"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "No Resource Found",
+                        "content": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {}
+                    },
+                    "404": {
+                        "description": "There is no data for the requested resource",
+                        "content": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {}
+                    }
+                },
+                "security": [
+                    {
+                        "basicAuth": [],
+                        "oAuth2.0": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "data/ServiceRequest/ServiceRequest/{servicerequest_key}/"
+                ],
+                "operationId": "data_ServiceRequest_ServiceRequest_{servicerequest_key}__put",
+                "parameters": [
+                    {
+                        "name": "servicerequest_key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "excludeEmptyFieldsInResponse",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "false"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_"
+                            }
+                        },
+                        "application/xml": {
+                            "schema": {
+                                "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_put_post_response"
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_put_post_response"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "No Resource Found",
+                        "content": {}
+                    },
+                    "304": {
+                        "description": "Not Modified",
+                        "content": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {}
+                    },
+                    "404": {
+                        "description": "There is no data for the requested resource",
+                        "content": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {}
+                    }
+                },
+                "security": [
+                    {
+                        "basicAuth": [],
+                        "oAuth2.0": []
+                    }
+                ],
+                "x-codegen-request-body-name": "body"
+            },
+            "delete": {
+                "tags": [
+                    "data/ServiceRequest/ServiceRequest/{servicerequest_key}/"
+                ],
+                "operationId": "data_ServiceRequest_ServiceRequest_{servicerequest_key}__delete",
+                "parameters": [
+                    {
+                        "name": "servicerequest_key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_del_response"
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_del_response"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "No Resource Found",
+                        "content": {}
+                    },
+                    "304": {
+                        "description": "Not Modified",
+                        "content": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {}
+                    },
+                    "404": {
+                        "description": "There is no data for the requested resource",
+                        "content": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {}
+                    }
+                },
+                "security": [
+                    {
+                        "basicAuth": [],
+                        "oAuth2.0": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "data_ServiceRequest_ServiceRequest_": {
+                "required": [
+                    "Comm Method",
+                    "Created",
+                    "Created By",
+                    "Priority",
+                    "SR Type",
+                    "Service Office",
+                    "Status",
+                    "Updated",
+                    "Updated By"
+                ],
+                "type": "object",
+                "properties": {
+                    "Address Comments": {
+                        "title": "Address Comments",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "ICMCPU Aborginal": {
+                        "title": "ICMCPU Aborginal",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Call Date": {
+                        "title": "Call Date",
+                        "type": "string",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_DATETIME"
+                    },
+                    "CP Caller Address": {
+                        "title": "CP Caller Address",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "250",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Email": {
+                        "title": "CP Caller Email",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "350",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Name": {
+                        "title": "CP Caller Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "150",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Phone": {
+                        "title": "CP Caller Phone",
+                        "type": "string",
+                        "x-maxLength": "40",
+                        "x-siebel-datatype": "DTYPE_PHONE"
+                    },
+                    "Contact Cell #": {
+                        "title": "Contact Cell #",
+                        "type": "string",
+                        "x-maxLength": "40",
+                        "x-siebel-datatype": "DTYPE_PHONE"
+                    },
+                    "ICM Created By Office": {
+                        "title": "ICM Created By Office",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "100",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Contact Given Name": {
+                        "title": "Contact Given Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Contact Home Phone": {
+                        "title": "Contact Home Phone",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "40",
+                        "x-siebel-datatype": "DTYPE_PHONE"
+                    },
+                    "KKCFS Flag": {
+                        "title": "KKCFS Flag",
+                        "type": "string",
+                        "x-maxLength": "1",
+                        "x-siebel-datatype": "DTYPE_BOOL"
+                    },
+                    "Case Local Office": {
+                        "title": "Case Local Office",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Memo": {
+                        "title": "Memo",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Nature of Call": {
+                        "title": "CP Nature of Call",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP PCC Analysis": {
+                        "title": "CP PCC Analysis",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "2000",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Pref Contact Method": {
+                        "title": "CP Caller Pref Contact Method",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Restricted Flag": {
+                        "title": "Restricted Flag",
+                        "type": "string",
+                        "x-maxLength": "1",
+                        "x-siebel-datatype": "DTYPE_BOOL"
+                    },
+                    "CP Caller Type": {
+                        "title": "CP Caller Type",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Primary Contact Id": {
+                        "title": "Primary Contact Id",
+                        "type": "string",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "ICM Stage": {
+                        "title": "ICM Stage",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Primary Organization Id": {
+                        "title": "Primary Organization Id",
+                        "type": "string",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "ICM CGA Due Diligence Decision": {
+                        "title": "ICM CGA Due Diligence Decision",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "ICM CGA Resolution Decision Date": {
+                        "title": "ICM CGA Resolution Decision Date",
+                        "type": "string",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_DATE"
+                    },
+                    "Primary Organization Name": {
+                        "title": "Primary Organization Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "100",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "ICM CGA Application Received Flag": {
+                        "title": "ICM CGA Application Received Flag",
+                        "type": "string",
+                        "x-maxLength": "1",
+                        "x-siebel-datatype": "DTYPE_BOOL"
+                    },
+                    "CP Outcome": {
+                        "title": "CP Outcome",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "3500",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Created": {
+                        "title": "Created",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_UTCDATETIME"
+                    },
+                    "Created By": {
+                        "title": "Created By",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "Updated": {
+                        "title": "Updated",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_UTCDATETIME"
+                    },
+                    "Updated By Name": {
+                        "title": "Updated By Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Updated By": {
+                        "title": "Updated By",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "SR KP Address Calc": {
+                        "title": "SR KP Address Calc",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Close Date Calc": {
+                        "title": "Close Date Calc",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_UTCDATETIME"
+                    },
+                    "Comm Method": {
+                        "title": "Comm Method",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Contact Last Name": {
+                        "title": "Contact Last Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Created By Name": {
+                        "title": "Created By Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Integration Id": {
+                        "title": "Integration Id",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Method": {
+                        "title": "CP Caller Method",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Assigned To Id": {
+                        "title": "Assigned To Id",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "Assigned To": {
+                        "title": "Assigned To",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Priority": {
+                        "title": "Priority",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Resolution Code": {
+                        "title": "Resolution Code",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "SR Number": {
+                        "title": "SR Number",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "64",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "SR Type": {
+                        "title": "SR Type",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "SR Sub Type": {
+                        "title": "SR Sub Type",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "SR Sub Sub Type": {
+                        "title": "SR Sub Sub Type",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Status": {
+                        "title": "Status",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Service Office": {
+                        "title": "Service Office",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "100",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "ICM BCSC DID": {
+                        "title": "ICM BCSC DID",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    }
+                }
+            },
+            "data_ServiceRequest_ServiceRequest_get_one_response": {
+                "type": "object",
+                "properties": {
+                    "Address Comments": {
+                        "title": "Address Comments",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "ICMCPU Aborginal": {
+                        "title": "ICMCPU Aborginal",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Call Date": {
+                        "title": "Call Date",
+                        "type": "string",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_DATETIME"
+                    },
+                    "CP Caller Address": {
+                        "title": "CP Caller Address",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "250",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Email": {
+                        "title": "CP Caller Email",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "350",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Name": {
+                        "title": "CP Caller Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "150",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Phone": {
+                        "title": "CP Caller Phone",
+                        "type": "string",
+                        "x-maxLength": "40",
+                        "x-siebel-datatype": "DTYPE_PHONE"
+                    },
+                    "Contact Cell #": {
+                        "title": "Contact Cell #",
+                        "type": "string",
+                        "x-maxLength": "40",
+                        "x-siebel-datatype": "DTYPE_PHONE"
+                    },
+                    "ICM Created By Office": {
+                        "title": "ICM Created By Office",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "100",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Contact Given Name": {
+                        "title": "Contact Given Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Contact Home Phone": {
+                        "title": "Contact Home Phone",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "40",
+                        "x-siebel-datatype": "DTYPE_PHONE"
+                    },
+                    "KKCFS Flag": {
+                        "title": "KKCFS Flag",
+                        "type": "string",
+                        "x-maxLength": "1",
+                        "x-siebel-datatype": "DTYPE_BOOL"
+                    },
+                    "Case Local Office": {
+                        "title": "Case Local Office",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Memo": {
+                        "title": "Memo",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Nature of Call": {
+                        "title": "CP Nature of Call",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP PCC Analysis": {
+                        "title": "CP PCC Analysis",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "2000",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Pref Contact Method": {
+                        "title": "CP Caller Pref Contact Method",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Restricted Flag": {
+                        "title": "Restricted Flag",
+                        "type": "string",
+                        "x-maxLength": "1",
+                        "x-siebel-datatype": "DTYPE_BOOL"
+                    },
+                    "CP Caller Type": {
+                        "title": "CP Caller Type",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Primary Contact Id": {
+                        "title": "Primary Contact Id",
+                        "type": "string",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "ICM Stage": {
+                        "title": "ICM Stage",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Primary Organization Id": {
+                        "title": "Primary Organization Id",
+                        "type": "string",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "ICM CGA Due Diligence Decision": {
+                        "title": "ICM CGA Due Diligence Decision",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "ICM CGA Resolution Decision Date": {
+                        "title": "ICM CGA Resolution Decision Date",
+                        "type": "string",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_DATE"
+                    },
+                    "Primary Organization Name": {
+                        "title": "Primary Organization Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "100",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "ICM CGA Application Received Flag": {
+                        "title": "ICM CGA Application Received Flag",
+                        "type": "string",
+                        "x-maxLength": "1",
+                        "x-siebel-datatype": "DTYPE_BOOL"
+                    },
+                    "CP Outcome": {
+                        "title": "CP Outcome",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "3500",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Created": {
+                        "title": "Created",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_UTCDATETIME"
+                    },
+                    "Created By": {
+                        "title": "Created By",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "Updated": {
+                        "title": "Updated",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_UTCDATETIME"
+                    },
+                    "Updated By Name": {
+                        "title": "Updated By Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Updated By": {
+                        "title": "Updated By",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "SR KP Address Calc": {
+                        "title": "SR KP Address Calc",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Close Date Calc": {
+                        "title": "Close Date Calc",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "32",
+                        "x-siebel-datatype": "DTYPE_UTCDATETIME"
+                    },
+                    "Comm Method": {
+                        "title": "Comm Method",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Contact Last Name": {
+                        "title": "Contact Last Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Created By Name": {
+                        "title": "Created By Name",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "50",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Integration Id": {
+                        "title": "Integration Id",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "CP Caller Method": {
+                        "title": "CP Caller Method",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Assigned To Id": {
+                        "title": "Assigned To Id",
+                        "type": "string",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "15",
+                        "x-siebel-datatype": "DTYPE_ID"
+                    },
+                    "Assigned To": {
+                        "title": "Assigned To",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-siebel-readOnly": "true",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Priority": {
+                        "title": "Priority",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Resolution Code": {
+                        "title": "Resolution Code",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "SR Number": {
+                        "title": "SR Number",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "64",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "SR Type": {
+                        "title": "SR Type",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "SR Sub Type": {
+                        "title": "SR Sub Type",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "SR Sub Sub Type": {
+                        "title": "SR Sub Sub Type",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Status": {
+                        "title": "Status",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "30",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Service Office": {
+                        "title": "Service Office",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "100",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "ICM BCSC DID": {
+                        "title": "ICM BCSC DID",
+                        "type": "string",
+                        "x-siebel-precision": "0",
+                        "x-maxLength": "255",
+                        "x-siebel-scale": "0",
+                        "x-siebel-datatype": "DTYPE_TEXT"
+                    },
+                    "Link": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "rel": {
+                                    "title": "rel",
+                                    "type": "string"
+                                },
+                                "href": {
+                                    "title": "href",
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "title": "name",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "data_ServiceRequest_ServiceRequest_put_post_response": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "Address Comments": {
+                                "title": "Address Comments",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "255",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "ICMCPU Aborginal": {
+                                "title": "ICMCPU Aborginal",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "255",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Call Date": {
+                                "title": "Call Date",
+                                "type": "string",
+                                "x-maxLength": "32",
+                                "x-siebel-datatype": "DTYPE_DATETIME"
+                            },
+                            "CP Caller Address": {
+                                "title": "CP Caller Address",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "250",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "CP Caller Email": {
+                                "title": "CP Caller Email",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "350",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "CP Caller Name": {
+                                "title": "CP Caller Name",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "150",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "CP Caller Phone": {
+                                "title": "CP Caller Phone",
+                                "type": "string",
+                                "x-maxLength": "40",
+                                "x-siebel-datatype": "DTYPE_PHONE"
+                            },
+                            "Contact Cell #": {
+                                "title": "Contact Cell #",
+                                "type": "string",
+                                "x-maxLength": "40",
+                                "x-siebel-datatype": "DTYPE_PHONE"
+                            },
+                            "ICM Created By Office": {
+                                "title": "ICM Created By Office",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "100",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Contact Given Name": {
+                                "title": "Contact Given Name",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "255",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Contact Home Phone": {
+                                "title": "Contact Home Phone",
+                                "type": "string",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "40",
+                                "x-siebel-datatype": "DTYPE_PHONE"
+                            },
+                            "KKCFS Flag": {
+                                "title": "KKCFS Flag",
+                                "type": "string",
+                                "x-maxLength": "1",
+                                "x-siebel-datatype": "DTYPE_BOOL"
+                            },
+                            "Case Local Office": {
+                                "title": "Case Local Office",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "255",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Memo": {
+                                "title": "Memo",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "255",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "CP Nature of Call": {
+                                "title": "CP Nature of Call",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "CP PCC Analysis": {
+                                "title": "CP PCC Analysis",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "2000",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "CP Caller Pref Contact Method": {
+                                "title": "CP Caller Pref Contact Method",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Restricted Flag": {
+                                "title": "Restricted Flag",
+                                "type": "string",
+                                "x-maxLength": "1",
+                                "x-siebel-datatype": "DTYPE_BOOL"
+                            },
+                            "CP Caller Type": {
+                                "title": "CP Caller Type",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Primary Contact Id": {
+                                "title": "Primary Contact Id",
+                                "type": "string",
+                                "x-maxLength": "15",
+                                "x-siebel-datatype": "DTYPE_ID"
+                            },
+                            "ICM Stage": {
+                                "title": "ICM Stage",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "50",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Primary Organization Id": {
+                                "title": "Primary Organization Id",
+                                "type": "string",
+                                "x-maxLength": "15",
+                                "x-siebel-datatype": "DTYPE_ID"
+                            },
+                            "ICM CGA Due Diligence Decision": {
+                                "title": "ICM CGA Due Diligence Decision",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "50",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "ICM CGA Resolution Decision Date": {
+                                "title": "ICM CGA Resolution Decision Date",
+                                "type": "string",
+                                "x-maxLength": "32",
+                                "x-siebel-datatype": "DTYPE_DATE"
+                            },
+                            "Primary Organization Name": {
+                                "title": "Primary Organization Name",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "100",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "ICM CGA Application Received Flag": {
+                                "title": "ICM CGA Application Received Flag",
+                                "type": "string",
+                                "x-maxLength": "1",
+                                "x-siebel-datatype": "DTYPE_BOOL"
+                            },
+                            "CP Outcome": {
+                                "title": "CP Outcome",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "3500",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Id": {
+                                "type": "object"
+                            },
+                            "Created": {
+                                "title": "Created",
+                                "type": "string",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "32",
+                                "x-siebel-datatype": "DTYPE_UTCDATETIME"
+                            },
+                            "Created By": {
+                                "title": "Created By",
+                                "type": "string",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "15",
+                                "x-siebel-datatype": "DTYPE_ID"
+                            },
+                            "Updated": {
+                                "title": "Updated",
+                                "type": "string",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "32",
+                                "x-siebel-datatype": "DTYPE_UTCDATETIME"
+                            },
+                            "Updated By Name": {
+                                "title": "Updated By Name",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "50",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Updated By": {
+                                "title": "Updated By",
+                                "type": "string",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "15",
+                                "x-siebel-datatype": "DTYPE_ID"
+                            },
+                            "SR KP Address Calc": {
+                                "title": "SR KP Address Calc",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "255",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Close Date Calc": {
+                                "title": "Close Date Calc",
+                                "type": "string",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "32",
+                                "x-siebel-datatype": "DTYPE_UTCDATETIME"
+                            },
+                            "Comm Method": {
+                                "title": "Comm Method",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Contact Last Name": {
+                                "title": "Contact Last Name",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "50",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Created By Name": {
+                                "title": "Created By Name",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "50",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Integration Id": {
+                                "title": "Integration Id",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "CP Caller Method": {
+                                "title": "CP Caller Method",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Assigned To Id": {
+                                "title": "Assigned To Id",
+                                "type": "string",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "15",
+                                "x-siebel-datatype": "DTYPE_ID"
+                            },
+                            "Assigned To": {
+                                "title": "Assigned To",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-siebel-readOnly": "true",
+                                "x-maxLength": "255",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Priority": {
+                                "title": "Priority",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Resolution Code": {
+                                "title": "Resolution Code",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "SR Number": {
+                                "title": "SR Number",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "64",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "SR Type": {
+                                "title": "SR Type",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "SR Sub Type": {
+                                "title": "SR Sub Type",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "SR Sub Sub Type": {
+                                "title": "SR Sub Sub Type",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Status": {
+                                "title": "Status",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "30",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Service Office": {
+                                "title": "Service Office",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "100",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "ICM BCSC DID": {
+                                "title": "ICM BCSC DID",
+                                "type": "string",
+                                "x-siebel-precision": "0",
+                                "x-maxLength": "255",
+                                "x-siebel-scale": "0",
+                                "x-siebel-datatype": "DTYPE_TEXT"
+                            },
+                            "Link": {
+                                "type": "object",
+                                "properties": {
+                                    "rel": {
+                                        "title": "rel",
+                                        "type": "string"
+                                    },
+                                    "href": {
+                                        "title": "href",
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "title": "name",
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "data_ServiceRequest_ServiceRequest_get_all_response": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/data_ServiceRequest_ServiceRequest_get_one_response"
+                        }
+                    },
+                    "Link": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "rel": {
+                                    "title": "rel",
+                                    "type": "string"
+                                },
+                                "href": {
+                                    "title": "href",
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "title": "name",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "data_ServiceRequest_ServiceRequest_del_response": {
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "basicAuth": {
+                "type": "http",
+                "scheme": "basic"
+            },
+            "oAuth2.0": {
+                "type": "oauth2",
+                "flows": {
+                    "implicit": {
+                        "authorizationUrl": "http://openAPI.io/",
+                        "scopes": {
+                            "write:": "modify",
+                            "read:": "read only"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "x-original-swagger-version": "3.0"
+}
