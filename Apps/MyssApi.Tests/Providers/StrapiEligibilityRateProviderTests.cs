@@ -25,7 +25,12 @@ namespace Myss.Api.Tests.Providers
                   "effectiveDate": "2099-01-01",
                   "incomeRows": [
                     { "familySize": 1, "a": 0, "b": 111.5, "c": 0, "d": 222.5, "e": 0 },
-                    { "familySize": 2, "a": 10, "b": 20, "c": 30, "d": 40, "e": 50 }
+                    { "familySize": 2, "a": 10, "b": 20, "c": 30, "d": 40, "e": 50 },
+                    { "familySize": 3, "a": 11, "b": 21, "c": 31, "d": 41, "e": 51 },
+                    { "familySize": 4, "a": 12, "b": 22, "c": 32, "d": 42, "e": 52 },
+                    { "familySize": 5, "a": 13, "b": 23, "c": 33, "d": 43, "e": 53 },
+                    { "familySize": 6, "a": 14, "b": 24, "c": 34, "d": 44, "e": 54 },
+                    { "familySize": 7, "a": 15, "b": 25, "c": 35, "d": 45, "e": 55 }
                   ],
                   "assetLimits": { "a": 1, "b": 2, "c": 3, "d": 4 }
                 }
@@ -45,13 +50,44 @@ namespace Myss.Api.Tests.Providers
             EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
 
             Assert.Equal("2099-01-01", rates.EffectiveDate);
-            Assert.Equal(2, rates.IncomeRows.Count);
+            Assert.Equal(7, rates.IncomeRows.Count);
             Assert.Equal(1, rates.IncomeRows[0].FamilySize);
             Assert.Equal(111.5m, rates.IncomeRows[0].B);
             Assert.Equal(222.5m, rates.IncomeRows[0].D);
             Assert.Equal(50m, rates.IncomeRows[1].E);
             Assert.Equal(1m, rates.AssetLimits.A);
             Assert.Equal(4m, rates.AssetLimits.D);
+        }
+
+        [Fact]
+        public async Task GetRates_IncompletePublishedTable_FallsBack()
+        {
+            // A published entry that is missing family-size rows (here only 1 and 2)
+            // must NOT be served: the browser would throw on the absent sizes. The
+            // provider treats it as invalid and serves the complete compiled table.
+            _http.Body = """
+                {
+                  "data": [
+                    {
+                      "id": 1,
+                      "documentId": "rate-doc-partial",
+                      "effectiveDate": "2099-01-01",
+                      "incomeRows": [
+                        { "familySize": 1, "a": 0, "b": 111.5, "c": 0, "d": 222.5, "e": 0 },
+                        { "familySize": 2, "a": 10, "b": 20, "c": 30, "d": 40, "e": 50 }
+                      ],
+                      "assetLimits": { "a": 1, "b": 2, "c": 3, "d": 4 }
+                    }
+                  ],
+                  "meta": { "pagination": { "total": 1 } }
+                }
+                """;
+            StrapiEligibilityRateProvider provider = NewProvider();
+
+            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
+
+            Assert.Equal("2023-08-01", rates.EffectiveDate);
+            Assert.Equal(7, rates.IncomeRows.Count);
         }
 
         [Fact]

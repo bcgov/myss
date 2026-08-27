@@ -25,6 +25,12 @@ namespace Myss.Api.Providers
     {
         private const string CacheKey = "eligibility-rate-table";
 
+        // The published table must cover every family size 1..7 (7 is the "7+"
+        // cap the browser clamps to). A published entry missing any of these rows
+        // is treated as invalid so the compiled fallback serves a complete table,
+        // rather than letting the browser throw on the missing size.
+        private const int FamilySizeCap = 7;
+
         // The latest published entry: newest effective date first, one row.
         private const string RatesQuery =
             "/api/eligibility-rates?sort=effectiveDate:desc&pagination[limit]=1";
@@ -187,7 +193,47 @@ namespace Myss.Api.Providers
                 return null;
             }
 
-            return Map(data[0]);
+            EligibilityRatesModel mapped = Map(data[0]);
+            if (!IsComplete(mapped, out string reason))
+            {
+                _logger.LogWarning(
+                    "The content engine returned an incomplete eligibility-rate entry ({Reason}); using the compiled fallback.",
+                    reason);
+                return null;
+            }
+
+            return mapped;
+        }
+
+        /// <summary>
+        /// Confirms a mapped table is safe to serve: a non-empty effective date and
+        /// exactly one income row for every family size 1..7. Individual A-E amounts
+        /// and A-D limits are already guaranteed by <see cref="Map"/> (a missing JSON
+        /// property throws and falls back), so this guards the one gap that would
+        /// otherwise pass silently: a published entry missing whole rows.
+        /// </summary>
+        private static bool IsComplete(EligibilityRatesModel rates, out string reason)
+        {
+            if (string.IsNullOrWhiteSpace(rates.EffectiveDate))
+            {
+                reason = "missing effective date";
+                return false;
+            }
+
+            for (int size = 1; size <= FamilySizeCap; size++)
+            {
+                int matches = rates.IncomeRows.Count(row => row.FamilySize == size);
+                if (matches != 1)
+                {
+                    reason = matches == 0
+                        ? $"no income row for family size {size}"
+                        : $"{matches} income rows for family size {size}";
+                    return false;
+                }
+            }
+
+            reason = string.Empty;
+            return true;
         }
     }
 }
