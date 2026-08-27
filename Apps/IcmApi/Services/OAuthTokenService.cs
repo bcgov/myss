@@ -160,9 +160,17 @@ namespace Icm.Api.Services
         }
 
         /// <summary>
-        /// Builds the cache key. Uses the absolute URI so two spellings of the same endpoint
-        /// (a trailing slash, a different case in the host) do not each get their own entry.
+        /// Builds the cache key.
         /// </summary>
+        /// <remarks>
+        /// <see cref="Uri.AbsoluteUri"/> normalises the host's case, a default port and any
+        /// dot segments, so those spellings of one endpoint share an entry. It does
+        /// <b>not</b> normalise a trailing slash — <c>/token</c> and <c>/token/</c> are
+        /// different keys, and are left that way deliberately: they are different URLs, and
+        /// an authorization server is entitled to treat them differently. The cost of being
+        /// wrong about that is one extra token request, against the cost of silently serving
+        /// a token minted by an endpoint the caller did not ask for.
+        /// </remarks>
         private static string BuildCacheKey(Uri tokenUrl, string clientId, string? scope) =>
             string.Create(
                 CultureInfo.InvariantCulture,
