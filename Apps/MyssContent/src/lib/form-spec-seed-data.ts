@@ -433,6 +433,175 @@ export const eligibilityEstimatorSpecV1: Json = {
 };
 
 // ---------------------------------------------------------------------------
+// Estimator spec v2 — 2026-08 redesign (MYSS-169, Step 1 / Group B)
+// ---------------------------------------------------------------------------
+//
+// v2 prepends the residency / citizenship PRE-CHECK radios and applies the 0826
+// asset-field label rewrites. LABELS ONLY changed from v1 — every `key` is
+// identical, because the keys are the contract with the frontend mapper
+// (`mapAnswersToEstimate`) and MyssApi's FormSpecValidator. v1 stays seeded for
+// idempotency; v2 becomes the latest published version.
+//
+// A "No" to either pre-check is a hard eligibility screen the front-end (Group D,
+// Step 7) short-circuits WITHOUT running the calculation — so both are simple
+// (always-shown) required radios, not conditional and not calc inputs.
+//
+// PENDING DESIGNER CONFIRM: the 0826 asset-field labels below come only from the
+// two spouse frames; the two result frames still show the old labels (the four
+// frames are internally inconsistent). They are labels-only, so they can be
+// amended later without touching any key or downstream code. Decisions A (no
+// table) and B (keep partnerPwd) are confirmed. See
+// document/MYSS-169-0826-Seed-Label-Edits.md.
+export const eligibilityEstimatorSpecV2: Json = {
+  display: "form",
+  components: [
+    {
+      type: "radio",
+      key: "residesInBc",
+      label: "Do you currently reside in British Columbia?",
+      tooltip:
+        "You must be a resident of British Columbia to receive assistance from this ministry.",
+      input: true,
+      values: yesNoValues,
+      validate: { required: true },
+    },
+    {
+      type: "radio",
+      key: "hasEligibleStatus",
+      label: "Do you have a status that allows you to live in Canada?",
+      tooltip:
+        "For example a Canadian citizen, permanent resident, Convention refugee, or another immigration status that allows you to live in Canada.",
+      input: true,
+      values: yesNoValues,
+      validate: { required: true },
+    },
+    {
+      type: "radio",
+      key: "relationshipStatus",
+      label: "What is your relationship status?",
+      input: true,
+      values: [
+        { label: "Single and Never Married", value: "single" },
+        { label: "Married", value: "married" },
+        { label: "Marriage-Like Relationship", value: "marriagelike" },
+        { label: "Divorced", value: "divorced" },
+        { label: "Separated", value: "separated" },
+        { label: "Widowed", value: "widowed" },
+      ],
+      validate: { required: true },
+    },
+    {
+      type: "number",
+      key: "dependentChildren",
+      label: "How many dependent children under the age of 19 live with you?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "radio",
+      key: "pwd",
+      label:
+        "Do you plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      validate: { required: true },
+    },
+    {
+      // Advanced-conditional, NOT server-required. Kept exactly as v1
+      // (Decision B): reveals on married/marriage-like.
+      type: "radio",
+      key: "partnerPwd",
+      label:
+        "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "monthlyIncome",
+      label: "Your Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "number",
+      key: "vehicleValueMinusTransportation",
+      label: "What is the value of your primary vehicle minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "number",
+      key: "vehicleValue",
+      label:
+        "What is the value of all your additional vehicles minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "number",
+      key: "assetValue",
+      label:
+        "What is the total value of your assets not listed above (property, investments, cash or savings)?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    {
+      type: "number",
+      key: "partnerMonthlyIncome",
+      label: "Spouse's Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerVehicleValueMinusTransportation",
+      label:
+        "What is the value of your spouse's primary vehicle minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerVehicleValue",
+      label:
+        "What is the value of all your spouse's additional vehicles minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerAssetValue",
+      label:
+        "What is the total value of your spouse's assets not listed above (property, investments, cash or savings)?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Get Estimate",
+      input: true,
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Everything the bootstrap hook seeds
 // ---------------------------------------------------------------------------
 
@@ -456,6 +625,9 @@ export const seededForms: readonly SeededForm[] = [
   {
     formSpecId: ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     title: ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
-    versions: [{ version: 1, spec: eligibilityEstimatorSpecV1 }],
+    versions: [
+      { version: 1, spec: eligibilityEstimatorSpecV1 },
+      { version: 2, spec: eligibilityEstimatorSpecV2 },
+    ],
   },
 ];

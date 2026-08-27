@@ -1,15 +1,17 @@
 import type { Core } from "@strapi/strapi";
 
-import { seededForms } from "./lib/form-spec-seed-data";
+import { seededForms, type Json } from "./lib/form-spec-seed-data";
+import { seededRates } from "./lib/eligibility-rate-seed-data";
 
 const FORM_SPEC_UID = "api::form-spec.form-spec";
+const ELIGIBILITY_RATE_UID = "api::eligibility-rate.eligibility-rate";
 
-// Phase 0: form specs are read with a scoped, read-only Strapi API token held
-// by MyssApi (Strapi:ApiToken), so the Public role must NOT be able to read
-// them. This actively revokes the grant rather than merely no longer creating
-// it, because earlier boots of this app wrote those permission rows into the
-// database — removing the code that created them would leave the spec API
-// exactly as open as before, in a way that reads as fixed.
+// Phase 0: form specs and the eligibility rate table are read with a scoped,
+// read-only Strapi API token held by MyssApi (Strapi:ApiToken), so the Public
+// role must NOT be able to read them. This actively revokes the grant rather
+// than merely no longer creating it, because earlier boots of this app wrote
+// those permission rows into the database — removing the code that created them
+// would leave the API exactly as open as before, in a way that reads as fixed.
 //
 // Idempotent and safe on a fresh database: nothing to revoke is the normal case.
 async function revokePublicRead(strapi: Core.Strapi) {
@@ -18,15 +20,17 @@ async function revokePublicRead(strapi: Core.Strapi) {
     .findOne({ where: { type: "public" } });
   if (!publicRole) return;
 
-  for (const action of [`${FORM_SPEC_UID}.find`, `${FORM_SPEC_UID}.findOne`]) {
-    const existing = await strapi.db
-      .query("plugin::users-permissions.permission")
-      .findOne({ where: { action, role: publicRole.id } });
-    if (existing) {
-      await strapi.db
+  for (const uid of [FORM_SPEC_UID, ELIGIBILITY_RATE_UID]) {
+    for (const action of [`${uid}.find`, `${uid}.findOne`]) {
+      const existing = await strapi.db
         .query("plugin::users-permissions.permission")
-        .delete({ where: { id: existing.id } });
-      strapi.log.info(`Revoked public permission ${action}`);
+        .findOne({ where: { action, role: publicRole.id } });
+      if (existing) {
+        await strapi.db
+          .query("plugin::users-permissions.permission")
+          .delete({ where: { id: existing.id } });
+        strapi.log.info(`Revoked public permission ${action}`);
+      }
     }
   }
 }
@@ -55,11 +59,36 @@ async function seedForms(strapi: Core.Strapi) {
   }
 }
 
+// Creates any missing seeded rate tables (create-only-if-missing, keyed by
+// effectiveDate), one published entry each. Existing entries are left untouched.
+async function seedRates(strapi: Core.Strapi) {
+  for (const { effectiveDate, incomeRows, assetLimits } of seededRates) {
+    const existing = await strapi.documents(ELIGIBILITY_RATE_UID).findFirst({
+      filters: { effectiveDate },
+    });
+    if (existing) continue;
+
+    await strapi.documents(ELIGIBILITY_RATE_UID).create({
+      data: {
+        effectiveDate,
+        // The seed keeps precise readonly types for its own tests; Strapi's JSON
+        // columns take the repo's permissive `Json` (the same widening seedForms
+        // does with `spec`).
+        incomeRows: incomeRows as unknown as Json,
+        assetLimits: assetLimits as unknown as Json,
+      },
+      status: "published",
+    });
+    strapi.log.info(`Seeded eligibility-rate ${effectiveDate}`);
+  }
+}
+
 export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await revokePublicRead(strapi);
     await seedForms(strapi);
+    await seedRates(strapi);
   },
 };

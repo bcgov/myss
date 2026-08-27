@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "eligibility_rates",
+  "info": {
+    "singularName": "eligibility-rate",
+    "pluralName": "eligibility-rates",
+    "displayName": "Eligibility Rate",
+    "description": "The MYSS-25 income-assistance rate table the estimator computes against: monthly income limits by family size and client type (A-E) plus the asset ceilings by category (A-D). Published entries are the live table; an admin edit publishes a new table without a deploy."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "effectiveDate": {
+      "type": "string",
+      "required": true
+    },
+    "incomeRows": {
+      "type": "json",
+      "required": true
+    },
+    "assetLimits": {
+      "type": "json",
+      "required": true
+    }
+  }
+}
