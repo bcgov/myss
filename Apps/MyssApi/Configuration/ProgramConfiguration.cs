@@ -44,14 +44,14 @@ namespace Myss.Api.Configuration
         /// <returns>An instance of a logger.</returns>
         public static ILogger GetInitialLogger(IConfiguration configuration)
         {
-            Log.Logger = new LoggerConfiguration()
+            Serilog.ILogger logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                 .ReadFrom.Configuration(configuration)
                 .Enrich.FromLogContext()
-                .CreateBootstrapLogger();
+                .CreateLogger();
 
-            using SerilogLoggerFactory factory = new(Log.Logger);
+            using SerilogLoggerFactory factory = new(logger);
             return factory.CreateLogger("Startup");
         }
     }
