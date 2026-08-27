@@ -37,6 +37,12 @@ namespace Myss.Api.Providers
 
         private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
+        // The compiled fallback is cached under a short TTL so a Strapi outage does
+        // not make every anonymous /rates request retry Strapi (and wait out the
+        // HttpClient timeout). Kept much shorter than the success TTL so a recovered
+        // Strapi — or an admin's freshly published table — is picked up promptly.
+        private static readonly TimeSpan FallbackCacheDuration = TimeSpan.FromSeconds(30);
+
         private readonly ILogger<StrapiEligibilityRateProvider> _logger;
         private readonly HttpClient _httpClient;
         private readonly IMemoryCache _cache;
@@ -100,7 +106,9 @@ namespace Myss.Api.Providers
                     "Could not read the eligibility rate table from the content engine; using the compiled fallback.");
             }
 
-            return Fallback();
+            EligibilityRatesModel fallback = Fallback();
+            _cache.Set(CacheKey, fallback, FallbackCacheDuration);
+            return fallback;
         }
 
         private static EligibilityRatesModel Map(JsonElement entry)

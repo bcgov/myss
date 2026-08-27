@@ -153,6 +153,22 @@ namespace Myss.Api.Tests.Providers
         }
 
         [Fact]
+        public async Task GetRates_CachesTheFallback_SecondCallDoesNotReHitStrapi()
+        {
+            // During a Strapi outage the fallback is cached too, so a burst of
+            // requests does not retry Strapi (and wait out the timeout) every time.
+            _http.Status = HttpStatusCode.InternalServerError;
+            StrapiEligibilityRateProvider provider = NewProvider();
+
+            EligibilityRatesModel first = await provider.GetRatesAsync(CancellationToken.None);
+            EligibilityRatesModel second = await provider.GetRatesAsync(CancellationToken.None);
+
+            Assert.Equal(1, _http.Calls);
+            Assert.Equal("2023-08-01", first.EffectiveDate);
+            Assert.Equal("2023-08-01", second.EffectiveDate);
+        }
+
+        [Fact]
         public async Task GetRates_CachesTheTable_SecondCallDoesNotReHitStrapi()
         {
             _http.Body = RateBody;
