@@ -65,7 +65,8 @@ namespace Myss.Api
             // falls back to the compiled MYSS-25 table; the result is cached so the
             // public endpoint does not hit Strapi on every request.
             services.AddMemoryCache();
-            services.AddHttpClient<IEligibilityRateProvider, StrapiEligibilityRateProvider>();
+            services.AddHttpClient<IEligibilityRateProvider, StrapiEligibilityRateProvider>(
+                client => client.Timeout = TimeSpan.FromSeconds(5));
 
             // Configure the attachments module: validate -> quarantined row ->
             // ClamAV scan -> object store -> release. Protected behind
