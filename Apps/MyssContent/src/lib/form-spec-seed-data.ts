@@ -298,9 +298,16 @@ const yesNoValues: Json = [
   { label: "No", value: "false" },
 ];
 
-/** Reveal the spouse fields for a partnered relationship (married OR marriage-like). */
+/**
+ * Reveal the spouse fields for a partnered relationship (married OR marriage-like).
+ *
+ * The `var` MUST be `data.relationshipStatus`, not `relationshipStatus`: Form.io
+ * evaluates `conditional.json` with jsonLogic against the context
+ * `{ data, row, form, _ }`, so the submission answers live under `data`. A bare
+ * `relationshipStatus` resolves to undefined and the section never reveals.
+ */
 const partneredConditional: Json = {
-  json: { in: [{ var: "relationshipStatus" }, ["married", "marriagelike"]] },
+  json: { in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]] },
 };
 
 export const eligibilityEstimatorSpecV1: Json = {

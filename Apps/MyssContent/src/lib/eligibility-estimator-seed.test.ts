@@ -150,7 +150,7 @@ describe("eligibility estimator seed", () => {
       // Advanced conditional: `conditional.json`, never the simple `when` string.
       expect(field.conditional?.when).toBeUndefined();
       expect(field.conditional?.json).toEqual({
-        in: [{ var: "relationshipStatus" }, ["married", "marriagelike"]],
+        in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
       });
     }
   });
@@ -256,7 +256,7 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
       const field = componentByKey(v2, key);
       expect(field.conditional?.when).toBeUndefined();
       expect(field.conditional?.json).toEqual({
-        in: [{ var: "relationshipStatus" }, ["married", "marriagelike"]],
+        in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
       });
       expect(field.validate?.required).toBeUndefined();
     }

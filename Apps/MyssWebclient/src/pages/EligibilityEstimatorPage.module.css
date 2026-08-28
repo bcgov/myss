@@ -1,36 +1,170 @@
-/* Prod centres the form in the middle columns of the grid. */
+/* Pre-Eligibility Estimator page (MYSS-169, Option B). The form itself is
+   rendered by Form.io; these styles cover the page chrome (privacy banner,
+   required note, status accordion) and the 0826 result panel — an estimate
+   card + prose only, NO itemised breakdown table (Decision A). */
+
 .page {
-    max-width: 820px;
-    margin: 0 auto;
-    width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--layout-margin-xxlarge, 40px);
-    margin-top: var(--layout-margin-large, 24px);
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0 0 var(--layout-margin-large, 24px);
+  color: var(--typography-color-primary, #1a1a1a);
 }
 
-.section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--layout-margin-medium, 16px);
+/* Privacy banner: light panel with a BC-blue accent bar. */
+.privacyBanner {
+  border-left: 4px solid var(--surface-color-primary-button-default, #234075);
+  background: var(--surface-color-background-light-gray, #f2f2f2);
+  padding: var(--layout-margin-medium, 16px) var(--layout-margin-large, 20px);
+  margin-bottom: var(--layout-margin-medium, 16px);
 }
 
-/* Each question is a prominent heading, like prod's <h2>. */
-.question {
-    font-size: 1.5rem;
-    font-weight: 500;
-    line-height: 1.1;
-    margin: 0;
+.privacyTitle {
+  font-weight: 700;
+  margin: 0 0 4px;
 }
 
-/* Small inputs (e.g. dependent-children count) stay narrow like prod. */
-.narrowField {
-    max-width: 120px;
+.privacyBody {
+  margin: 0;
+  color: var(--typography-color-secondary, #474543);
 }
 
-.actions {
-    padding-top: var(--layout-margin-small, 8px);
+.requiredNote {
+  margin: 0 0 var(--layout-margin-large, 24px);
+  font-weight: 600;
+}
+
+/* Status accordion (0826 delta 3). */
+.accordion {
+  border: 1px solid var(--surface-color-border-default, #d0d5dd);
+  border-radius: 6px;
+  padding: 0 var(--layout-margin-medium, 16px);
+  margin-bottom: var(--layout-margin-large, 24px);
+  max-width: 560px;
+}
+
+.accordion > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: var(--layout-margin-medium, 14px) 0;
+  list-style-position: inside;
+}
+
+.accordion > p {
+  margin: 0 0 var(--layout-margin-medium, 16px);
+  color: var(--typography-color-secondary, #474543);
+}
+
+/* Form.io host — space the fields out and keep number inputs from stretching
+   full width where the design keeps them contained. */
+.formHost {
+  margin-top: var(--layout-margin-medium, 16px);
+}
+
+.loading,
+.error {
+  margin-top: var(--layout-margin-medium, 16px);
+}
+
+.error {
+  color: var(--typography-color-danger, #ce3e39);
+  font-weight: 600;
+}
+
+/* ---- Result panel ---- */
+.result {
+  margin-top: var(--layout-margin-xxlarge, 40px);
+}
+
+.resultTitle {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 var(--layout-margin-medium, 16px);
+  outline: none;
+}
+
+.estimateCard {
+  border: 1px solid var(--surface-color-border-default, #d0d5dd);
+  border-radius: 8px;
+  padding: var(--layout-margin-xlarge, 32px);
+  text-align: center;
+  margin-bottom: var(--layout-margin-large, 24px);
+}
+
+.estimateHeading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 var(--layout-margin-small, 8px);
+}
+
+.estimateLede {
+  margin: 0 0 var(--layout-margin-medium, 16px);
+}
+
+.estimateAmount {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--surface-color-primary-button-default, #1a5a96);
+  margin: 0 0 var(--layout-margin-small, 8px);
+}
+
+.perMonth {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--typography-color-primary, #1a1a1a);
+}
+
+.estimateCaveat {
+  margin: 0;
+  color: var(--typography-color-secondary, #474543);
+  font-size: 0.9rem;
+}
+
+.subHeading {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: var(--layout-margin-large, 24px) 0 var(--layout-margin-small, 8px);
+}
+
+.prose {
+  margin: 0 0 var(--layout-margin-medium, 16px);
+  line-height: 1.6;
+}
+
+.inlineLink {
+  color: var(--surface-color-primary-button-default, #1a5a96);
+  text-decoration: underline;
+}
+
+/* "Your information" echo (replaces the removed itemised table). */
+.yourInfo {
+  margin-top: var(--layout-margin-medium, 16px);
+}
+
+.infoList {
+  margin: 0;
+}
+
+.infoRow {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 4px;
+}
+
+.infoRow dt {
+  font-weight: 600;
+}
+
+.infoRow dt::after {
+  content: ":";
+}
+
+.infoRow dd {
+  margin: 0;
 }
