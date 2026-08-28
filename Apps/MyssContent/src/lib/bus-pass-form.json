@@ -2,14 +2,17 @@
   "display": "form",
   "components": [
     {
+      "key": "busPassTitle",
       "html": "<h2>BC Bus Pass Program - Online Request for Service</h2>",
       "type": "content"
     },
     {
+      "key": "privacyNotice",
       "html": "<p>The personal information requested on this form is collected under the authority of and will be used for the purpose of administering the Employment and Assistance Act and the Employment and Assistance for Persons with Disabilities Act. The collection, use, and disclosure of personal information is subject to the provisions of the Freedom of Information and Protection of Privacy Act. Questions regarding the collection, use, and disclosure of personal information can be directed to an Employment and Assistance Worker of the British Columbia Bus Pass Program by email: visit <a href=\"https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/bus-pass\" target=\"_blank\" rel=\"noopener noreferrer\">www.gov.bc.ca/buspassprogram</a>, by phone: <a href=\"tel:18668660800\">1-866-866-0800</a>, or by mail: PO Box 9985, Stn Prov Govt, Victoria BC V8W 9R6.</p>",
       "type": "content"
     },
     {
+      "key": "serviceRequestHeading",
       "html": "<h2>What type of service would you like to request?</h2>",
       "type": "content"
     },
@@ -57,6 +60,7 @@
       }
     },
     {
+      "key": "newApplicantEligibilityInfo",
       "html": "<p>To be eligible for the BC Bus Pass Program, the applicant must meet one of the following criteria:</p><ul><li>Receiving Federal Guaranteed Income Supplement (GIS), or the Federal Allowance, or the Allowance for the Survivor;</li><li>60–64 years of age and receiving Income Assistance from the Province of British Columbia;</li><li>Over 65 years of age and would qualify for GIS but does not meet the Canadian 10 year residency requirement;</li><li>18–64 years of age, living on a First Nations reserve and receiving disability assistance from the band office; or</li><li>60–64 years of age, living on a First Nations reserve and receiving assistance from the band office.</li></ul><p>For full eligibility and program information, please click on the link below:</p><p><a href=\"http://www2.gov.bc.ca/gov/content/transportation/passenger-travel/buses-taxis-limos/bus-pass/seniors\" target=\"_blank\" rel=\"noopener noreferrer\">http://www2.gov.bc.ca/gov/content/transportation/passenger-travel/buses-taxis-limos/bus-pass/seniors</a></p>",
       "type": "content",
       "conditional": {
@@ -107,6 +111,7 @@
       }
     },
     {
+      "key": "firstNationsDocumentationNote",
       "html": "<p>Note: The BC Bus Pass Program will be contacting you to request additional documentation to be completed by your band office. If you have any questions about the status of your application, please contact your band office.</p>",
       "type": "content",
       "conditional": {
@@ -116,10 +121,12 @@
       }
     },
     {
+      "key": "personalInformationHeading",
       "html": "<h2>Tell us about yourself</h2>",
       "type": "content"
     },
     {
+      "key": "sinAccountNumberNote",
       "html": "<p>Note: You must provide a BC Bus Pass Program account number or Social Insurance Number to submit a request for service.</p>",
       "type": "content"
     },
@@ -172,6 +179,7 @@
       }
     },
     {
+      "key": "dateOfBirthHeading",
       "html": "<h3>Date of birth</h3>",
       "type": "content"
     },
@@ -343,6 +351,7 @@
       "hideLabel": true
     },
     {
+      "key": "leaveMessagePrompt",
       "html": "<p>If you don't answer the phone, can we leave a message for you?</p>",
       "type": "content"
     },
@@ -392,10 +401,12 @@
       "placeholder": "- Select -"
     },
     {
+      "key": "addressInformationHeading",
       "html": "<h2>Enter your address information</h2>",
       "type": "content"
     },
     {
+      "key": "residentialAddressHeading",
       "html": "<h3>Residential address</h3>",
       "type": "content"
     },
@@ -465,6 +476,7 @@
       ]
     },
     {
+      "key": "mailingAddressHeading",
       "html": "<h3>Mailing address</h3>",
       "type": "content",
       "conditional": {

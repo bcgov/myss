@@ -102,7 +102,7 @@ describe("seeded form specs", () => {
     seededFormSpecs.map((seeded) => [seeded.version, seeded.spec] as const),
   )("v%i gives every component a unique key", (_version, spec) => {
     const keys = keysOf(spec);
-    expect(keys.length).toBe(componentsOf(spec).length);
+    expect(keys.length).toBe(allComponents(spec).length);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
