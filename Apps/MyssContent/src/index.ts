@@ -1,5 +1,9 @@
 import type { Core } from "@strapi/strapi";
 
+// The Bus Pass form definition lives in its own JSON file so content and form
+// structure can be reviewed separately from the Strapi bootstrap code.
+import busPassFormSpec from "./buspassform.json";
+
 const FORM_SPEC_UID = "api::form-spec.form-spec";
 
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -185,11 +189,34 @@ async function seedTestForm(strapi: Core.Strapi) {
   }
 }
 
+async function seedBusPassForm(strapi: Core.Strapi) {
+  // Seed the initial Bus Pass version for fresh environments. Later changes
+  // should be published as new versions through Strapi Admin.
+  const version = 1;
+  const existing = await strapi.documents(FORM_SPEC_UID).findFirst({
+    filters: { formSpecId: "bc-bus-pass", version },
+  });
+  // Never overwrite an entry that has already been created or edited in Strapi.
+  if (existing) return;
+
+  await strapi.documents(FORM_SPEC_UID).create({
+    data: {
+      formSpecId: "bc-bus-pass",
+      version,
+      title: "BC Bus Pass",
+      spec: busPassFormSpec,
+    },
+    status: "published",
+  });
+  strapi.log.info(`Seeded form-spec bc-bus-pass v${version}`);
+}
+
 export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await grantPublicRead(strapi);
     await seedTestForm(strapi);
+    await seedBusPassForm(strapi);
   },
 };

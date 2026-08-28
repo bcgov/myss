@@ -1,0 +1,559 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "html": "<h2>BC Bus Pass Program - Online Request for Service</h2>",
+      "type": "content"
+    },
+    {
+      "html": "<p>The personal information requested on this form is collected under the authority of and will be used for the purpose of administering the Employment and Assistance Act and the Employment and Assistance for Persons with Disabilities Act. The collection, use, and disclosure of personal information is subject to the provisions of the Freedom of Information and Protection of Privacy Act. Questions regarding the collection, use, and disclosure of personal information can be directed to an Employment and Assistance Worker of the British Columbia Bus Pass Program by email: visit <a href=\"https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/bus-pass\" target=\"_blank\" rel=\"noopener noreferrer\">www.gov.bc.ca/buspassprogram</a>, by phone: <a href=\"tel:18668660800\">1-866-866-0800</a>, or by mail: PO Box 9985, Stn Prov Govt, Victoria BC V8W 9R6.</p>",
+      "type": "content"
+    },
+    {
+      "html": "<h2>What type of service would you like to request?</h2>",
+      "type": "content"
+    },
+    {
+      "key": "applicantCategory",
+      "type": "radio",
+      "label": "",
+      "values": [
+        {
+          "label": "I am an existing client and require an address change or replacement bus pass.",
+          "value": "existing"
+        },
+        {
+          "label": "I am a new applicant and would like to request a bus pass.",
+          "value": "new"
+        }
+      ],
+      "validate": {
+        "required": true
+      },
+      "hideLabel": true
+    },
+    {
+      "key": "existingClientReason",
+      "type": "radio",
+      "label": "",
+      "values": [
+        {
+          "label": "I have moved and would like to update my address.",
+          "value": "moved"
+        },
+        {
+          "label": "My bus pass has been lost or stolen. Please mail me a replacement pass application.",
+          "value": "replacement"
+        }
+      ],
+      "validate": {
+        "required": true
+      },
+      "hideLabel": true,
+      "conditional": {
+        "eq": "existing",
+        "show": true,
+        "when": "applicantCategory"
+      }
+    },
+    {
+      "html": "<p>To be eligible for the BC Bus Pass Program, the applicant must meet one of the following criteria:</p><ul><li>Receiving Federal Guaranteed Income Supplement (GIS), or the Federal Allowance, or the Allowance for the Survivor;</li><li>60–64 years of age and receiving Income Assistance from the Province of British Columbia;</li><li>Over 65 years of age and would qualify for GIS but does not meet the Canadian 10 year residency requirement;</li><li>18–64 years of age, living on a First Nations reserve and receiving disability assistance from the band office; or</li><li>60–64 years of age, living on a First Nations reserve and receiving assistance from the band office.</li></ul><p>For full eligibility and program information, please click on the link below:</p><p><a href=\"http://www2.gov.bc.ca/gov/content/transportation/passenger-travel/buses-taxis-limos/bus-pass/seniors\" target=\"_blank\" rel=\"noopener noreferrer\">http://www2.gov.bc.ca/gov/content/transportation/passenger-travel/buses-taxis-limos/bus-pass/seniors</a></p>",
+      "type": "content",
+      "conditional": {
+        "eq": "new",
+        "show": true,
+        "when": "applicantCategory"
+      }
+    },
+    {
+      "key": "eligibilityAcknowledged",
+      "type": "checkbox",
+      "label": "I have read the BC Bus Pass Program eligibility criteria.",
+      "validate": {
+        "required": true,
+        "customMessage": "Acknowledgement is required"
+      },
+      "conditional": {
+        "eq": "new",
+        "show": true,
+        "when": "applicantCategory"
+      }
+    },
+    {
+      "key": "eligibilityCategory",
+      "type": "radio",
+      "label": "Eligibility category",
+      "values": [
+        {
+          "label": "I am over 65 years old and immigrated to Canada within the last 10 years or have a 10 year residency extension.",
+          "value": "over65"
+        },
+        {
+          "label": "I am living on a First Nations reserve and receive assistance from the band office. (Indigenous Services Canada applicants)",
+          "value": "firstNations"
+        },
+        {
+          "label": "Neither of the above apply to me.",
+          "value": "neither"
+        }
+      ],
+      "validate": {
+        "required": true
+      },
+      "conditional": {
+        "eq": "new",
+        "show": true,
+        "when": "applicantCategory"
+      }
+    },
+    {
+      "html": "<p>Note: The BC Bus Pass Program will be contacting you to request additional documentation to be completed by your band office. If you have any questions about the status of your application, please contact your band office.</p>",
+      "type": "content",
+      "conditional": {
+        "eq": "firstNations",
+        "show": true,
+        "when": "eligibilityCategory"
+      }
+    },
+    {
+      "html": "<h2>Tell us about yourself</h2>",
+      "type": "content"
+    },
+    {
+      "html": "<p>Note: You must provide a BC Bus Pass Program account number or Social Insurance Number to submit a request for service.</p>",
+      "type": "content"
+    },
+    {
+      "key": "socialInsuranceNumber",
+      "type": "textfield",
+      "input": true,
+      "label": "Social Insurance Number (SIN)",
+      "validate": {
+        "pattern": "^[0-9]{9}$",
+        "required": false,
+        "customMessage": "SIN must be 9 digits"
+      },
+      "inputMask": "999999999"
+    },
+    {
+      "key": "busPassAccountNumber",
+      "type": "textfield",
+      "input": true,
+      "label": "Bus pass account number",
+      "validate": {
+        "pattern": "^[0-9]{9}$",
+        "required": false,
+        "customMessage": "Bus pass account number must be 9 digits"
+      },
+      "inputMask": "999999999"
+    },
+    {
+      "key": "lastName",
+      "type": "textfield",
+      "input": true,
+      "label": "Last name",
+      "validate": {
+        "pattern": "^[A-Za-z][A-Za-z' -]*$",
+        "required": true,
+        "minLength": 2,
+        "customMessage": "Invalid character(s) in last name"
+      }
+    },
+    {
+      "key": "firstName",
+      "type": "textfield",
+      "input": true,
+      "label": "First name",
+      "validate": {
+        "pattern": "^[A-Za-z][A-Za-z' -]*$",
+        "required": true,
+        "minLength": 2,
+        "customMessage": "Invalid character(s) in first name"
+      }
+    },
+    {
+      "html": "<h3>Date of birth</h3>",
+      "type": "content"
+    },
+    {
+      "key": "dateOfBirth",
+      "type": "columns",
+      "label": "",
+      "columns": [
+        {
+          "width": 4,
+          "components": [
+            {
+              "key": "birthDay",
+              "type": "textfield",
+              "input": true,
+              "label": "Day",
+              "validate": {
+                "max": 31,
+                "min": 1,
+                "required": true,
+                "customMessage": "A birth day is required"
+              },
+              "inputMask": "99",
+              "placeholder": "dd"
+            }
+          ]
+        },
+        {
+          "width": 4,
+          "components": [
+            {
+              "key": "birthMonth",
+              "data": {
+                "values": [
+                  {
+                    "label": "January",
+                    "value": "01"
+                  },
+                  {
+                    "label": "February",
+                    "value": "02"
+                  },
+                  {
+                    "label": "March",
+                    "value": "03"
+                  },
+                  {
+                    "label": "April",
+                    "value": "04"
+                  },
+                  {
+                    "label": "May",
+                    "value": "05"
+                  },
+                  {
+                    "label": "June",
+                    "value": "06"
+                  },
+                  {
+                    "label": "July",
+                    "value": "07"
+                  },
+                  {
+                    "label": "August",
+                    "value": "08"
+                  },
+                  {
+                    "label": "September",
+                    "value": "09"
+                  },
+                  {
+                    "label": "October",
+                    "value": "10"
+                  },
+                  {
+                    "label": "November",
+                    "value": "11"
+                  },
+                  {
+                    "label": "December",
+                    "value": "12"
+                  }
+                ]
+              },
+              "type": "select",
+              "input": true,
+              "label": "Month",
+              "validate": {
+                "required": true
+              },
+              "placeholder": "- Select -"
+            }
+          ]
+        },
+        {
+          "width": 4,
+          "components": [
+            {
+              "key": "birthYear",
+              "type": "textfield",
+              "input": true,
+              "label": "Year",
+              "validate": {
+                "min": 1900,
+                "required": true,
+                "customMessage": "A birth year is required"
+              },
+              "inputMask": "9999",
+              "placeholder": "yyyy"
+            }
+          ]
+        }
+      ],
+      "hideLabel": true
+    },
+    {
+      "key": "contactPreferences",
+      "type": "columns",
+      "label": "",
+      "columns": [
+        {
+          "width": 6,
+          "components": [
+            {
+              "key": "phoneNumber",
+              "type": "textfield",
+              "input": true,
+              "label": "Phone number",
+              "validate": {
+                "required": true
+              },
+              "inputMask": "(999) 999-9999"
+            }
+          ]
+        },
+        {
+          "width": 6,
+          "components": [
+            {
+              "key": "phoneType",
+              "data": {
+                "values": [
+                  {
+                    "label": "Home",
+                    "value": "home"
+                  },
+                  {
+                    "label": "Work",
+                    "value": "work"
+                  },
+                  {
+                    "label": "Cell",
+                    "value": "cell"
+                  }
+                ]
+              },
+              "type": "select",
+              "input": true,
+              "label": "",
+              "validate": {
+                "required": true
+              },
+              "hideLabel": true,
+              "placeholder": "- Select -"
+            }
+          ]
+        }
+      ],
+      "hideLabel": true
+    },
+    {
+      "html": "<p>If you don't answer the phone, can we leave a message for you?</p>",
+      "type": "content"
+    },
+    {
+      "key": "leaveMessage",
+      "type": "checkbox",
+      "label": "Yes, please leave messages"
+    },
+    {
+      "key": "email",
+      "type": "email",
+      "input": true,
+      "label": "Email",
+      "validate": {
+        "required": false
+      }
+    },
+    {
+      "key": "emailVerification",
+      "type": "email",
+      "input": true,
+      "label": "Email verification",
+      "validate": {
+        "required": false
+      }
+    },
+    {
+      "key": "preferredCommunication",
+      "data": {
+        "values": [
+          {
+            "label": "Phone",
+            "value": "phone"
+          },
+          {
+            "label": "Email",
+            "value": "email"
+          }
+        ]
+      },
+      "type": "select",
+      "input": true,
+      "label": "Preferred method of communication",
+      "validate": {
+        "required": true
+      },
+      "placeholder": "- Select -"
+    },
+    {
+      "html": "<h2>Enter your address information</h2>",
+      "type": "content"
+    },
+    {
+      "html": "<h3>Residential address</h3>",
+      "type": "content"
+    },
+    {
+      "key": "streetAddress1",
+      "type": "textfield",
+      "input": true,
+      "label": "Street address line 1",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "key": "streetAddress2",
+      "type": "textfield",
+      "input": true,
+      "label": "Street address line 2"
+    },
+    {
+      "key": "city",
+      "type": "textfield",
+      "input": true,
+      "label": "City",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "key": "province",
+      "type": "textfield",
+      "input": true,
+      "label": "Province",
+      "validate": {
+        "pattern": "^(BC|British Columbia)$",
+        "required": true,
+        "customMessage": "An address in BC is required"
+      }
+    },
+    {
+      "key": "postalCode",
+      "type": "textfield",
+      "input": true,
+      "label": "Postal code",
+      "errors": {
+        "pattern": "Invalid postal code format",
+        "required": "A postal code is required"
+      },
+      "validate": {
+        "pattern": "^[A-Za-z][0-9][A-Za-z][0-9][A-Za-z][0-9]$",
+        "required": true
+      },
+      "validateOn": "blur"
+    },
+    {
+      "key": "mailingAddressDifferent",
+      "type": "radio",
+      "label": "Is your residential address different from your mailing address?",
+      "values": [
+        {
+          "label": "No",
+          "value": "no"
+        },
+        {
+          "label": "Yes",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "html": "<h3>Mailing address</h3>",
+      "type": "content",
+      "conditional": {
+        "eq": "yes",
+        "show": true,
+        "when": "mailingAddressDifferent"
+      }
+    },
+    {
+      "key": "mailingStreetAddress1",
+      "type": "textfield",
+      "input": true,
+      "label": "Street address line 1",
+      "validate": {
+        "required": true
+      },
+      "conditional": {
+        "eq": "yes",
+        "show": true,
+        "when": "mailingAddressDifferent"
+      }
+    },
+    {
+      "key": "mailingStreetAddress2",
+      "type": "textfield",
+      "input": true,
+      "label": "Street address line 2",
+      "conditional": {
+        "eq": "yes",
+        "show": true,
+        "when": "mailingAddressDifferent"
+      }
+    },
+    {
+      "key": "mailingCity",
+      "type": "textfield",
+      "input": true,
+      "label": "City",
+      "validate": {
+        "required": true
+      },
+      "conditional": {
+        "eq": "yes",
+        "show": true,
+        "when": "mailingAddressDifferent"
+      }
+    },
+    {
+      "key": "mailingProvince",
+      "type": "textfield",
+      "input": true,
+      "label": "Province",
+      "validate": {
+        "pattern": "^(BC|British Columbia)$",
+        "required": true,
+        "customMessage": "An address in BC is required"
+      },
+      "conditional": {
+        "eq": "yes",
+        "show": true,
+        "when": "mailingAddressDifferent"
+      }
+    },
+    {
+      "key": "mailingPostalCode",
+      "type": "textfield",
+      "input": true,
+      "label": "Postal code",
+      "errors": {
+        "pattern": "Invalid postal code format",
+        "required": "A postal code is required"
+      },
+      "validate": {
+        "pattern": "^[A-Za-z][0-9][A-Za-z][0-9][A-Za-z][0-9]$",
+        "required": true
+      },
+      "validateOn": "blur",
+      "conditional": {
+        "eq": "yes",
+        "show": true,
+        "when": "mailingAddressDifferent"
+      }
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Submit",
+      "action": "submit"
+    }
+  ]
+}
