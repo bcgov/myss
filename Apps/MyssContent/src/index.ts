@@ -1,6 +1,5 @@
 import type { Core } from "@strapi/strapi";
 
-import busPassFormSpec from "./buspassform.json";
 import { seededForms, type Json } from "./lib/form-spec-seed-data";
 import { seededRates } from "./lib/eligibility-rate-seed-data";
 
@@ -84,35 +83,12 @@ async function seedRates(strapi: Core.Strapi) {
   }
 }
 
-async function seedBusPassForm(strapi: Core.Strapi) {
-  // Seed the initial Bus Pass version for fresh environments. Later changes
-  // should be published as new versions through Strapi Admin.
-  const version = 1;
-  const existing = await strapi.documents(FORM_SPEC_UID).findFirst({
-    filters: { formSpecId: "bc-bus-pass", version },
-  });
-  // Never overwrite an entry that has already been created or edited in Strapi.
-  if (existing) return;
-
-  await strapi.documents(FORM_SPEC_UID).create({
-    data: {
-      formSpecId: "bc-bus-pass",
-      version,
-      title: "BC Bus Pass",
-      spec: busPassFormSpec,
-    },
-    status: "published",
-  });
-  strapi.log.info(`Seeded form-spec bc-bus-pass v${version}`);
-}
-
 export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await revokePublicRead(strapi);
     await seedForms(strapi);
-    await seedBusPassForm(strapi);
     await seedRates(strapi);
   },
 };
