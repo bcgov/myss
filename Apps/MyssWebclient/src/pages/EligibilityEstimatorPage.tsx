@@ -28,10 +28,6 @@ const PENDING = {
   ratesInfoUrl: "#",
   // "Contact us…" hardship-assistance link (shown on a $0 / ineligible result).
   hardshipUrl: "#",
-  // Body of the "status that allows you to live in Canada" accordion (0826
-  // delta 3). Provisional — mirrors the seed tooltip until the designer supplies copy.
-  statusAccordionBody:
-    "For example: a Canadian citizen, permanent resident, Convention refugee, or another immigration status that allows you to live in Canada.",
   // Copy for a residency / status pre-check "No" (no artboard exists for this yet).
   preCheckFailLede:
     "Based on your answers, you may not be eligible for assistance from this ministry.",
@@ -169,18 +165,6 @@ export default function EligibilityEstimatorPage() {
       </aside>
 
       <p className={styles.requiredNote}>*All fields are required.</p>
-
-      {/*
-        0826 delta 3: the "status that allows you to live in Canada" accordion.
-        The design places it directly below the status question, but the form is
-        one Form.io block, so it renders here as page chrome. To position it
-        exactly, add a Form.io content/panel component to the seed (v2) — a
-        front-end-only follow-up.
-      */}
-      <details className={styles.accordion}>
-        <summary>What does "status that allows you to live in Canada" mean?</summary>
-        <p>{PENDING.statusAccordionBody}</p>
-      </details>
 
       {loading && <p className={styles.loading}>Loading the estimator…</p>}
 

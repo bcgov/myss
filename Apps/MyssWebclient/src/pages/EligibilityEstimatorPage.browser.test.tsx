@@ -50,6 +50,22 @@ const estimatorSpec = {
         validate: { required: true },
       },
       {
+        type: "panel",
+        key: "statusHelp",
+        title: 'What does "status that allows you to live in Canada" mean?',
+        collapsible: true,
+        collapsed: true,
+        input: false,
+        components: [
+          {
+            type: "content",
+            key: "statusHelpBody",
+            input: false,
+            html: "<p>For example: a Canadian citizen, permanent resident, Convention refugee, or another immigration status that allows you to live in Canada.</p>",
+          },
+        ],
+      },
+      {
         type: "radio",
         key: "relationshipStatus",
         label: "What is your relationship status?",
@@ -91,12 +107,25 @@ const estimatorSpec = {
         conditional: partneredConditional,
       },
       {
+        type: "content",
+        key: "assetsSectionHeading",
+        input: false,
+        html: "<h2>Do you have assets or receive income?</h2>",
+      },
+      {
         type: "number",
         key: "monthlyIncome",
         label: "Your Monthly Income",
         input: true,
         defaultValue: 0,
         validate: { min: 0 },
+      },
+      {
+        type: "content",
+        key: "spouseSectionHeading",
+        input: false,
+        html: "<h2>Does your spouse have assets or receive income?</h2>",
+        conditional: partneredConditional,
       },
       {
         type: "number",
@@ -177,6 +206,13 @@ test("renders the form from the served spec (not the old hardcoded components)",
     .element(screen.getByText("Your information is private"))
     .toBeVisible();
   await expect.element(screen.getByText("*All fields are required.")).toBeVisible();
+
+  // 0827 seed layout: the status explainer is now an inline collapsible panel
+  // (was page chrome above the form), and the applicant money block has a heading.
+  await expect.element(screen.getByText(/What does .* mean\?/)).toBeVisible();
+  await expect
+    .element(screen.getByText("Do you have assets or receive income?"))
+    .toBeVisible();
 });
 
 test("reveals the spouse section on Married", async () => {
@@ -196,6 +232,9 @@ test("reveals the spouse section on Married", async () => {
         /Does your spouse plan to apply for the Persons with Disabilities/,
       ),
     )
+    .toBeVisible();
+  await expect
+    .element(screen.getByText("Does your spouse have assets or receive income?"))
     .toBeVisible();
 });
 

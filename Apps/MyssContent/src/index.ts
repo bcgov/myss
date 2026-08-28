@@ -2,6 +2,7 @@ import type { Core } from "@strapi/strapi";
 
 import { seededForms, type Json } from "./lib/form-spec-seed-data";
 import { seededRates } from "./lib/eligibility-rate-seed-data";
+import { jsonEqual } from "./lib/json-equal";
 
 const FORM_SPEC_UID = "api::form-spec.form-spec";
 const ELIGIBILITY_RATE_UID = "api::eligibility-rate.eligibility-rate";
@@ -35,15 +36,26 @@ async function revokePublicRead(strapi: Core.Strapi) {
   }
 }
 
-// Creates any missing seeded versions, one entry per version, across every
-// seeded form. Existing entries are left untouched.
+// Publishes every seeded form version (an upsert). A version missing from the
+// database is created; a version already present is re-published ONLY when the
+// seed's title or spec has actually changed. So editing the seed file and
+// restarting Strapi rolls the change out with no manual delete. Versions
+// authored in the admin panel (a version number the seed does not define) are
+// never touched, because the lookup is keyed by formSpecId + version.
 async function seedForms(strapi: Core.Strapi) {
   for (const { formSpecId, title, versions } of seededForms) {
     for (const { version, spec } of versions) {
       const existing = await strapi.documents(FORM_SPEC_UID).findFirst({
         filters: { formSpecId, version },
       });
-      if (existing) continue;
+
+      if (existing) {
+        if (existing.title === title && jsonEqual(existing.spec, spec)) continue;
+        await strapi.documents(FORM_SPEC_UID).delete({
+          documentId: existing.documentId,
+        });
+        strapi.log.info(`Re-seeding changed form-spec ${formSpecId} v${version}`);
+      }
 
       await strapi.documents(FORM_SPEC_UID).create({
         data: {
@@ -59,24 +71,40 @@ async function seedForms(strapi: Core.Strapi) {
   }
 }
 
-// Creates any missing seeded rate tables (create-only-if-missing, keyed by
-// effectiveDate), one published entry each. Existing entries are left untouched.
+// Publishes every seeded rate table (an upsert, keyed by effectiveDate). Missing
+// tables are created; an existing one is re-published only when its incomeRows
+// or assetLimits differ from the seed, so a rate edit also rolls out on a plain
+// restart.
 async function seedRates(strapi: Core.Strapi) {
   for (const { effectiveDate, incomeRows, assetLimits } of seededRates) {
     const existing = await strapi.documents(ELIGIBILITY_RATE_UID).findFirst({
       filters: { effectiveDate },
     });
-    if (existing) continue;
+
+    const data = {
+      effectiveDate,
+      // The seed keeps precise readonly types for its own tests; Strapi's JSON
+      // columns take the repo's permissive `Json` (the same widening seedForms
+      // does with `spec`).
+      incomeRows: incomeRows as unknown as Json,
+      assetLimits: assetLimits as unknown as Json,
+    };
+
+    if (existing) {
+      if (
+        jsonEqual(existing.incomeRows, data.incomeRows) &&
+        jsonEqual(existing.assetLimits, data.assetLimits)
+      ) {
+        continue;
+      }
+      await strapi.documents(ELIGIBILITY_RATE_UID).delete({
+        documentId: existing.documentId,
+      });
+      strapi.log.info(`Re-seeding changed eligibility-rate ${effectiveDate}`);
+    }
 
     await strapi.documents(ELIGIBILITY_RATE_UID).create({
-      data: {
-        effectiveDate,
-        // The seed keeps precise readonly types for its own tests; Strapi's JSON
-        // columns take the repo's permissive `Json` (the same widening seedForms
-        // does with `spec`).
-        incomeRows: incomeRows as unknown as Json,
-        assetLimits: assetLimits as unknown as Json,
-      },
+      data,
       status: "published",
     });
     strapi.log.info(`Seeded eligibility-rate ${effectiveDate}`);

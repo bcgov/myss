@@ -225,12 +225,55 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
     }
   });
 
-  it("preserves every v1 key unchanged and adds ONLY the two pre-check keys", () => {
+  it("preserves every v1 key unchanged and adds the pre-check + 0827 layout keys", () => {
     const v1Keys = new Set(keysOf(v1));
     const v2Keys = new Set(keysOf(v2));
     for (const key of v1Keys) expect(v2Keys.has(key)).toBe(true);
     const added = [...v2Keys].filter((key) => !v1Keys.has(key));
-    expect(new Set(added)).toEqual(new Set(["residesInBc", "hasEligibleStatus"]));
+    expect(new Set(added)).toEqual(
+      new Set([
+        "residesInBc",
+        "hasEligibleStatus",
+        "statusHelp",
+        "assetsSectionHeading",
+        "spouseSectionHeading",
+      ]),
+    );
+  });
+
+  it("adds the 0827 layout components (status panel, section headings, helper)", () => {
+    const keys = keysOf(v2);
+
+    // The status explainer is a collapsible panel directly after the status
+    // question (0827: no longer page chrome above the whole form).
+    const statusHelp = componentByKey(v2, "statusHelp") as {
+      type?: unknown;
+      collapsible?: unknown;
+    };
+    expect(statusHelp.type).toBe("panel");
+    expect(statusHelp.collapsible).toBe(true);
+    expect(keys.indexOf("statusHelp")).toBe(keys.indexOf("hasEligibleStatus") + 1);
+    expect(keys.indexOf("statusHelp")).toBeLessThan(keys.indexOf("relationshipStatus"));
+
+    // Section headings sit at the head of the applicant and spouse money blocks.
+    expect(keys.indexOf("assetsSectionHeading")).toBe(keys.indexOf("monthlyIncome") - 1);
+    expect(keys.indexOf("spouseSectionHeading")).toBe(
+      keys.indexOf("partnerMonthlyIncome") - 1,
+    );
+
+    // The applicant heading always shows; the spouse heading reveals only for a
+    // couple, via the SAME advanced conditional as the spouse fields.
+    expect(componentByKey(v2, "assetsSectionHeading").conditional).toBeUndefined();
+    expect(componentByKey(v2, "spouseSectionHeading").conditional?.json).toEqual({
+      in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
+    });
+
+    // Dependent-children helper text (0827).
+    const depChildren = componentByKey(v2, "dependentChildren") as {
+      description?: unknown;
+    };
+    expect(typeof depChildren.description).toBe("string");
+    expect(depChildren.description as string).toContain("maximum family size of 7");
   });
 
   it("applies the 0826 label rewrites (labels only, keys intact)", () => {

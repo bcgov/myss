@@ -483,6 +483,22 @@ export const eligibilityEstimatorSpecV2: Json = {
       validate: { required: true },
     },
     {
+      type: "panel",
+      key: "statusHelp",
+      title: 'What does "status that allows you to live in Canada" mean?',
+      collapsible: true,
+      collapsed: true,
+      input: false,
+      components: [
+        {
+          type: "content",
+          key: "statusHelpBody",
+          input: false,
+          html: "<p>For example: a Canadian citizen, permanent resident, Convention refugee, or another immigration status that allows you to live in Canada.</p>",
+        },
+      ],
+    },
+    {
       type: "radio",
       key: "relationshipStatus",
       label: "What is your relationship status?",
@@ -501,6 +517,8 @@ export const eligibilityEstimatorSpecV2: Json = {
       type: "number",
       key: "dependentChildren",
       label: "How many dependent children under the age of 19 live with you?",
+      description:
+        "The estimate is based on a maximum family size of 7 people. Adding more than 7 family members will not change the estimated benefit amount.",
       input: true,
       defaultValue: 0,
       validate: { min: 0 },
@@ -524,6 +542,12 @@ export const eligibilityEstimatorSpecV2: Json = {
       input: true,
       values: yesNoValues,
       conditional: partneredConditional,
+    },
+    {
+      type: "content",
+      key: "assetsSectionHeading",
+      input: false,
+      html: "<h2>Do you have assets or receive income?</h2>",
     },
     {
       type: "number",
@@ -558,6 +582,13 @@ export const eligibilityEstimatorSpecV2: Json = {
       input: true,
       defaultValue: 0,
       validate: { min: 0 },
+    },
+    {
+      type: "content",
+      key: "spouseSectionHeading",
+      input: false,
+      html: "<h2>Does your spouse have assets or receive income?</h2>",
+      conditional: partneredConditional,
     },
     {
       type: "number",

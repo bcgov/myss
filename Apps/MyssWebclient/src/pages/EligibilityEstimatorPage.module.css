@@ -40,25 +40,20 @@
   font-weight: 600;
 }
 
-/* Status accordion (0826 delta 3). */
-.accordion {
-  border: 1px solid var(--surface-color-border-default, #d0d5dd);
-  border-radius: 6px;
-  padding: 0 var(--layout-margin-medium, 16px);
-  margin-bottom: var(--layout-margin-large, 24px);
-  max-width: 560px;
-}
-
-.accordion > summary {
-  cursor: pointer;
-  font-weight: 600;
-  padding: var(--layout-margin-medium, 14px) 0;
-  list-style-position: inside;
-}
-
-.accordion > p {
-  margin: 0 0 var(--layout-margin-medium, 16px);
-  color: var(--typography-color-secondary, #474543);
+/* Screen-reader-only utility. Form.io's label template emits
+   <span class="visually-hidden">, numeric only,</span> on number fields; the
+   bundled Bootstrap 3 defines only .sr-only, so without this the hint renders
+   as visible text. Hide it visually, keep it for screen readers. */
+:global(.visually-hidden) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 /* Form.io host — space the fields out and keep number inputs from stretching
@@ -167,4 +162,86 @@
 
 .infoRow dd {
   margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Form.io render fixes for the 0827 design. These target Form.io's own global
+   class names, scoped under the estimator form host so nothing leaks to other
+   pages. See the 0827 Figma (eligibility-estimator/0827).
+   --------------------------------------------------------------------------- */
+
+/* Status explainer: Form.io renders the collapsible panel as a Bootstrap .card,
+   but the bundled Bootstrap 3 has no .card styles and its collapse chevron uses
+   an icon font this app doesn't load. So we draw the bordered box and a chevron
+   (pure CSS, no icon font) here. */
+.formHost :global(.formio-component-panel .card) {
+  max-width: 560px;
+  border: 1px solid #606060;
+  border-radius: 4px;
+  margin-bottom: var(--layout-margin-large, 24px);
+  background: #fff;
+}
+.formHost :global(.formio-component-panel .card-header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--typography-color-primary, #2d2d2d);
+}
+.formHost :global(.formio-component-panel .card-title) {
+  margin: 0;
+  font-weight: 700;
+}
+.formHost :global(.formio-component-panel .formio-collapse-icon) {
+  display: none;
+}
+.formHost :global(.formio-component-panel .card-header)::after {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.formHost :global(.formio-component-panel .card-header[aria-expanded="true"])::after {
+  transform: rotate(225deg);
+}
+.formHost :global(.formio-component-panel .card-body) {
+  padding: 0 16px 14px;
+  color: var(--typography-color-secondary, #474543);
+}
+
+/* Money fields carry a "$" prefix (every number field except the dependent-
+   children count), drawn with a pseudo-element so no markup or re-seed is
+   needed. */
+.formHost :global(.formio-component-number:not(.formio-component-dependentChildren) [ref="element"]) {
+  position: relative;
+}
+.formHost :global(.formio-component-number:not(.formio-component-dependentChildren) [ref="element"])::before {
+  content: "$";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--typography-color-secondary, #474543);
+  pointer-events: none;
+  z-index: 2;
+}
+.formHost :global(.formio-component-number:not(.formio-component-dependentChildren) input.form-control) {
+  padding-left: 26px;
+}
+
+/* Rely on the "*All fields are required." note; hide the per-field red stars. */
+.formHost :global(.required-star) {
+  display: none !important;
+}
+.formHost :global(.field-required)::after {
+  content: none !important;
 }
