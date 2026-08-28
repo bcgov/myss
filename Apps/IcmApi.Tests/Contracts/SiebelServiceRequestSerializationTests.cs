@@ -16,11 +16,11 @@ namespace Icm.Api.Tests.Contracts
         {
             const string json = """
                 {
-                  "SR Number": "1-12345",
-                  "Contact Cell #": "250-555-0100",
-                  "SR KP Address Calc": "123 Main St",
+                  "Service Request Number": "1-12345",
+                  "Cell Phone": "250-555-0100",
+                  "Address": "123 Main St",
                   "ICM CGA Application Received Flag": "Y",
-                  "Updated": "2026-08-27T10:15:00Z",
+                  "Updated Date": "2026-08-27T10:15:00Z",
                   "Id": "1-ABCDE"
                 }
                 """;
@@ -29,11 +29,11 @@ namespace Icm.Api.Tests.Contracts
                 json, IcmRefitSettings.JsonOptions);
 
             Assert.NotNull(sr);
-            Assert.Equal("1-12345", sr.SRNumber);
-            Assert.Equal("250-555-0100", sr.ContactCellNumber);
-            Assert.Equal("123 Main St", sr.SRKPAddressCalc);
+            Assert.Equal("1-12345", sr.ServiceRequestNumber);
+            Assert.Equal("250-555-0100", sr.CellPhone);
+            Assert.Equal("123 Main St", sr.Address);
             Assert.Equal(SiebelFlag.Yes, sr.ICMCGAApplicationReceivedFlag);
-            Assert.Equal("2026-08-27T10:15:00Z", sr.Updated);
+            Assert.Equal("2026-08-27T10:15:00Z", sr.UpdatedDate);
             Assert.Equal("1-ABCDE", sr.Id);
         }
 
@@ -42,7 +42,7 @@ namespace Icm.Api.Tests.Contracts
         {
             const string json = """
                 {
-                  "items": [ { "SR Number": "1-1" }, { "SR Number": "1-2" } ],
+                  "items": [ { "Service Request Number": "1-1" }, { "Service Request Number": "1-2" } ],
                   "Link": [ { "rel": "next", "href": "https://icm/next", "name": "next page" } ]
                 }
                 """;
@@ -53,7 +53,7 @@ namespace Icm.Api.Tests.Contracts
 
             Assert.NotNull(response);
             Assert.Equal(2, response.Items!.Count);
-            Assert.Equal("1-2", response.Items[1].SRNumber);
+            Assert.Equal("1-2", response.Items[1].ServiceRequestNumber);
             Assert.Equal("next", response.Link![0].Rel);
         }
 
@@ -74,12 +74,12 @@ namespace Icm.Api.Tests.Contracts
         public void Deserialize_IgnoresFieldsTheSpecDoesNotDescribe()
         {
             // Siebel is free to add fields; an unknown one must not fail the whole read.
-            const string json = """{ "SR Number": "1-1", "Some New Siebel Field": "x" }""";
+            const string json = """{ "Service Request Number": "1-1", "Some New Siebel Field": "x" }""";
 
             SiebelServiceRequest? sr = JsonSerializer.Deserialize<SiebelServiceRequest>(
                 json, IcmRefitSettings.JsonOptions);
 
-            Assert.Equal("1-1", sr!.SRNumber);
+            Assert.Equal("1-1", sr!.ServiceRequestNumber);
         }
 
         [Fact]

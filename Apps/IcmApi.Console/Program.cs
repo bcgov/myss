@@ -98,11 +98,16 @@ namespace Icm.Api.ConsoleApp
                 Scopes = settings.Icm.Auth.Scopes.Count == 0 ? null : settings.Icm.Auth.Scopes,
             };
 
-            using HttpClient icmClient = new()
-            {
-                BaseAddress = new Uri(settings.Icm.BaseUrl!),
-                Timeout = TimeSpan.FromSeconds(settings.Icm.TimeoutSeconds),
-            };
+            bool raw = string.Equals(settings.Output, "raw", StringComparison.OrdinalIgnoreCase);
+
+            // HttpClient takes ownership of the handler chain and disposes it, which is
+            // what the `using` on the client covers.
+            using HttpMessageHandler icmHandler = raw
+                ? new RawResponseHandler { InnerHandler = new HttpClientHandler() }
+                : new HttpClientHandler();
+            using HttpClient icmClient = new(icmHandler, disposeHandler: false);
+            icmClient.BaseAddress = new Uri(settings.Icm.BaseUrl!);
+            icmClient.Timeout = TimeSpan.FromSeconds(settings.Icm.TimeoutSeconds);
 
             using OAuthTokenRepository tokenRepository = new();
             using OAuthTokenService tokenService = new(tokenRepository);
@@ -124,7 +129,66 @@ namespace Icm.Api.ConsoleApp
                 return authFailure;
             }
 
-            return await SearchAsync(serviceRequests, settings);
+            int searchResult = await SearchAsync(serviceRequests, settings);
+            if (searchResult != 0 || string.IsNullOrWhiteSpace(settings.Query.ServiceRequestKey))
+            {
+                return searchResult;
+            }
+
+            return await GetOneAsync(serviceRequests, settings);
+        }
+
+        /// <summary>Stage three: read one named record, to check a specific case by hand.</summary>
+        private static async Task<int> GetOneAsync(
+            IServiceRequestService serviceRequests, ConsoleSettings settings)
+        {
+            string serviceRequestKey = settings.Query.ServiceRequestKey!;
+            Console.WriteLine();
+            Console.WriteLine(new string('-', 60));
+            Console.WriteLine($"Reading service request {serviceRequestKey}");
+            Console.WriteLine(new string('-', 60));
+            Console.WriteLine();
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            try
+            {
+                // The same visibility and field settings as the search: without them the
+                // read silently used ICM's defaults, which made a ViewMode experiment on
+                // this step do nothing at all.
+                ServiceRequest? record = await serviceRequests.GetAsync(
+                    serviceRequestKey, settings.Query.ToReadOptions());
+                stopwatch.Stop();
+
+                if (record is null)
+                {
+                    Console.WriteLine($"Not found ({stopwatch.ElapsedMilliseconds} ms).");
+                    Console.WriteLine();
+                    Console.WriteLine(
+                        "ICM reports \"no such record\" and \"not yours to see\" the same way, so this "
+                        + "is either a wrong row id or a visibility question — try widening "
+                        + "Query:ViewMode before assuming the record is gone.");
+                    return 0;
+                }
+
+                Console.WriteLine($"Found in {stopwatch.ElapsedMilliseconds} ms.");
+                Console.WriteLine();
+                ServiceRequestPrinter.Write(new ServiceRequestPage { Items = [record] }, full: true);
+                return 0;
+            }
+            catch (ApiException exception)
+            {
+                stopwatch.Stop();
+                return Fail(
+                    stopwatch,
+                    $"ICM returned {(int)exception.StatusCode} {exception.StatusCode}.",
+                    Explain(exception),
+                    responseBody: exception.Content);
+            }
+            catch (ApiRequestException exception)
+            {
+                stopwatch.Stop();
+                return FailUnreachable(stopwatch, exception, "ICM");
+            }
         }
 
         /// <summary>Stage one: prove the credentials work, and warm the token cache.</summary>
@@ -181,9 +245,7 @@ namespace Icm.Api.ConsoleApp
 
                 Console.WriteLine($"Search OK in {stopwatch.ElapsedMilliseconds} ms.");
                 Console.WriteLine();
-                ServiceRequestPrinter.Write(
-                    page,
-                    full: !string.Equals(settings.Output, "summary", StringComparison.OrdinalIgnoreCase));
+                ServiceRequestPrinter.Write(page, full: IsFull(settings));
                 return 0;
             }
             catch (ApiException exception)
@@ -231,6 +293,13 @@ namespace Icm.Api.ConsoleApp
                         + "failing while the token succeeded is the usual shape of a VPN problem.");
         }
 
+        /// <summary>
+        /// Whether to print every mapped field per record. Only <c>summary</c> does not —
+        /// <c>raw</c> shows the untouched response as well, which is a superset.
+        /// </summary>
+        private static bool IsFull(ConsoleSettings settings) =>
+            !string.Equals(settings.Output, "summary", StringComparison.OrdinalIgnoreCase);
+
         /// <summary>Turns a token-endpoint status into the thing most likely to have caused it.</summary>
         private static string ExplainToken(ApiException exception) => (int)exception.StatusCode switch
         {
@@ -261,12 +330,15 @@ namespace Icm.Api.ConsoleApp
             Console.WriteLine($"  Client       {credentials.ClientId}");
             Console.WriteLine($"  Scopes       {credentials.GetScopeParameter() ?? "(client default)"}");
             Console.WriteLine($"  SearchSpec   {settings.Query.SearchSpec ?? "(none - matching everything)"}");
+            Console.WriteLine(
+                $"  Read by key  {settings.Query.ServiceRequestKey ?? "(skipped)"}");
             Console.WriteLine($"  Fields       {(settings.Query.Fields.Count == 0 ? "(all)" : string.Join(", ", settings.Query.Fields))}");
             Console.WriteLine($"  ViewMode     {settings.Query.ViewMode ?? "(ICM default: Sales Rep)"}");
             Console.WriteLine(
                 string.Create(
                     CultureInfo.InvariantCulture,
                     $"  Paging       {settings.Query.PageSize} from row {settings.Query.StartRowNum}"));
+            Console.WriteLine($"  Output       {settings.Output}");
             Console.WriteLine(new string('-', 60));
             Console.WriteLine();
 

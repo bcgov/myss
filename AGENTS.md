@@ -206,7 +206,7 @@ means saying so in that file rather than doing it with one stray keyword.
 
 Each layer earns its place:
 
-- **Api + Contracts** speak Siebel: fields named `Contact Cell #`, `"Y"`/`"N"` flags,
+- **Api + Contracts** speak Siebel: spaced field names, `"Y"`/`"N"` flags,
   everything a nullable string, `items` an array on a read and an object on a write.
   Refit methods return `IApiResponse<T>` because the status code is the only thing
   separating "found nothing" from a real failure.
@@ -231,14 +231,24 @@ Each layer earns its place:
   fields ICM will actually accept), so setting a Siebel-calculated field is a compile
   error rather than a silently ignored one.
 
-  Dates are **ISO 8601** (`YYYY-MM-DDTHH:mm:ss.ffffff±HH:mm`), per
-  [Siebel: Date and Time Formats](https://docs.oracle.com/en/applications/siebel/siebel-crm/26.3/szapc/c-Date-and-Time-Formats-ja1008698.html)
-  — the OpenAPI spec types the date fields but states no format, so that page is the
-  authority. `MM/DD/YYYY` is deliberately **not** accepted: `03/04/2026` is two different
-  days depending on the order, and nothing in the value says which. A non-ISO value lands
-  in `ServiceRequest.UnparsedValues` with the raw text rather than being guessed at, so if
-  ICM turns out to send display-format dates you will see it instead of getting silently
-  wrong days.
+  **Field names come from real responses, not from the OpenAPI documents** — MEASURED on
+  2026-08-28, they disagree on 27 of 51 fields (`SR Number` vs `Service Request Number`,
+  `SR Type` vs `Type`). Not an environment difference: `docs/integration/` holds both the
+  SIT1 and SIT2 documents and they are identical bar `CP Outcome`, with neither using a
+  single live name. Both describe the direct Siebel host (`*-ai2.icm.gov.bc.ca:8443`) while
+  the client calls the API gateway (`icmsit2.api.gov.bc.ca`), which is the likeliest
+  explanation but is not confirmed. The specs still supply read-only flags. Anything unmodelled lands
+  in `ServiceRequest.AdditionalFields` as raw JSON rather than being dropped, which is how
+  the mismatch was found; `--Output=raw` on the console app shows the untouched response.
+  The four date fields are zone-less `DateTime`, not `DateTimeOffset`: the wire carries no
+  offset and the value matches the Siebel UI verbatim.
+
+  Dates come back as `MM/DD/YYYY HH:MM:SS` — Siebel's display format, MEASURED against SIT
+  on 2026-08-28. The vendor's date-format page specifies ISO 8601 but describes a different
+  connector; both shapes are accepted on reads, writes use the observed one and are
+  untested. Month-first is established by evidence (`03/28/2016`, `06/17/2026`,
+  `08/28/2026` — second component above 12), not assumed. An unrecognised shape still lands
+  in `ServiceRequest.UnparsedValues` with the raw text, which is how the format was caught.
 
   `DTYPE_DATE` → `DateOnly` is load-bearing, not cosmetic: the same Oracle page warns that
   a date defaulting to midnight UTC shifts to the previous day in Western Hemisphere zones,

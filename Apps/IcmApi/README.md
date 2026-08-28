@@ -27,11 +27,37 @@ The token request uses **`client_secret_post`** (RFC 6749 §2.3.1) — `client_i
 `client_secret` as form fields, no `Authorization` header. That is what the ministry's
 existing integrations use.
 
-`docs/integration/SR_OpenApi.json` is ICM's own OpenAPI 3.0.1 document for the Service
-Request business component — the contract this client implements, kept in the repository
-so a change upstream shows up in the same diff as the change here. It is the source of
-every field name, length and data type in the models. Nothing generates code from it; the
-client is hand-written and the tests assert against it.
+`docs/integration/` holds ICM's own OpenAPI 3.0.1 documents for the Service Request
+business component — `SR_OpenApi.json` (SIT1) and `SR_OpenApiSIT2.json` (SIT2) — kept in
+the repository so a change upstream shows up in the same diff as the change here.
+
+**The two are the same document.** 49 shared fields with identical read-only flags, Siebel
+datatypes, lengths and required lists; the only differences are the server URL and
+`CP Outcome`, which SIT1 declares and SIT2 does not. So the environment is not what makes
+the field names disagree with the live endpoint — both documents disagree with it equally,
+and not one of the live names appears in either.
+
+The likely reason is the host. Both documents describe the **direct Siebel host**
+(`sit2-ai2.icm.gov.bc.ca:8443`); this client calls the **API gateway**
+(`icmsit2.api.gov.bc.ca`), which is a different address and appears to publish its own
+field naming — friendlier (`Service Request Number`, `Type`, `Created Date`) and with
+`Id` and `Row Id` added, neither of which is in any spec. That is inference, not
+established fact: it could equally be a different Siebel integration object behind the
+same path. Calling the direct host over the VPN, or asking whoever owns the ICM
+integration which layer renames, would settle it — and would be worth doing before
+trusting the specs for anything else, including the read-only flags the models still take
+from them.
+
+**It is not the source of the field names.** MEASURED against SIT on 2026-08-28 over 100
+records: the document and the live endpoint disagree on 27 of the 51 fields. The document
+says `SR Number`, ICM sends `Service Request Number`; the document says `SR Type`, ICM
+sends `Type`. The models follow **what ICM actually sends**; the document is still the
+source of which fields are read-only, and of the types for the handful of fields no record
+has yet carried a value for.
+
+The id/name pairs are the subtle ones: the document's `Created By` is a row id, which ICM
+calls `Created By Id`, while ICM's `Created By` is the login name the document calls
+`Created By Name`. Same for the Updated pair.
 
 ## Layout
 
@@ -160,13 +186,35 @@ returns a perfectly valid response that ignored the flag.
 calculates cannot be set, so passing one back is a compile error rather than a silently
 ignored field.
 
-**Dates are ISO 8601**, per
-[Siebel: Date and Time Formats](https://docs.oracle.com/en/applications/siebel/siebel-crm/26.3/szapc/c-Date-and-Time-Formats-ja1008698.html)
-— the OpenAPI document types the date fields but states no format, so that page is the
-authority. `MM/DD/YYYY` is deliberately **not** accepted: `03/04/2026` is two different
-days depending on the order and nothing in the value says which. A non-ISO value lands in
-`ServiceRequest.UnparsedValues` with the raw text rather than being guessed at. The three
-Siebel date types stay distinct — `DTYPE_UTCDATETIME` is a `DateTimeOffset`,
+**Nothing ICM sends is discarded.** A field with no property lands in
+`ServiceRequest.AdditionalFields` as raw `JsonElement`, keyed by its ICM name — because a
+missing `[JsonPropertyName]` match compiles, returns 200 and yields null for ever, which is
+exactly how those 27 fields went unnoticed. Run the console app with `--Output=raw` to see
+the untouched response. Different records returning different payloads is
+`excludeEmptyFieldsInResponse=true` omitting empties, not a varying schema — with it off,
+all 100 records carried the same 51 keys.
+
+**The four date fields are zone-less `DateTime`.** `Call Date`, `Created Date`,
+`Updated Date` and `Closed Date` arrive with no offset, and the value matches what the
+Siebel UI displays character for character, so no zone is invented for them. The OpenAPI
+document calls three of them `DTYPE_UTCDATETIME`; that is not something the wire supports,
+and claiming UTC would be a silent seven-hour error.
+
+**Dates come back as `MM/DD/YYYY HH:MM:SS`** — Siebel's display format, MEASURED against
+SIT on 2026-08-28. The
+[Oracle date-format page](https://docs.oracle.com/en/applications/siebel/siebel-crm/26.3/szapc/c-Date-and-Time-Formats-ja1008698.html)
+specifies ISO 8601, but it describes the Financial Services Connector and this endpoint
+does not follow it; both shapes are accepted on reads. Writes go out in the observed
+format and are **untested** — no write has yet been made against a real ICM, and a
+rejected date would be loud rather than silent.
+
+**Month-first is evidence, not an assumption.** `10/06/2015` alone cannot say whether it
+is 6 October or 10 June. Three of the eleven distinct values observed settle it, because
+their second component cannot be a month: `03/28/2016`, `06/17/2026`, `08/28/2026`. None
+had a first component above 12. To revisit this for another ICM instance, repeat that
+check — find a record whose day exceeds 12 — rather than reasoning about it. A value in a
+third shape still lands in `ServiceRequest.UnparsedValues` with the raw text, which is how
+this was caught in the first place. The three Siebel date types stay distinct — `DTYPE_UTCDATETIME` is a `DateTimeOffset`,
 `DTYPE_DATETIME` a zone-less `DateTime`, `DTYPE_DATE` a `DateOnly`. That last one is
 load-bearing: the same Oracle page warns that a date defaulting to midnight UTC shifts to
 the previous day in Western Hemisphere zones, which is every zone this runs in.
@@ -261,9 +309,9 @@ ICM. The token is cached, so asking for it first costs nothing.
 Exit codes are `0` success, `1` the settings are not usable, `2` the call failed. The
 things worth watching in the output:
 
-- **An `UnparsedValues` warning** means ICM sent a date that is not ISO 8601. That is the
-  open question flagged above, and this is the tool that answers it. Note the exact shape
-  and add it to `SiebelDate` — do not guess the month/day order.
+- **An `UnparsedValues` warning** means ICM sent a date in a shape `SiebelDate` does not
+  know. Note the exact shape and add it there — and if it is ambiguous, find a record whose
+  day exceeds 12 before deciding the month/day order rather than guessing it.
 - **An empty result** is usually `Query:ViewMode` rather than an empty database. ICM
   defaults to `Sales Rep`, which returns only records the authenticated client owns.
 - **`403` with `IP address not allowed`**, or **`Could not reach ICM`**, is the VPN rather

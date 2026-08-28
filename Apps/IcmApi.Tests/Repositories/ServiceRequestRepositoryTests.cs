@@ -32,8 +32,8 @@ namespace Icm.Api.Tests.Repositories
                 responseJson: """
                     {
                       "items": [
-                        { "SR Number": "1-1", "Restricted Flag": "Y" },
-                        { "SR Number": "1-2", "Restricted Flag": "N" }
+                        { "Service Request Number": "1-1", "Restricted Flag": "Y" },
+                        { "Service Request Number": "1-2", "Restricted Flag": "N" }
                       ],
                       "Link": [ { "rel": "next", "href": "https://icm/next" } ]
                     }
@@ -42,7 +42,7 @@ namespace Icm.Api.Tests.Repositories
             ServiceRequestPage page = await repository.SearchAsync("t");
 
             Assert.Equal(2, page.Items.Count);
-            Assert.Equal("1-1", page.Items[0].SRNumber);
+            Assert.Equal("1-1", page.Items[0].ServiceRequestNumber);
             Assert.True(page.Items[0].RestrictedFlag);
             Assert.False(page.Items[1].RestrictedFlag);
             Assert.Equal("next", Assert.Single(page.Links).Rel);
@@ -75,14 +75,14 @@ namespace Icm.Api.Tests.Repositories
             await repository.SearchAsync("t", new ServiceRequestQuery
             {
                 SearchSpec = "[Status] = \"Open\"",
-                Fields = ["SR Number"],
+                Fields = ["Service Request Number"],
                 PageSize = 10,
             });
 
             string query = Uri.UnescapeDataString(handler.Request!.RequestUri!.Query);
             Assert.Contains("uniformresponse=Y", query, StringComparison.Ordinal);
             Assert.Contains("searchspec=[Status] = \"Open\"", query, StringComparison.Ordinal);
-            Assert.Contains("fields=SR Number", query, StringComparison.Ordinal);
+            Assert.Contains("fields=Service Request Number", query, StringComparison.Ordinal);
             Assert.Contains("PageSize=10", query, StringComparison.Ordinal);
         }
 
@@ -102,29 +102,29 @@ namespace Icm.Api.Tests.Repositories
         public async Task GetAsync_MapsTheRecord()
         {
             (ServiceRequestRepository repository, _) = Create(
-                responseJson: """{ "SR Number": "1-12345", "Contact Cell #": "250-555-0100" }""");
+                responseJson: """{ "Service Request Number": "1-12345", "Cell Phone": "250-555-0100" }""");
 
             ServiceRequest? sr = await repository.GetAsync("t", "1-ABCDE");
 
-            Assert.Equal("1-12345", sr!.SRNumber);
-            Assert.Equal("250-555-0100", sr.ContactCellNumber);
+            Assert.Equal("1-12345", sr!.ServiceRequestNumber);
+            Assert.Equal("250-555-0100", sr.CellPhone);
         }
 
         [Fact]
         public async Task CreateAsync_SendsOnlyTheFieldsThatWereSetAndReturnsTheRecord()
         {
             (ServiceRequestRepository repository, RecordingHttpMessageHandler handler) = Create(
-                responseJson: """{ "items": { "Id": "1-NEW", "SR Number": "1-99" } }""");
+                responseJson: """{ "items": { "Id": "1-NEW", "Service Request Number": "1-99" } }""");
 
             ServiceRequest created = await repository.CreateAsync(
                 "t",
-                new ServiceRequestInput { SRType = "Application", RestrictedFlag = true });
+                new ServiceRequestInput { Type = "Application", RestrictedFlag = true });
 
             Assert.Equal(
-                """{"Restricted Flag":"Y","SR Type":"Application"}""",
+                """{"Restricted Flag":"Y","Type":"Application"}""",
                 handler.RequestBody);
             Assert.Equal("1-NEW", created.Id);
-            Assert.Equal("1-99", created.SRNumber);
+            Assert.Equal("1-99", created.ServiceRequestNumber);
         }
 
         [Fact]
@@ -133,18 +133,18 @@ namespace Icm.Api.Tests.Repositories
             (ServiceRequestRepository repository, _) = Create(
                 responseJson: """
                     {
-                      "SR Number": "1-12345",
+                      "Service Request Number": "1-12345",
                       "Restricted Flag": "Y",
-                      "Created": "2026-08-27T10:15:00Z",
-                      "Call Date": "2026-08-27T14:30:00",
-                      "ICM CGA Resolution Decision Date": "2026-09-01"
+                      "Created Date": "08/27/2026 10:15:00",
+                      "Call Date": "08/27/2026 14:30:00",
+                      "ICM CGA Resolution Decision Date": "09/01/2026"
                     }
                     """);
 
             ServiceRequest? sr = await repository.GetAsync("t", "1-ABCDE");
 
             Assert.True(sr!.RestrictedFlag);
-            Assert.Equal(new DateTimeOffset(2026, 8, 27, 10, 15, 0, TimeSpan.Zero), sr.Created);
+            Assert.Equal(new DateTime(2026, 8, 27, 10, 15, 0), sr.CreatedDate);
             Assert.Equal(new DateTime(2026, 8, 27, 14, 30, 0), sr.CallDate);
             Assert.Equal(new DateOnly(2026, 9, 1), sr.ICMCGAResolutionDecisionDate);
             Assert.Empty(sr.UnparsedValues);
@@ -160,14 +160,14 @@ namespace Icm.Api.Tests.Repositories
                 "t",
                 new ServiceRequestInput
                 {
-                    SRType = "Application",
+                    Type = "Application",
                     RestrictedFlag = false,
                     CallDate = new DateTime(2026, 8, 27, 14, 30, 0),
                     ICMCGAResolutionDecisionDate = new DateOnly(2026, 9, 1),
                 });
 
             Assert.Equal(
-                """{"Call Date":"2026-08-27T14:30:00","Restricted Flag":"N","ICM CGA Resolution Decision Date":"2026-09-01","SR Type":"Application"}""",
+                """{"Call Date":"08/27/2026 14:30:00","ICM CGA Resolution Decision Date":"09/01/2026","Restricted Flag":"N","Type":"Application"}""",
                 handler.RequestBody);
         }
 

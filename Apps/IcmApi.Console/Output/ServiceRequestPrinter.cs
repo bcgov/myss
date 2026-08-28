@@ -2,6 +2,7 @@ namespace Icm.Api.ConsoleApp.Output
 {
     using System.Globalization;
     using System.Reflection;
+    using System.Text.Json;
     using Icm.Api.Models;
 
     /// <summary>Writes a page of service requests to the console.</summary>
@@ -15,7 +16,9 @@ namespace Icm.Api.ConsoleApp.Output
     {
         private static readonly PropertyInfo[] Fields = [.. typeof(ServiceRequest)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.Name is not (nameof(ServiceRequest.Links) or nameof(ServiceRequest.UnparsedValues)))];
+            .Where(p => p.Name is not (nameof(ServiceRequest.Links)
+                or nameof(ServiceRequest.UnparsedValues)
+                or nameof(ServiceRequest.AdditionalFields)))];
 
         /// <summary>Writes the page.</summary>
         /// <param name="page">The page ICM returned.</param>
@@ -50,9 +53,9 @@ namespace Icm.Api.ConsoleApp.Output
                 else
                 {
                     Console.WriteLine(
-                        $"  {i + 1,3}. {record.SRNumber ?? "(no SR Number)"}"
-                        + $"  {record.Status ?? "-"}  {record.SRType ?? "-"}"
-                        + $"  created {Format(record.Created)}");
+                        $"  {i + 1,3}. {record.ServiceRequestNumber ?? "(no SR number)"}"
+                        + $"  {record.Status ?? "-"}  {record.Type ?? "-"}"
+                        + $"  created {Format(record.CreatedDate)}");
                 }
             }
 
@@ -69,7 +72,7 @@ namespace Icm.Api.ConsoleApp.Output
 
         private static void WriteFull(int number, ServiceRequest record)
         {
-            Console.WriteLine($"  [{number}] {record.SRNumber ?? record.Id ?? "(unidentified)"}");
+            Console.WriteLine($"  [{number}] {record.ServiceRequestNumber ?? record.Id ?? "(unidentified)"}");
 
             foreach (PropertyInfo field in Fields)
             {
@@ -87,8 +90,24 @@ namespace Icm.Api.ConsoleApp.Output
                 Console.WriteLine($"       {"Links",-36} {record.Links.Count}");
             }
 
-            // Loud on purpose. A value here means ICM sent a date that is not ISO 8601,
-            // which is the one open question this tool exists to answer.
+            // Loud on purpose: a field here is one the client is not modelling, which is
+            // exactly the kind of gap that is otherwise invisible.
+            if (record.AdditionalFields.Count > 0)
+            {
+                Console.WriteLine();
+                WriteWarning($"       {record.AdditionalFields.Count} field(s) not modelled by this client:");
+                foreach ((string key, JsonElement value) in record.AdditionalFields)
+                {
+                    WriteWarning($"         {key,-34} {value.GetRawText()}");
+                }
+
+                WriteWarning(
+                    "       These arrived as raw JSON rather than being dropped. Add them to "
+                    + "SiebelServiceRequest and ServiceRequest if they are wanted.");
+            }
+
+            // Loud on purpose. A value here means a date arrived in a shape SiebelDate does
+            // not recognise.
             if (record.UnparsedValues.Count > 0)
             {
                 Console.WriteLine();
@@ -112,6 +131,7 @@ namespace Icm.Api.ConsoleApp.Output
             null => "-",
             bool flag => flag ? "true" : "false",
             DateTimeOffset instant => instant.ToString("O", CultureInfo.InvariantCulture),
+            JsonElement json => json.GetRawText(),
             DateTime local => local.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture)
                 + $" ({local.Kind})",
             DateOnly date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),

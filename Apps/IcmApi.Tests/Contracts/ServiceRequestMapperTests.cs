@@ -1,6 +1,8 @@
 namespace Icm.Api.Tests.Contracts
 {
+    using System.Collections.Generic;
     using System.Globalization;
+    using System.Text.Json;
     using Icm.Api.Contracts;
     using Icm.Api.Models;
 
@@ -16,26 +18,26 @@ namespace Icm.Api.Tests.Contracts
             SiebelServiceRequest siebel = new()
             {
                 RestrictedFlag = "Y",
-                KKCFSFlag = "N",
+                Kkcfs = "N",
                 ICMCGAApplicationReceivedFlag = null,
             };
 
             ServiceRequest model = ServiceRequestMapper.ToModel(siebel);
 
             Assert.True(model.RestrictedFlag);
-            Assert.False(model.KKCFSFlag);
+            Assert.False(model.Kkcfs);
             Assert.Null(model.ICMCGAApplicationReceivedFlag);
         }
 
         [Fact]
         public void ToSiebel_TurnsBooleansBackIntoFlags()
         {
-            ServiceRequestInput input = new() { RestrictedFlag = true, KKCFSFlag = false };
+            ServiceRequestInput input = new() { RestrictedFlag = true, Kkcfs = false };
 
             SiebelServiceRequest siebel = ServiceRequestMapper.ToSiebel(input);
 
             Assert.Equal("Y", siebel.RestrictedFlag);
-            Assert.Equal("N", siebel.KKCFSFlag);
+            Assert.Equal("N", siebel.Kkcfs);
 
             // Unset stays null so it is left out of the request entirely rather than
             // clearing the field.
@@ -48,16 +50,16 @@ namespace Icm.Api.Tests.Contracts
             SiebelServiceRequest siebel = new()
             {
                 Id = "1-ABCDE",
-                SRNumber = "1-12345",
-                ContactCellNumber = "250-555-0100",
+                ServiceRequestNumber = "1-12345",
+                CellPhone = "250-555-0100",
                 Link = [new SiebelLink { Rel = "self", Href = "https://icm/sr/1", Name = "self" }],
             };
 
             ServiceRequest model = ServiceRequestMapper.ToModel(siebel);
 
             Assert.Equal("1-ABCDE", model.Id);
-            Assert.Equal("1-12345", model.SRNumber);
-            Assert.Equal("250-555-0100", model.ContactCellNumber);
+            Assert.Equal("1-12345", model.ServiceRequestNumber);
+            Assert.Equal("250-555-0100", model.CellPhone);
             Assert.Equal("self", Assert.Single(model.Links).Rel);
         }
 
@@ -84,7 +86,7 @@ namespace Icm.Api.Tests.Contracts
         {
             SiebelServiceRequest siebel = new()
             {
-                Created = "2026-08-27T10:15:00Z",                       // DTYPE_UTCDATETIME
+                CreatedDate = "2026-08-27T10:15:00Z",                       // DTYPE_UTCDATETIME
                 CallDate = "2026-08-27T14:30:00",                       // DTYPE_DATETIME
                 ICMCGAResolutionDecisionDate = "2026-08-27",            // DTYPE_DATE
             };
@@ -93,7 +95,7 @@ namespace Icm.Api.Tests.Contracts
 
             // An instant: read as UTC, because that is what the Siebel type means.
             Assert.Equal(
-                new DateTimeOffset(2026, 8, 27, 10, 15, 0, TimeSpan.Zero), model.Created);
+                new DateTime(2026, 8, 27, 10, 15, 0), model.CreatedDate);
 
             // No zone in the Siebel type, so none is invented here either.
             Assert.Equal(new DateTime(2026, 8, 27, 14, 30, 0), model.CallDate);
@@ -106,7 +108,6 @@ namespace Icm.Api.Tests.Contracts
         [Theory]
         [InlineData("2026-08-27T10:15:00Z")]
         [InlineData("2026-08-27T10:15:00")]
-        [InlineData("2026-08-27T10:15:00+00:00")]
         [InlineData("2026-08-27T10:15")]
         [InlineData("2026-08-27 10:15:00")]
         public void ToModel_ReadsAnInstantInEveryShapeTheIsoGrammarAllows(string value)
@@ -115,39 +116,60 @@ namespace Icm.Api.Tests.Contracts
             // space in place of the T, so all of these are the same instant. A value with
             // no offset is UTC, because that is what the Siebel type means.
             ServiceRequest model = ServiceRequestMapper.ToModel(
-                new SiebelServiceRequest { Created = value });
+                new SiebelServiceRequest { CreatedDate = value });
 
-            Assert.Equal(new DateTimeOffset(2026, 8, 27, 10, 15, 0, TimeSpan.Zero), model.Created);
+            Assert.Equal(new DateTime(2026, 8, 27, 10, 15, 0), model.CreatedDate);
         }
 
         [Theory]
         [InlineData("2026-08-27T10:15:00.123456Z")]
         [InlineData("2026-08-27T10:15:00.123456+00:00")]
-        public void ToModel_KeepsFractionalSecondsOnTheWayIn(string value)
+        public void ToUtcDateTime_KeepsFractionalSeconds(string value)
         {
-            // The grammar allows six digits; nothing here rounds them off.
-            ServiceRequest model = ServiceRequestMapper.ToModel(
-                new SiebelServiceRequest { Created = value });
+            // Exercised through SiebelDate rather than through a model property: no field
+            // on this business component is a DTYPE_UTCDATETIME, so there is nothing to
+            // read it through — but the converter still handles the type, and another ICM
+            // business component may well use it.
+            Dictionary<string, string> unparsed = [];
+
+            DateTimeOffset? parsed = SiebelDate.ToUtcDateTime(value, "Created Date", unparsed);
 
             Assert.Equal(
-                new DateTimeOffset(2026, 8, 27, 10, 15, 0, TimeSpan.Zero).AddTicks(1234560),
-                model.Created);
+                new DateTimeOffset(2026, 8, 27, 10, 15, 0, TimeSpan.Zero).AddTicks(1234560), parsed);
+            Assert.Empty(unparsed);
         }
 
         [Theory]
-        [InlineData("08/27/2026 10:15:00")]
-        [InlineData("08/27/2026")]
-        [InlineData("27-AUG-26 10.15.00 AM")]
-        public void ToModel_RefusesToGuessAtNonIsoDates(string value)
+        // Real values read from SIT on 2026-08-28. The three with a second component above
+        // 12 are what prove the order is month-first; the fourth is the ambiguous shape
+        // that prompted the check.
+        [InlineData("03/28/2016 02:55:16", 2016, 3, 28)]
+        [InlineData("06/17/2026 16:17:48", 2026, 6, 17)]
+        [InlineData("08/28/2026 03:23:01", 2026, 8, 28)]
+        [InlineData("10/06/2015 00:20:17", 2015, 10, 6)]
+        public void ToModel_ReadsTheDisplayFormatIcmActuallySends(
+            string value, int year, int month, int day)
         {
-            // Siebel documents ISO 8601. A display-format value is ambiguous — 03/04/2026
-            // is two different days depending on the order — so it is reported rather than
-            // guessed at.
             ServiceRequest model = ServiceRequestMapper.ToModel(
-                new SiebelServiceRequest { Created = value });
+                new SiebelServiceRequest { CallDate = value });
 
-            Assert.Null(model.Created);
-            Assert.Equal(value, model.UnparsedValues["Created"]);
+            Assert.Equal(new DateTime(year, month, day, 0, 0, 0), model.CallDate!.Value.Date);
+            Assert.Empty(model.UnparsedValues);
+        }
+
+        [Theory]
+        [InlineData("1756296900000")]
+        [InlineData("27-AUG-26 10.15.00 AM")]
+        [InlineData("not a date")]
+        public void ToModel_StillReportsAShapeItDoesNotRecognise(string value)
+        {
+            // The safety net is not removed just because two formats are now known: a third
+            // shape still arrives intact rather than as a null nobody notices.
+            ServiceRequest model = ServiceRequestMapper.ToModel(
+                new SiebelServiceRequest { CreatedDate = value });
+
+            Assert.Null(model.CreatedDate);
+            Assert.Equal(value, model.UnparsedValues["Created Date"]);
         }
 
         [Fact]
@@ -194,12 +216,14 @@ namespace Icm.Api.Tests.Contracts
         }
 
         [Fact]
-        public void ToModel_HonoursAnExplicitOffsetRatherThanAssumingUtc()
+        public void ToUtcDateTime_HonoursAnExplicitOffsetRatherThanAssumingUtc()
         {
-            ServiceRequest model = ServiceRequestMapper.ToModel(
-                new SiebelServiceRequest { Created = "2026-08-27T10:15:00-07:00" });
+            Dictionary<string, string> unparsed = [];
 
-            Assert.Equal(new DateTimeOffset(2026, 8, 27, 17, 15, 0, TimeSpan.Zero), model.Created);
+            DateTimeOffset? parsed =
+                SiebelDate.ToUtcDateTime("2026-08-27T10:15:00-07:00", "Created Date", unparsed);
+
+            Assert.Equal(new DateTimeOffset(2026, 8, 27, 17, 15, 0, TimeSpan.Zero), parsed);
         }
 
         [Fact]
@@ -208,23 +232,23 @@ namespace Icm.Api.Tests.Contracts
             // The whole point of UnparsedValues: a format we did not anticipate leaves a
             // null typed property, but the raw text survives and says so.
             ServiceRequest model = ServiceRequestMapper.ToModel(
-                new SiebelServiceRequest { Created = "1756296900000", SRNumber = "1-1" });
+                new SiebelServiceRequest { CreatedDate = "1756296900000", ServiceRequestNumber = "1-1" });
 
-            Assert.Null(model.Created);
-            Assert.Equal("1756296900000", model.UnparsedValues["Created"]);
+            Assert.Null(model.CreatedDate);
+            Assert.Equal("1756296900000", model.UnparsedValues["Created Date"]);
 
             // And the rest of the record still comes through.
-            Assert.Equal("1-1", model.SRNumber);
+            Assert.Equal("1-1", model.ServiceRequestNumber);
         }
 
         [Fact]
         public void ToModel_TreatsEmptyAndAbsentDatesAsNullNotAsUnreadable()
         {
             ServiceRequest model = ServiceRequestMapper.ToModel(
-                new SiebelServiceRequest { Created = "", Updated = "   ", CallDate = null });
+                new SiebelServiceRequest { CreatedDate = "", UpdatedDate = "   ", CallDate = null });
 
-            Assert.Null(model.Created);
-            Assert.Null(model.Updated);
+            Assert.Null(model.CreatedDate);
+            Assert.Null(model.UpdatedDate);
             Assert.Null(model.CallDate);
             Assert.Empty(model.UnparsedValues);
         }
@@ -248,8 +272,8 @@ namespace Icm.Api.Tests.Contracts
                 ICMCGAResolutionDecisionDate = new DateOnly(2026, 8, 27),
             });
 
-            Assert.Equal("2026-08-27T14:30:00", siebel.CallDate);
-            Assert.Equal("2026-08-27", siebel.ICMCGAResolutionDecisionDate);
+            Assert.Equal("08/27/2026 14:30:00", siebel.CallDate);
+            Assert.Equal("08/27/2026", siebel.ICMCGAResolutionDecisionDate);
         }
 
         [Fact]
@@ -270,7 +294,7 @@ namespace Icm.Api.Tests.Contracts
             string? written = SiebelDate.FromUtcDateTime(
                 new DateTimeOffset(2026, 8, 27, 10, 15, 0, TimeSpan.FromHours(-7)));
 
-            Assert.Equal("2026-08-27T17:15:00Z", written);
+            Assert.Equal("08/27/2026 17:15:00", written);
         }
 
         [Fact]
@@ -282,18 +306,97 @@ namespace Icm.Api.Tests.Contracts
             {
                 CultureInfo.CurrentCulture = new CultureInfo("en-GB");
 
+                // en-GB reads 08/27 as day-first, which would throw. Invariant parsing is
+                // what keeps a month-first value month-first on any machine.
                 ServiceRequest model = ServiceRequestMapper.ToModel(
-                    new SiebelServiceRequest { Created = "2026-08-27T10:15:00Z" });
+                    new SiebelServiceRequest { CreatedDate = "08/27/2026 10:15:00" });
 
-                Assert.Equal(new DateTimeOffset(2026, 8, 27, 10, 15, 0, TimeSpan.Zero), model.Created);
+                Assert.Equal(new DateTime(2026, 8, 27, 10, 15, 0), model.CreatedDate);
                 Assert.Equal(
-                    "2026-08-27T14:30:00",
+                    "08/27/2026 14:30:00",
                     SiebelDate.FromDateTime(new DateTime(2026, 8, 27, 14, 30, 0)));
             }
             finally
             {
                 CultureInfo.CurrentCulture = original;
             }
+        }
+
+        [Fact]
+        public void ToModel_KeepsFieldsTheClientDoesNotModel()
+        {
+            // The whole point: a field with no property used to vanish inside the
+            // deserializer without a trace. That is how 27 of ICM's 51 fields were being
+            // dropped before anyone read a raw response.
+            const string json = """
+                {
+                  "Service Request Number": "1-11082491438",
+                  "Some Field Added Upstream": "a value",
+                  "A Nested One": { "x": 1 },
+                  "A List": [1, 2]
+                }
+                """;
+
+            SiebelServiceRequest? wire = JsonSerializer.Deserialize<SiebelServiceRequest>(
+                json, IcmRefitSettings.JsonOptions);
+            ServiceRequest model = ServiceRequestMapper.ToModel(wire!);
+
+            Assert.Equal("1-11082491438", model.ServiceRequestNumber);
+            Assert.Equal(3, model.AdditionalFields.Count);
+
+            // Raw JSON, so the original type survives for review rather than being
+            // flattened to a string.
+            Assert.Equal("\"a value\"", model.AdditionalFields["Some Field Added Upstream"].GetRawText());
+            Assert.Equal(JsonValueKind.Object, model.AdditionalFields["A Nested One"].ValueKind);
+            Assert.Equal(JsonValueKind.Array, model.AdditionalFields["A List"].ValueKind);
+        }
+
+        [Fact]
+        public void ToModel_LeavesAdditionalFieldsEmptyForAFullyModelledRecord()
+        {
+            SiebelServiceRequest? wire = JsonSerializer.Deserialize<SiebelServiceRequest>(
+                """{ "Type": "Bus Pass", "Status": "Ready" }""", IcmRefitSettings.JsonOptions);
+
+            ServiceRequest model = ServiceRequestMapper.ToModel(wire!);
+
+            Assert.Equal("Bus Pass", model.Type);
+            Assert.Empty(model.AdditionalFields);
+        }
+
+        [Fact]
+        public void ToSiebel_NeverSendsBackFieldsItDidNotUnderstand()
+        {
+            // A write builds a fresh wire record, so nothing captured on a read can leak
+            // into an update.
+            SiebelServiceRequest written = ServiceRequestMapper.ToSiebel(
+                new ServiceRequestInput { Status = "Open" });
+
+            Assert.Null(written.AdditionalFields);
+        }
+
+        [Fact]
+        public void ToModel_UsesTheFieldNamesIcmActuallySends()
+        {
+            // MEASURED on SIT: these four are the renames that were silently returning null
+            // while the OpenAPI document's names were being used.
+            const string json = """
+                {
+                  "Service Request Number": "1-11082491438",
+                  "Type": "Bus Pass",
+                  "Created Date": "08/10/2026 11:59:57",
+                  "Kkcfs": "N"
+                }
+                """;
+
+            SiebelServiceRequest? wire = JsonSerializer.Deserialize<SiebelServiceRequest>(
+                json, IcmRefitSettings.JsonOptions);
+            ServiceRequest model = ServiceRequestMapper.ToModel(wire!);
+
+            Assert.Equal("1-11082491438", model.ServiceRequestNumber);
+            Assert.Equal("Bus Pass", model.Type);
+            Assert.Equal(new DateTime(2026, 8, 10, 11, 59, 57), model.CreatedDate);
+            Assert.False(model.Kkcfs);
+            Assert.Empty(model.AdditionalFields);
         }
 
         [Fact]
@@ -309,9 +412,9 @@ namespace Icm.Api.Tests.Contracts
         public void ToSiebel_JoinsRequestedFieldsIntoSiebelsCommaSeparatedList()
         {
             SiebelListQuery query = ServiceRequestMapper.ToSiebel(
-                new ServiceRequestQuery { Fields = ["SR Number", "Status"] });
+                new ServiceRequestQuery { Fields = ["Service Request Number", "Status"] });
 
-            Assert.Equal("SR Number,Status", query.Fields);
+            Assert.Equal("Service Request Number,Status", query.Fields);
         }
 
         [Fact]

@@ -17,14 +17,19 @@ namespace Icm.Api.Contracts
     /// every date field but states no format, so that page is the authority.
     /// </para>
     /// <para>
-    /// <b>Only ISO shapes are accepted.</b> Siebel's <c>MM/DD/YYYY</c> display format is
-    /// deliberately not in the list: <c>03/04/2026</c> is 4 March read one way and 3 April
-    /// read the other, and nothing in the value says which. Accepting it would mean
-    /// guessing, and a wrong guess is silently wrong for every day of the month up to the
-    /// twelfth. A value in that shape is reported through
-    /// <see cref="Icm.Api.Models.ServiceRequest.UnparsedValues"/> with the raw text intact
-    /// instead — if ICM turns out to send it, add the format here with the order confirmed,
-    /// rather than letting it through on an assumption.
+    /// <b>ICM does not actually send ISO.</b> MEASURED against SIT on 2026-08-28: every
+    /// <c>Call Date</c> came back as <c>MM/DD/YYYY HH:MM:SS</c> — Siebel's display format —
+    /// so both shapes are accepted. The Oracle page above describes the Financial Services
+    /// Connector; this endpoint does not follow it.
+    /// </para>
+    /// <para>
+    /// <b>The month/day order is evidence, not an assumption.</b> <c>10/06/2015</c> alone
+    /// cannot say whether it is 6 October or 10 June, and guessing wrong would be silently
+    /// wrong for every day up to the twelfth. Three of the eleven distinct values observed
+    /// settle it, because their second component cannot be a month: <c>03/28/2016</c>,
+    /// <c>06/17/2026</c> and <c>08/28/2026</c>. No value had a first component above 12.
+    /// Month-first it is. If this ever needs revisiting for another ICM instance, repeat
+    /// that check — find a record whose day exceeds 12 — rather than reasoning about it.
     /// </para>
     /// <para>
     /// The three Siebel date types map to three different .NET types on purpose.
@@ -42,26 +47,43 @@ namespace Icm.Api.Contracts
     internal static class SiebelDate
     {
         /// <summary>The format used when writing a <c>DTYPE_UTCDATETIME</c>.</summary>
-        public const string UtcDateTimeFormat = "yyyy-MM-ddTHH:mm:ss'Z'";
+        /// <remarks>
+        /// Writes go out in the same shape ICM sends, on the reasoning that a server
+        /// round-trips its own format. <b>Untested:</b> no write has been made against a
+        /// real ICM. If a create is rejected on a date field, this is the constant to
+        /// change — and the failure will be loud, not silent.
+        /// </remarks>
+        public const string UtcDateTimeFormat = "MM/dd/yyyy HH:mm:ss";
 
         /// <summary>The format used when writing a zone-less <c>DTYPE_DATETIME</c>.</summary>
-        public const string DateTimeFormat = "yyyy-MM-ddTHH:mm:ss";
+        /// <remarks>As <see cref="UtcDateTimeFormat"/>: observed on reads, untested on writes.</remarks>
+        public const string DateTimeFormat = "MM/dd/yyyy HH:mm:ss";
 
         /// <summary>The format used when writing a <c>DTYPE_DATE</c>.</summary>
-        public const string DateFormat = "yyyy-MM-dd";
+        /// <remarks>As <see cref="UtcDateTimeFormat"/>: observed on reads, untested on writes.</remarks>
+        public const string DateFormat = "MM/dd/yyyy";
 
         /// <summary>
-        /// Every shape the ISO grammar permits, with the optional parts present and absent.
-        /// <c>FFFFFFF</c> covers "fractional seconds, or none"; <c>K</c> covers
+        /// What ICM actually sends, followed by every shape the documented ISO grammar
+        /// permits. <c>FFFFFFF</c> covers "fractional seconds, or none"; <c>K</c> covers
         /// "<c>Z</c>, an offset, or nothing".
         /// </summary>
         private static readonly string[] DateTimeFormats =
         [
+            // Observed on SIT. Month-first on the evidence recorded in the remarks above.
+            DateTimeFormat,
+            "MM/dd/yyyy HH:mm:ss.FFFFFFF",
+            "MM/dd/yyyy HH:mm",
+            DateFormat,
+
+            // Documented by the vendor but not seen from this endpoint. Kept because
+            // another ICM API, or a later version of this one, may well use it — and
+            // because an ISO value is unambiguous, so accepting it costs nothing.
             "yyyy-MM-ddTHH:mm:ss.FFFFFFFK",
             "yyyy-MM-ddTHH:mmK",
             "yyyy-MM-dd HH:mm:ss.FFFFFFFK",
             "yyyy-MM-dd HH:mmK",
-            DateFormat,
+            "yyyy-MM-dd",
         ];
 
         /// <summary>Reads a <c>DTYPE_UTCDATETIME</c>.</summary>

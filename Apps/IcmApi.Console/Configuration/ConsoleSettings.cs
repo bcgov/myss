@@ -196,6 +196,18 @@ namespace Icm.Api.ConsoleApp.Configuration
         /// <summary>Gets or sets the Siebel search expression.</summary>
         public string? SearchSpec { get; set; }
 
+        /// <summary>
+        /// Gets or sets an ICM row id to read directly after the search, or null to skip
+        /// that step.
+        /// </summary>
+        /// <remarks>
+        /// This is the <b>Row #</b> from Siebel's "About Record" dialog, not the SR # shown
+        /// in the list. The SR # is not a field this business component exposes — asking
+        /// for it by name is rejected outright — so the row id is the only handle on a
+        /// specific record.
+        /// </remarks>
+        public string? ServiceRequestKey { get; set; }
+
         /// <summary>Gets or sets the Siebel sort expression.</summary>
         public string? SortSpec { get; set; }
 
@@ -233,6 +245,20 @@ namespace Icm.Api.ConsoleApp.Configuration
                 StartRowNum = StartRowNum,
                 ViewMode = NullIfBlank(ViewMode),
                 IncludeTotalCount = IncludeTotalCount,
+                ExcludeEmptyFields = ExcludeEmptyFields,
+            };
+
+        /// <summary>
+        /// Converts these settings into the options a single-record read takes — the
+        /// subset that still applies once the record is named by key.
+        /// </summary>
+        /// <returns>The read options.</returns>
+        public Models.ServiceRequestReadOptions ToReadOptions() =>
+            new()
+            {
+                Fields = Fields.Count == 0 ? null : Fields,
+                ChildLinks = NullIfBlank(ChildLinks),
+                ViewMode = NullIfBlank(ViewMode),
                 ExcludeEmptyFields = ExcludeEmptyFields,
             };
 

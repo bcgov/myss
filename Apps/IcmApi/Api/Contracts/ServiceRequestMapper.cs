@@ -9,17 +9,11 @@ namespace Icm.Api.Contracts
     /// Converts between Siebel's wire records and the models this assembly publishes.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The one place the two shapes meet. Everything upstream of here deals in Siebel's
-    /// terms — spaced field names, <c>"Y"</c>/<c>"N"</c> flags, dates as text, read-only
-    /// fields mixed in with writable ones — and everything downstream deals in the
-    /// published models, where those are booleans, dates and separate types.
-    /// </para>
-    /// <para>
-    /// It is long and dull, and that is the trade this boundary makes: fifty lines of
-    /// obvious mapping in one file, so that no caller anywhere else has to know that
-    /// <c>Restricted Flag</c> is spelled with a space and answers <c>"Y"</c>.
-    /// </para>
+    /// The one place the two shapes meet. Everything upstream deals in Siebel's terms —
+    /// spaced field names, <c>"Y"</c>/<c>"N"</c> flags, dates as text — and everything
+    /// downstream deals in the published models. Long and dull on purpose: fifty lines of
+    /// obvious mapping in one file, so no caller elsewhere has to know that the SR number
+    /// is spelled <c>Service Request Number</c>.
     /// </remarks>
     internal static class ServiceRequestMapper
     {
@@ -28,74 +22,77 @@ namespace Icm.Api.Contracts
         /// <returns>The published model.</returns>
         public static ServiceRequest ToModel(SiebelServiceRequest siebel)
         {
-            // Dates are read first, because an unreadable one has to be collected before
-            // the model that carries the collection can be built.
+            // Dates are read first: an unreadable one has to be collected before the
+            // model that carries the collection can be built.
             Dictionary<string, string> unparsed = [];
             DateTime? parsedCallDate =
                 SiebelDate.ToDateTime(siebel.CallDate, "Call Date", unparsed);
-            DateOnly? parsedResolutionDecisionDate =
+            DateTime? parsedClosedDate =
+                SiebelDate.ToDateTime(siebel.ClosedDate, "Closed Date", unparsed);
+            DateTime? parsedCreatedDate =
+                SiebelDate.ToDateTime(siebel.CreatedDate, "Created Date", unparsed);
+            DateOnly? parsedICMCGAResolutionDecisionDate =
                 SiebelDate.ToDate(siebel.ICMCGAResolutionDecisionDate, "ICM CGA Resolution Decision Date", unparsed);
-            DateTimeOffset? parsedCreated =
-                SiebelDate.ToUtcDateTime(siebel.Created, "Created", unparsed);
-            DateTimeOffset? parsedUpdated =
-                SiebelDate.ToUtcDateTime(siebel.Updated, "Updated", unparsed);
-            DateTimeOffset? parsedCloseDateCalc =
-                SiebelDate.ToUtcDateTime(siebel.CloseDateCalc, "Close Date Calc", unparsed);
+            DateTime? parsedUpdatedDate =
+                SiebelDate.ToDateTime(siebel.UpdatedDate, "Updated Date", unparsed);
 
             return new ServiceRequest
             {
-                Id = siebel.Id,
+                Address = siebel.Address,
                 AddressComments = siebel.AddressComments,
-                ICMCPUAborginal = siebel.ICMCPUAborginal,
-                CallDate = parsedCallDate,
-                CPCallerAddress = siebel.CPCallerAddress,
-                CPCallerEmail = siebel.CPCallerEmail,
-                CPCallerName = siebel.CPCallerName,
-                CPCallerPhone = siebel.CPCallerPhone,
-                ContactCellNumber = siebel.ContactCellNumber,
-                ICMCreatedByOffice = siebel.ICMCreatedByOffice,
-                ContactGivenName = siebel.ContactGivenName,
-                ContactHomePhone = siebel.ContactHomePhone,
-                KKCFSFlag = SiebelFlag.ToBoolean(siebel.KKCFSFlag),
-                CaseLocalOffice = siebel.CaseLocalOffice,
-                Memo = siebel.Memo,
-                CPNatureOfCall = siebel.CPNatureOfCall,
-                CPPCCAnalysis = siebel.CPPCCAnalysis,
-                CPCallerPrefContactMethod = siebel.CPCallerPrefContactMethod,
-                RestrictedFlag = SiebelFlag.ToBoolean(siebel.RestrictedFlag),
-                CPCallerType = siebel.CPCallerType,
-                PrimaryContactId = siebel.PrimaryContactId,
-                ICMStage = siebel.ICMStage,
-                PrimaryOrganizationId = siebel.PrimaryOrganizationId,
-                ICMCGADueDiligenceDecision = siebel.ICMCGADueDiligenceDecision,
-                ICMCGAResolutionDecisionDate = parsedResolutionDecisionDate,
-                PrimaryOrganizationName = siebel.PrimaryOrganizationName,
-                ICMCGAApplicationReceivedFlag = SiebelFlag.ToBoolean(siebel.ICMCGAApplicationReceivedFlag),
-                CPOutcome = siebel.CPOutcome,
-                Created = parsedCreated,
-                CreatedBy = siebel.CreatedBy,
-                Updated = parsedUpdated,
-                UpdatedByName = siebel.UpdatedByName,
-                UpdatedBy = siebel.UpdatedBy,
-                SRKPAddressCalc = siebel.SRKPAddressCalc,
-                CloseDateCalc = parsedCloseDateCalc,
-                CommMethod = siebel.CommMethod,
-                ContactLastName = siebel.ContactLastName,
-                CreatedByName = siebel.CreatedByName,
-                IntegrationId = siebel.IntegrationId,
-                CPCallerMethod = siebel.CPCallerMethod,
-                AssignedToId = siebel.AssignedToId,
+                AreAnyOfTheFamilyMembersIndigenous = siebel.AreAnyOfTheFamilyMembersIndigenous,
                 AssignedTo = siebel.AssignedTo,
-                Priority = siebel.Priority,
-                ResolutionCode = siebel.ResolutionCode,
-                SRNumber = siebel.SRNumber,
-                SRType = siebel.SRType,
-                SRSubType = siebel.SRSubType,
-                SRSubSubType = siebel.SRSubSubType,
-                Status = siebel.Status,
-                ServiceOffice = siebel.ServiceOffice,
+                AssignedToId = siebel.AssignedToId,
+                CallDate = parsedCallDate,
+                CallerAddress = siebel.CallerAddress,
+                CallerEmail = siebel.CallerEmail,
+                CallerName = siebel.CallerName,
+                CallerPhone = siebel.CallerPhone,
+                CaseLocalOffice = siebel.CaseLocalOffice,
+                CellPhone = siebel.CellPhone,
+                ClosedDate = parsedClosedDate,
+                CommMethod = siebel.CommMethod,
+                CreatedBy = siebel.CreatedBy,
+                CreatedById = siebel.CreatedById,
+                CreatedByOffice = siebel.CreatedByOffice,
+                CreatedDate = parsedCreatedDate,
+                GivenNames = siebel.GivenNames,
+                HomePhone = siebel.HomePhone,
                 ICMBCSCDID = siebel.ICMBCSCDID,
+                ICMCGAApplicationReceivedFlag = SiebelFlag.ToBoolean(siebel.ICMCGAApplicationReceivedFlag),
+                ICMCGADueDiligenceDecision = siebel.ICMCGADueDiligenceDecision,
+                ICMCGAResolutionDecisionDate = parsedICMCGAResolutionDecisionDate,
+                ICMStage = siebel.ICMStage,
+                Id = siebel.Id,
+                IntegrationId = siebel.IntegrationId,
+                Kkcfs = SiebelFlag.ToBoolean(siebel.Kkcfs),
+                LastName = siebel.LastName,
+                Memo = siebel.Memo,
+                Method = siebel.Method,
+                NatureOfCall = siebel.NatureOfCall,
+                PccSummary = siebel.PccSummary,
+                PreferredContactMethod = siebel.PreferredContactMethod,
+                PrimaryContactId = siebel.PrimaryContactId,
+                PrimaryOrganizationId = siebel.PrimaryOrganizationId,
+                PrimaryOrganizationName = siebel.PrimaryOrganizationName,
+                Priority = siebel.Priority,
+                Resolution = siebel.Resolution,
+                RestrictedFlag = SiebelFlag.ToBoolean(siebel.RestrictedFlag),
+                RowId = siebel.RowId,
+                SRSubSubType = siebel.SRSubSubType,
+                SRSubType = siebel.SRSubType,
+                ServiceOffice = siebel.ServiceOffice,
+                ServiceRequestNumber = siebel.ServiceRequestNumber,
+                Status = siebel.Status,
+                Type = siebel.Type,
+                TypeOfCaller = siebel.TypeOfCaller,
+                UpdatedBy = siebel.UpdatedBy,
+                UpdatedById = siebel.UpdatedById,
+                UpdatedDate = parsedUpdatedDate,
                 Links = siebel.Link is null ? [] : [.. siebel.Link.Select(ToModel)],
+                AdditionalFields = siebel.AdditionalFields is null
+                    ? new Dictionary<string, System.Text.Json.JsonElement>()
+                    : new Dictionary<string, System.Text.Json.JsonElement>(siebel.AdditionalFields),
                 UnparsedValues = unparsed,
             };
         }
@@ -122,40 +119,39 @@ namespace Icm.Api.Contracts
         public static SiebelServiceRequest ToSiebel(ServiceRequestInput input) =>
             new()
             {
-                ICMCPUAborginal = input.ICMCPUAborginal,
+                AreAnyOfTheFamilyMembersIndigenous = input.AreAnyOfTheFamilyMembersIndigenous,
                 CallDate = SiebelDate.FromDateTime(input.CallDate),
-                CPCallerAddress = input.CPCallerAddress,
-                CPCallerEmail = input.CPCallerEmail,
-                CPCallerName = input.CPCallerName,
-                CPCallerPhone = input.CPCallerPhone,
-                ContactCellNumber = input.ContactCellNumber,
-                KKCFSFlag = SiebelFlag.FromBoolean(input.KKCFSFlag),
-                Memo = input.Memo,
-                CPNatureOfCall = input.CPNatureOfCall,
-                CPPCCAnalysis = input.CPPCCAnalysis,
-                CPCallerPrefContactMethod = input.CPCallerPrefContactMethod,
-                RestrictedFlag = SiebelFlag.FromBoolean(input.RestrictedFlag),
-                CPCallerType = input.CPCallerType,
-                PrimaryContactId = input.PrimaryContactId,
-                ICMStage = input.ICMStage,
-                PrimaryOrganizationId = input.PrimaryOrganizationId,
+                CallerAddress = input.CallerAddress,
+                CallerEmail = input.CallerEmail,
+                CallerName = input.CallerName,
+                CallerPhone = input.CallerPhone,
+                CellPhone = input.CellPhone,
+                CommMethod = input.CommMethod,
+                ICMBCSCDID = input.ICMBCSCDID,
+                ICMCGAApplicationReceivedFlag = SiebelFlag.FromBoolean(input.ICMCGAApplicationReceivedFlag),
                 ICMCGADueDiligenceDecision = input.ICMCGADueDiligenceDecision,
                 ICMCGAResolutionDecisionDate = SiebelDate.FromDate(input.ICMCGAResolutionDecisionDate),
-                ICMCGAApplicationReceivedFlag = SiebelFlag.FromBoolean(input.ICMCGAApplicationReceivedFlag),
-                CPOutcome = input.CPOutcome,
-                CommMethod = input.CommMethod,
-                ContactLastName = input.ContactLastName,
+                ICMStage = input.ICMStage,
                 IntegrationId = input.IntegrationId,
-                CPCallerMethod = input.CPCallerMethod,
+                Kkcfs = SiebelFlag.FromBoolean(input.Kkcfs),
+                LastName = input.LastName,
+                Memo = input.Memo,
+                Method = input.Method,
+                NatureOfCall = input.NatureOfCall,
+                PccSummary = input.PccSummary,
+                PreferredContactMethod = input.PreferredContactMethod,
+                PrimaryContactId = input.PrimaryContactId,
+                PrimaryOrganizationId = input.PrimaryOrganizationId,
                 Priority = input.Priority,
-                ResolutionCode = input.ResolutionCode,
-                SRNumber = input.SRNumber,
-                SRType = input.SRType,
-                SRSubType = input.SRSubType,
+                Resolution = input.Resolution,
+                RestrictedFlag = SiebelFlag.FromBoolean(input.RestrictedFlag),
                 SRSubSubType = input.SRSubSubType,
-                Status = input.Status,
+                SRSubType = input.SRSubType,
                 ServiceOffice = input.ServiceOffice,
-                ICMBCSCDID = input.ICMBCSCDID,
+                ServiceRequestNumber = input.ServiceRequestNumber,
+                Status = input.Status,
+                Type = input.Type,
+                TypeOfCaller = input.TypeOfCaller,
             };
 
         /// <summary>Converts published search parameters to the wire query.</summary>
@@ -193,8 +189,7 @@ namespace Icm.Api.Contracts
 
         /// <summary>
         /// Joins requested field names into the comma-separated list Siebel expects.
-        /// Field names are Siebel's own, spaces and all, so they are passed through
-        /// untouched.
+        /// Field names are ICM's own, spaces and all, so they pass through untouched.
         /// </summary>
         private static string? ToFieldList(IEnumerable<string>? fields)
         {

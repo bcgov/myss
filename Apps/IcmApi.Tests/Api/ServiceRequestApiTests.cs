@@ -176,15 +176,16 @@ namespace Icm.Api.Tests.Api
                 null,
                 new SiebelServiceRequest
                 {
-                    SRType = "Application",
+                    Type = "Application",
                     Status = "Open",
-                    ContactCellNumber = "250-555-0100",
+                    CellPhone = "250-555-0100",
                 });
 
-            // The record has fifty-odd nullable fields. If nulls were serialized, this PUT
-            // would blank every one of them in Siebel.
+            // The record has fifty-odd nullable fields. If nulls were serialized, this write
+            // would blank every one of them in Siebel. Key order follows the property
+            // declaration order, which is alphabetical by ICM field name.
             Assert.Equal(
-                """{"Contact Cell #":"250-555-0100","SR Type":"Application","Status":"Open"}""",
+                """{"Cell Phone":"250-555-0100","Status":"Open","Type":"Application"}""",
                 handler.RequestBody);
         }
 
