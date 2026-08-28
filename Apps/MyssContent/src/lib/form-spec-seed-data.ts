@@ -466,8 +466,6 @@ export const eligibilityEstimatorSpecV2: Json = {
       type: "radio",
       key: "residesInBc",
       label: "Do you currently reside in British Columbia?",
-      tooltip:
-        "You must be a resident of British Columbia to receive assistance from this ministry.",
       input: true,
       values: yesNoValues,
       validate: { required: true },

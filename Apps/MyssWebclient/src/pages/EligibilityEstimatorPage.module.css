@@ -176,7 +176,7 @@
    (pure CSS, no icon font) here. */
 .formHost :global(.formio-component-panel .card) {
   max-width: 560px;
-  border: 1px solid #606060;
+  border: 1px solid #ccc;
   border-radius: 4px;
   margin-bottom: var(--layout-margin-large, 24px);
   background: #fff;
@@ -244,4 +244,40 @@
 }
 .formHost :global(.field-required)::after {
   content: none !important;
+}
+
+/* Tooltip trigger: Form.io emits <i class="bi bi-question-circle" ref="tooltip">
+   next to the label, but this app loads no Bootstrap-Icons font, so the glyph
+   is blank. Draw an outline info circle (ⓘ) in pure CSS — matching the 0827
+   design and the no-icon-font approach already used for the panel chevron. The
+   drawn "i" replaces the (absent) bi glyph; Form.io's hover tooltip is
+   unaffected. */
+.formHost :global([ref="tooltip"]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.05em;
+  height: 1.05em;
+  margin-left: 6px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: var(--typography-color-secondary, #474543);
+  font-size: 0.92em;
+  font-style: normal;
+  line-height: 1;
+  cursor: help;
+  vertical-align: -0.15em;
+}
+.formHost :global([ref="tooltip"])::before {
+  content: "i";
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+}
+
+/* Selected radios/checkboxes use the BC-blue accent, matching the design's
+   navy-filled controls (native inputs otherwise render the browser default). */
+.formHost :global(input[type="radio"]),
+.formHost :global(input[type="checkbox"]) {
+  accent-color: var(--surface-color-primary-button-default, #1a5a96);
 }
