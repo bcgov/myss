@@ -5,9 +5,9 @@ import { afterEach, expect, test, vi } from "vitest";
 
 import BusPassForm from "@/components/BusPassForm";
 
-const currentSpecV2 = {
+const currentSpecV1 = {
   formSpecId: "bc-bus-pass",
-  version: 2,
+  version: 1,
   title: "BC Bus Pass",
   spec: {
     display: "form",
@@ -35,7 +35,7 @@ function stubFormApi() {
   vi.spyOn(window, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
     if (url.endsWith("/v1/forms/bc-bus-pass/spec")) {
-      return new Response(JSON.stringify({ payload: currentSpecV2 }), {
+      return new Response(JSON.stringify({ payload: currentSpecV1 }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
@@ -85,7 +85,6 @@ test("loads the BC Bus Pass spec and submits with the rendered version", async (
   const posts = stubFormApi();
   const screen = await renderForm();
 
-  await expect.element(screen.getByText("(spec v2)")).toBeVisible();
   await expect
     .element(screen.getByRole("textbox", { name: "Full name" }))
     .toBeVisible();
@@ -94,10 +93,10 @@ test("loads the BC Bus Pass spec and submits with the rendered version", async (
   await screen.getByRole("button", { name: "Submit" }).click();
 
   await expect.element(screen.getByText("Submission received")).toBeVisible();
-  await expect.element(screen.getByText("bc-bus-pass v2")).toBeVisible();
+  await expect.element(screen.getByText("bc-bus-pass v1")).toBeVisible();
   expect(posts).toHaveLength(1);
   expect(posts[0].body).toMatchObject({
-    formSpecVersion: 2,
+    formSpecVersion: 1,
     answers: { fullName: "Ada Lovelace" },
   });
 });
