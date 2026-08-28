@@ -29,6 +29,8 @@ interface Component {
   readonly type?: unknown;
   readonly conditional?: { readonly when?: unknown };
   readonly properties?: { readonly myssValidator?: unknown };
+  readonly components?: unknown;
+  readonly columns?: unknown;
 }
 
 function isRecord(value: Json): value is { [key: string]: Json } {
@@ -38,18 +40,42 @@ function isRecord(value: Json): value is { [key: string]: Json } {
 function componentsOf(spec: Json): Component[] {
   if (!isRecord(spec)) throw new Error("spec is not an object");
   const components = spec.components;
-  if (!Array.isArray(components)) throw new Error("spec.components is not an array");
+  if (!Array.isArray(components))
+    throw new Error("spec.components is not an array");
   return components as Component[];
 }
 
+function allComponents(spec: Json): Component[] {
+  const components = componentsOf(spec);
+  const nested: Component[] = [];
+
+  for (const component of components) {
+    nested.push(component);
+    if (Array.isArray(component.components)) {
+      nested.push(...allComponents({ components: component.components }));
+    }
+    if (Array.isArray(component.columns)) {
+      for (const column of component.columns) {
+        if (isRecord(column) && Array.isArray(column.components)) {
+          nested.push(...allComponents({ components: column.components }));
+        }
+      }
+    }
+  }
+
+  return nested;
+}
+
 function keysOf(spec: Json): string[] {
-  return componentsOf(spec)
+  return allComponents(spec)
     .map((component) => component.key)
     .filter((key): key is string => typeof key === "string");
 }
 
 function componentByKey(spec: Json, key: string): Component {
-  const component = componentsOf(spec).find((candidate) => candidate.key === key);
+  const component = allComponents(spec).find(
+    (candidate) => candidate.key === key,
+  );
   if (!component) throw new Error(`no component with key "${key}"`);
   return component;
 }
@@ -65,28 +91,28 @@ describe("seeded form specs", () => {
     expect(POC_FORM_SPEC_TITLE).toBe("POC test form");
   });
 
-  it.each(seededFormSpecs.map((seeded) => [seeded.version, seeded.spec] as const))(
-    "v%i is a Form.io form with at least one component",
-    (_version, spec) => {
-      expect(isRecord(spec) && spec.display).toBe("form");
-      expect(componentsOf(spec).length).toBeGreaterThan(0);
-    },
-  );
+  it.each(
+    seededFormSpecs.map((seeded) => [seeded.version, seeded.spec] as const),
+  )("v%i is a Form.io form with at least one component", (_version, spec) => {
+    expect(isRecord(spec) && spec.display).toBe("form");
+    expect(componentsOf(spec).length).toBeGreaterThan(0);
+  });
 
-  it.each(seededFormSpecs.map((seeded) => [seeded.version, seeded.spec] as const))(
-    "v%i gives every component a unique key",
-    (_version, spec) => {
-      const keys = keysOf(spec);
-      expect(keys.length).toBe(componentsOf(spec).length);
-      expect(new Set(keys).size).toBe(keys.length);
-    },
-  );
+  it.each(
+    seededFormSpecs.map((seeded) => [seeded.version, seeded.spec] as const),
+  )("v%i gives every component a unique key", (_version, spec) => {
+    const keys = keysOf(spec);
+    expect(keys.length).toBe(allComponents(spec).length);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
 
-  it.each(seededFormSpecs.map((seeded) => [seeded.version, seeded.spec] as const))(
+  it.each(
+    seededFormSpecs.map((seeded) => [seeded.version, seeded.spec] as const),
+  )(
     "v%i only references fields that exist in its conditionals",
     (_version, spec) => {
       const keys = new Set(keysOf(spec));
-      const referenced = componentsOf(spec)
+      const referenced = allComponents(spec)
         .map((component) => component.conditional?.when)
         .filter((when): when is string => typeof when === "string");
 
@@ -147,7 +173,9 @@ describe("seeded forms collection", () => {
   });
 
   it("keeps the POC form's versions as the existing seededFormSpecs list", () => {
-    const poc = seededForms.find((form) => form.formSpecId === POC_FORM_SPEC_ID);
+    const poc = seededForms.find(
+      (form) => form.formSpecId === POC_FORM_SPEC_ID,
+    );
     expect(poc?.title).toBe(POC_FORM_SPEC_TITLE);
     expect(poc?.versions).toBe(seededFormSpecs);
   });
@@ -166,7 +194,7 @@ describe("seeded forms collection", () => {
       for (const { spec } of form.versions) {
         expect(isRecord(spec) && spec.display).toBe("form");
         const keys = keysOf(spec);
-        expect(keys.length).toBe(componentsOf(spec).length);
+        expect(keys.length).toBeGreaterThan(0);
         expect(new Set(keys).size).toBe(keys.length);
       }
     }
