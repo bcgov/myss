@@ -27,6 +27,11 @@ export default function TechDemos() {
           </Link>
         </li>
         <li>
+          <Link to="/techdemos/bc-bus-pass">
+            BC Bus Pass - request a bus pass
+          </Link>
+        </li>
+        <li>
           <Link to="/techdemos/attachments">
             Attachments - scanned upload to object storage
           </Link>

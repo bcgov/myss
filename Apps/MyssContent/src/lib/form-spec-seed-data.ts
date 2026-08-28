@@ -12,7 +12,21 @@
  * scanned at all, so shared pure modules cannot confuse it.
  */
 
-export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+import busPassFormSpec from "./bus-pass-form.json";
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | Json[]
+  | { [key: string]: Json };
+
+/** The logical identifier for the BC Bus Pass form. */
+export const BUS_PASS_FORM_SPEC_ID = "bc-bus-pass";
+
+/** The human-readable title for the BC Bus Pass form. */
+export const BUS_PASS_FORM_SPEC_TITLE = "BC Bus Pass";
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -558,7 +572,8 @@ export const eligibilityEstimatorSpecV2: Json = {
     {
       type: "number",
       key: "vehicleValueMinusTransportation",
-      label: "What is the value of your primary vehicle minus any amount owing?",
+      label:
+        "What is the value of your primary vehicle minus any amount owing?",
       input: true,
       defaultValue: 0,
       validate: { min: 0 },
@@ -665,5 +680,10 @@ export const seededForms: readonly SeededForm[] = [
       { version: 1, spec: eligibilityEstimatorSpecV1 },
       { version: 2, spec: eligibilityEstimatorSpecV2 },
     ],
+  },
+  {
+    formSpecId: BUS_PASS_FORM_SPEC_ID,
+    title: BUS_PASS_FORM_SPEC_TITLE,
+    versions: [{ version: 1, spec: busPassFormSpec as unknown as Json }],
   },
 ];
