@@ -31,6 +31,26 @@ namespace Myss.Api.Tests.TestDoubles
         public FormSpecModel? VersionResult { get; set; }
 
         /// <summary>
+        /// Builds a spec model around a supplied Form.io body, for tests that
+        /// need real components to validate against.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="version">The spec version.</param>
+        /// <param name="specJson">The Form.io spec body as JSON.</param>
+        /// <returns>A spec model wrapping that body.</returns>
+        public static FormSpecModel Spec(string formSpecId, int version, string specJson)
+        {
+            using JsonDocument doc = JsonDocument.Parse(specJson);
+            return new FormSpecModel
+            {
+                FormSpecId = formSpecId,
+                Version = version,
+                Title = $"{formSpecId} v{version}",
+                Spec = doc.RootElement.Clone(),
+            };
+        }
+
+        /// <summary>
         /// Builds a minimal spec model for test arrangements.
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>

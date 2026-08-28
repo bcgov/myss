@@ -38,6 +38,9 @@
     "src/admin/",
     // Do not include test files
     "**/*.test.*",
+    // Do not include the vitest config: it imports vitest/config, which is a
+    // devDependency and is absent from the container's node_modules volume
+    "vitest.config.ts",
     // Do not include plugins in the server compilation
     "src/plugins/**"
   ]

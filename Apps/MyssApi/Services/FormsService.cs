@@ -9,6 +9,7 @@ namespace Myss.Api.Services
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging;
     using Myss.Api.Data;
+    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
 
@@ -44,8 +45,49 @@ namespace Myss.Api.Services
         }
 
         /// <inheritdoc/>
-        public async Task<FormSubmissionResponseModel> SubmitAsync(string formSpecId, FormSubmissionRequestModel request, CancellationToken cancellationToken)
+        public async Task<FormSubmissionResultModel> SubmitAsync(string formSpecId, FormSubmissionRequestModel request, CancellationToken cancellationToken)
         {
+            // Resolve the version the client claims to have rendered, NOT the
+            // latest. §7.2 of the assessment calls this non-negotiable: a
+            // citizen part-way through a form when a designer publishes v3 must
+            // be validated against the rules they were actually shown.
+            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(
+                formSpecId, request.FormSpecVersion, cancellationToken);
+
+            if (spec is null)
+            {
+                _logger.LogWarning(
+                    "Rejected submission for {FormSpecId}: claimed version {FormSpecVersion} is unknown or unpublished",
+                    formSpecId,
+                    request.FormSpecVersion);
+
+                return FormSubmissionResultModel.Refused(
+                [
+                    new ValidationErrorModel
+                    {
+                        Field = nameof(FormSubmissionRequestModel.FormSpecVersion),
+                        Keyword = ValidationKeywords.VersionUnknown,
+                        Message = $"Version {request.FormSpecVersion} of this form is not available. Reload the form and try again.",
+                    },
+                ]);
+            }
+
+            IReadOnlyList<ValidationErrorModel> errors =
+                FormSpecValidator.Validate(spec.Spec, request.Answers);
+
+            if (errors.Count > 0)
+            {
+                // Count only. The values are the reason this failed and are the
+                // last thing that should reach a log.
+                _logger.LogInformation(
+                    "Rejected submission for {FormSpecId} v{FormSpecVersion}: {ErrorCount} validation error(s)",
+                    formSpecId,
+                    request.FormSpecVersion,
+                    errors.Count);
+
+                return FormSubmissionResultModel.Refused(errors);
+            }
+
             var submission = new FormSubmission
             {
                 Id = Guid.NewGuid(),
@@ -65,7 +107,7 @@ namespace Myss.Api.Services
                 submission.FormSpecId,
                 submission.FormSpecVersion);
 
-            return ToResponse(submission, spec: null);
+            return FormSubmissionResultModel.Accepted(ToResponse(submission, spec: null));
         }
 
         /// <inheritdoc/>

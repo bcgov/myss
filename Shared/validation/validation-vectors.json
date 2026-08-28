@@ -1,0 +1,84 @@
+{
+  "$comment": [
+    "SHARED TEST VECTORS — the contract between the C# and TypeScript implementations",
+    "of the same validation rules.",
+    "",
+    "The MySS API validates every submitted value server-side (Phase 3); the Form.io",
+    "custom components validate the same values in the browser (Phase 1). Two",
+    "implementations of one rule, in two languages, written weeks apart, will drift",
+    "unless something forces them to agree. This file is that something: both test",
+    "suites read it, so a divergence is a failing test rather than a production bug.",
+    "",
+    "RULES FOR EDITING",
+    "  - Every value here is SYNTHETIC. Numbers were generated to satisfy the",
+    "    arithmetic; none belongs to a real person. Never paste a real SIN, PHN or",
+    "    personal email address into this file.",
+    "  - Adding a case means both suites must handle it. That is the point.",
+    "  - `keyword` must match the keyword the implementation emits, not just the",
+    "    fact of failure. Agreeing that something is invalid while disagreeing about",
+    "    why still produces different messages for a citizen.",
+    "",
+    "SOURCE OF THE RULES",
+    "  SIN Luhn mod-10 and email format are ported from",
+    "  myss-api/app/domains/registration/validators.py (BR-D1-02, BR-D1-07).",
+    "  PHN mod-11 is deliberately ABSENT: that implementation includes the position-0",
+    "  prefix digit in the weighted sum and its own author flagged this as unverified",
+    "  against the BC Ministry of Health specification. Resolve that question before",
+    "  adding PHN vectors here, or the ambiguity gets baked into two languages at once."
+  ],
+
+  "sin": {
+    "valid": [
+      { "value": "050082833", "note": "plain 9 digits" },
+      { "value": "222289779", "note": "plain 9 digits" },
+      { "value": "147711949", "note": "plain 9 digits" },
+      { "value": "050 082 833", "note": "space-separated, as a citizen would paste it" },
+      { "value": "050-082-833", "note": "hyphen-separated" },
+      { "value": "  050082833  ", "note": "surrounding whitespace is trimmed" }
+    ],
+    "invalid": [
+      { "value": "050082830", "keyword": "IDA.SIN.INVALID_CHECKSUM", "note": "valid shape, fails Luhn" },
+      { "value": "222289770", "keyword": "IDA.SIN.INVALID_CHECKSUM" },
+      { "value": "147711940", "keyword": "IDA.SIN.INVALID_CHECKSUM" },
+      { "value": "000000000", "keyword": "IDA.SIN.INVALID_CHECKSUM", "note": "passes Luhn arithmetically; rejected explicitly" },
+      { "value": "05008283", "keyword": "IDA.SIN.WRONG_LENGTH", "note": "8 digits" },
+      { "value": "0500828333", "keyword": "IDA.SIN.WRONG_LENGTH", "note": "10 digits" },
+      { "value": "", "keyword": "IDA.SIN.WRONG_LENGTH" },
+      { "value": "05008283A", "keyword": "IDA.SIN.WRONG_LENGTH", "note": "non-digits are stripped, leaving 8" },
+      { "value": "abcdefghi", "keyword": "IDA.SIN.WRONG_LENGTH" }
+    ]
+  },
+
+  "email": {
+    "valid": [
+      { "value": "ada@example.com" },
+      { "value": "ada.lovelace@example.gov.bc.ca" },
+      { "value": "ada+forms@example.com", "note": "plus addressing is legitimate and commonly used" },
+      { "value": "a@b.co" },
+      { "value": "  ada@example.com  ", "note": "surrounding whitespace is trimmed" }
+    ],
+    "invalid": [
+      { "value": "ada", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "no @" },
+      { "value": "ada@", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
+      { "value": "@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
+      { "value": "ada@example", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "no dot in the domain" },
+      { "value": "ada@@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
+      { "value": "ada lovelace@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "internal space" },
+      { "value": "ada@exa mple.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
+      { "value": "", "keyword": "IDA.EMAIL.INVALID_FORMAT" }
+    ]
+  },
+
+  "emailConfirmation": {
+    "matching": [
+      { "value": "ada@example.com", "confirmation": "ada@example.com" },
+      { "value": "ada@example.com", "confirmation": "  ada@example.com  ", "note": "trimmed before comparison" },
+      { "value": "Ada@Example.com", "confirmation": "ada@example.com", "note": "case-insensitive: mail domains are, and citizens retype inconsistently" }
+    ],
+    "mismatching": [
+      { "value": "ada@example.com", "confirmation": "ada@exampel.com", "keyword": "IDA.EMAIL.MISMATCH" },
+      { "value": "ada@example.com", "confirmation": "", "keyword": "IDA.EMAIL.MISMATCH" },
+      { "value": "ada@example.com", "confirmation": "grace@example.com", "keyword": "IDA.EMAIL.MISMATCH" }
+    ]
+  }
+}

@@ -25,4 +25,15 @@
     <ProjectReference Include="..\MyssApi\MyssApi.csproj" />
   </ItemGroup>
 
+  <!--
+    The shared validation vectors are the contract between this suite and the
+    TypeScript suite in MyssWebclient. Linked rather than copied so there is
+    exactly one file; if this path breaks, fix the path - do not duplicate it.
+  -->
+  <ItemGroup>
+    <Content Include="..\..\Shared\validation\validation-vectors.json"
+             Link="validation-vectors.json"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

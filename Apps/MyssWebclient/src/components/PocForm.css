@@ -8,6 +8,49 @@
  * across all components) is a later slice.
  */
 
+/*
+ * Error summary for a refused submission. Not Form.io's own error styling —
+ * these come from the API after submit, so they render outside the form.
+ * Colours are placeholders until the BC Gov tokens land with the wider theming
+ * slice; the left bar and border carry the meaning so it does not depend on
+ * colour alone.
+ */
+.poc-form-errors {
+  border: 2px solid #ce3e39;
+  border-left-width: 0.5rem;
+  background: #f4e1e2;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+
+.poc-form-errors h4 {
+  margin: 0 0 0.5rem;
+}
+
+.poc-form-errors h4:focus-visible {
+  outline: 2px solid #2d2d2d;
+  outline-offset: 2px;
+}
+
+.poc-form-errors ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+/* A button, not a link: it moves focus within the page rather than navigating,
+ * and Form.io's generated element ids are random, so there is no stable
+ * fragment to point an href at. Styled to read as a link. */
+.poc-form-errors button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: #a12622;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .formio-form .form-control.dropdown {
   background: #ffffff;
   border: 1px solid #605e5c;

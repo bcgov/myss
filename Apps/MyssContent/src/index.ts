@@ -1,191 +1,86 @@
 import type { Core } from "@strapi/strapi";
 
-// The Bus Pass form definition lives in its own JSON file so content and form
-// structure can be reviewed separately from the Strapi bootstrap code.
 import busPassFormSpec from "./buspassform.json";
+import { seededForms, type Json } from "./lib/form-spec-seed-data";
+import { seededRates } from "./lib/eligibility-rate-seed-data";
 
 const FORM_SPEC_UID = "api::form-spec.form-spec";
+const ELIGIBILITY_RATE_UID = "api::eligibility-rate.eligibility-rate";
 
-type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
-
-// POC test form. v1 is seeded here so a fresh database has a working form;
-// later versions are authored through the admin panel as new entries.
-const testFormSpecV1: Json = {
-  display: "form",
-  components: [
-    {
-      type: "textfield",
-      key: "firstName",
-      label: "First name",
-      input: true,
-      validate: { required: true },
-    },
-    {
-      type: "textfield",
-      key: "lastName",
-      label: "Last name",
-      input: true,
-      validate: { required: true },
-    },
-    {
-      type: "select",
-      key: "relationship",
-      label: "Relationship status",
-      input: true,
-      widget: "choicesjs",
-      data: {
-        values: [
-          { value: "single", label: "Single" },
-          { value: "couple", label: "Married / in a relationship" },
-        ],
-      },
-      validate: { required: true },
-    },
-    {
-      type: "textfield",
-      key: "spouseName",
-      label: "Spouse name",
-      input: true,
-      conditional: { show: true, when: "relationship", eq: "couple" },
-    },
-    {
-      type: "number",
-      key: "monthlyIncome",
-      label: "Monthly income ($)",
-      input: true,
-      validate: { required: true, min: 0 },
-    },
-    {
-      type: "checkbox",
-      key: "declaration",
-      label: "I declare the information provided is true and complete",
-      input: true,
-      validate: { required: true },
-    },
-    {
-      type: "button",
-      key: "submit",
-      action: "submit",
-      label: "Submit",
-      input: true,
-    },
-  ],
-};
-
-// v2 adds a "Contact email" field and rewords the income label. Seeded as a
-// separate entry; v1 stays as-is so old submissions keep rendering with it.
-const testFormSpecV2: Json = {
-  display: "form",
-  components: [
-    {
-      type: "textfield",
-      key: "firstName",
-      label: "First name",
-      input: true,
-      validate: { required: true },
-    },
-    {
-      type: "textfield",
-      key: "lastName",
-      label: "Last name",
-      input: true,
-      validate: { required: true },
-    },
-    {
-      type: "select",
-      key: "relationship",
-      label: "Relationship status",
-      input: true,
-      widget: "choicesjs",
-      data: {
-        values: [
-          { value: "single", label: "Single" },
-          { value: "couple", label: "Married / in a relationship" },
-        ],
-      },
-      validate: { required: true },
-    },
-    {
-      type: "textfield",
-      key: "spouseName",
-      label: "Spouse name",
-      input: true,
-      conditional: { show: true, when: "relationship", eq: "couple" },
-    },
-    {
-      type: "email",
-      key: "contactEmail",
-      label: "Contact email (new in v2)",
-      input: true,
-    },
-    {
-      type: "number",
-      key: "monthlyIncome",
-      label: "Total monthly income ($) (reworded in v2)",
-      input: true,
-      validate: { required: true, min: 0 },
-    },
-    {
-      type: "checkbox",
-      key: "declaration",
-      label: "I declare the information provided is true and complete",
-      input: true,
-      validate: { required: true },
-    },
-    {
-      type: "button",
-      key: "submit",
-      action: "submit",
-      label: "Submit",
-      input: true,
-    },
-  ],
-};
-
-async function grantPublicRead(strapi: Core.Strapi) {
-  // POC only: lets the MyssApi spec proxy read without a token. Switch to an
-  // API token before deploying beyond local dev.
+// Phase 0: form specs and the eligibility rate table are read with a scoped,
+// read-only Strapi API token held by MyssApi (Strapi:ApiToken), so the Public
+// role must NOT be able to read them. This actively revokes the grant rather
+// than merely no longer creating it, because earlier boots of this app wrote
+// those permission rows into the database — removing the code that created them
+// would leave the API exactly as open as before, in a way that reads as fixed.
+//
+// Idempotent and safe on a fresh database: nothing to revoke is the normal case.
+async function revokePublicRead(strapi: Core.Strapi) {
   const publicRole = await strapi.db
     .query("plugin::users-permissions.role")
     .findOne({ where: { type: "public" } });
   if (!publicRole) return;
 
-  for (const action of [`${FORM_SPEC_UID}.find`, `${FORM_SPEC_UID}.findOne`]) {
-    const existing = await strapi.db
-      .query("plugin::users-permissions.permission")
-      .findOne({ where: { action, role: publicRole.id } });
-    if (!existing) {
-      await strapi.db
+  for (const uid of [FORM_SPEC_UID, ELIGIBILITY_RATE_UID]) {
+    for (const action of [`${uid}.find`, `${uid}.findOne`]) {
+      const existing = await strapi.db
         .query("plugin::users-permissions.permission")
-        .create({ data: { action, role: publicRole.id } });
+        .findOne({ where: { action, role: publicRole.id } });
+      if (existing) {
+        await strapi.db
+          .query("plugin::users-permissions.permission")
+          .delete({ where: { id: existing.id } });
+        strapi.log.info(`Revoked public permission ${action}`);
+      }
     }
   }
 }
 
-// Creates any missing seeded versions, one entry per version. Existing
-// entries are left untouched.
-async function seedTestForm(strapi: Core.Strapi) {
-  const versions: Array<{ version: number; spec: Json }> = [
-    { version: 1, spec: testFormSpecV1 },
-    { version: 2, spec: testFormSpecV2 },
-  ];
+// Creates any missing seeded versions, one entry per version, across every
+// seeded form. Existing entries are left untouched.
+async function seedForms(strapi: Core.Strapi) {
+  for (const { formSpecId, title, versions } of seededForms) {
+    for (const { version, spec } of versions) {
+      const existing = await strapi.documents(FORM_SPEC_UID).findFirst({
+        filters: { formSpecId, version },
+      });
+      if (existing) continue;
 
-  for (const { version, spec } of versions) {
-    const existing = await strapi.documents(FORM_SPEC_UID).findFirst({
-      filters: { formSpecId: "poc-test-form", version },
+      await strapi.documents(FORM_SPEC_UID).create({
+        data: {
+          formSpecId,
+          version,
+          title,
+          spec,
+        },
+        status: "published",
+      });
+      strapi.log.info(`Seeded form-spec ${formSpecId} v${version}`);
+    }
+  }
+}
+
+// Creates any missing seeded rate tables (create-only-if-missing, keyed by
+// effectiveDate), one published entry each. Existing entries are left untouched.
+async function seedRates(strapi: Core.Strapi) {
+  for (const { effectiveDate, incomeRows, assetLimits } of seededRates) {
+    const existing = await strapi.documents(ELIGIBILITY_RATE_UID).findFirst({
+      filters: { effectiveDate },
     });
     if (existing) continue;
 
-    await strapi.documents(FORM_SPEC_UID).create({
+    await strapi.documents(ELIGIBILITY_RATE_UID).create({
       data: {
-        formSpecId: "poc-test-form",
-        version,
-        title: "POC test form",
-        spec,
+        effectiveDate,
+        // The seed keeps precise readonly types for its own tests; Strapi's JSON
+        // columns take the repo's permissive `Json` (the same widening seedForms
+        // does with `spec`).
+        incomeRows: incomeRows as unknown as Json,
+        assetLimits: assetLimits as unknown as Json,
       },
       status: "published",
     });
-    strapi.log.info(`Seeded form-spec poc-test-form v${version}`);
+    strapi.log.info(`Seeded eligibility-rate ${effectiveDate}`);
   }
 }
 
@@ -215,8 +110,9 @@ export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
 
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
-    await grantPublicRead(strapi);
-    await seedTestForm(strapi);
+    await revokePublicRead(strapi);
+    await seedForms(strapi);
     await seedBusPassForm(strapi);
+    await seedRates(strapi);
   },
 };

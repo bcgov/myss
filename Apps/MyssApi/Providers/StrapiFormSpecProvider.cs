@@ -1,7 +1,9 @@
 namespace Myss.Api.Providers
 {
     using System;
+    using System.Net;
     using System.Net.Http;
+    using System.Net.Http.Headers;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
@@ -32,6 +34,25 @@ namespace Myss.Api.Providers
             _logger = logger;
             _httpClient = httpClient;
             _httpClient.BaseAddress = new Uri(configuration.GetValue<string>("Strapi:BaseUrl") ?? "http://localhost:1337");
+
+            // Strapi's Public role no longer carries form-spec.find/findOne, so
+            // reads are authenticated with a scoped read-only API token. The
+            // token is deliberately NOT defaulted: an unset value must fail
+            // loudly as a 403 from Strapi rather than silently fall back to
+            // anonymous access that only works while someone forgot to revoke
+            // the public grant.
+            string? apiToken = configuration.GetValue<string>("Strapi:ApiToken");
+            if (string.IsNullOrWhiteSpace(apiToken))
+            {
+                _logger.LogWarning(
+                    "Strapi:ApiToken is not configured. Form-spec reads will be anonymous and will fail "
+                    + "unless the Public role still grants form-spec find/findOne.");
+            }
+            else
+            {
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", apiToken.Trim());
+            }
         }
 
         /// <inheritdoc/>
@@ -59,6 +80,17 @@ namespace Myss.Api.Providers
                     "Content engine returned {StatusCode} for form-spec query {Query}",
                     (int)response.StatusCode,
                     query);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized
+                    || response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    // The single most likely cause, and otherwise a slow diagnosis:
+                    // the token is missing, mistyped, revoked, or lacks find/findOne
+                    // on form-spec.
+                    _logger.LogWarning(
+                        "The content engine rejected the request as unauthorized. Check that Strapi:ApiToken "
+                        + "is set and that the token grants find and findOne on form-spec.");
+                }
             }
 
             response.EnsureSuccessStatusCode();

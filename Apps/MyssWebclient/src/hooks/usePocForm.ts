@@ -7,10 +7,17 @@ import {
   submitForm,
 } from "@/api/forms";
 
-// React-query hooks over the forms API: spec fetch, submission list and
-// detail, and the submit mutation.
+// These endpoints are not in the generated client yet. Once the forms API
+// stabilises, regenerate the schema and replace these fetches with the SDK.
+//
+// Because these are raw fetches, the Bearer interceptor in useApiAuth does not
+// apply to them — it only wraps the generated client. FormsController is
+// [Authorize], so every call here must carry authHeaders() explicitly or the
+// API answers 401. Drop the authHeaders() spreads when these move onto the SDK.
 
+export { SubmissionRejectedError } from "@/api/forms";
 export type {
+  FormValidationError,
   FormSpecPayload,
   FormSubmissionPayload,
   FormSubmissionSummary,
