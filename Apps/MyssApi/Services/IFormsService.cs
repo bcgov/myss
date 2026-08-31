@@ -48,6 +48,14 @@ namespace Myss.Api.Services
         Task<FormSubmissionResponseModel?> GetBusPassSubmissionForPdfAsync(Guid id, CancellationToken cancellationToken);
 
         /// <summary>
+        /// Generates the BC Bus Pass PDF for a stored submission when the submission is valid for that form.
+        /// </summary>
+        /// <param name="id">The submission identifier.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The PDF bytes, or null when the submission is unknown or not a BC bus pass submission.</returns>
+        Task<byte[]?> GetBusPassSubmissionPdfAsync(Guid id, CancellationToken cancellationToken);
+
+        /// <summary>
         /// Lists submissions for a form, newest first (metadata only).
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>

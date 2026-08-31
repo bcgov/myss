@@ -2,7 +2,9 @@ namespace Myss.Api.Services
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
+    using System.Reflection;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
@@ -18,9 +20,14 @@ namespace Myss.Api.Services
     /// </summary>
     public class FormsService : IFormsService
     {
+        // Matches the .odt's build action in MyssApi.csproj (EmbeddedResource Templates\*.odt);
+        // the manifest name is the assembly's root namespace plus the folder and file name.
+        private const string BusPassTemplateResourceName = "Myss.Api.Templates.bus-pass.odt";
+
         private readonly ILogger<FormsService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly IFormSpecProvider _formSpecProvider;
+        private readonly IPdfProvider _pdfProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -28,14 +35,17 @@ namespace Myss.Api.Services
         /// <param name="logger">Injected Logger Provider.</param>
         /// <param name="dbContext">Injected forms db context.</param>
         /// <param name="formSpecProvider">Injected form spec provider.</param>
+        /// <param name="pdfProvider">Injected PDF provider.</param>
         public FormsService(
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
-            IFormSpecProvider formSpecProvider)
+            IFormSpecProvider formSpecProvider,
+            IPdfProvider pdfProvider)
         {
             _logger = logger;
             _dbContext = dbContext;
             _formSpecProvider = formSpecProvider;
+            _pdfProvider = pdfProvider;
         }
 
         /// <inheritdoc/>
@@ -169,6 +179,27 @@ namespace Myss.Api.Services
         }
 
         /// <inheritdoc/>
+        public async Task<byte[]?> GetBusPassSubmissionPdfAsync(Guid id, CancellationToken cancellationToken)
+        {
+            FormSubmissionResponseModel? submission = await GetBusPassSubmissionForPdfAsync(id, cancellationToken);
+            if (submission is null)
+            {
+                return null;
+            }
+
+            byte[] template = await LoadTemplateAsync(cancellationToken);
+            Dictionary<string, object?> data = BusPassPdfDataBuilder.Build(submission.Answers);
+            byte[] pdf = await _pdfProvider.GenerateFromOdtAsync(template, data, cancellationToken);
+
+            _logger.LogInformation(
+                "Generated bus pass PDF for submission {SubmissionId} ({Bytes} bytes)",
+                id,
+                pdf.Length);
+
+            return pdf;
+        }
+
+        /// <inheritdoc/>
         public async Task<IReadOnlyList<FormSubmissionSummaryModel>> ListSubmissionsAsync(
             string formSpecId,
             CancellationToken cancellationToken
@@ -186,6 +217,21 @@ namespace Myss.Api.Services
                     SubmittedAt = s.SubmittedAt,
                 })
                 .ToListAsync(cancellationToken);
+        }
+
+        private static async Task<byte[]> LoadTemplateAsync(CancellationToken cancellationToken)
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            await using Stream? stream = assembly.GetManifestResourceStream(BusPassTemplateResourceName);
+            if (stream is null)
+            {
+                throw new InvalidOperationException(
+                    $"Embedded ODT template '{BusPassTemplateResourceName}' was not found.");
+            }
+
+            await using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            return buffer.ToArray();
         }
 
         private static FormSubmissionResponseModel ToResponse(FormSubmission submission, FormSpecModel? spec)

@@ -26,25 +26,18 @@ namespace Myss.Api.Controllers
     [Authorize]
     public class BusPassController : Controller
     {
-        // Matches the .odt's build action in MyssApi.csproj (EmbeddedResource Templates\*.odt);
-        // the manifest name is the assembly's root namespace plus the folder and file name.
-        private const string TemplateResourceName = "Myss.Api.Templates.bus-pass.odt";
-
         private readonly ILogger<BusPassController> _logger;
         private readonly IFormsService _formsService;
-        private readonly IPdfProvider _pdfProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BusPassController"/> class.
         /// </summary>
         /// <param name="logger">Injected Logger Provider.</param>
         /// <param name="formsService">Injected Forms Service.</param>
-        /// <param name="pdfProvider">Injected PDF Provider.</param>
-        public BusPassController(ILogger<BusPassController> logger, IFormsService formsService, IPdfProvider pdfProvider)
+        public BusPassController(ILogger<BusPassController> logger, IFormsService formsService)
         {
             _logger = logger;
             _formsService = formsService;
-            _pdfProvider = pdfProvider;
         }
 
         /// <summary>
@@ -59,35 +52,18 @@ namespace Myss.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetSubmissionPdf(Guid id, CancellationToken cancellationToken)
         {
-            FormSubmissionResponseModel? submission = await _formsService.GetBusPassSubmissionForPdfAsync(id, cancellationToken);
-            if (submission is null)
+            byte[]? pdf = await _formsService.GetBusPassSubmissionPdfAsync(id, cancellationToken);
+            if (pdf is null)
             {
                 return NotFound();
             }
 
-            byte[] template = await LoadTemplateAsync(cancellationToken);
-            Dictionary<string, object?> data = BusPassPdfDataBuilder.Build(submission.Answers);
-            byte[] pdf = await _pdfProvider.GenerateFromOdtAsync(template, data, cancellationToken);
-
             _logger.LogInformation(
-                "Generated bus pass PDF for submission {SubmissionId} ({Bytes} bytes)", id, pdf.Length);
+                "Served bus pass PDF for submission {SubmissionId} ({Bytes} bytes)",
+                id,
+                pdf.Length);
 
             return File(pdf, "application/pdf", $"bus-pass-{id:N}.pdf");
-        }
-
-        private static async Task<byte[]> LoadTemplateAsync(CancellationToken cancellationToken)
-        {
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            await using Stream? stream = assembly.GetManifestResourceStream(TemplateResourceName);
-            if (stream is null)
-            {
-                throw new InvalidOperationException(
-                    $"Embedded ODT template '{TemplateResourceName}' was not found.");
-            }
-
-            await using var buffer = new MemoryStream();
-            await stream.CopyToAsync(buffer, cancellationToken);
-            return buffer.ToArray();
         }
     }
 }
