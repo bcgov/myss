@@ -20,14 +20,13 @@ namespace Myss.Api.Services
     /// </summary>
     public class FormsService : IFormsService
     {
-        // Matches the .odt's build action in MyssApi.csproj (EmbeddedResource Templates\*.odt);
-        // the manifest name is the assembly's root namespace plus the folder and file name.
-        private const string BusPassTemplateResourceName = "Myss.Api.Templates.bus-pass.odt";
+        private const string BusPassTemplateName = "bus-pass.odt";
 
         private readonly ILogger<FormsService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly IFormSpecProvider _formSpecProvider;
         private readonly IPdfProvider _pdfProvider;
+        private readonly ITemplateProvider _templateProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -40,12 +39,14 @@ namespace Myss.Api.Services
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
             IFormSpecProvider formSpecProvider,
-            IPdfProvider pdfProvider)
+            IPdfProvider pdfProvider,
+            ITemplateProvider templateProvider)
         {
             _logger = logger;
             _dbContext = dbContext;
             _formSpecProvider = formSpecProvider;
             _pdfProvider = pdfProvider;
+            _templateProvider = templateProvider;
         }
 
         /// <inheritdoc/>
@@ -187,7 +188,7 @@ namespace Myss.Api.Services
                 return null;
             }
 
-            byte[] template = await LoadTemplateAsync(cancellationToken);
+            byte[] template = await _templateProvider.GetTemplateAsync(BusPassTemplateName, cancellationToken);
             Dictionary<string, object?> data = BusPassPdfDataBuilder.Build(submission.Answers);
             byte[] pdf = await _pdfProvider.GenerateFromOdtAsync(template, data, cancellationToken);
 
@@ -217,21 +218,6 @@ namespace Myss.Api.Services
                     SubmittedAt = s.SubmittedAt,
                 })
                 .ToListAsync(cancellationToken);
-        }
-
-        private static async Task<byte[]> LoadTemplateAsync(CancellationToken cancellationToken)
-        {
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            await using Stream? stream = assembly.GetManifestResourceStream(BusPassTemplateResourceName);
-            if (stream is null)
-            {
-                throw new InvalidOperationException(
-                    $"Embedded ODT template '{BusPassTemplateResourceName}' was not found.");
-            }
-
-            await using var buffer = new MemoryStream();
-            await stream.CopyToAsync(buffer, cancellationToken);
-            return buffer.ToArray();
         }
 
         private static FormSubmissionResponseModel ToResponse(FormSubmission submission, FormSpecModel? spec)

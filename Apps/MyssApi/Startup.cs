@@ -57,6 +57,7 @@ namespace Myss.Api
                 options.UseNpgsql(this.startupConfig.Configuration.GetConnectionString("FormsDb")));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
             services.AddHttpClient<IPdfProvider, CdogsPdfProvider>();
+            services.AddSingleton<ITemplateProvider, EmbeddedTemplateProvider>();
             services.AddScoped<IFormsService, FormsService>();
 
             // Eligibility Estimator (Option B): the browser computes the estimate;
