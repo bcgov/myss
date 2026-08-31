@@ -6,6 +6,7 @@ import "@formio/js/dist/formio.form.min.css";
 import {
   calculateEstimate,
   mapAnswersToEstimate,
+  missingRequiredCoupleAnswers,
   screenPreCheck,
   useEstimatorRates,
   useEstimatorSpec,
@@ -41,7 +42,8 @@ type Outcome =
       result: EligibilityResult;
       answers: Record<string, unknown>;
     }
-  | { kind: "prescreen" };
+  | { kind: "prescreen" }
+  | { kind: "incomplete" };
 
 // Card amount keeps cents ($1,060.00); the "Your information" echo is whole
 // dollars ($500), matching the 0826 frames.
@@ -142,6 +144,15 @@ export default function EligibilityEstimatorPage() {
       return;
     }
 
+    // partnerPwd is a yes/no radio that carries no server-side `required` (it
+    // would break single applicants — see missingRequiredCoupleAnswers). An
+    // unanswered spouse-disability question must NOT be silently scored as "No",
+    // so refuse to compute until a couple has answered it.
+    if (missingRequiredCoupleAnswers(answers).length > 0) {
+      setOutcome({ kind: "incomplete" });
+      return;
+    }
+
     // The form is only interactable once rates have loaded (guarded below), so
     // rates.data is present here; the check keeps TypeScript honest.
     if (!rates.data) return;
@@ -181,7 +192,15 @@ export default function EligibilityEstimatorPage() {
         </div>
       )}
 
-      {outcome && (
+      {outcome?.kind === "incomplete" && (
+        <p role="alert" className={styles.error}>
+          Please answer whether your spouse plans to apply for the Persons with
+          Disabilities (PWD) designation. We need this to estimate your
+          eligibility.
+        </p>
+      )}
+
+      {outcome && outcome.kind !== "incomplete" && (
         <section className={styles.result} aria-live="polite">
           <h2 className={styles.resultTitle} tabIndex={-1} ref={resultHeadingRef}>
             Your eligibility estimate

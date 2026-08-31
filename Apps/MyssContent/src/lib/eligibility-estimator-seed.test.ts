@@ -209,7 +209,7 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
     expect(keysOf(v2).slice(0, 2)).toEqual(["residesInBc", "hasEligibleStatus"]);
   });
 
-  it("makes each pre-check a required yes/no radio with a tooltip, not conditional", () => {
+  it("makes each pre-check a required yes/no radio, not conditional", () => {
     for (const key of PRE_CHECK_FIELDS) {
       const field = componentByKey(v2, key);
       expect(field.type).toBe("radio");
@@ -219,9 +219,13 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
         "true",
         "false",
       ]);
+      // A tooltip is optional per pre-check (residesInBc has none by design);
+      // where one is present it must be a non-empty string.
       const tooltip = (field as { tooltip?: unknown }).tooltip;
-      expect(typeof tooltip).toBe("string");
-      expect((tooltip as string).length).toBeGreaterThan(0);
+      if (tooltip !== undefined) {
+        expect(typeof tooltip).toBe("string");
+        expect((tooltip as string).length).toBeGreaterThan(0);
+      }
     }
   });
 

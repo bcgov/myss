@@ -169,6 +169,33 @@ export function mapAnswersToEstimate(
   };
 }
 
+/** A yes/no radio counts as answered only when it holds an explicit true/false. */
+function isYesNoAnswered(value: unknown): boolean {
+  return value === true || value === false || value === "true" || value === "false";
+}
+
+/**
+ * Spouse fields carry NO server-side `validate.required` on purpose: partnerPwd
+ * uses an advanced (json-logic) conditional, and MyssApi's FormSpecValidator only
+ * exempts SIMPLE-conditional fields from the required check, so a required
+ * partnerPwd would reject a single applicant. But partnerPwd is a yes/no radio,
+ * where an OMITTED answer is NOT the same as "No" — `mapAnswersToEstimate` would
+ * silently coerce it to `false` and understate a couple's estimate.
+ *
+ * This is the client-side gate that closes that gap without touching the spec:
+ * for a couple, the estimator must not compute until the spouse-disability
+ * question has actually been answered. Returns the keys still missing (empty is
+ * "ok to compute"). Singles never need spouse answers, so they return [].
+ */
+export function missingRequiredCoupleAnswers(
+  answers: Record<string, unknown>,
+): string[] {
+  if (householdTypeFrom(answers.relationshipStatus) !== "Couple") return [];
+  const missing: string[] = [];
+  if (!isYesNoAnswered(answers.partnerPwd)) missing.push("partnerPwd");
+  return missing;
+}
+
 /**
  * The residency/citizenship hard screen. Passes only when BOTH answers are
  * "Yes"; a "No" to either fails the screen. The page runs this first and, on a

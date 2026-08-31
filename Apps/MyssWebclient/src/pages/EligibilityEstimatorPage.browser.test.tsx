@@ -288,6 +288,66 @@ test("shows the ineligible ($0) result with the hardship link when income exceed
     .toBeVisible();
 });
 
+test("a couple who leaves the spouse-PWD question blank is blocked, not silently scored as 'No'", async () => {
+  const screen = await renderPage();
+  await expect
+    .element(screen.getByText("What is your relationship status?"))
+    .toBeVisible();
+
+  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc
+  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus
+  await screen.getByRole("radio", { name: /^Married$/ }).click();
+  await screen.getByRole("radio", { name: /^No$/ }).nth(2).click(); // pwd (applicant)
+
+  // Spouse section is revealed, but partnerPwd carries NO server-side required
+  // (it would break single applicants), so Form.io lets the form submit with it
+  // blank. The client-side guard must catch that rather than mapping it to false.
+  await expect
+    .element(
+      screen.getByText(
+        /Does your spouse plan to apply for the Persons with Disabilities/,
+      ),
+    )
+    .toBeVisible();
+
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+
+  // The incomplete alert appears and NO estimate is produced.
+  await expect
+    .element(screen.getByText(/Please answer whether your spouse plans to apply/))
+    .toBeVisible();
+  expect(document.body.textContent).not.toContain("/ month");
+});
+
+test("the same couple gets an estimate once the spouse-PWD question is answered", async () => {
+  const screen = await renderPage();
+  await expect
+    .element(screen.getByText("What is your relationship status?"))
+    .toBeVisible();
+
+  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc
+  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus
+  await screen.getByRole("radio", { name: /^Married$/ }).click();
+  await screen.getByRole("radio", { name: /^No$/ }).nth(2).click(); // pwd (applicant)
+
+  await expect
+    .element(
+      screen.getByText(
+        /Does your spouse plan to apply for the Persons with Disabilities/,
+      ),
+    )
+    .toBeVisible();
+  await screen.getByRole("radio", { name: /^No$/ }).nth(3).click(); // partnerPwd
+
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+
+  // Guard cleared → the estimate computes (couple, family size 2, no income).
+  await expect
+    .element(screen.getByText("You may be eligible for assistance"))
+    .toBeVisible();
+  await expect.element(screen.getByText(/\/ month/)).toBeVisible();
+});
+
 test("a pre-check 'No' short-circuits with no estimate computed", async () => {
   const screen = await renderPage();
   await expect

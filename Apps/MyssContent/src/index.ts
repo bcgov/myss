@@ -36,12 +36,17 @@ async function revokePublicRead(strapi: Core.Strapi) {
   }
 }
 
-// Publishes every seeded form version (an upsert). A version missing from the
-// database is created; a version already present is re-published ONLY when the
-// seed's title or spec has actually changed. So editing the seed file and
-// restarting Strapi rolls the change out with no manual delete. Versions
-// authored in the admin panel (a version number the seed does not define) are
-// never touched, because the lookup is keyed by formSpecId + version.
+// Publishes every seeded form version. A version missing from the database is
+// created; a version already present is left untouched. Published form-spec
+// versions are an immutable contract for the submissions rendered against them
+// (form-spec-rules.ts rule (e), and the beforeDelete warning), so a CHANGED
+// spec must roll out as a NEW version entry in the seed — never by mutating an
+// existing one. Mutation is impossible anyway: the lifecycle rejects a changed
+// published spec, and delete-then-create fails the version-sequence check when
+// a later version exists. If a seed diverges from an already-published version,
+// bootstrap refuses to boot rather than silently disagree with the database.
+// Versions authored in the admin panel (a version number the seed does not
+// define) are never touched, because the lookup is keyed by formSpecId + version.
 async function seedForms(strapi: Core.Strapi) {
   for (const { formSpecId, title, versions } of seededForms) {
     for (const { version, spec } of versions) {
@@ -50,11 +55,16 @@ async function seedForms(strapi: Core.Strapi) {
       });
 
       if (existing) {
-        if (existing.title === title && jsonEqual(existing.spec, spec)) continue;
-        await strapi.documents(FORM_SPEC_UID).delete({
-          documentId: existing.documentId,
-        });
-        strapi.log.info(`Re-seeding changed form-spec ${formSpecId} v${version}`);
+        // Spec is the immutable contract; title is just an admin-panel label,
+        // so a title-only difference is tolerated and left as-is.
+        if (!jsonEqual(existing.spec, spec)) {
+          throw new Error(
+            `Seed for form-spec ${formSpecId} v${version} differs from the ` +
+              `already-published spec, which is immutable. Roll the change out ` +
+              `as a new version entry in the seed instead of changing v${version}.`,
+          );
+        }
+        continue;
       }
 
       await strapi.documents(FORM_SPEC_UID).create({
@@ -97,10 +107,16 @@ async function seedRates(strapi: Core.Strapi) {
       ) {
         continue;
       }
-      await strapi.documents(ELIGIBILITY_RATE_UID).delete({
+      // Update in place and re-publish rather than delete-then-create, so an
+      // interrupted or failing reseed can never leave the live rate table
+      // missing (MyssApi reads it live).
+      await strapi.documents(ELIGIBILITY_RATE_UID).update({
         documentId: existing.documentId,
+        data,
+        status: "published",
       });
-      strapi.log.info(`Re-seeding changed eligibility-rate ${effectiveDate}`);
+      strapi.log.info(`Re-seeded changed eligibility-rate ${effectiveDate}`);
+      continue;
     }
 
     await strapi.documents(ELIGIBILITY_RATE_UID).create({

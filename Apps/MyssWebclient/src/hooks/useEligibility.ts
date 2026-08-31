@@ -16,6 +16,7 @@ export {
   getEstimatorSpec,
   getEstimatorRates,
   mapAnswersToEstimate,
+  missingRequiredCoupleAnswers,
   screenPreCheck,
 } from "@/api/eligibility";
 export type {
