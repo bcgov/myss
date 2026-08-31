@@ -45,4 +45,9 @@
         <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
         <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     </ItemGroup>
+
+    <ItemGroup>
+        <!-- ODT templates: embedded for use in API loading -->
+        <EmbeddedResource Include="Templates\*.odt" />
+    </ItemGroup>
 </Project>

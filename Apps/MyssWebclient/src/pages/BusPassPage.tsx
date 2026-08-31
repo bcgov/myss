@@ -1,9 +1,29 @@
 import { Link } from "react-router";
 
+import { authHeaders } from "@/auth/accessToken";
 import BusPassForm from "@/components/BusPassForm";
+import { API_URL } from "@/constants";
 import { useSubmissions } from "@/hooks/usePocForm";
 
 const FORM_SPEC_ID = "bc-bus-pass";
+
+async function openSubmissionPdf(id: string) {
+  const res = await fetch(`${API_URL}/v1/bus-pass/submissions/${id}/pdf`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error(`PDF fetch failed (${res.status})`);
+  }
+
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const popup = window.open(objectUrl, "_blank", "noopener,noreferrer");
+
+  if (!popup) {
+    window.location.href = objectUrl;
+  }
+}
 
 export default function BusPassPage() {
   const { data: submissions } = useSubmissions(FORM_SPEC_ID);
@@ -19,16 +39,36 @@ export default function BusPassPage() {
         <h3>Previous submissions</h3>
         {submissions?.length === 0 && <p>None yet.</p>}
         {submissions && submissions.length > 0 && (
-          <ul>
-            {submissions.map((s) => (
-              <li key={s.id}>
-                <Link to={`/techdemos/forms/submissions/${s.id}`}>
-                  {new Date(s.submittedAt).toLocaleString()} - spec v
-                  {s.formSpecVersion} - <code>{s.id.slice(0, 8)}…</code>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Submission</th>
+                <th scope="col">PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {submissions.map((s) => (
+                <tr key={s.id}>
+                  <td>
+                    <Link to={`/techdemos/forms/submissions/${s.id}`}>
+                      {new Date(s.submittedAt).toLocaleString()} - spec v
+                      {s.formSpecVersion} - <code>{s.id.slice(0, 8)}…</code>
+                    </Link>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void openSubmissionPdf(s.id);
+                      }}
+                    >
+                      View PDF
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
     </>
