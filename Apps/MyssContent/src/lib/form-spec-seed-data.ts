@@ -312,9 +312,16 @@ const yesNoValues: Json = [
   { label: "No", value: "false" },
 ];
 
-/** Reveal the spouse fields for a partnered relationship (married OR marriage-like). */
+/**
+ * Reveal the spouse fields for a partnered relationship (married OR marriage-like).
+ *
+ * The `var` MUST be `data.relationshipStatus`, not `relationshipStatus`: Form.io
+ * evaluates `conditional.json` with jsonLogic against the context
+ * `{ data, row, form, _ }`, so the submission answers live under `data`. A bare
+ * `relationshipStatus` resolves to undefined and the section never reveals.
+ */
 const partneredConditional: Json = {
-  json: { in: [{ var: "relationshipStatus" }, ["married", "marriagelike"]] },
+  json: { in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]] },
 };
 
 export const eligibilityEstimatorSpecV1: Json = {
@@ -473,8 +480,6 @@ export const eligibilityEstimatorSpecV2: Json = {
       type: "radio",
       key: "residesInBc",
       label: "Do you currently reside in British Columbia?",
-      tooltip:
-        "You must be a resident of British Columbia to receive assistance from this ministry.",
       input: true,
       values: yesNoValues,
       validate: { required: true },
@@ -488,6 +493,22 @@ export const eligibilityEstimatorSpecV2: Json = {
       input: true,
       values: yesNoValues,
       validate: { required: true },
+    },
+    {
+      type: "panel",
+      key: "statusHelp",
+      title: 'What does "status that allows you to live in Canada" mean?',
+      collapsible: true,
+      collapsed: true,
+      input: false,
+      components: [
+        {
+          type: "content",
+          key: "statusHelpBody",
+          input: false,
+          html: "<p>For example: a Canadian citizen, permanent resident, Convention refugee, or another immigration status that allows you to live in Canada.</p>",
+        },
+      ],
     },
     {
       type: "radio",
@@ -508,6 +529,8 @@ export const eligibilityEstimatorSpecV2: Json = {
       type: "number",
       key: "dependentChildren",
       label: "How many dependent children under the age of 19 live with you?",
+      description:
+        "The estimate is based on a maximum family size of 7 people. Adding more than 7 family members will not change the estimated benefit amount.",
       input: true,
       defaultValue: 0,
       validate: { min: 0 },
@@ -531,6 +554,12 @@ export const eligibilityEstimatorSpecV2: Json = {
       input: true,
       values: yesNoValues,
       conditional: partneredConditional,
+    },
+    {
+      type: "content",
+      key: "assetsSectionHeading",
+      input: false,
+      html: "<h2>Do you have assets or receive income?</h2>",
     },
     {
       type: "number",
@@ -566,6 +595,13 @@ export const eligibilityEstimatorSpecV2: Json = {
       input: true,
       defaultValue: 0,
       validate: { min: 0 },
+    },
+    {
+      type: "content",
+      key: "spouseSectionHeading",
+      input: false,
+      html: "<h2>Does your spouse have assets or receive income?</h2>",
+      conditional: partneredConditional,
     },
     {
       type: "number",

@@ -1,36 +1,312 @@
-/* Prod centres the form in the middle columns of the grid. */
+/* Pre-Eligibility Estimator page (MYSS-169, Option B). The form itself is
+   rendered by Form.io; these styles cover the page chrome (privacy banner,
+   required note, status accordion) and the 0826 result panel — an estimate
+   card + prose only, NO itemised breakdown table (Decision A). */
+
 .page {
-    max-width: 820px;
-    margin: 0 auto;
-    width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--layout-margin-xxlarge, 40px);
-    margin-top: var(--layout-margin-large, 24px);
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0 0 var(--layout-margin-large, 24px);
+  color: var(--typography-color-primary, #1a1a1a);
 }
 
-.section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--layout-margin-medium, 16px);
+/* Privacy banner: light panel with a BC-blue accent bar. */
+.privacyBanner {
+  border-left: 4px solid var(--surface-color-primary-button-default, #234075);
+  background: var(--surface-color-background-light-gray, #f2f2f2);
+  padding: var(--layout-margin-medium, 16px) var(--layout-margin-large, 20px);
+  margin-bottom: var(--layout-margin-medium, 16px);
 }
 
-/* Each question is a prominent heading, like prod's <h2>. */
-.question {
-    font-size: 1.5rem;
-    font-weight: 500;
-    line-height: 1.1;
-    margin: 0;
+.privacyTitle {
+  font-weight: 700;
+  margin: 0 0 4px;
 }
 
-/* Small inputs (e.g. dependent-children count) stay narrow like prod. */
-.narrowField {
-    max-width: 120px;
+.privacyBody {
+  margin: 0;
+  color: var(--typography-color-secondary, #474543);
 }
 
-.actions {
-    padding-top: var(--layout-margin-small, 8px);
+.requiredNote {
+  margin: 0 0 var(--layout-margin-large, 24px);
+  font-weight: 600;
+}
+
+/* Screen-reader-only utility. Form.io's label template emits
+   <span class="visually-hidden">, numeric only,</span> on number fields; the
+   bundled Bootstrap 3 defines only .sr-only, so without this the hint renders
+   as visible text. Hide it visually, keep it for screen readers. */
+:global(.visually-hidden) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Form.io host — space the fields out and keep number inputs from stretching
+   full width where the design keeps them contained. */
+.formHost {
+  margin-top: var(--layout-margin-medium, 16px);
+}
+
+.loading,
+.error {
+  margin-top: var(--layout-margin-medium, 16px);
+}
+
+.error {
+  color: var(--typography-color-danger, #ce3e39);
+  font-weight: 600;
+}
+
+/* ---- Result panel ---- */
+.result {
+  margin-top: var(--layout-margin-xxlarge, 40px);
+}
+
+.resultTitle {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 var(--layout-margin-medium, 16px);
+}
+
+/* The heading is focused after submission so AT announces the result; keep a
+   visible focus indicator for keyboard users (matches PocForm.css). Scoped to
+   :focus-visible so a mouse submit doesn't leave a stray box on the heading. */
+.resultTitle:focus-visible {
+  outline: 2px solid #2d2d2d;
+  outline-offset: 2px;
+}
+
+.estimateCard {
+  border: 1px solid var(--surface-color-border-default, #d0d5dd);
+  border-radius: 8px;
+  padding: var(--layout-margin-xlarge, 32px);
+  text-align: center;
+  margin-bottom: var(--layout-margin-large, 24px);
+}
+
+.estimateHeading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 var(--layout-margin-small, 8px);
+}
+
+.estimateLede {
+  margin: 0 0 var(--layout-margin-medium, 16px);
+}
+
+.estimateAmount {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--surface-color-primary-button-default, #1a5a96);
+  margin: 0 0 var(--layout-margin-small, 8px);
+}
+
+.perMonth {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--typography-color-primary, #1a1a1a);
+}
+
+.estimateCaveat {
+  margin: 0;
+  color: var(--typography-color-secondary, #474543);
+  font-size: 0.9rem;
+}
+
+.subHeading {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: var(--layout-margin-large, 24px) 0 var(--layout-margin-small, 8px);
+}
+
+.prose {
+  margin: 0 0 var(--layout-margin-medium, 16px);
+  line-height: 1.6;
+}
+
+.inlineLink {
+  color: var(--surface-color-primary-button-default, #1a5a96);
+  text-decoration: underline;
+}
+
+/* "Your information" echo (replaces the removed itemised table). */
+.yourInfo {
+  margin-top: var(--layout-margin-medium, 16px);
+}
+
+.infoList {
+  margin: 0;
+}
+
+.infoRow {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 4px;
+}
+
+.infoRow dt {
+  font-weight: 600;
+}
+
+.infoRow dt::after {
+  content: ":";
+}
+
+.infoRow dd {
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Form.io render fixes for the 0827 design. These target Form.io's own global
+   class names, scoped under the estimator form host so nothing leaks to other
+   pages. See the 0827 Figma (eligibility-estimator/0827).
+   --------------------------------------------------------------------------- */
+
+/* Status explainer: Form.io renders the collapsible panel as a Bootstrap .card,
+   but the bundled Bootstrap 3 has no .card styles and its collapse chevron uses
+   an icon font this app doesn't load. So we draw the bordered box and a chevron
+   (pure CSS, no icon font) here. */
+.formHost :global(.formio-component-panel .card) {
+  max-width: 560px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: var(--layout-margin-large, 24px);
+  background: #fff;
+}
+.formHost :global(.formio-component-panel .card-header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--typography-color-primary, #2d2d2d);
+}
+.formHost :global(.formio-component-panel .card-title) {
+  margin: 0;
+  font-weight: 700;
+}
+.formHost :global(.formio-component-panel .formio-collapse-icon) {
+  display: none;
+}
+.formHost :global(.formio-component-panel .card-header)::after {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.formHost :global(.formio-component-panel .card-header[aria-expanded="true"])::after {
+  transform: rotate(225deg);
+}
+.formHost :global(.formio-component-panel .card-body) {
+  padding: 0 16px 14px;
+  color: var(--typography-color-secondary, #474543);
+}
+
+/* Money fields carry a "$" prefix (every number field except the dependent-
+   children count), drawn with a pseudo-element so no markup or re-seed is
+   needed. */
+.formHost :global(.formio-component-number:not(.formio-component-dependentChildren) [ref="element"]) {
+  position: relative;
+}
+.formHost :global(.formio-component-number:not(.formio-component-dependentChildren) [ref="element"])::before {
+  content: "$";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--typography-color-secondary, #474543);
+  pointer-events: none;
+  z-index: 2;
+}
+.formHost :global(.formio-component-number:not(.formio-component-dependentChildren) input.form-control) {
+  padding-left: 26px;
+}
+
+/* Rely on the "*All fields are required." note; hide the per-field red stars. */
+.formHost :global(.required-star) {
+  display: none !important;
+}
+.formHost :global(.field-required)::after {
+  content: none !important;
+}
+
+/* Tooltip trigger: Form.io emits <i class="bi bi-question-circle" ref="tooltip">
+   next to the label, but this app loads no Bootstrap-Icons font, so the glyph
+   is blank. Draw an outline info circle (ⓘ) in pure CSS — matching the 0827
+   design and the no-icon-font approach already used for the panel chevron. The
+   drawn "i" replaces the (absent) bi glyph; Form.io's hover tooltip is
+   unaffected. */
+.formHost :global([ref="tooltip"]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.05em;
+  height: 1.05em;
+  margin-left: 6px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: var(--typography-color-secondary, #474543);
+  font-size: 0.92em;
+  font-style: normal;
+  line-height: 1;
+  cursor: help;
+  vertical-align: -0.15em;
+}
+.formHost :global([ref="tooltip"])::before {
+  content: "i";
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+}
+
+/* Selected radios/checkboxes use the BC-blue accent, matching the design's
+   navy-filled controls (native inputs otherwise render the browser default). */
+.formHost :global(input[type="radio"]),
+.formHost :global(input[type="checkbox"]) {
+  accent-color: var(--surface-color-primary-button-default, #1a5a96);
+}
+
+/* Type hierarchy: section heading (24px) > question label (18px) > options
+   (15px). Without this, the global myss-theme rule `.radio label {font-size:16px}`
+   makes the options LARGER than the unstyled `.col-form-label` question titles
+   (which only inherit the 14px base). All scoped to `.formHost` so the shared
+   theme is untouched; the section h2 is pinned here so the order also holds on
+   mobile, where the theme drops a bare h2 to 18px. */
+.formHost :global(h2) {
+  /* Section headings ("Do you have assets…" / "Does your spouse…") match the
+     page title (.title) — same size and weight. */
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.formHost :global(.col-form-label) {
+  font-size: 1.125rem; /* 18px — question titles */
+  font-weight: 700;
+}
+.formHost :global(.radio label),
+.formHost :global(.form-check-label) {
+  font-size: 1rem; /* 16px — Yes / No and other options */
 }
