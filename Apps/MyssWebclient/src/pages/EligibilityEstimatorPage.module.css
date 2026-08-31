@@ -281,3 +281,25 @@
 .formHost :global(input[type="checkbox"]) {
   accent-color: var(--surface-color-primary-button-default, #1a5a96);
 }
+
+/* Type hierarchy: section heading (24px) > question label (18px) > options
+   (15px). Without this, the global myss-theme rule `.radio label {font-size:16px}`
+   makes the options LARGER than the unstyled `.col-form-label` question titles
+   (which only inherit the 14px base). All scoped to `.formHost` so the shared
+   theme is untouched; the section h2 is pinned here so the order also holds on
+   mobile, where the theme drops a bare h2 to 18px. */
+.formHost :global(h2) {
+  /* Section headings ("Do you have assets…" / "Does your spouse…") match the
+     page title (.title) — same size and weight. */
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.formHost :global(.col-form-label) {
+  font-size: 1.125rem; /* 18px — question titles */
+  font-weight: 700;
+}
+.formHost :global(.radio label),
+.formHost :global(.form-check-label) {
+  font-size: 1rem; /* 16px — Yes / No and other options */
+}
