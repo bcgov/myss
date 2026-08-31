@@ -65,7 +65,7 @@ namespace Myss.Api.Controllers
                 return NotFound();
             }
 
-            byte[] template = LoadTemplate();
+            byte[] template = await LoadTemplateAsync(cancellationToken);
             Dictionary<string, object?> data = BusPassPdfDataBuilder.Build(submission.Answers);
             byte[] pdf = await _pdfProvider.GenerateFromOdtAsync(template, data, cancellationToken);
 
@@ -75,18 +75,18 @@ namespace Myss.Api.Controllers
             return File(pdf, "application/pdf", $"bus-pass-{id:N}.pdf");
         }
 
-        private static byte[] LoadTemplate()
+        private static async Task<byte[]> LoadTemplateAsync(CancellationToken cancellationToken)
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
-            using Stream? stream = assembly.GetManifestResourceStream(TemplateResourceName);
+            await using Stream? stream = assembly.GetManifestResourceStream(TemplateResourceName);
             if (stream is null)
             {
                 throw new InvalidOperationException(
                     $"Embedded ODT template '{TemplateResourceName}' was not found.");
             }
 
-            using var buffer = new MemoryStream();
-            stream.CopyTo(buffer);
+            await using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
             return buffer.ToArray();
         }
     }
