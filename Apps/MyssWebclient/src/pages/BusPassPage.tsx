@@ -8,6 +8,14 @@ import { useSubmissions } from "@/hooks/usePocForm";
 const FORM_SPEC_ID = "bc-bus-pass";
 
 async function openSubmissionPdf(id: string) {
+  const popup = window.open("", "_blank");
+  if (!popup) {
+    console.warn("PDF popup was blocked by the browser.");
+    return;
+  }
+
+  popup.opener = null;
+
   try {
     const res = await fetch(`${API_URL}/v1/bus-pass/submissions/${id}/pdf`, {
       headers: authHeaders(),
@@ -15,22 +23,24 @@ async function openSubmissionPdf(id: string) {
 
     if (!res.ok) {
       console.error(`PDF fetch failed (${res.status})`);
+      popup.document.write(
+        `<html><head><title>PDF unavailable</title></head><body><h1>PDF unavailable</h1><p>The PDF could not be loaded.</p></body></html>`,
+      );
+      popup.document.close();
       return;
     }
 
     const blob = await res.blob();
     const objectUrl = URL.createObjectURL(blob);
-    const popup = window.open(objectUrl, "_blank", "noopener,noreferrer");
-
-    if (!popup) {
-      window.location.assign(objectUrl);
-      return;
-    }
-
-    // Give the new tab time to load the blob before revoking.
+    popup.document.title = "Bus pass PDF";
+    popup.location.href = objectUrl;
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
   } catch (err) {
     console.error("Failed to open submission PDF", err);
+    popup.document.write(
+      `<html><head><title>PDF unavailable</title></head><body><h1>PDF unavailable</h1><p>There was a problem opening this PDF.</p></body></html>`,
+    );
+    popup.document.close();
   }
 }
 
