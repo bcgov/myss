@@ -52,7 +52,7 @@ export function useSession(): Session {
   const auth = useAuth();
   // A disabled query (signed out) reports pending forever; buildSession only
   // treats pending as loading while actually authenticated.
-  const me = useMe(auth.isAuthenticated);
+  const me = useMe(auth.isAuthenticated, auth.user?.profile.sub);
   return buildSession(
     auth,
     () => void siteMinderLogout(auth),

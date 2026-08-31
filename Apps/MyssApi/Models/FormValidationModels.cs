@@ -53,7 +53,8 @@ namespace Myss.Api.Models
         /// <summary>Creates a refused result.</summary>
         /// <param name="errors">Every reason for refusal.</param>
         /// <returns>An invalid result.</returns>
-        public static FormSubmissionResultModel Refused(IReadOnlyList<ValidationErrorModel> errors) =>
-            new() { Errors = errors };
+        public static FormSubmissionResultModel Refused(
+            IReadOnlyList<ValidationErrorModel> errors
+        ) => new() { Errors = errors };
     }
 }

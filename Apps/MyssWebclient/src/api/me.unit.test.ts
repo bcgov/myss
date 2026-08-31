@@ -56,4 +56,15 @@ describe("fetchMe", () => {
 
     await expect(fetchMe()).rejects.toThrow(/401/);
   });
+
+  // The retry policy (useMe's shouldRetryMe) needs the status to tell a
+  // non-transient 4xx from a transient failure.
+  it("throws an HttpError carrying the HTTP status", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(403, {})));
+
+    await expect(fetchMe()).rejects.toMatchObject({
+      name: "HttpError",
+      status: 403,
+    });
+  });
 });

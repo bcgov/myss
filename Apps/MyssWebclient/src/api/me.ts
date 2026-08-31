@@ -18,12 +18,26 @@ export interface MePayload {
   idirUsername?: string | null;
 }
 
+/**
+ * Error carrying the HTTP status, so the retry policy (useMe's shouldRetryMe)
+ * can tell a non-transient 4xx from a transient network/server failure.
+ */
+export class HttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+
 export async function fetchMe(): Promise<MePayload> {
   const res = await fetch(`${API_URL}/v1/auth/me`, {
     headers: { ...authHeaders() },
   });
   if (!res.ok) {
-    throw new Error(`GET /v1/auth/me failed: ${res.status}`);
+    throw new HttpError(res.status, `GET /v1/auth/me failed: ${res.status}`);
   }
   const body = (await res.json()) as { payload: MePayload };
   return body.payload;
