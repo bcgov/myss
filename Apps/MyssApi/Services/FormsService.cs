@@ -139,6 +139,36 @@ namespace Myss.Api.Services
         }
 
         /// <inheritdoc/>
+        public async Task<FormSubmissionResponseModel?> GetBusPassSubmissionForPdfAsync(
+            Guid id,
+            CancellationToken cancellationToken)
+        {
+            FormSubmission? submission = await _dbContext.FormSubmissions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+            if (submission is null || submission.FormSpecId != BusPassPdfFieldMap.FormSpecId)
+            {
+                return null;
+            }
+
+            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(
+                submission.FormSpecId,
+                submission.FormSpecVersion,
+                cancellationToken);
+            if (spec is null)
+            {
+                _logger.LogWarning(
+                    "Archived spec {FormSpecId} v{FormSpecVersion} not found for submission {SubmissionId}",
+                    submission.FormSpecId,
+                    submission.FormSpecVersion,
+                    submission.Id);
+            }
+
+            return ToResponse(submission, spec);
+        }
+
+        /// <inheritdoc/>
         public async Task<IReadOnlyList<FormSubmissionSummaryModel>> ListSubmissionsAsync(
             string formSpecId,
             CancellationToken cancellationToken

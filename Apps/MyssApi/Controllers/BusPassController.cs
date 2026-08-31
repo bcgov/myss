@@ -59,10 +59,8 @@ namespace Myss.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetSubmissionPdf(Guid id, CancellationToken cancellationToken)
         {
-            FormSubmissionResponseModel? submission = await _formsService.GetSubmissionAsync(id, cancellationToken);
-
-            // Refuse to render a PDF built for one form's layout from another form's answers.
-            if (submission is null || submission.FormSpecId != BusPassPdfFieldMap.FormSpecId)
+            FormSubmissionResponseModel? submission = await _formsService.GetBusPassSubmissionForPdfAsync(id, cancellationToken);
+            if (submission is null)
             {
                 return NotFound();
             }
