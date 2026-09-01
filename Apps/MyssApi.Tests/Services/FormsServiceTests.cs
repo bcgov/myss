@@ -6,6 +6,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Data;
     using Myss.Api.Domain;
     using Myss.Api.Models;
+    using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
 
@@ -15,6 +16,8 @@ namespace Myss.Api.Tests.Services
     public class FormsServiceTests
     {
         private readonly FakeFormSpecProvider _provider = new();
+        private readonly IPdfProvider _pdfProvider = new UnexpectedPdfProvider();
+        private readonly ITemplateProvider _templateProvider = new UnexpectedTemplateProvider();
 
         [Fact]
         public async Task GetSubmission_FetchesArchivedVersion_NeverLatest()
@@ -25,7 +28,7 @@ namespace Myss.Api.Tests.Services
             Guid id = await SeedSubmission(db, "poc-test-form", version: 1);
             _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 1);
             _provider.LatestResult = FakeFormSpecProvider.Spec("poc-test-form", 2);
-            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+            FormsService service = NewService(db);
 
             FormSubmissionResponseModel? result = await service.GetSubmissionAsync(id, CancellationToken.None);
 
@@ -43,7 +46,7 @@ namespace Myss.Api.Tests.Services
             using FormsDbContext db = NewDb();
             Guid id = await SeedSubmission(db, "poc-test-form", version: 1);
             _provider.VersionResult = null;
-            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+            FormsService service = NewService(db);
 
             FormSubmissionResponseModel? result = await service.GetSubmissionAsync(id, CancellationToken.None);
 
@@ -56,7 +59,7 @@ namespace Myss.Api.Tests.Services
         public async Task GetSubmission_UnknownId_ReturnsNull()
         {
             using FormsDbContext db = NewDb();
-            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+            FormsService service = NewService(db);
 
             FormSubmissionResponseModel? result = await service.GetSubmissionAsync(Guid.NewGuid(), CancellationToken.None);
 
@@ -73,7 +76,7 @@ namespace Myss.Api.Tests.Services
             using FormsDbContext db = NewDb();
             _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 2, SpecWithFirstName);
             _provider.LatestResult = FakeFormSpecProvider.Spec("poc-test-form", 3);
-            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+            FormsService service = NewService(db);
 
             await service.SubmitAsync("poc-test-form", Request(2, """{"firstName":"Grace"}"""), CancellationToken.None);
 
@@ -86,7 +89,7 @@ namespace Myss.Api.Tests.Services
         {
             using FormsDbContext db = NewDb();
             _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 2, SpecWithFirstName);
-            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+            FormsService service = NewService(db);
 
             FormSubmissionResultModel result = await service.SubmitAsync(
                 "poc-test-form", Request(2, """{"firstName":"Grace","monthlyIncome":2000}"""), CancellationToken.None);
@@ -106,7 +109,7 @@ namespace Myss.Api.Tests.Services
         {
             using FormsDbContext db = NewDb();
             _provider.VersionResult = null;
-            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+            FormsService service = NewService(db);
 
             FormSubmissionResultModel result = await service.SubmitAsync(
                 "poc-test-form", Request(99, """{"firstName":"Grace"}"""), CancellationToken.None);
@@ -122,7 +125,7 @@ namespace Myss.Api.Tests.Services
             // The important half: a refused submission must leave no trace.
             using FormsDbContext db = NewDb();
             _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 2, SpecWithFirstName);
-            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+            FormsService service = NewService(db);
 
             FormSubmissionResultModel result = await service.SubmitAsync(
                 "poc-test-form", Request(2, """{"unknownField":"x"}"""), CancellationToken.None);
@@ -139,7 +142,7 @@ namespace Myss.Api.Tests.Services
             Guid older = await SeedSubmission(db, "poc-test-form", 1, DateTimeOffset.UtcNow.AddHours(-2));
             Guid newer = await SeedSubmission(db, "poc-test-form", 2, DateTimeOffset.UtcNow.AddHours(-1));
             await SeedSubmission(db, "other-form", 1, DateTimeOffset.UtcNow);
-            var service = new FormsService(NullLogger<FormsService>.Instance, db, _provider);
+            FormsService service = NewService(db);
 
             IReadOnlyList<FormSubmissionSummaryModel> list =
                 await service.ListSubmissionsAsync("poc-test-form", CancellationToken.None);
@@ -167,6 +170,16 @@ namespace Myss.Api.Tests.Services
             };
         }
 
+        private FormsService NewService(FormsDbContext db)
+        {
+            return new FormsService(
+                NullLogger<FormsService>.Instance,
+                db,
+                _provider,
+                _pdfProvider,
+                _templateProvider);
+        }
+
         private static FormsDbContext NewDb()
         {
             DbContextOptions<FormsDbContext> options = new DbContextOptionsBuilder<FormsDbContext>()
@@ -192,6 +205,25 @@ namespace Myss.Api.Tests.Services
             db.FormSubmissions.Add(submission);
             await db.SaveChangesAsync();
             return submission.Id;
+        }
+
+        private sealed class UnexpectedPdfProvider : IPdfProvider
+        {
+            public Task<byte[]> GenerateFromOdtAsync(
+                byte[] odtTemplate,
+                object data,
+                CancellationToken cancellationToken)
+            {
+                throw new InvalidOperationException("PDF generation is not expected in these tests.");
+            }
+        }
+
+        private sealed class UnexpectedTemplateProvider : ITemplateProvider
+        {
+            public Task<byte[]> GetTemplateAsync(string templateName, CancellationToken cancellationToken)
+            {
+                throw new InvalidOperationException("Template retrieval is not expected in these tests.");
+            }
         }
     }
 }
