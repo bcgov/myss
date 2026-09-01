@@ -22,7 +22,14 @@ ENV NODE_ENV=production
 # The Strapi admin build needs more heap than Node allows itself by default
 # in a memory-limited build pod.
 ENV NODE_OPTIONS=--max-old-space-size=2048
-RUN npm run build && npm prune --omit=dev
+# `strapi build` compiles TS but does not generate the schema type registry
+# (types/generated/, gitignored), without which documents().update() calls in
+# src/index.ts fail the compile. Generate it first; typegen never opens a
+# database connection, but DATABASE_CLIENT must name a client whose driver is
+# actually installed (the sqlite default's is not).
+RUN DATABASE_CLIENT=postgres npx strapi ts:generate-types \
+ && npm run build \
+ && npm prune --omit=dev
 
 FROM node:22-alpine AS production
 WORKDIR /opt/app
