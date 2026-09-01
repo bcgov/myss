@@ -1,6 +1,7 @@
 namespace Myss.Api
 {
     using System;
+    using Microsoft.AspNetCore.Authentication;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,12 @@ namespace Myss.Api
             // typed caller below are permanent and unaffected by that choice.
             this.startupConfig.ConfigureAuthentication(services);
             services.AddMyssAuthorization();
+
+            // Effective roles are computed in one place (RoleCalculator, ADR-0007): the
+            // shared standard realm cannot know MySS account state, so a citizen IDP grants
+            // CLIENT here rather than via per-user CSS role assignment. Runs after every
+            // scheme, mock auth included (a pass-through for persona principals).
+            services.AddSingleton<IClaimsTransformation, RoleCalculationClaimsTransformation>();
             services.AddTransient<ICurrentUserAccessor, CurrentUserAccessor>();
 
             // Configure the demo services
