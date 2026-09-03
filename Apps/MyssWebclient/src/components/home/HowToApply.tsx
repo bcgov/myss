@@ -6,7 +6,7 @@ const applicationProcessUrl =
 export default function HowToApply() {
     return (
         <div>
-            <h4>How to apply for or return to assistance</h4>
+            <h3>How to apply for or return to assistance</h3>
             <Link href={applicationProcessUrl} size="large">
                 B.C. Government information on the application process
             </Link>

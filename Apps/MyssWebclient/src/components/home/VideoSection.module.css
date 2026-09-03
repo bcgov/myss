@@ -4,7 +4,7 @@
     gap: var(--layout-margin-medium, 16px);
 }
 
-.videoItem h4 {
+.videoItem h3 {
     margin: 0 0 var(--layout-margin-small, 8px);
 }
 

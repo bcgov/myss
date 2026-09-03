@@ -8,7 +8,7 @@ export default function VideoSection() {
         <div className={styles.wrapper}>
             {homeVideos.map((video) => (
                 <div className={styles.videoItem} key={video.id}>
-                    <h4>{video.title}</h4>
+                    <h3>{video.title}</h3>
                     <div className={styles.videoFrame}>
                         <iframe
                             src={`https://www.youtube.com/embed/${video.id}`}
