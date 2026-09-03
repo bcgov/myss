@@ -26,7 +26,7 @@ function App() {
             <main id="main-content">
                 <Outlet />
             </main>
-            <Footer hideAcknowledgement />
+            <Footer />
         </>
     );
 }
