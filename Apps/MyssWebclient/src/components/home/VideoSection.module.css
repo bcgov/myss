@@ -1,7 +1,11 @@
 .wrapper {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--layout-margin-medium, 16px);
+}
+
+.videoItem h3 {
+    margin: 0 0 var(--layout-margin-small, 8px);
 }
 
 .videoFrame {
@@ -21,24 +25,8 @@
     border: 0;
 }
 
-.rule {
-    width: 100%;
-    height: 0;
-    margin: 0;
-    border: 0;
-    border-top: 1px solid var(--surface-color-border-default, #d8d8d8);
-}
-
-.estimatorLink {
-    margin: 0;
-    font-weight: 700;
-}
-
-.estimatorLink a {
-    color: var(--typography-color-link, #255a90);
-    text-decoration: none;
-}
-
-.estimatorLink a:hover {
-    text-decoration: underline;
+@media (max-width: 600px) {
+    .wrapper {
+        grid-template-columns: 1fr;
+    }
 }

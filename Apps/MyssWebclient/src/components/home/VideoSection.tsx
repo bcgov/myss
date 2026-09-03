@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { homeVideos } from "@/data/homeLinks";
 import styles from "./VideoSection.module.css";
 
@@ -9,7 +8,8 @@ export default function VideoSection() {
     return (
         <div className={styles.wrapper}>
             {homeVideos.map((video) => (
-                <Fragment key={video.id}>
+                <div className={styles.videoItem} key={video.id}>
+                    <h4>{video.title}</h4>
                     <div className={styles.videoFrame}>
                         <iframe
                             src={`https://www.youtube.com/embed/${video.id}`}
@@ -18,7 +18,7 @@ export default function VideoSection() {
                             allowFullScreen
                         />
                     </div>
-                </Fragment>
+                </div>
             ))}
         </div>
     );

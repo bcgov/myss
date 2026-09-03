@@ -1,7 +1,4 @@
-import {
-    Button,
-    Link as BcLink,
-} from "@bcgov/design-system-react-components";
+import { Button } from "@bcgov/design-system-react-components";
 import { useNavigate } from "react-router";
 
 import { useSession } from "@/auth/useSession";
@@ -61,14 +58,6 @@ export default function AccountPanel() {
                         </Button>
                     </>
                 )}
-            </div>
-
-            <div className={styles.card}>
-                <BcLink
-                    href="http://www2.gov.bc.ca/assets/download/240B1495B3C3497F8153C6D1EC6429B3"
-                >
-                    How to apply for or return to assistance
-                </BcLink>
             </div>
         </aside>
     );

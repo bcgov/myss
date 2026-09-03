@@ -1,4 +1,5 @@
 import { Callout } from "@bcgov/design-system-react-components";
+import { Link } from "@bcgov/design-system-react-components";
 
 import styles from "./ChequeCalendar.module.css";
 
@@ -26,9 +27,9 @@ export default function ChequeCalendar() {
                         </p>
                         <p>
                             Learn more about cheque issue dates and see{" "}
-                            <a href={chequeScheduleUrl}>
+                            <Link href={chequeScheduleUrl} size="large">
                                 the full schedule for 2027.
-                            </a>
+                            </Link>
                         </p>
                     </div>
                 </div>
