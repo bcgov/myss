@@ -11,15 +11,19 @@ import styles from "./HomePage.module.css";
 export default function HomePage() {
     return (
         <div className={styles.page}>
-            <h1 className={styles.title}>Welcome to My Self Serve</h1>
+            <section className={styles.introBand}>
+                <div className={styles.introBandContent}>
+                    <h1>My Self Serve (MySS)</h1>
 
-            {/* Intro copy + account access side by side. */}
-            <div className={styles.introRow}>
-                <div className={styles.introText}>
-                    <IntroSection />
+                    {/* Intro copy + account access side by side. */}
+                    <div className={styles.introRow}>
+                        <div className={styles.introText}>
+                            <IntroSection />
+                        </div>
+                        <AccountPanel />
+                    </div>
                 </div>
-                <AccountPanel />
-            </div>
+            </section>
 
             {/* Videos / eligibility CTA + next cheque calendar. */}
             <div className={styles.mediaRow}>
