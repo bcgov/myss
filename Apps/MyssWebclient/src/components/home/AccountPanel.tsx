@@ -1,4 +1,7 @@
-import { Button } from "@bcgov/design-system-react-components";
+import {
+    Button,
+    Link as BcLink,
+} from "@bcgov/design-system-react-components";
 import { useNavigate } from "react-router";
 
 import { useSession } from "@/auth/useSession";
@@ -17,7 +20,7 @@ export default function AccountPanel() {
             <div className={styles.card}>
                 {isAuthenticated ? (
                     <>
-                        <p className={styles.prompt}>
+                        <p>
                             <strong>
                                 Welcome back
                                 {user?.name ? `, ${user.name}` : ""}
@@ -33,7 +36,7 @@ export default function AccountPanel() {
                     </>
                 ) : (
                     <>
-                        <p className={styles.prompt}>
+                        <p>
                             <strong>Yes, I have a MySS account</strong>
                         </p>
                         <Button
@@ -44,7 +47,7 @@ export default function AccountPanel() {
                             Sign in
                         </Button>
 
-                        <p className={styles.prompt}>
+                        <p>
                             <strong>No, I do not have a MySS account</strong>
                         </p>
                         <Button
@@ -61,12 +64,11 @@ export default function AccountPanel() {
             </div>
 
             <div className={styles.card}>
-                <a
-                    className={styles.helpLink}
+                <BcLink
                     href="http://www2.gov.bc.ca/assets/download/240B1495B3C3497F8153C6D1EC6429B3"
                 >
                     How to apply for or return to assistance
-                </a>
+                </BcLink>
             </div>
         </aside>
     );
