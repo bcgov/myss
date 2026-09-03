@@ -1,4 +1,5 @@
 import AccountPanel from "@/components/home/AccountPanel";
+import AboutMySS from "@/components/home/AboutMySS";
 import CommonQuestions from "@/components/home/CommonQuestions";
 import IntroSection from "@/components/home/IntroSection";
 import VideoSection from "@/components/home/VideoSection";
@@ -54,6 +55,8 @@ export default function HomePage() {
                     />
                 </div>
             </section>
+
+            <AboutMySS />
         </div>
     );
 }

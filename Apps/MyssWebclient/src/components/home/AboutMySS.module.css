@@ -1,0 +1,39 @@
+.columns {
+    display: grid;
+    column-gap: var(--layout-margin-xxlarge, 64px);
+    row-gap: var(--layout-margin-xlarge, 32px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.columns article {
+    padding: 0 16px;
+}
+
+.icon {
+    align-items: center;
+    color: var(--theme-blue-60, #1a5a96);
+    display: flex;
+    height: 24px;
+    justify-content: center;
+    margin-top: 10px;
+    margin-bottom: 0;
+}
+
+.icon :global(svg) {
+    height: 24px;
+    width: 24px;
+}
+
+.columns h3 {
+    margin: 0 0 var(--layout-margin-small, 8px);
+}
+
+.columns p {
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .columns {
+        grid-template-columns: 1fr;
+    }
+}
