@@ -7,7 +7,7 @@ export default function HowToApply() {
     return (
         <div>
             <h3>How to apply for or return to assistance</h3>
-            <Link href={applicationProcessUrl} size="large">
+            <Link href={applicationProcessUrl} size="large" target="_blank" rel="noopener noreferrer">
                 B.C. Government information on the application process
             </Link>
         </div>
