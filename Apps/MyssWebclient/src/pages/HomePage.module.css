@@ -13,12 +13,26 @@
     background-color: var(--surface-color-background-light-blue, #eaf4fb);
     width: 100vw;
     margin-left: calc(50% - 50vw);
-    padding: var(--layout-padding-large, 20px) 0;
+    margin-top: calc(-1 * var(--layout-padding-xlarge, 32px));
+    padding: calc(var(--layout-padding-xlarge, 32px) + var(--layout-padding-large, 20px)) 0 var(--layout-padding-large, 20px);
 }
 
 .introBandContent {
     max-width: 900px;
     margin: 0 auto;
+}
+
+.calendarBand {
+    background-color: #ffffff;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-top: calc(-1 * var(--layout-margin-large, 24px));
+    padding: var(--layout-padding-large, 20px) 0;
+}
+
+.calendarCol {
+    margin: 0 auto;
+    max-width: 900px;
 }
 
 /* Intro copy (wider) beside the account panel (narrower), ~5:3 like prod. */
@@ -42,10 +56,6 @@
 }
 
 .videoCol {
-    min-width: 0;
-}
-
-.calendarCol {
     min-width: 0;
 }
 

@@ -25,13 +25,17 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* Videos / eligibility CTA + next cheque calendar. */}
+            {/* Next cheque calendar. */}
+            <section className={styles.calendarBand}>
+                <div className={styles.calendarCol}>
+                    <ChequeCalendar />
+                </div>
+            </section>
+            
+            {/* Videos / eligibility CTA */}
             <div className={styles.mediaRow}>
                 <div className={styles.videoCol}>
                     <VideoSection />
-                </div>
-                <div className={styles.calendarCol}>
-                    <ChequeCalendar />
                 </div>
             </div>
 
