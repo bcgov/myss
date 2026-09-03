@@ -22,7 +22,7 @@ export default function IntroSection() {
                 <Link
                     href={paths.eligibilityEstimator}
                     isButton
-                    buttonVariant="primary"
+                    buttonVariant="secondary"
                 >
                     Check your eligibility
                 </Link>
