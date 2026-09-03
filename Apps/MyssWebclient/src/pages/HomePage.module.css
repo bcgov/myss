@@ -63,9 +63,25 @@
     min-width: 0;
 }
 
-/* Link lists sit under the left (video) column in prod. */
-.linksCol {
-    width: 62.5%;
+/* FAQ and resource lists share a responsive two-column layout. */
+.faqSection {
+    background-color: #ffffff;
+    margin-left: calc(50% - 50vw);
+    padding: var(--layout-padding-large, 20px) 0;
+    width: 100vw;
+}
+
+.faqSection h2 {
+    margin-bottom: var(--layout-margin-medium, 16px);
+}
+
+.faqRow {
+    display: grid;
+    grid-template-columns: 5fr 3fr;
+    gap: var(--layout-margin-xlarge, 32px);
+    align-items: start;
+    margin: 0 auto;
+    max-width: 900px;
 }
 
 @media (max-width: 768px) {
@@ -74,7 +90,7 @@
         grid-template-columns: 1fr;
     }
 
-    .linksCol {
-        width: 100%;
+    .faqRow {
+        grid-template-columns: 1fr;
     }
 }

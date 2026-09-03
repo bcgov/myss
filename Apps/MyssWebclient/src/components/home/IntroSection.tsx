@@ -1,5 +1,5 @@
 // Introductory copy describing what My Self Serve is (lifted from prod home).
-import { Link as BcLink } from "@bcgov/design-system-react-components";
+import { Link } from "@bcgov/design-system-react-components";
 import { paths } from "@/routes/paths";
 
 export default function IntroSection() {
@@ -19,13 +19,13 @@ export default function IntroSection() {
                 Check your eligibility without logging in.
             </p>
             <p>
-                <BcLink
+                <Link
                     href={paths.eligibilityEstimator}
                     isButton
                     buttonVariant="primary"
                 >
                     Check your eligibility
-                </BcLink>
+                </Link>
             </p>
         </div>
     );
