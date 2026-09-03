@@ -10,12 +10,12 @@ export default function IntroSection() {
                 residents online.
             </p>
             <p>
-                <b>Need help with My Self Serve?</b><br></br>
+                <b>Need help with My Self Serve?</b><br />
                 Call us at <a href="tel:+18668660800">1-866-866-0800</a> {" "}
                 if you need help applying for or accessing My Self Serve.
             </p>
             <p>
-                <b>Not sure if you're eligible for assistance?</b><br></br>
+                <b>Not sure if you're eligible for assistance?</b><br />
                 Check your eligibility without logging in.
             </p>
             <p>

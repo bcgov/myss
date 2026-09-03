@@ -2,8 +2,7 @@ import { homeVideos } from "@/data/homeLinks";
 import styles from "./VideoSection.module.css";
 
 // Informational videos 
-// Prod separates each block with a horizontal rule; we mirror that here.
-// The eligibility link routes internally to the placeholder estimator page.
+// Rendered as a responsive grid of embedded YouTube videos.
 export default function VideoSection() {
     return (
         <div className={styles.wrapper}>

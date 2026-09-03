@@ -3,7 +3,7 @@ import AboutMySS from "@/components/home/AboutMySS";
 import CommonQuestions from "@/components/home/CommonQuestions";
 import IntroSection from "@/components/home/IntroSection";
 import VideoSection from "@/components/home/VideoSection";
-import HowToApply from "../components/home/HowToApply";
+import HowToApply from "@/components/home/HowToApply";
 import ChequeCalendar from "@/components/home/ChequeCalendar";
 import LinkList from "@/components/home/LinkList";
 import { otherResources } from "@/data/homeLinks";

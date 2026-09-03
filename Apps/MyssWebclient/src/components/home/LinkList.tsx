@@ -12,7 +12,7 @@ interface LinkListProps {
 export default function LinkList({ title, links }: LinkListProps) {
     return (
         <nav aria-label={title}>
-            <h2 className={styles.heading}>{title}</h2>
+            <h2>{title}</h2>
             <ul className={styles.list}>
                 {links.map((link) => (
                     <li key={link.href}>
