@@ -1,5 +1,6 @@
 import type { ResourceLink } from "@/data/homeLinks";
 import styles from "./LinkList.module.css";
+import {Link} from "@bcgov/design-system-react-components";
 
 interface LinkListProps {
     title: string;
@@ -11,12 +12,13 @@ interface LinkListProps {
 export default function LinkList({ title, links }: LinkListProps) {
     return (
         <nav aria-label={title}>
-            <h2 className={styles.heading}>{title}</h2>
+            <h2>{title}</h2>
             <ul className={styles.list}>
                 {links.map((link) => (
                     <li key={link.href}>
-                        <a
+                        <Link
                             href={link.href}
+                            size="large"
                             target={link.external ? "_blank" : undefined}
                             rel={
                                 link.external
@@ -25,7 +27,7 @@ export default function LinkList({ title, links }: LinkListProps) {
                             }
                         >
                             {link.label}
-                        </a>
+                        </Link>
                     </li>
                 ))}
             </ul>
