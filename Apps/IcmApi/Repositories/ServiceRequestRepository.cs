@@ -1,6 +1,8 @@
 namespace Icm.Api.Repositories
 {
     using System;
+    using System.Collections.Generic;
+    using System.Linq;
     using System.Net;
     using System.Net.Http;
     using System.Threading;
@@ -88,7 +90,14 @@ namespace Icm.Api.Repositories
             }
 
             await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
-            return ServiceRequestMapper.ToModel(response.Content);
+
+            // A successful search carries a body — the empty result has its own statuses,
+            // handled above — so a bodyless 200 is the same protocol violation the read
+            // and write paths refuse, not an empty page.
+            return response.Content is { } body
+                ? ServiceRequestMapper.ToModel(body, ReadTotalCount(response))
+                : throw new IcmResponseException(
+                    "ICM answered the search with success but returned no body.");
         }
 
         /// <inheritdoc/>
@@ -218,6 +227,23 @@ namespace Icm.Api.Repositories
             await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
             return true;
         }
+
+        /// <summary>
+        /// Reads the total match count ICM puts in its <c>Total-Record-Count</c> header
+        /// when a search asked for one (<c>recordcountneeded=true</c>). Null when the
+        /// header is absent or unreadable — the count is an extra the caller opted into,
+        /// not something worth failing a successful search over.
+        /// </summary>
+        private static long? ReadTotalCount(IApiResponse<SiebelListResponse> response) =>
+            response.Headers is { } headers
+                && headers.TryGetValues("Total-Record-Count", out IEnumerable<string>? values)
+                && long.TryParse(
+                    values?.FirstOrDefault(),
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out long count)
+                ? count
+                : null;
 
         /// <summary>
         /// Reads a write response, treating <c>304</c>, <c>204</c> and <c>404</c> — all of

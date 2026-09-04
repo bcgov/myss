@@ -67,6 +67,34 @@ namespace Icm.Api.Tests.Repositories
         }
 
         [Fact]
+        public async Task SearchAsync_ThrowsWhenIcmClaimsSuccessButReturnsNoBody()
+        {
+            // The empty result has its own statuses (the theory above); a bodyless 200 is
+            // the same protocol violation the read and write paths refuse.
+            (ServiceRequestRepository repository, _) = Create(responseJson: null);
+
+            await Assert.ThrowsAsync<IcmResponseException>(() => repository.SearchAsync("t"));
+        }
+
+        [Fact]
+        public async Task SearchAsync_SurfacesTheTotalCountHeaderWhenIcmSendsOne()
+        {
+            (ServiceRequestRepository repository, RecordingHttpMessageHandler handler) = Create(
+                responseJson: """{ "items": [ { "Service Request Number": "1-1" } ] }""");
+            handler.ResponseHeaders["Total-Record-Count"] = "1234";
+
+            ServiceRequestPage page = await repository.SearchAsync(
+                "t", new ServiceRequestQuery { IncludeTotalCount = true });
+
+            Assert.Equal(1234, page.TotalCount);
+
+            // And absent stays null rather than becoming zero — "not counted" and
+            // "nothing matched" are different answers.
+            (ServiceRequestRepository uncounted, _) = Create(responseJson: """{ "items": [] }""");
+            Assert.Null((await uncounted.SearchAsync("t")).TotalCount);
+        }
+
+        [Fact]
         public async Task SearchAsync_ThrowsOnARealFailure()
         {
             (ServiceRequestRepository repository, _) = Create(HttpStatusCode.Unauthorized, null);

@@ -53,7 +53,8 @@ namespace Icm.Api.Models
 
         /// <summary>
         /// Gets or sets a value indicating whether ICM should count the whole result set as
-        /// well as returning the page. It costs an extra pass over the data.
+        /// well as returning the page. It costs an extra pass over the data; the answer
+        /// arrives in <see cref="ServiceRequestPage.TotalCount"/>.
         /// </summary>
         public bool? IncludeTotalCount { get; set; }
 

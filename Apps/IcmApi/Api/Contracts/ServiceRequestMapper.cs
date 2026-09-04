@@ -105,12 +105,18 @@ namespace Icm.Api.Contracts
 
         /// <summary>Converts a page of wire records to the published page.</summary>
         /// <param name="siebel">The list response, or null when ICM sent no body.</param>
+        /// <param name="totalCount">
+        /// The total match count, when the caller asked for one and ICM's
+        /// <c>Total-Record-Count</c> header carried it — a header, so the repository reads
+        /// it, not this mapper.
+        /// </param>
         /// <returns>The published page; empty when there was nothing to convert.</returns>
-        public static ServiceRequestPage ToModel(SiebelListResponse? siebel) =>
+        public static ServiceRequestPage ToModel(SiebelListResponse? siebel, long? totalCount = null) =>
             new()
             {
                 Items = siebel?.Items is null ? [] : [.. siebel.Items.Select(ToModel)],
                 Links = siebel?.Link is null ? [] : [.. siebel.Link.Select(ToModel)],
+                TotalCount = totalCount,
             };
 
         /// <summary>Converts the fields a caller wants written to a wire record.</summary>

@@ -249,21 +249,38 @@ namespace Icm.Api.ConsoleApp
             Stopwatch stopwatch = Stopwatch.StartNew();
             try
             {
-                ServiceRequestPage page = await serviceRequests.SearchAsync(new ServiceRequestQuery
-                {
-                    SearchSpec = $"[SR Type] = \"Bus Pass\" AND [Created] >= \"{since}\"",
-                    ViewMode = settings.Query.ViewMode ?? "Organization",
-                    PageSize = 100,
-                });
+                // Paged rather than first-100-only: ICM ignores sort requests on this
+                // endpoint, so on a busy day the just-created record can land on any
+                // page and stopping early would misreport it as missing.
+                const int pageSize = 100;
+                ServiceRequest? created = null;
+                int seen = 0;
 
-                ServiceRequest? created = page.Items.FirstOrDefault(item =>
-                    string.Equals(item.ServiceRequestNumber, applicationNumber, StringComparison.Ordinal));
+                for (int startRow = 0; ; startRow += pageSize)
+                {
+                    ServiceRequestPage page = await serviceRequests.SearchAsync(new ServiceRequestQuery
+                    {
+                        SearchSpec = $"[SR Type] = \"Bus Pass\" AND [Created] >= \"{since}\"",
+                        ViewMode = settings.Query.ViewMode ?? "Organization",
+                        PageSize = pageSize,
+                        StartRowNum = startRow,
+                    });
+
+                    seen += page.Items.Count;
+                    created = page.Items.FirstOrDefault(item =>
+                        string.Equals(item.ServiceRequestNumber, applicationNumber, StringComparison.Ordinal));
+
+                    if (created is not null || page.Items.Count < pageSize)
+                    {
+                        break;
+                    }
+                }
 
                 if (created?.Id is null)
                 {
                     stopwatch.Stop();
                     Console.Error.WriteLine(
-                        $"FAILED: {page.Items.Count} recent Bus Pass SR(s), none numbered "
+                        $"FAILED: {seen} recent Bus Pass SR(s), none numbered "
                         + $"{applicationNumber} ({stopwatch.ElapsedMilliseconds} ms).");
                     Console.Error.WriteLine(
                         "Either ApplicationNumber is not the SR number after all, or the record "

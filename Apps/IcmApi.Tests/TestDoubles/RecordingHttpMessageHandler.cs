@@ -26,6 +26,9 @@ namespace Icm.Api.Tests.TestDoubles
         /// <summary>Gets the body that was sent, or null when there was none.</summary>
         public string? RequestBody { get; private set; }
 
+        /// <summary>Gets headers to add to the canned response, e.g. Total-Record-Count.</summary>
+        public Dictionary<string, string> ResponseHeaders { get; } = [];
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
@@ -42,6 +45,11 @@ namespace Icm.Api.Tests.TestDoubles
             if (_responseJson is not null)
             {
                 response.Content = new StringContent(_responseJson, Encoding.UTF8, "application/json");
+            }
+
+            foreach ((string name, string value) in ResponseHeaders)
+            {
+                response.Headers.TryAddWithoutValidation(name, value);
             }
 
             return response;

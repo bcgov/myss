@@ -15,9 +15,12 @@ namespace Icm.Api.Models
     /// call establishes the vocabulary, promote it here.
     /// </para>
     /// <para>
-    /// <see cref="FirstName"/> and <see cref="LastName"/> echo what ICM matched, which is
-    /// worth surfacing to the citizen: a match against a different name than the one
-    /// submitted is how a mis-keyed SIN shows itself.
+    /// <see cref="FirstName"/> and <see cref="LastName"/> echo what ICM matched — useful
+    /// for server-side reconciliation and diagnostics (a match against a different name
+    /// than the one submitted is how a mis-keyed SIN shows itself), and <b>never for
+    /// display to the citizen</b>: echoing the matched name to whoever typed the SIN
+    /// would let anyone confirm another person's name from their SIN. Surface only a
+    /// generic identity-mismatch result.
     /// </para>
     /// </remarks>
     public class BusPassResult

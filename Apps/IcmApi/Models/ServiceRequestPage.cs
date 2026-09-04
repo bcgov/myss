@@ -15,5 +15,12 @@ namespace Icm.Api.Models
 
         /// <summary>Gets the paging links ICM returned, if any.</summary>
         public IReadOnlyList<ServiceRequestLink> Links { get; init; } = [];
+
+        /// <summary>
+        /// Gets the total number of matching records, when the search asked for it
+        /// (<see cref="ServiceRequestQuery.IncludeTotalCount"/>) and ICM supplied its
+        /// <c>Total-Record-Count</c> header. Null otherwise.
+        /// </summary>
+        public long? TotalCount { get; init; }
     }
 }
