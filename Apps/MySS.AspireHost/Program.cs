@@ -3,10 +3,11 @@
 // contexts, start the API, Strapi and the webclient — expressed as an Aspire app model.
 //
 // The containers mirror compose.yaml (same images, env, host ports and init scripts).
-// Data lives in named volumes so it survives restarts; the containers themselves use
-// Aspire's default session lifetime, so they stop when this app host stops. Note the
-// volumes are Aspire's own (myss-*), not the compose project's (myss_*): the two ways of
-// running the stack keep separate data.
+// Data lives in named volumes so it survives restarts, and the volume names are exactly
+// the ones docker compose creates (myss_postgres-data etc.), so the two ways of running
+// the stack share one set of data — in either direction, though only one can be up at a
+// time (same host ports). The containers themselves use Aspire's default session
+// lifetime, so they stop when this app host stops.
 //
 // Still manual, because they live inside Strapi's admin UI: the first-visit admin user,
 // and the read-only API token MyssApi needs in Strapi:ApiToken (appsettings.local.json).
@@ -78,7 +79,7 @@ IResourceBuilder<ContainerResource> minio = builder
     .WithVolume("myss_minio-data", "/data")
     .WithHttpHealthCheck(path: "/minio/health/live", endpointName: "api");
 
-builder
+IResourceBuilder<ContainerResource> minioInit = builder
     .AddContainer("MySS-ObjectStorage-Init", "minio/mc", "latest")
     .WithContainerName("MySS-ObjectStorage-Init")
     .WithEntrypoint("/bin/sh")
@@ -140,9 +141,33 @@ IResourceBuilder<JavaScriptAppResource> content = builder
     .WithHttpHealthCheck(path: "/_health", statusCode: 204)
     .WaitFor(postgres);
 
+// Secret values travel as secret parameters, not literals: a literal value is
+// visible in the app model, the dashboard and any generated manifest, while a
+// secret parameter is redacted everywhere it is displayed.
+HashSet<string> strapiSecretKeys = new(StringComparer.Ordinal)
+{
+    "APP_KEYS",
+    "API_TOKEN_SALT",
+    "ADMIN_JWT_SECRET",
+    "TRANSFER_TOKEN_SALT",
+    "JWT_SECRET",
+    "ENCRYPTION_KEY",
+    "DATABASE_PASSWORD",
+};
+
 foreach ((string key, string value) in strapiEnv)
 {
-    content.WithEnvironment(key, value);
+    if (strapiSecretKeys.Contains(key))
+    {
+        content.WithEnvironment(
+            key,
+            builder.AddParameter(
+                $"strapi-{key.ToLowerInvariant().Replace('_', '-')}", value, secret: true));
+    }
+    else
+    {
+        content.WithEnvironment(key, value);
+    }
 }
 
 // Running on the host, Strapi reaches Postgres through the published port —
@@ -165,6 +190,10 @@ IResourceBuilder<ProjectResource> api = builder
     .WithEnvironment("ObjectStorage__ServiceUrl", minio.GetEndpoint("api"))
     .WaitFor(postgres)
     .WaitFor(minio)
+
+    // Until the bucket one-shot has finished, an attachment upload would fail:
+    // the API's storage provider writes to myss-attachments but never creates it.
+    .WaitForCompletion(minioInit)
     .WaitForCompletion(migrateAttachments);
 
 // MyssApi's OTLP exporter is config-driven (OpenTelemetry:Endpoint), not

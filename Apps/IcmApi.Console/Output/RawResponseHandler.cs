@@ -7,11 +7,12 @@ namespace Icm.Api.ConsoleApp.Output
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The mapped dump can only show fields the library models; anything ICM sends that
-    /// <c>SiebelServiceRequest</c> has no property for is discarded silently by the
-    /// deserializer. This handler sits underneath all of that and shows what actually
-    /// arrived — which is the only way to know whether a missing field is missing from ICM
-    /// or missing from the model.
+    /// Unmodelled fields are no longer lost — <c>SiebelServiceRequest</c> catches them via
+    /// <c>[JsonExtensionData]</c> and the mapped dump shows them in <c>AdditionalFields</c>.
+    /// What only this handler can show is the response exactly as it arrived, before any
+    /// of that machinery touches it: the untouched JSON shape, field order and raw values,
+    /// and the bodies of non-2xx answers — which is what settles a disagreement between
+    /// the client's view and ICM's.
     /// </para>
     /// <para>
     /// It sits on the ICM client only, never the token client: that response carries an
