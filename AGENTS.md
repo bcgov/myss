@@ -54,7 +54,20 @@ credential into a file, a command, or a commit.
 
 ## Commands
 
-Local stack (from repo root):
+Whole local stack, one command (Aspire app host — containers, EF migrations, and the
+three apps; dashboard URL printed at startup):
+
+```bash
+dotnet run --project Apps/MySS.AspireHost
+```
+
+Container data is in the same named volumes compose creates (`myss_postgres-data` etc.),
+so the two paths share data; containers stop when the app host stops. Only one of
+Aspire/compose can be up at a time (same host ports). Strapi env comes from `Apps/MyssContent/.env` or falls back
+to the committed `.env.example`. Still manual either way: the Strapi first-visit admin
+user, and the `Strapi:ApiToken` for MyssApi (`appsettings.local.json`).
+
+Local stack manually (from repo root):
 
 ```bash
 cp Apps/MyssContent/.env.example Apps/MyssContent/.env   # once; committed values work locally
@@ -186,18 +199,35 @@ check.
 A client library for ICM (Siebel), layered so that Siebel's shape never leaves the
 assembly. `Apps/IcmApi/README.md` is the fuller guide — structure, wiring, and the
 gotchas — and `Apps/IcmApi/docs/integration/` holds the upstream specs it implements. Namespaces are `Icm.Api` (Refit interfaces), `Icm.Api.Contracts`,
-`Icm.Api.Models`, `Icm.Api.Repositories`, `Icm.Api.Services` — the `Api/` folder does not
+`Icm.Api.Models`, `Icm.Api.Repositories`, `Icm.Api.Services`, `Icm.Api.Workflows`,
+`Icm.Api.Workflows.Contracts` — the `Api/` folder does not
 add a segment, since `Icm.Api.Api` reads worse than it informs.
 
 ```
-Services/      IServiceRequestService, IOAuthTokenService   ← inject these
-Repositories/  IServiceRequestRepository, IOAuthTokenRepository
-Api/           IServiceRequestApi, IOAuthTokenApi (Refit)   ┐ internal
-Api/Contracts/ Siebel* and Token* wire models, the mapper   ┘
-Models/        the published models
+Services/            IServiceRequestService, IBusPassService, IOAuthTokenService  ← inject these
+Repositories/        IServiceRequestRepository, IBusPassRepository, IOAuthTokenRepository
+Api/                 IServiceRequestApi, IOAuthTokenApi (Refit)       ┐
+Api/Contracts/       Siebel* and Token* wire models, the mapper       │ internal
+Workflows/           IBusPassWorkflowApi (Refit)                      │
+Workflows/Contracts/ SiebelBusPass* wire envelope, BusPassMapper      ┘
+Models/              the published models
 ```
 
-**Everything from `Api/` down is `internal`**, reachable only by `IcmApi.Tests` through
+`Api/` is direct REST over a business component; `Workflows/` calls Siebel workflow
+processes that invoke other services behind them (the bus pass workflow matches the
+contact and creates the service request itself). Both publish only through
+`Models`/`Repositories`/`Services`. The bus pass mapping's vocabulary is MEASURED (SIT2
+2026-09-03) from the SRs the workflow itself creates; what remains inference (input words
+assumed to equal stored words, the account number riding in `ClientId`, the mailing
+address as a second prospect row) is listed in the README's "The bus pass integration
+(INT-316)" section (INT-316 names MySS's integration, the caller — the workflow itself
+is ICM's `ICM Receive Bus Pass Online Request Wrapper WF`). The first live POST is
+blocked on ICM-side authorization
+(`SBL-DAT-00825`, BUS_PROC access) — `IcmApi.Console --Mode=buspass` is the
+submit-and-read-back integration test to run once access is granted (it creates a record
+in the target ICM).
+
+**Everything from `Api/` and `Workflows/` down is `internal`**, reachable only by `IcmApi.Tests` through
 `InternalsVisibleTo` — ADR-0002 names exactly this as one of the .NET readings of the
 module-boundary rule. A consumer physically cannot get at `SiebelServiceRequest` or the
 Refit interfaces, so the mapping and the status-code handling cannot be bypassed.

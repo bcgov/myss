@@ -6,7 +6,33 @@
 
 Prerequisites: Docker, the .NET 10 SDK, Node 22+.
 
-## Start the stack
+## One command: Aspire
+
+Everything below — the containers, the EF migrations, and all three apps — can be run
+with a single command through the Aspire app host:
+
+```bash
+dotnet run --project Apps/MySS.AspireHost
+```
+
+It starts the compose containers' equivalents (Postgres 17, ClamAV, MinIO with its
+bucket-creation one-shot), applies both EF migration contexts once Postgres is healthy,
+then starts `MySSApi` (http://localhost:5000), `MySSContent` (Strapi,
+http://localhost:1337, run with npm on the host) and `MyssWebClient` (Vite) — with a
+dashboard (URL printed at startup) showing every resource's logs, health and telemetry.
+Strapi's env is read from `Apps/MyssContent/.env` when present, else straight from the
+committed `.env.example`, so the copy step is optional on this path.
+
+Container data lives in named volumes (`myss_postgres-data`, `myss_clamav-db`,
+`myss_minio-data`) and survives restarts; the containers themselves stop when the app
+host stops. The names are exactly what `docker compose` creates for compose.yaml, so the
+Aspire and compose paths share one set of data in either direction — but only one of the
+two can be up at a time (same host ports).
+
+Still manual, because they live inside Strapi's admin UI: the first-visit admin user,
+and the API token for `Strapi:ApiToken` (goes in `Apps/MyssApi/appsettings.local.json`).
+
+## Start the stack manually (compose)
 
 Strapi reads its configuration from a gitignored `.env` — create it from the
 example first (the committed values work as-is for local development):
@@ -52,6 +78,10 @@ compose Postgres.
 
 ## Tests
 
+- ClamAV: `./test-clamav.sh` — confirms the local clamd answers and actually
+  detects (EICAR via INSTREAM, the same protocol the API uses). Run it when
+  attachment scanning misbehaves; on a first-ever ClamAV start it will say the
+  daemon is not answering until the signature download finishes.
 - API: `dotnet test Apps/MyssApi.Tests`
 - Webclient: `cd Apps/MyssWebclient && npm run test:unit` and
   `npm run test:browser-headless` — the browser tests need a one-time
