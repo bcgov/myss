@@ -71,6 +71,8 @@ IResourceBuilder<PostgresDatabaseResource> formsDb =
 // under Rosetta, same as compose. The signature volume is what makes restarts
 // fast — the first ever start still downloads for several minutes.
 // ---------------------------------------------------------------------------
+int clamAvPort = RequireInt("Aspire:Parameters:ClamAv:Port");
+
 builder
     .AddContainer(
         "MySS-VirusScan",
@@ -78,7 +80,7 @@ builder
         Require("Aspire:Parameters:ClamAv:Tag"))
     .WithContainerName("MySS-VirusScan")
     .WithContainerRuntimeArgs("--platform=linux/amd64")
-    .WithEndpoint(port: RequireInt("Aspire:Parameters:ClamAv:Port"), targetPort: 3310, name: "clamd")
+    .WithEndpoint(port: clamAvPort, targetPort: 3310, name: "clamd")
     .WithVolume("myss_clamav-db", "/var/lib/clamav");
 
 // ---------------------------------------------------------------------------
@@ -161,6 +163,13 @@ IResourceBuilder<ExecutableResource> migrateAttachments = builder
 // from IConfiguration: connection details from appsettings.json, secrets from
 // user secrets as secret parameters. Running on the host, Strapi reaches
 // Postgres through the published port (DatabaseHost: localhost).
+//
+// DatabaseName, DatabaseUsername and DatabasePassword are NOT free to vary:
+// they must match Infra/Development/Postgres/init/01-strapi-db.sql, which
+// hardcodes the `strapi` role and database it creates (and runs only on the
+// first start of an empty volume — it is shared with the compose path, so it
+// cannot read these parameters). The settings exist to feed Strapi's env, not
+// to rename what the init script provisions.
 // ---------------------------------------------------------------------------
 IResourceBuilder<JavaScriptAppResource> content = builder
     .AddJavaScriptApp("MySSContent", contentDirectory, "develop")
@@ -222,12 +231,18 @@ IResourceBuilder<ProjectResource> api = builder
     .WithEnvironment("Strapi__BaseUrl", content.GetEndpoint("http"))
     .WithEnvironment("ObjectStorage__ServiceUrl", minio.GetEndpoint("api"))
 
-    // The same credentials the MinIO container was started with — left to
-    // appsettings.Development.json, the API would silently authenticate with
-    // the committed static values and every storage call would be rejected
-    // whenever the configured root password differs.
+    // The same credentials and bucket the MinIO container and its init
+    // one-shot were started with — left to appsettings.Development.json, the
+    // API would silently authenticate with the committed static values (or
+    // upload into a bucket the initializer never created) whenever the
+    // configured parameters differ.
     .WithEnvironment("ObjectStorage__AccessKey", minioRootUser)
     .WithEnvironment("ObjectStorage__SecretKey", minioRootPassword)
+    .WithEnvironment("ObjectStorage__Bucket", minioBucket)
+
+    // Likewise the clamd host port the container publishes; the API's
+    // development settings pin 3310 and would miss a non-default port.
+    .WithEnvironment("ClamAv__Port", clamAvPort.ToString(CultureInfo.InvariantCulture))
     .WaitFor(postgres)
     .WaitFor(minio)
 

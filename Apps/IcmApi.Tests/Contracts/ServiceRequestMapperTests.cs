@@ -99,14 +99,16 @@ namespace Icm.Api.Tests.Contracts
         {
             SiebelServiceRequest siebel = new()
             {
-                CreatedDate = "2026-08-27T10:15:00Z",                       // DTYPE_UTCDATETIME
+                CreatedDate = "2026-08-27T10:15:00Z",                   // DTYPE_DATETIME
                 CallDate = "2026-08-27T14:30:00",                       // DTYPE_DATETIME
                 ICMCGAResolutionDecisionDate = "2026-08-27",            // DTYPE_DATE
             };
 
             ServiceRequest model = ServiceRequestMapper.ToModel(siebel);
 
-            // An instant: read as UTC, because that is what the Siebel type means.
+            // DTYPE_DATETIME — this business component has no DTYPE_UTCDATETIME
+            // fields (see the note on ToUtcDateTime_KeepsFractionalSeconds), so the
+            // clock time is taken as written even when the value carries a Z.
             Assert.Equal(
                 new DateTime(2026, 8, 27, 10, 15, 0), model.CreatedDate);
 
@@ -123,11 +125,11 @@ namespace Icm.Api.Tests.Contracts
         [InlineData("2026-08-27T10:15:00")]
         [InlineData("2026-08-27T10:15")]
         [InlineData("2026-08-27 10:15:00")]
-        public void ToModel_ReadsAnInstantInEveryShapeTheIsoGrammarAllows(string value)
+        public void ToModel_ReadsADateTimeInEveryShapeTheIsoGrammarAllows(string value)
         {
             // The grammar makes the fractional seconds and the offset optional and allows a
-            // space in place of the T, so all of these are the same instant. A value with
-            // no offset is UTC, because that is what the Siebel type means.
+            // space in place of the T, so all of these carry the same clock time — read as
+            // written, since DTYPE_DATETIME has no zone.
             ServiceRequest model = ServiceRequestMapper.ToModel(
                 new SiebelServiceRequest { CreatedDate = value });
 
