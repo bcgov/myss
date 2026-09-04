@@ -16,9 +16,9 @@ namespace Icm.Api.Repositories
     /// </para>
     /// <para>
     /// <b>Missing is null or empty; anything else throws.</b> ICM reports "found nothing"
-    /// with a <c>204</c> on some operations and a <c>404</c> on others, and neither is a
-    /// failure. A real failure — bad credentials, a rejected write, ICM being down — comes
-    /// out as a <see cref="Refit.ApiException"/>.
+    /// with a <c>204</c> on some operations and a <c>404</c> on others. A failed HTTP
+    /// response throws <see cref="Refit.ApiException"/>; a successful response without its
+    /// required body throws <see cref="IcmResponseException"/>.
     /// </para>
     /// <para>
     /// The token is a parameter because ICM applies the calling user's Siebel visibility to
