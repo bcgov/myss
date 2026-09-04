@@ -28,10 +28,12 @@
 
     <ItemGroup>
         <!-- Not compiled. Listed so they appear in the IDE beside the code, and so a
-             change to ICM's spec lands in the same diff as the client that follows it. -->
-        <None Include="README.md" />
-        <None Include="docs\integration\SR_OpenApi.json" />
-        <None Include="docs\integration\BusPassWorkflow_OpenApi.json" />
+             change to ICM's spec lands in the same diff as the client that follows it.
+             Update, not Include: the SDK already globs these files as None items, and a
+             second Include of the same file can fail evaluation (NETSDK1022). -->
+        <None Update="README.md" />
+        <None Update="docs\integration\SR_OpenApi.json" />
+        <None Update="docs\integration\BusPassWorkflow_OpenApi.json" />
     </ItemGroup>
 
 </Project>

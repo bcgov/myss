@@ -48,11 +48,18 @@ namespace Icm.Api.Tests.Repositories
             Assert.Equal("next", Assert.Single(page.Links).Rel);
         }
 
-        [Fact]
-        public async Task SearchAsync_TurnsAnEmptyResultIntoAnEmptyPage()
+        [Theory]
+        [InlineData(HttpStatusCode.NoContent)]
+        [InlineData(HttpStatusCode.NotFound)]
+        public async Task SearchAsync_TurnsAnEmptyResultIntoAnEmptyPage(HttpStatusCode statusCode)
         {
-            // ICM says 204 for "nothing matched". A caller should not have to know that.
-            (ServiceRequestRepository repository, _) = Create(HttpStatusCode.NoContent, null);
+            // Both documented "nothing matched" statuses. The 404 is what SIT actually
+            // sends (MEASURED 2026-09-03), body {"ERROR":"There is no data..."}.
+            (ServiceRequestRepository repository, _) = Create(
+                statusCode,
+                statusCode == HttpStatusCode.NotFound
+                    ? """{"ERROR":"There is no data for the requested resource"}"""
+                    : null);
 
             ServiceRequestPage page = await repository.SearchAsync("t");
 
@@ -182,12 +189,39 @@ namespace Icm.Api.Tests.Repositories
                 () => repository.CreateAsync("t", new ServiceRequestInput()));
         }
 
-        [Fact]
-        public async Task UpdateAsync_ReportsNotModifiedAsNull()
+        [Theory]
+        [InlineData(HttpStatusCode.NotModified)]
+        [InlineData(HttpStatusCode.NoContent)]
+        [InlineData(HttpStatusCode.NotFound)]
+        public async Task UpdateAsync_ReportsEveryDocumentedNoOpStatusAsNull(HttpStatusCode statusCode)
         {
-            (ServiceRequestRepository repository, _) = Create(HttpStatusCode.NotModified, null);
+            // 304 is "nothing changed"; 204 and 404 are the spec's no-resource answers on
+            // the PUTs. None of them is a failure.
+            (ServiceRequestRepository repository, _) = Create(statusCode, null);
 
             Assert.Null(await repository.UpdateAsync("t", "1-ABCDE", new ServiceRequestInput()));
+        }
+
+        [Fact]
+        public async Task UpdateAsync_ThrowsWhenIcmClaimsSuccessButReturnsNoRecord()
+        {
+            // Past the no-op statuses a successful write must carry the stored record —
+            // an empty 200 is not "nothing changed", ICM has a status for that.
+            (ServiceRequestRepository repository, _) = Create(responseJson: "{}");
+
+            await Assert.ThrowsAsync<IcmResponseException>(
+                () => repository.UpdateAsync("t", "1-ABCDE", new ServiceRequestInput()));
+        }
+
+        [Fact]
+        public async Task GetAsync_ThrowsWhenIcmClaimsSuccessButReturnsNoBody()
+        {
+            // Missing has its own statuses (the theory above); a bodyless 200 is ICM
+            // contradicting itself and must not masquerade as "not found".
+            (ServiceRequestRepository repository, _) = Create(responseJson: null);
+
+            await Assert.ThrowsAsync<IcmResponseException>(
+                () => repository.GetAsync("t", "1-ABCDE"));
         }
 
         [Fact]
@@ -214,6 +248,10 @@ namespace Icm.Api.Tests.Repositories
 
             (ServiceRequestRepository missing, _) = Create(HttpStatusCode.NotFound, null);
             Assert.False(await missing.DeleteAsync("t", "1-NOPE"));
+
+            // The spec documents 304 on the delete too; a no-op is not a failure.
+            (ServiceRequestRepository unchanged, _) = Create(HttpStatusCode.NotModified, null);
+            Assert.False(await unchanged.DeleteAsync("t", "1-NOPE"));
         }
 
         [Fact]

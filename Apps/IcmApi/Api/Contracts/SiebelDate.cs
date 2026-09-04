@@ -132,17 +132,22 @@ namespace Icm.Api.Contracts
                 return null;
             }
 
-            // RoundtripKind so a value that does carry an offset is not converted into
-            // local time behind our backs; the kind is then flattened, because this Siebel
-            // type has no zone and reporting one would be inventing information.
-            if (DateTime.TryParseExact(
+            // Parsed as a DateTimeOffset and read back through .DateTime, which is the
+            // wall clock exactly as written whatever offset the value carried. DateTime
+            // parsing could not do this: its RoundtripKind only special-cases `Z`, and a
+            // value with any other explicit offset gets converted to the machine's local
+            // time first — so `14:30-07:00` would read as `21:30` on a UTC host. The
+            // AssumeUniversal below only fills in offsetless values and never changes the
+            // clock reading; the kind is Unspecified because this Siebel type has no zone
+            // and reporting one would be inventing information.
+            if (DateTimeOffset.TryParseExact(
                     value.Trim(),
                     DateTimeFormats,
                     CultureInfo.InvariantCulture,
-                    DateTimeStyles.RoundtripKind,
-                    out DateTime parsed))
+                    DateTimeStyles.AssumeUniversal,
+                    out DateTimeOffset parsed))
             {
-                return DateTime.SpecifyKind(parsed, DateTimeKind.Unspecified);
+                return DateTime.SpecifyKind(parsed.DateTime, DateTimeKind.Unspecified);
             }
 
             unparsed[field] = value;
@@ -178,15 +183,17 @@ namespace Icm.Api.Contracts
 
             // A date field arriving with a time on it is common enough to handle. The date
             // is taken exactly as written — no zone conversion — so a midnight-UTC value
-            // cannot roll back a day on the way in.
-            if (DateTime.TryParseExact(
+            // cannot roll back a day on the way in. Via DateTimeOffset for the same reason
+            // as ToDateTime: an explicit non-UTC offset must not be converted to local
+            // time before the date is read off.
+            if (DateTimeOffset.TryParseExact(
                     trimmed,
                     DateTimeFormats,
                     CultureInfo.InvariantCulture,
-                    DateTimeStyles.RoundtripKind,
-                    out DateTime withTime))
+                    DateTimeStyles.AssumeUniversal,
+                    out DateTimeOffset withTime))
             {
-                return DateOnly.FromDateTime(withTime);
+                return DateOnly.FromDateTime(withTime.DateTime);
             }
 
             unparsed[field] = value;
@@ -205,12 +212,17 @@ namespace Icm.Api.Contracts
 
         /// <summary>Writes a <c>DTYPE_UTCDATETIME</c>.</summary>
         /// <param name="value">The value, or null to leave the field alone.</param>
-        /// <returns>The ISO 8601 value in UTC, or null to omit the field.</returns>
+        /// <returns>
+        /// The value converted to UTC, in the observed offsetless wire format, or null to
+        /// omit the field.
+        /// </returns>
         /// <remarks>
-        /// Converted to UTC and written with an explicit <c>Z</c>: the grammar recommends
-        /// stating the offset, and a local time sent in a UTC field would be wrong by that
-        /// offset with nothing to signal it. Sub-second precision is dropped, which no
-        /// field on a service request has any use for.
+        /// The value is converted to UTC before formatting — a local time sent in a UTC
+        /// field would be wrong by the offset with nothing to signal it — but the string
+        /// itself carries no offset marker: <see cref="UtcDateTimeFormat"/> is the shape
+        /// ICM was observed to use, and it identifies UTC only by the field's type, not by
+        /// anything in the text. Sub-second precision is dropped, which no field on a
+        /// service request has any use for.
         /// </remarks>
         public static string? FromUtcDateTime(DateTimeOffset? value) =>
             value?.UtcDateTime.ToString(UtcDateTimeFormat, CultureInfo.InvariantCulture);

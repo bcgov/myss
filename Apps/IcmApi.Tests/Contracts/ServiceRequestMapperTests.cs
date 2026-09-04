@@ -352,6 +352,31 @@ namespace Icm.Api.Tests.Contracts
         }
 
         [Fact]
+        public void ToModel_KeepsTheWrittenWallClockWhenADateTimeCarriesAnOffset()
+        {
+            // A zone-less Siebel type reports the clock as written. DateTime parsing
+            // would have converted 14:30-07:00 to the machine's local time (21:30 on a
+            // UTC host) before the kind was flattened — environment-dependent corruption
+            // that no test on a Pacific machine would ever see.
+            ServiceRequest model = ServiceRequestMapper.ToModel(
+                new SiebelServiceRequest { CallDate = "2026-08-27T14:30:00-07:00" });
+
+            Assert.Equal(new DateTime(2026, 8, 27, 14, 30, 0), model.CallDate);
+            Assert.Equal(DateTimeKind.Unspecified, model.CallDate!.Value.Kind);
+        }
+
+        [Fact]
+        public void ToSiebel_TrimsFieldNamesButKeepsTheSpacesInsideThem()
+        {
+            // " SR Number" would travel to ICM as a different field than "SR Number";
+            // the spaces inside the name are the ones that matter.
+            Icm.Api.Contracts.SiebelListQuery query = ServiceRequestMapper.ToSiebel(
+                new ServiceRequestQuery { Fields = [" SR Number ", "  ", "Status"] });
+
+            Assert.Equal("SR Number,Status", query.Fields);
+        }
+
+        [Fact]
         public void ToModel_LeavesAdditionalFieldsEmptyForAFullyModelledRecord()
         {
             SiebelServiceRequest? wire = JsonSerializer.Deserialize<SiebelServiceRequest>(

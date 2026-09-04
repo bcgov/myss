@@ -140,11 +140,13 @@ public class Example(IServiceRequestService serviceRequests)
     public async Task<ServiceRequest?> OpenAsync(CancellationToken ct)
     {
         // Search. Nothing matched is an empty page, not an exception.
+        // SearchSpec uses the OpenAPI document's field names; Fields uses the names the
+        // live gateway answers with. The two disagree — see below.
         ServiceRequestPage page = await serviceRequests.SearchAsync(
             new ServiceRequestQuery
             {
                 SearchSpec = "[Status] = \"Open\"",
-                Fields     = ["SR Number", "Status", "Created"],
+                Fields     = ["Service Request Number", "Status", "Created Date"],
                 PageSize   = 25,
             },
             ct);
@@ -428,8 +430,6 @@ things worth watching in the output:
 - No DI extension method (`AddIcmServiceRequestApi`) — that needs
   `Refit.HttpClientFactory`, and the registration shape will be clearer once `MyssApi`
   actually consumes this. The wiring above works in the meantime.
-- `IcmApi.Tests` is not in `.github/workflows/tests-dev.yml`, which only runs the MyssApi
-  suite.
 - Only a simple query has been run against a live ICM. The date format and the `ViewMode`
   defaults are the two things to confirm first against SIT — run `IcmApi.Console` above,
   which exists for exactly that.

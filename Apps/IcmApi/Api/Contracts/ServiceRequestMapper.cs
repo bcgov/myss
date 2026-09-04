@@ -189,7 +189,9 @@ namespace Icm.Api.Contracts
 
         /// <summary>
         /// Joins requested field names into the comma-separated list Siebel expects.
-        /// Field names are ICM's own, spaces and all, so they pass through untouched.
+        /// Field names are ICM's own — the spaces <i>inside</i> a name like
+        /// <c>SR Number</c> are load-bearing — but stray whitespace around a name would
+        /// travel to ICM as part of it, so entries are trimmed.
         /// </summary>
         private static string? ToFieldList(IEnumerable<string>? fields)
         {
@@ -198,7 +200,9 @@ namespace Icm.Api.Contracts
                 return null;
             }
 
-            string joined = string.Join(',', fields.Where(f => !string.IsNullOrWhiteSpace(f)));
+            string joined = string.Join(
+                ',',
+                fields.Where(f => !string.IsNullOrWhiteSpace(f)).Select(f => f.Trim()));
             return joined.Length == 0 ? null : joined;
         }
     }

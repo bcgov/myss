@@ -100,12 +100,30 @@ namespace Icm.Api.Repositories
                 },
                 cancellationToken).ConfigureAwait(false);
 
-            if (response?.AccessToken is not { Length: > 0 } accessToken)
+            // Whitespace counts as missing: it would only fail later, inside AccessToken's
+            // own guard, as an ArgumentException that hides which endpoint misbehaved.
+            if (response is null || string.IsNullOrWhiteSpace(response.AccessToken))
             {
                 // Say where, so the message is actionable — and nothing about what was sent.
                 throw new OAuthTokenException(
                     $"The token endpoint at '{tokenUrl}' returned a successful response with no access token.");
             }
+
+            // Every caller sends this token as `Authorization: Bearer …`. A server that
+            // says the token is some other type (DPoP, MAC) is describing a token that
+            // scheme cannot carry — better to say so here than surface it later as an
+            // inexplicable 401 from ICM. An absent token_type is tolerated as Bearer:
+            // RFC 6749 requires the field, but rejecting its omission would fail servers
+            // whose tokens work fine.
+            if (response.TokenType is { Length: > 0 } tokenType
+                && !string.Equals(tokenType, "Bearer", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new OAuthTokenException(
+                    $"The token endpoint at '{tokenUrl}' issued a '{tokenType}' token; "
+                    + "only Bearer tokens can be used here.");
+            }
+
+            string accessToken = response.AccessToken;
 
             TimeSpan lifetime = response.ExpiresIn is { } seconds && seconds > 0
                 ? TimeSpan.FromSeconds(seconds)

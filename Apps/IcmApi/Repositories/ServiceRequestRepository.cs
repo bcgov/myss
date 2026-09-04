@@ -79,8 +79,14 @@ namespace Icm.Api.Repositories
                     cancellationToken)
                 .ConfigureAwait(false);
 
-            // A 204 is a successful empty result, so it passes the guard and maps to an
-            // empty page rather than being special-cased.
+            // Both documented empty results. The spec declares them, and the 404 is not
+            // theoretical: MEASURED against SIT on 2026-09-03, a search that matches
+            // nothing answers 404 {"ERROR":"There is no data for the requested resource"}.
+            if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound)
+            {
+                return ServiceRequestMapper.ToModel((SiebelListResponse?)null);
+            }
+
             await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
             return ServiceRequestMapper.ToModel(response.Content);
         }
@@ -109,7 +115,15 @@ namespace Icm.Api.Repositories
             }
 
             await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
-            return response.Content is null ? null : ServiceRequestMapper.ToModel(response.Content);
+
+            // Missing has its own status codes, handled above. A 200 is specified to carry
+            // the record, so an empty body is ICM contradicting itself — same class of
+            // problem as a create that returns nothing, and reported the same way rather
+            // than being folded into "not found".
+            return response.Content is { } record
+                ? ServiceRequestMapper.ToModel(record)
+                : throw new IcmResponseException(
+                    "ICM answered the read with success but returned no record.");
         }
 
         /// <inheritdoc/>
@@ -192,7 +206,11 @@ namespace Icm.Api.Repositories
                 .DeleteAsync(bearerToken, _trustedUserName, serviceRequestKey, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound)
+            // The spec gives the delete all three no-op statuses (204, 304 and 404), and
+            // none of them is a failure — there was just nothing to delete.
+            if (response.StatusCode is HttpStatusCode.NoContent
+                or HttpStatusCode.NotModified
+                or HttpStatusCode.NotFound)
             {
                 return false;
             }
@@ -202,21 +220,29 @@ namespace Icm.Api.Repositories
         }
 
         /// <summary>
-        /// Reads a write response, treating <c>304</c> and <c>204</c> as "nothing changed"
-        /// rather than as failures.
+        /// Reads a write response, treating <c>304</c>, <c>204</c> and <c>404</c> — all of
+        /// which the spec documents on the PUTs — as "nothing to report" rather than as
+        /// failures.
         /// </summary>
         private static async Task<ServiceRequest?> ReadWriteResultAsync(
             IApiResponse<SiebelWriteResponse> response)
         {
-            if (response.StatusCode is HttpStatusCode.NotModified or HttpStatusCode.NoContent)
+            if (response.StatusCode is HttpStatusCode.NotModified
+                or HttpStatusCode.NoContent
+                or HttpStatusCode.NotFound)
             {
                 return null;
             }
 
             await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
+
+            // Past the no-op statuses, a successful write is specified to return the
+            // stored record. An empty body is not "nothing changed" — ICM has a status
+            // for that — it is a response the caller cannot act on.
             return response.Content?.Items is { } written
                 ? ServiceRequestMapper.ToModel(written)
-                : null;
+                : throw new IcmResponseException(
+                    "ICM reported the write succeeded but returned no record.");
         }
     }
 }

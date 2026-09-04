@@ -68,6 +68,46 @@ namespace Icm.Api.Tests.Repositories
         }
 
         [Fact]
+        public async Task GetTokenAsync_TreatsAWhitespaceTokenAsMissing()
+        {
+            // Whitespace would only fail later, inside AccessToken's own guard, as an
+            // ArgumentException that no longer names the endpoint that misbehaved.
+            (OAuthTokenRepository repository, _) = Create(
+                responseJson: """{"access_token":"   ","token_type":"Bearer","expires_in":300}""");
+
+            await Assert.ThrowsAsync<OAuthTokenException>(
+                () => repository.GetTokenAsync(Credentials()));
+        }
+
+        [Fact]
+        public async Task GetTokenAsync_RejectsATokenTypeThatIsNotBearer()
+        {
+            // Every caller sends the token as `Authorization: Bearer …`; a token the
+            // server says is another type cannot travel in that scheme.
+            (OAuthTokenRepository repository, _) = Create(
+                responseJson: """{"access_token":"abc","token_type":"DPoP","expires_in":300}""");
+
+            OAuthTokenException exception = await Assert.ThrowsAsync<OAuthTokenException>(
+                () => repository.GetTokenAsync(Credentials()));
+
+            Assert.Contains("DPoP", exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task GetTokenAsync_ToleratesAMissingTokenTypeAsBearer()
+        {
+            // RFC 6749 requires token_type, but rejecting its omission would fail servers
+            // whose tokens work fine; bearer casing also varies in the wild.
+            (OAuthTokenRepository repository, _) = Create(
+                responseJson: """{"access_token":"abc","expires_in":300}""");
+            Assert.Equal("abc", (await repository.GetTokenAsync(Credentials())).Value);
+
+            (OAuthTokenRepository lowerCase, _) = Create(
+                responseJson: """{"access_token":"abc","token_type":"bearer","expires_in":300}""");
+            Assert.Equal("abc", (await lowerCase.GetTokenAsync(Credentials())).Value);
+        }
+
+        [Fact]
         public async Task GetTokenAsync_ThrowsWhenTheServerRejectsTheRequest()
         {
             (OAuthTokenRepository repository, _) = Create(

@@ -303,8 +303,25 @@ namespace Icm.Api.Tests.Services
                 () => service.GetTokenAsync(new OAuthClientCredentials { ClientId = "a", ClientSecret = "b" }));
             await Assert.ThrowsAsync<ArgumentException>(
                 () => service.GetTokenAsync(new OAuthClientCredentials { TokenUrl = TokenUrl, ClientSecret = "b" }));
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => service.GetTokenAsync(new OAuthClientCredentials { TokenUrl = TokenUrl, ClientId = "a" }));
 
             Assert.Equal(0, endpoint.CallCount);
+        }
+
+        [Fact]
+        public async Task GetTokenAsync_RejectsABlankSecretEvenWhenTheCacheIsWarm()
+        {
+            // The secret is deliberately not part of the cache key, so this rejection has
+            // to happen before the cache is consulted — otherwise a caller with no secret
+            // at all would be quietly handed the token minted under someone else's.
+            FakeTokenRepository endpoint = new();
+            using OAuthTokenService service = new(endpoint, timeProvider: new FakeTimeProvider(Start));
+
+            await service.GetTokenAsync(Credentials());
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => service.GetTokenAsync(Credentials(clientSecret: "  ")));
         }
 
         [Fact]

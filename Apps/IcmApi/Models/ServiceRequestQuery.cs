@@ -19,7 +19,10 @@ namespace Icm.Api.Models
     public class ServiceRequestQuery
     {
         /// <summary>
-        /// Gets or sets the Siebel search expression, e.g. <c>[SR Number] = "1-12345"</c>.
+        /// Gets or sets the Siebel search expression, e.g. <c>[Status] = "Open"</c>.
+        /// Field names here are the OpenAPI document's, not the response's — and not
+        /// every response field is searchable: ICM rejects <c>[SR Number]</c> outright,
+        /// so the record number cannot be searched on at all.
         /// </summary>
         public string? SearchSpec { get; set; }
 

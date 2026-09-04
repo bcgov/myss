@@ -109,6 +109,14 @@ namespace Icm.Api.Services
                 throw new ArgumentException("A client id is required.", nameof(credentials));
             }
 
+            // Checked here, not left to the repository: the secret is not part of the
+            // cache key, so once the key is warm a caller with a blank secret would be
+            // handed the cached token and never reach the repository's own check.
+            if (string.IsNullOrWhiteSpace(credentials.ClientSecret))
+            {
+                throw new ArgumentException("A client secret is required.", nameof(credentials));
+            }
+
             string key = BuildCacheKey(tokenUrl, credentials.ClientId, credentials.GetScopeParameter());
 
             if (TryGetCachedToken(key, out string? cached))

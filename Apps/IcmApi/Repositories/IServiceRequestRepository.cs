@@ -71,8 +71,9 @@ namespace Icm.Api.Repositories
         /// </param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>
-        /// The stored record, or null when ICM answered <c>304 Not Modified</c> because
-        /// nothing changed.
+        /// The stored record, or null when there was nothing to report — ICM answered
+        /// <c>304 Not Modified</c> because nothing changed, or one of its documented
+        /// no-resource statuses because the key matched nothing.
         /// </returns>
         Task<ServiceRequest?> UpdateAsync(
             string bearerToken,
@@ -87,7 +88,10 @@ namespace Icm.Api.Repositories
         /// <param name="bearerToken">The caller's access token.</param>
         /// <param name="input">The fields to write.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The stored record, or null when ICM answered <c>304 Not Modified</c>.</returns>
+        /// <returns>
+        /// The stored record, or null when ICM answered <c>304 Not Modified</c> or a
+        /// documented no-resource status.
+        /// </returns>
         /// <remarks>
         /// Prefer <see cref="UpdateAsync"/> when the key is known: which record an upsert
         /// lands on depends on ICM's user-key configuration rather than on anything visible
