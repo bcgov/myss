@@ -313,6 +313,12 @@ namespace Icm.Api.ConsoleApp
                 stopwatch.Stop();
                 return FailUnreachable(stopwatch, exception, "ICM");
             }
+            catch (IcmResponseException exception)
+            {
+                stopwatch.Stop();
+                return Fail(
+                    stopwatch, "ICM reported success but the response was not usable.", exception.Message);
+            }
         }
 
         /// <summary>Stage three: read one named record, to check a specific case by hand.</summary>
@@ -365,6 +371,12 @@ namespace Icm.Api.ConsoleApp
             {
                 stopwatch.Stop();
                 return FailUnreachable(stopwatch, exception, "ICM");
+            }
+            catch (IcmResponseException exception)
+            {
+                stopwatch.Stop();
+                return Fail(
+                    stopwatch, "ICM reported success but the response was not usable.", exception.Message);
             }
         }
 
