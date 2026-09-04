@@ -1,6 +1,7 @@
 namespace Icm.Api.Contracts
 {
     using System;
+    using System.Collections.Generic;
 
     /// <summary>
     /// Siebel's <c>"Y"</c> / <c>"N"</c> in place of a boolean, and the conversion to and
@@ -22,16 +23,37 @@ namespace Icm.Api.Contracts
         /// Reads a Siebel flag.
         /// </summary>
         /// <param name="value">The field value.</param>
+        /// <param name="field">The ICM field name, for the unparsed record.</param>
+        /// <param name="unparsed">Collects values that could not be read.</param>
         /// <returns>
-        /// The flag, or null when the field was absent or empty. Anything that is not
-        /// <c>"Y"</c> is false — Siebel writes exactly one character here, so a value that
-        /// is neither is a field that is not a flag at all, and reporting it as true would
-        /// be the more dangerous guess.
+        /// The flag, or null when the field was absent, empty, or neither <c>"Y"</c> nor
+        /// <c>"N"</c>. An unexpected value must not become an asserted answer in either
+        /// direction — on <c>Restricted Flag</c>, "unknown" reported as "unrestricted"
+        /// would be exactly as dangerous as reporting it restricted is useless — so it is
+        /// recorded in <paramref name="unparsed"/> and returned as unknown instead.
         /// </returns>
-        public static bool? ToBoolean(string? value) =>
-            string.IsNullOrWhiteSpace(value)
-                ? null
-                : string.Equals(value.Trim(), Yes, StringComparison.OrdinalIgnoreCase);
+        public static bool? ToBoolean(
+            string? value, string field, IDictionary<string, string> unparsed)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            string trimmed = value.Trim();
+            if (string.Equals(trimmed, Yes, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(trimmed, No, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            unparsed[field] = value;
+            return null;
+        }
 
         /// <summary>
         /// Writes a Siebel flag.

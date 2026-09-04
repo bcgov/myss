@@ -30,6 +30,19 @@ namespace Icm.Api.Tests.Contracts
         }
 
         [Fact]
+        public void ToModel_ReportsAnUnexpectedFlagValueAsUnknownNotFalse()
+        {
+            SiebelServiceRequest siebel = new() { RestrictedFlag = "X" };
+
+            ServiceRequest model = ServiceRequestMapper.ToModel(siebel);
+
+            // "X" is not an answer. On Restricted Flag in particular, false means
+            // unrestricted — asserting that from a value we cannot read would be wrong.
+            Assert.Null(model.RestrictedFlag);
+            Assert.Equal("X", model.UnparsedValues["Restricted Flag"]);
+        }
+
+        [Fact]
         public void ToSiebel_TurnsBooleansBackIntoFlags()
         {
             ServiceRequestInput input = new() { RestrictedFlag = true, Kkcfs = false };
