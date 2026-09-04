@@ -17,7 +17,8 @@ namespace Icm.Api.Repositories
     /// <para>
     /// <b>A returned result is not necessarily a success.</b> The workflow reports
     /// business rejections inside a 200 — check <see cref="BusPassResult.ErrorCode"/>.
-    /// An HTTP-level failure still throws <see cref="Refit.ApiException"/>.
+    /// An HTTP-level failure throws <see cref="Refit.ApiException"/>; a successful response
+    /// without its required body throws <see cref="IcmResponseException"/>.
     /// </para>
     /// </remarks>
     public interface IBusPassRepository
