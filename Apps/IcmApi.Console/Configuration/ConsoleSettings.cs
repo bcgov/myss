@@ -25,7 +25,11 @@ namespace Icm.Api.ConsoleApp.Configuration
         /// <summary>Gets or sets the bus pass submission for <c>buspass</c> mode.</summary>
         public BusPassSettings BusPass { get; set; } = new();
 
-        /// <summary>Gets or sets how much of each record to print: <c>full</c> or <c>summary</c>.</summary>
+        /// <summary>
+        /// Gets or sets how much of each record to print: <c>full</c> (every selected
+        /// field), <c>summary</c> (one line per record), or <c>raw</c> (full, plus the
+        /// untouched response bodies).
+        /// </summary>
         public string Output { get; set; } = "full";
 
         /// <summary>
@@ -74,6 +78,16 @@ namespace Icm.Api.ConsoleApp.Configuration
             if (!string.Equals(Mode, "query", StringComparison.OrdinalIgnoreCase) && !IsBusPassMode)
             {
                 found.Add($"Mode must be 'query' or 'buspass' (it is '{Mode}').");
+            }
+
+            // A typo here would otherwise be silently treated as `full` — for a
+            // diagnostic tool, quietly not printing what was asked for is the worst
+            // possible failure mode.
+            if (!string.Equals(Output, "full", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(Output, "summary", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(Output, "raw", StringComparison.OrdinalIgnoreCase))
+            {
+                found.Add($"Output must be 'full', 'summary' or 'raw' (it is '{Output}').");
             }
 
             if (IsBusPassMode)

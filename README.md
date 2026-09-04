@@ -9,7 +9,13 @@ Prerequisites: Docker, the .NET 10 SDK, Node 22+.
 ## One command: Aspire
 
 Everything below — the containers, the EF migrations, and all three apps — can be run
-with a single command through the Aspire app host:
+with a single command through the Aspire app host. Its configuration comes from
+`Apps/MySS.AspireHost/appsettings.json` (non-secret defaults, committed) plus user
+secrets for everything password-shaped, stored under `Aspire:Parameters:*` — the
+`.env` files are for the compose path only. Get the secret values from another
+developer or the team's central secrets store, and load them into the app host's
+user-secret store once. A clean checkout without them fails fast at startup, naming
+the first missing value. Then:
 
 ```bash
 dotnet run --project Apps/MySS.AspireHost
@@ -20,8 +26,6 @@ bucket-creation one-shot), applies both EF migration contexts once Postgres is h
 then starts `MySSApi` (http://localhost:5000), `MySSContent` (Strapi,
 http://localhost:1337, run with npm on the host) and `MyssWebClient` (Vite) — with a
 dashboard (URL printed at startup) showing every resource's logs, health and telemetry.
-Strapi's env is read from `Apps/MyssContent/.env` when present, else straight from the
-committed `.env.example`, so the copy step is optional on this path.
 
 Container data lives in named volumes (`myss_postgres-data`, `myss_clamav-db`,
 `myss_minio-data`) and survives restarts; the containers themselves stop when the app

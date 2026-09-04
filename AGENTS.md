@@ -63,9 +63,13 @@ dotnet run --project Apps/MySS.AspireHost
 
 Container data is in the same named volumes compose creates (`myss_postgres-data` etc.),
 so the two paths share data; containers stop when the app host stops. Only one of
-Aspire/compose can be up at a time (same host ports). Strapi env comes from `Apps/MyssContent/.env` or falls back
-to the committed `.env.example`. Still manual either way: the Strapi first-visit admin
-user, and the `Strapi:ApiToken` for MyssApi (`appsettings.local.json`).
+Aspire/compose can be up at a time (same host ports). All app host configuration comes
+from `Apps/MySS.AspireHost/appsettings.json` plus `Aspire:Parameters:*` user secrets —
+the `.env` files are for the compose path only. A clean checkout fails fast naming the
+first missing secret; the values come from another developer or the team's central
+secrets store (see README.md's "One command: Aspire"). Still manual either way: the
+Strapi first-visit admin user, and the `Strapi:ApiToken` for MyssApi
+(`appsettings.local.json`).
 
 Local stack manually (from repo root):
 

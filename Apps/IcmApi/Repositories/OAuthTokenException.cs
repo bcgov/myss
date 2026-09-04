@@ -4,7 +4,8 @@ namespace Icm.Api.Repositories
 
     /// <summary>
     /// Thrown when the token endpoint returns success but the body is not a token that can
-    /// be used — an empty or absent <c>access_token</c>.
+    /// be used — an empty or absent <c>access_token</c>, or a <c>token_type</c> that is
+    /// something other than Bearer.
     /// </summary>
     /// <remarks>
     /// Distinct from <see cref="Refit.ApiException"/>, which means the request itself

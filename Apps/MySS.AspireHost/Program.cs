@@ -134,11 +134,16 @@ IResourceBuilder<ContainerResource> minioInit = builder
 IResourceBuilder<ExecutableResource> toolRestore = builder
     .AddExecutable("ef-tool-restore", "dotnet", apiDirectory, "tool", "restore");
 
+// Both migration runs get the same FormsDb reference as the API: `dotnet ef`
+// builds the app's host, which reads ConnectionStrings__FormsDb from the
+// environment — without it the runs would use the committed development
+// connection string and fail whenever the configured password differs.
 IResourceBuilder<ExecutableResource> migrateForms = builder
     .AddExecutable(
         "migrate-forms", "dotnet", apiDirectory,
         "ef", "database", "update", "--context", "FormsDbContext")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithReference(formsDb)
     .WaitFor(postgres)
     .WaitForCompletion(toolRestore);
 
@@ -147,6 +152,7 @@ IResourceBuilder<ExecutableResource> migrateAttachments = builder
         "migrate-attachments", "dotnet", apiDirectory,
         "ef", "database", "update", "--context", "AttachmentsDbContext")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithReference(formsDb)
     .WaitForCompletion(migrateForms);
 
 // ---------------------------------------------------------------------------
@@ -215,6 +221,13 @@ IResourceBuilder<ProjectResource> api = builder
     .WithReference(formsDb)
     .WithEnvironment("Strapi__BaseUrl", content.GetEndpoint("http"))
     .WithEnvironment("ObjectStorage__ServiceUrl", minio.GetEndpoint("api"))
+
+    // The same credentials the MinIO container was started with — left to
+    // appsettings.Development.json, the API would silently authenticate with
+    // the committed static values and every storage call would be rejected
+    // whenever the configured root password differs.
+    .WithEnvironment("ObjectStorage__AccessKey", minioRootUser)
+    .WithEnvironment("ObjectStorage__SecretKey", minioRootPassword)
     .WaitFor(postgres)
     .WaitFor(minio)
 

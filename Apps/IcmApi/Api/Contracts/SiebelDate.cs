@@ -202,7 +202,10 @@ namespace Icm.Api.Contracts
 
         /// <summary>Writes a zone-less <c>DTYPE_DATETIME</c>.</summary>
         /// <param name="value">The value, or null to leave the field alone.</param>
-        /// <returns>The ISO 8601 value, or null to omit the field.</returns>
+        /// <returns>
+        /// The value in the observed <c>MM/dd/yyyy HH:mm:ss</c> wire format, or null to
+        /// omit the field.
+        /// </returns>
         /// <remarks>
         /// No offset is written. The grammar recommends one, but this Siebel type does not
         /// carry a zone, so any offset put here would be made up.
@@ -229,7 +232,10 @@ namespace Icm.Api.Contracts
 
         /// <summary>Writes a <c>DTYPE_DATE</c>.</summary>
         /// <param name="value">The value, or null to leave the field alone.</param>
-        /// <returns>The ISO 8601 date, or null to omit the field.</returns>
+        /// <returns>
+        /// The date in the observed <c>MM/dd/yyyy</c> wire format, or null to omit the
+        /// field.
+        /// </returns>
         /// <remarks>
         /// A date and nothing else. The Oracle page's midnight-UTC warning is about a
         /// <i>DateTime</i> given without a time; a Date field is date-only by definition,
