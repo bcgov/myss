@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   mapAnswersToEstimate,
+  missingRequiredCoupleAnswers,
   screenPreCheck,
   type EligibilityRequest,
 } from "@/api/eligibility";
@@ -151,5 +152,39 @@ describe("screenPreCheck", () => {
     // The page builds no request on a failed screen — modelled here.
     const request = pre.passed ? mapAnswersToEstimate(answers) : null;
     expect(request).toBeNull();
+  });
+});
+
+describe("missingRequiredCoupleAnswers", () => {
+  it("requires partnerPwd for a couple who left it unanswered", () => {
+    for (const status of ["married", "marriagelike"]) {
+      expect(missingRequiredCoupleAnswers({ relationshipStatus: status })).toEqual([
+        "partnerPwd",
+      ]);
+      // Empty string / null are "unanswered" too, not "No".
+      expect(
+        missingRequiredCoupleAnswers({ relationshipStatus: status, partnerPwd: "" }),
+      ).toEqual(["partnerPwd"]);
+      expect(
+        missingRequiredCoupleAnswers({ relationshipStatus: status, partnerPwd: null }),
+      ).toEqual(["partnerPwd"]);
+    }
+  });
+
+  it("is satisfied once a couple answers partnerPwd either way", () => {
+    for (const value of ["true", "false", true, false]) {
+      expect(
+        missingRequiredCoupleAnswers({
+          relationshipStatus: "married",
+          partnerPwd: value,
+        }),
+      ).toEqual([]);
+    }
+  });
+
+  it("never requires spouse answers from a single applicant", () => {
+    for (const status of ["single", "divorced", "separated", "widowed", undefined]) {
+      expect(missingRequiredCoupleAnswers({ relationshipStatus: status })).toEqual([]);
+    }
   });
 });

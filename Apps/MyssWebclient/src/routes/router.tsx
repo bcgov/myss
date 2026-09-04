@@ -8,6 +8,7 @@ import AuthCallbackPage from "@/pages/AuthCallbackPage";
 import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
+import BusPassPage from "@/pages/BusPassPage";
 import SubmissionView from "@/pages/SubmissionView";
 import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
 import RequireAuth from "@/auth/RequireAuth";
@@ -22,53 +23,61 @@ import { paths } from "@/routes/paths";
 //   PROTECTED - the Forms / Strapi tech-demo pages, wrapped in <RequireAuth>
 //               so they only render once the user has authenticated.
 export const router = createBrowserRouter([
-    {
-        path: paths.home,
-        element: <App />,
-        children: [
-            // ---- Public ----
-            { index: true, element: <HomePage /> },
-            {
-                path: paths.eligibilityEstimator,
-                element: <EligibilityEstimatorPage />,
-            },
-            { path: paths.signIn, element: <SignInPage /> },
-            { path: paths.authCallback, element: <AuthCallbackPage /> },
-            { path: paths.simpleLogin, element: <SimpleLoginPage /> },
+  {
+    path: paths.home,
+    element: <App />,
+    children: [
+      // ---- Public ----
+      { index: true, element: <HomePage /> },
+      {
+        path: paths.eligibilityEstimator,
+        element: <EligibilityEstimatorPage />,
+      },
+      { path: paths.signIn, element: <SignInPage /> },
+      { path: paths.authCallback, element: <AuthCallbackPage /> },
+      { path: paths.simpleLogin, element: <SimpleLoginPage /> },
 
-            // ---- Protected (Forms / Strapi): only after login/auth ----
-            {
-                path: "techdemos",
-                element: (
-                    <RequireAuth>
-                        <TechDemos />
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "techdemos/forms",
-                element: (
-                    <RequireAuth>
-                        <FormsTechDemo />
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "techdemos/forms/submissions/:id",
-                element: (
-                    <RequireAuth>
-                        <SubmissionView />
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "techdemos/attachments",
-                element: (
-                    <RequireAuth>
-                        <AttachmentsTechDemo />
-                    </RequireAuth>
-                ),
-            },
-        ],
-    },
+      // ---- Protected (Forms / Strapi): only after login/auth ----
+      {
+        path: "techdemos",
+        element: (
+          <RequireAuth>
+            <TechDemos />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "techdemos/forms",
+        element: (
+          <RequireAuth>
+            <FormsTechDemo />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "techdemos/bc-bus-pass",
+        element: (
+          <RequireAuth>
+            <BusPassPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "techdemos/forms/submissions/:id",
+        element: (
+          <RequireAuth>
+            <SubmissionView />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "techdemos/attachments",
+        element: (
+          <RequireAuth>
+            <AttachmentsTechDemo />
+          </RequireAuth>
+        ),
+      },
+    ],
+  },
 ]);

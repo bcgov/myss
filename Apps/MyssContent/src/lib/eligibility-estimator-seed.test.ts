@@ -150,7 +150,7 @@ describe("eligibility estimator seed", () => {
       // Advanced conditional: `conditional.json`, never the simple `when` string.
       expect(field.conditional?.when).toBeUndefined();
       expect(field.conditional?.json).toEqual({
-        in: [{ var: "relationshipStatus" }, ["married", "marriagelike"]],
+        in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
       });
     }
   });
@@ -209,7 +209,7 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
     expect(keysOf(v2).slice(0, 2)).toEqual(["residesInBc", "hasEligibleStatus"]);
   });
 
-  it("makes each pre-check a required yes/no radio with a tooltip, not conditional", () => {
+  it("makes each pre-check a required yes/no radio, not conditional", () => {
     for (const key of PRE_CHECK_FIELDS) {
       const field = componentByKey(v2, key);
       expect(field.type).toBe("radio");
@@ -219,18 +219,65 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
         "true",
         "false",
       ]);
+      // A tooltip is optional per pre-check (residesInBc has none by design);
+      // where one is present it must be a non-empty string.
       const tooltip = (field as { tooltip?: unknown }).tooltip;
-      expect(typeof tooltip).toBe("string");
-      expect((tooltip as string).length).toBeGreaterThan(0);
+      if (tooltip !== undefined) {
+        expect(typeof tooltip).toBe("string");
+        expect((tooltip as string).length).toBeGreaterThan(0);
+      }
     }
   });
 
-  it("preserves every v1 key unchanged and adds ONLY the two pre-check keys", () => {
+  it("preserves every v1 key unchanged and adds the pre-check + 0827 layout keys", () => {
     const v1Keys = new Set(keysOf(v1));
     const v2Keys = new Set(keysOf(v2));
     for (const key of v1Keys) expect(v2Keys.has(key)).toBe(true);
     const added = [...v2Keys].filter((key) => !v1Keys.has(key));
-    expect(new Set(added)).toEqual(new Set(["residesInBc", "hasEligibleStatus"]));
+    expect(new Set(added)).toEqual(
+      new Set([
+        "residesInBc",
+        "hasEligibleStatus",
+        "statusHelp",
+        "assetsSectionHeading",
+        "spouseSectionHeading",
+      ]),
+    );
+  });
+
+  it("adds the 0827 layout components (status panel, section headings, helper)", () => {
+    const keys = keysOf(v2);
+
+    // The status explainer is a collapsible panel directly after the status
+    // question (0827: no longer page chrome above the whole form).
+    const statusHelp = componentByKey(v2, "statusHelp") as {
+      type?: unknown;
+      collapsible?: unknown;
+    };
+    expect(statusHelp.type).toBe("panel");
+    expect(statusHelp.collapsible).toBe(true);
+    expect(keys.indexOf("statusHelp")).toBe(keys.indexOf("hasEligibleStatus") + 1);
+    expect(keys.indexOf("statusHelp")).toBeLessThan(keys.indexOf("relationshipStatus"));
+
+    // Section headings sit at the head of the applicant and spouse money blocks.
+    expect(keys.indexOf("assetsSectionHeading")).toBe(keys.indexOf("monthlyIncome") - 1);
+    expect(keys.indexOf("spouseSectionHeading")).toBe(
+      keys.indexOf("partnerMonthlyIncome") - 1,
+    );
+
+    // The applicant heading always shows; the spouse heading reveals only for a
+    // couple, via the SAME advanced conditional as the spouse fields.
+    expect(componentByKey(v2, "assetsSectionHeading").conditional).toBeUndefined();
+    expect(componentByKey(v2, "spouseSectionHeading").conditional?.json).toEqual({
+      in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
+    });
+
+    // Dependent-children helper text (0827).
+    const depChildren = componentByKey(v2, "dependentChildren") as {
+      description?: unknown;
+    };
+    expect(typeof depChildren.description).toBe("string");
+    expect(depChildren.description as string).toContain("maximum family size of 7");
   });
 
   it("applies the 0826 label rewrites (labels only, keys intact)", () => {
@@ -256,7 +303,7 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
       const field = componentByKey(v2, key);
       expect(field.conditional?.when).toBeUndefined();
       expect(field.conditional?.json).toEqual({
-        in: [{ var: "relationshipStatus" }, ["married", "marriagelike"]],
+        in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
       });
       expect(field.validate?.required).toBeUndefined();
     }
