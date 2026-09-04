@@ -10,6 +10,7 @@
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+        <UserSecretsId>21c32ae2-b147-46e6-9895-e20c9996f3cc</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>

@@ -1,6 +1,6 @@
 // The one-command local stack: everything README.md's "Local development" section had
-// you do by hand — copy the Strapi .env, docker compose up, apply the two EF migration
-// contexts, start the API, Strapi and the webclient — expressed as an Aspire app model.
+// you do by hand — docker compose up, apply the two EF migration contexts, start the
+// API, Strapi and the webclient — expressed as an Aspire app model.
 //
 // The containers mirror compose.yaml (same images, env, host ports and init scripts).
 // Data lives in named volumes so it survives restarts, and the volume names are exactly
@@ -9,10 +9,17 @@
 // time (same host ports). The containers themselves use Aspire's default session
 // lifetime, so they stop when this app host stops.
 //
+// All configuration comes from IConfiguration (appsettings.json, then user secrets,
+// then environment variables) under Aspire:Parameters. Non-secret defaults live in
+// appsettings.json; secrets (passwords, Strapi keys) live in user secrets and travel
+// as Aspire secret parameters so they are redacted in the dashboard and any generated
+// manifest. Apps/MyssContent/.env(.example) is no longer read here — it remains only
+// for the docker compose path.
+//
 // Still manual, because they live inside Strapi's admin UI: the first-visit admin user,
 // and the read-only API token MyssApi needs in Strapi:ApiToken (appsettings.local.json).
 
-using System.Text;
+using System.Globalization;
 using Aspire.Hosting.JavaScript;
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
@@ -23,24 +30,30 @@ string contentDirectory = Path.Combine(repoRoot, "Apps", "MyssContent");
 string webclientDirectory = Path.Combine(repoRoot, "Apps", "MyssWebclient");
 
 // ---------------------------------------------------------------------------
-// Postgres — compose.yaml `postgres`. POSTGRES_DB creates `myss`; the init
-// scripts create the `strapi` database and role (first start on an empty
-// volume only, exactly like compose).
+// Postgres — compose.yaml `postgres`. POSTGRES_DB creates the forms database;
+// the init scripts create the `strapi` database and role (first start on an
+// empty volume only, exactly like compose).
 // ---------------------------------------------------------------------------
+string postgresDatabase = Require("Aspire:Parameters:Postgres:Database");
+
 IResourceBuilder<ParameterResource> postgresUser =
-    builder.AddParameter("postgres-username", "myss");
+    builder.AddParameter("postgres-username", Require("Aspire:Parameters:Postgres:Username"));
 IResourceBuilder<ParameterResource> postgresPassword =
-    builder.AddParameter("postgres-password", "myss-local-dev", secret: true);
+    SecretParameter("postgres-password", "Aspire:Parameters:Postgres:Password");
 
 // Container names are fixed (WithContainerName) so Docker Desktop shows
 // MySS-* instead of Aspire's random-suffixed defaults. Fixed names have one
 // sharp edge: if a hard-killed run leaves a container behind, the next start
 // fails with a name conflict — `docker rm -f <name>` clears it.
 IResourceBuilder<PostgresServerResource> postgres = builder
-    .AddPostgres("MySS-Db", postgresUser, postgresPassword, port: 5432)
+    .AddPostgres(
+        "MySS-Db", postgresUser, postgresPassword,
+        port: RequireInt("Aspire:Parameters:Postgres:Port"))
     .WithContainerName("MySS-Db")
-    .WithImage("postgres", "17-alpine")
-    .WithEnvironment("POSTGRES_DB", "myss")
+    .WithImage(
+        Require("Aspire:Parameters:Postgres:Image"),
+        Require("Aspire:Parameters:Postgres:Tag"))
+    .WithEnvironment("POSTGRES_DB", postgresDatabase)
 
     // Volume names deliberately match what docker compose creates for
     // compose.yaml (project "myss" + volume name), so the two ways of running
@@ -50,7 +63,8 @@ IResourceBuilder<PostgresServerResource> postgres = builder
 
 // Named FormsDb so WithReference injects ConnectionStrings__FormsDb — the name
 // MyssApi's configuration already reads.
-IResourceBuilder<PostgresDatabaseResource> formsDb = postgres.AddDatabase("FormsDb", "myss");
+IResourceBuilder<PostgresDatabaseResource> formsDb =
+    postgres.AddDatabase("FormsDb", postgresDatabase);
 
 // ---------------------------------------------------------------------------
 // ClamAV — compose.yaml `clamav`. amd64-only image; Apple Silicon runs it
@@ -58,38 +72,58 @@ IResourceBuilder<PostgresDatabaseResource> formsDb = postgres.AddDatabase("Forms
 // fast — the first ever start still downloads for several minutes.
 // ---------------------------------------------------------------------------
 builder
-    .AddContainer("MySS-VirusScan", "clamav/clamav", "1.5.3")
+    .AddContainer(
+        "MySS-VirusScan",
+        Require("Aspire:Parameters:ClamAv:Image"),
+        Require("Aspire:Parameters:ClamAv:Tag"))
     .WithContainerName("MySS-VirusScan")
     .WithContainerRuntimeArgs("--platform=linux/amd64")
-    .WithEndpoint(port: 3310, targetPort: 3310, name: "clamd")
+    .WithEndpoint(port: RequireInt("Aspire:Parameters:ClamAv:Port"), targetPort: 3310, name: "clamd")
     .WithVolume("myss_clamav-db", "/var/lib/clamav");
 
 // ---------------------------------------------------------------------------
 // MinIO — compose.yaml `minio` + the one-shot `minio-init` bucket creation.
 // Credentials match ObjectStorage in MyssApi's appsettings.Development.json.
 // ---------------------------------------------------------------------------
+IResourceBuilder<ParameterResource> minioRootPassword =
+    SecretParameter("minio-root-password", "Aspire:Parameters:Minio:RootPassword");
+string minioRootUser = Require("Aspire:Parameters:Minio:RootUser");
+string minioBucket = Require("Aspire:Parameters:Minio:Bucket");
+
 IResourceBuilder<ContainerResource> minio = builder
-    .AddContainer("MySS-ObjectStorage", "minio/minio", "latest")
+    .AddContainer(
+        "MySS-ObjectStorage",
+        Require("Aspire:Parameters:Minio:Image"),
+        Require("Aspire:Parameters:Minio:Tag"))
     .WithContainerName("MySS-ObjectStorage")
     .WithArgs("server", "/data", "--console-address", ":9001")
-    .WithEnvironment("MINIO_ROOT_USER", "myss")
-    .WithEnvironment("MINIO_ROOT_PASSWORD", "myss-local-dev")
-    .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "api")
-    .WithHttpEndpoint(port: 9001, targetPort: 9001, name: "console")
+    .WithEnvironment("MINIO_ROOT_USER", minioRootUser)
+    .WithEnvironment("MINIO_ROOT_PASSWORD", minioRootPassword)
+    .WithHttpEndpoint(
+        port: RequireInt("Aspire:Parameters:Minio:ApiPort"), targetPort: 9000, name: "api")
+    .WithHttpEndpoint(
+        port: RequireInt("Aspire:Parameters:Minio:ConsolePort"), targetPort: 9001, name: "console")
     .WithVolume("myss_minio-data", "/data")
     .WithHttpHealthCheck(path: "/minio/health/live", endpointName: "api");
 
+// The credentials reach the shell via environment variables (the password as a
+// secret parameter) so the literal never appears in the container's args,
+// which the app model and dashboard display. Container-to-container, addressed
+// by the network alias Aspire derives from the MinIO resource's name — this
+// URL must track that name, on the fixed in-network port 9000.
 IResourceBuilder<ContainerResource> minioInit = builder
-    .AddContainer("MySS-ObjectStorage-Init", "minio/mc", "latest")
+    .AddContainer(
+        "MySS-ObjectStorage-Init",
+        Require("Aspire:Parameters:Minio:InitImage"),
+        Require("Aspire:Parameters:Minio:InitTag"))
     .WithContainerName("MySS-ObjectStorage-Init")
     .WithEntrypoint("/bin/sh")
-
-    // Container-to-container, addressed by the network alias Aspire derives
-    // from the MinIO resource's name — this URL must track that name.
+    .WithEnvironment("MC_INIT_USER", minioRootUser)
+    .WithEnvironment("MC_INIT_PASSWORD", minioRootPassword)
     .WithArgs(
         "-c",
-        "mc alias set local http://MySS-ObjectStorage:9000 myss myss-local-dev "
-        + "&& mc mb --ignore-existing local/myss-attachments")
+        "mc alias set local http://MySS-ObjectStorage:9000 \"$MC_INIT_USER\" \"$MC_INIT_PASSWORD\" "
+        + $"&& mc mb --ignore-existing local/{minioBucket}")
     .WaitFor(minio);
 
 // ---------------------------------------------------------------------------
@@ -117,14 +151,11 @@ IResourceBuilder<ExecutableResource> migrateAttachments = builder
 
 // ---------------------------------------------------------------------------
 // MySSContent — Strapi, run on the host with npm (compose runs the same code
-// in a container). Its env comes from Apps/MyssContent/.env, falling back to
-// the committed .env.example, whose values work as-is locally — so the manual
-// "cp .env.example .env" step is no longer load-bearing.
+// in a container, fed by Apps/MyssContent/.env). Here its env is assembled
+// from IConfiguration: connection details from appsettings.json, secrets from
+// user secrets as secret parameters. Running on the host, Strapi reaches
+// Postgres through the published port (DatabaseHost: localhost).
 // ---------------------------------------------------------------------------
-Dictionary<string, string> strapiEnv = ReadDotEnv(
-    Path.Combine(contentDirectory, ".env"),
-    Path.Combine(contentDirectory, ".env.example"));
-
 IResourceBuilder<JavaScriptAppResource> content = builder
     .AddJavaScriptApp("MySSContent", contentDirectory, "develop")
 
@@ -133,48 +164,44 @@ IResourceBuilder<JavaScriptAppResource> content = builder
     // own boot — admin build, schema sync, the every-boot seed — is the bulk
     // of this resource's start time and is inherent to `strapi develop`.
     .WithNpm(installArgs: ["--no-audit", "--no-fund", "--prefer-offline"])
-    .WithHttpEndpoint(port: 1337, env: "PORT", isProxied: false)
+    .WithHttpEndpoint(
+        port: RequireInt("Aspire:Parameters:Strapi:Port"), env: "PORT", isProxied: false)
 
     // Strapi answers its health probe with 204 No Content (MEASURED locally);
     // the check's default expectation is 200, which would report a perfectly
     // healthy Strapi as unhealthy forever.
     .WithHttpHealthCheck(path: "/_health", statusCode: 204)
-    .WaitFor(postgres);
+    .WaitFor(postgres)
+    .WithEnvironment("HOST", "0.0.0.0")
+    .WithEnvironment("DATABASE_CLIENT", Require("Aspire:Parameters:Strapi:DatabaseClient"))
+    .WithEnvironment("DATABASE_HOST", Require("Aspire:Parameters:Strapi:DatabaseHost"))
+    .WithEnvironment("DATABASE_PORT", Require("Aspire:Parameters:Strapi:DatabasePort"))
+    .WithEnvironment("DATABASE_NAME", Require("Aspire:Parameters:Strapi:DatabaseName"))
+    .WithEnvironment("DATABASE_USERNAME", Require("Aspire:Parameters:Strapi:DatabaseUsername"))
+    .WithEnvironment("DATABASE_SSL", Require("Aspire:Parameters:Strapi:DatabaseSsl"))
 
-// Secret values travel as secret parameters, not literals: a literal value is
-// visible in the app model, the dashboard and any generated manifest, while a
-// secret parameter is redacted everywhere it is displayed.
-HashSet<string> strapiSecretKeys = new(StringComparer.Ordinal)
-{
-    "APP_KEYS",
-    "API_TOKEN_SALT",
-    "ADMIN_JWT_SECRET",
-    "TRANSFER_TOKEN_SALT",
-    "JWT_SECRET",
-    "ENCRYPTION_KEY",
-    "DATABASE_PASSWORD",
-};
-
-foreach ((string key, string value) in strapiEnv)
-{
-    if (strapiSecretKeys.Contains(key))
-    {
-        content.WithEnvironment(
-            key,
-            builder.AddParameter(
-                $"strapi-{key.ToLowerInvariant().Replace('_', '-')}", value, secret: true));
-    }
-    else
-    {
-        content.WithEnvironment(key, value);
-    }
-}
-
-// Running on the host, Strapi reaches Postgres through the published port —
-// the .env.example values already say localhost:5432.
-content.WithEnvironment("HOST", "0.0.0.0");
-content.WithEnvironment("DATABASE_HOST", "localhost");
-content.WithEnvironment("DATABASE_PORT", "5432");
+    // Secret values travel as secret parameters, not literals: a literal value
+    // is visible in the app model, the dashboard and any generated manifest,
+    // while a secret parameter is redacted everywhere it is displayed.
+    .WithEnvironment(
+        "APP_KEYS", SecretParameter("strapi-app-keys", "Aspire:Parameters:Strapi:AppKeys"))
+    .WithEnvironment(
+        "API_TOKEN_SALT",
+        SecretParameter("strapi-api-token-salt", "Aspire:Parameters:Strapi:ApiTokenSalt"))
+    .WithEnvironment(
+        "ADMIN_JWT_SECRET",
+        SecretParameter("strapi-admin-jwt-secret", "Aspire:Parameters:Strapi:AdminJwtSecret"))
+    .WithEnvironment(
+        "TRANSFER_TOKEN_SALT",
+        SecretParameter("strapi-transfer-token-salt", "Aspire:Parameters:Strapi:TransferTokenSalt"))
+    .WithEnvironment(
+        "JWT_SECRET", SecretParameter("strapi-jwt-secret", "Aspire:Parameters:Strapi:JwtSecret"))
+    .WithEnvironment(
+        "ENCRYPTION_KEY",
+        SecretParameter("strapi-encryption-key", "Aspire:Parameters:Strapi:EncryptionKey"))
+    .WithEnvironment(
+        "DATABASE_PASSWORD",
+        SecretParameter("strapi-database-password", "Aspire:Parameters:Strapi:DatabasePassword"));
 
 // ---------------------------------------------------------------------------
 // MySSApi — waits for the schema to exist. Connection string, Strapi URL and
@@ -192,7 +219,7 @@ IResourceBuilder<ProjectResource> api = builder
     .WaitFor(minio)
 
     // Until the bucket one-shot has finished, an attachment upload would fail:
-    // the API's storage provider writes to myss-attachments but never creates it.
+    // the API's storage provider writes to the bucket but never creates it.
     .WaitForCompletion(minioInit)
     .WaitForCompletion(migrateAttachments);
 
@@ -218,43 +245,21 @@ builder
     // AddViteApp gives the dev server a dynamic --port behind Aspire's proxy;
     // pin the public side to Vite's usual 5173 so bookmarks and any fixed
     // OIDC redirect URIs keep working.
-    .WithEndpoint("http", endpoint => endpoint.Port = 5173)
+    .WithEndpoint(
+        "http", endpoint => endpoint.Port = RequireInt("Aspire:Parameters:Webclient:Port"))
     .WithEnvironment("BROWSER", "none")
     .WaitFor(api);
 
 builder.Build().Run();
 
-// Reads the first .env-style file that exists. KEY=VALUE lines; # comments and
-// blanks skipped; surrounding quotes stripped (APP_KEYS ships quoted).
-static Dictionary<string, string> ReadDotEnv(params string[] candidates)
-{
-    Dictionary<string, string> values = new(StringComparer.Ordinal);
-    string? path = Array.Find(candidates, File.Exists);
-    if (path is null)
-    {
-        return values;
-    }
+// A missing key fails fast at startup with the key's name, rather than
+// surfacing later as a half-configured resource.
+string Require(string key) =>
+    builder.Configuration[key]
+    ?? throw new InvalidOperationException(
+        $"Missing configuration value '{key}' — add it to appsettings.json or user secrets.");
 
-    foreach (string rawLine in File.ReadAllLines(path, Encoding.UTF8))
-    {
-        string line = rawLine.Trim();
-        int separator = line.IndexOf('=', StringComparison.Ordinal);
-        if (line.Length == 0 || line.StartsWith('#') || separator <= 0)
-        {
-            continue;
-        }
+int RequireInt(string key) => int.Parse(Require(key), CultureInfo.InvariantCulture);
 
-        string key = line[..separator].Trim();
-        string value = line[(separator + 1)..].Trim();
-        if (value.Length >= 2
-            && ((value.StartsWith('"') && value.EndsWith('"'))
-                || (value.StartsWith('\'') && value.EndsWith('\''))))
-        {
-            value = value[1..^1];
-        }
-
-        values[key] = value;
-    }
-
-    return values;
-}
+IResourceBuilder<ParameterResource> SecretParameter(string name, string key) =>
+    builder.AddParameter(name, Require(key), secret: true);
