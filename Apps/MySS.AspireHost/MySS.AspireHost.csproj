@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Sdk Name="Aspire.AppHost.Sdk" Version="13.5.3" />
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsAspireHost>true</IsAspireHost>
+        <UserSecretsId>21c32ae2-b147-46e6-9895-e20c9996f3cc</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Aspire.Hosting.AppHost" Version="13.5.3" />
+        <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.5.3" />
+        <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.5.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\MyssApi\MyssApi.csproj" />
+    </ItemGroup>
+
+</Project>
