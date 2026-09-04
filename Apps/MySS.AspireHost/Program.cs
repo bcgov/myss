@@ -126,7 +126,12 @@ Dictionary<string, string> strapiEnv = ReadDotEnv(
 
 IResourceBuilder<JavaScriptAppResource> content = builder
     .AddJavaScriptApp("MySSContent", contentDirectory, "develop")
-    .WithNpm()
+
+    // The installer runs before every start; these flags cut its warm-path
+    // time (no registry audit round-trip, prefer the local cache). Strapi's
+    // own boot — admin build, schema sync, the every-boot seed — is the bulk
+    // of this resource's start time and is inherent to `strapi develop`.
+    .WithNpm(installArgs: ["--no-audit", "--no-fund", "--prefer-offline"])
     .WithHttpEndpoint(port: 1337, env: "PORT", isProxied: false)
 
     // Strapi answers its health probe with 204 No Content (MEASURED locally);
@@ -179,7 +184,7 @@ if (!string.IsNullOrWhiteSpace(dashboardOtlp))
 // ---------------------------------------------------------------------------
 builder
     .AddViteApp("MyssWebClient", webclientDirectory)
-    .WithNpm()
+    .WithNpm(installArgs: ["--no-audit", "--no-fund", "--prefer-offline"])
 
     // AddViteApp gives the dev server a dynamic --port behind Aspire's proxy;
     // pin the public side to Vite's usual 5173 so bookmarks and any fixed
