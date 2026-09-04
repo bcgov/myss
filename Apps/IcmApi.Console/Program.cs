@@ -116,6 +116,13 @@ namespace Icm.Api.ConsoleApp
                 tokenService,
                 credentials);
 
+            // The same HttpClient on purpose: same host, same raw-response handler, so
+            // --Output=raw shows the workflow's untouched answer too.
+            IBusPassService busPass = new BusPassService(
+                new BusPassRepository(icmClient, settings.Icm.TrustedUserName),
+                tokenService,
+                credentials);
+
             WriteHeader(settings, credentials);
 
             // The two calls are made in two stages on purpose. Going straight to the search
@@ -129,6 +136,11 @@ namespace Icm.Api.ConsoleApp
                 return authFailure;
             }
 
+            if (settings.IsBusPassMode)
+            {
+                return await SubmitBusPassAsync(busPass, serviceRequests, settings);
+            }
+
             int searchResult = await SearchAsync(serviceRequests, settings);
             if (searchResult != 0 || string.IsNullOrWhiteSpace(settings.Query.ServiceRequestKey))
             {
@@ -136,6 +148,154 @@ namespace Icm.Api.ConsoleApp
             }
 
             return await GetOneAsync(serviceRequests, settings);
+        }
+
+        /// <summary>
+        /// Bus pass mode: submit through the workflow, then find and read back the
+        /// service request it created — the closest thing to an integration test that can
+        /// be run by hand.
+        /// </summary>
+        /// <remarks>
+        /// The read-back cannot ask for the SR by its number (the business component does
+        /// not expose it as a searchable field), so it searches recent Bus Pass SRs and
+        /// matches <c>Service Request Number</c> against the returned
+        /// <c>ApplicationNumber</c> — which also verifies the assumption that the two are
+        /// the same number.
+        /// </remarks>
+        private static async Task<int> SubmitBusPassAsync(
+            IBusPassService busPass, IServiceRequestService serviceRequests, ConsoleSettings settings)
+        {
+            BusPassApplication application = settings.BusPass.ToApplication();
+            Console.WriteLine(
+                $"Submitting bus pass request ({application.RequestType}, "
+                + $"{application.FirstName} {application.LastName})...");
+            Console.WriteLine();
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            BusPassResult result;
+            try
+            {
+                result = await busPass.SubmitAsync(application);
+                stopwatch.Stop();
+            }
+            catch (ApiException exception)
+            {
+                stopwatch.Stop();
+                return Fail(
+                    stopwatch,
+                    $"ICM returned {(int)exception.StatusCode} {exception.StatusCode}.",
+                    Explain(exception),
+                    responseBody: exception.Content);
+            }
+            catch (ApiRequestException exception)
+            {
+                stopwatch.Stop();
+                return FailUnreachable(stopwatch, exception, "ICM");
+            }
+            catch (IcmResponseException exception)
+            {
+                stopwatch.Stop();
+                return Fail(
+                    stopwatch, "ICM reported success but the response was not usable.", exception.Message);
+            }
+
+            Console.WriteLine($"Workflow answered in {stopwatch.ElapsedMilliseconds} ms:");
+            Console.WriteLine($"  ApplicationNumber  {result.ApplicationNumber ?? "(empty)"}");
+            Console.WriteLine($"  Status             {result.Status ?? "(empty)"}");
+            Console.WriteLine($"  First / Last Name  {result.FirstName ?? "-"} / {result.LastName ?? "-"}");
+            Console.WriteLine($"  Error Code         {result.ErrorCode ?? "(empty)"}");
+            Console.WriteLine($"  Error Message      {result.ErrorMessage ?? "(empty)"}");
+            foreach ((string key, System.Text.Json.JsonElement value) in result.AdditionalFields)
+            {
+                // An unexpected key here means the out-args carry names the contract does
+                // not model - exactly the mismatch the SR API had, caught as data.
+                Console.WriteLine($"  UNMODELLED         {key} = {value.GetRawText()}");
+            }
+
+            Console.WriteLine();
+
+            if (!string.IsNullOrWhiteSpace(result.ErrorCode))
+            {
+                Console.Error.WriteLine(
+                    "The workflow reported a business rejection. The submission may still have "
+                    + "created an error service request (SR Sub Type 'Error - Web') worth looking at.");
+                return 2;
+            }
+
+            if (string.IsNullOrWhiteSpace(result.ApplicationNumber))
+            {
+                Console.Error.WriteLine(
+                    "No error code, but no application number either - nothing to read back. "
+                    + "Check the UNMODELLED lines above for where the number actually landed.");
+                return 2;
+            }
+
+            return await ReadBackBusPassAsync(serviceRequests, settings, result.ApplicationNumber);
+        }
+
+        /// <summary>Finds the created SR by its number among recent Bus Pass SRs and reads it whole.</summary>
+        private static async Task<int> ReadBackBusPassAsync(
+            IServiceRequestService serviceRequests, ConsoleSettings settings, string applicationNumber)
+        {
+            // Yesterday rather than today: ICM's Created is server-local time, and a
+            // midnight boundary should not make the read-back miss its own submission.
+            string since = DateTime.Now.AddDays(-1).ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
+            Console.WriteLine(new string('-', 60));
+            Console.WriteLine($"Reading back: searching Bus Pass SRs created since {since} "
+                + $"for number {applicationNumber}");
+            Console.WriteLine(new string('-', 60));
+            Console.WriteLine();
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            try
+            {
+                ServiceRequestPage page = await serviceRequests.SearchAsync(new ServiceRequestQuery
+                {
+                    SearchSpec = $"[SR Type] = \"Bus Pass\" AND [Created] >= \"{since}\"",
+                    ViewMode = settings.Query.ViewMode ?? "Organization",
+                    PageSize = 100,
+                });
+
+                ServiceRequest? created = page.Items.FirstOrDefault(item =>
+                    string.Equals(item.ServiceRequestNumber, applicationNumber, StringComparison.Ordinal));
+
+                if (created?.Id is null)
+                {
+                    stopwatch.Stop();
+                    Console.Error.WriteLine(
+                        $"FAILED: {page.Items.Count} recent Bus Pass SR(s), none numbered "
+                        + $"{applicationNumber} ({stopwatch.ElapsedMilliseconds} ms).");
+                    Console.Error.WriteLine(
+                        "Either ApplicationNumber is not the SR number after all, or the record "
+                        + "is not visible in this ViewMode. The ICM UI can settle which.");
+                    return 2;
+                }
+
+                ServiceRequest? record = await serviceRequests.GetAsync(
+                    created.Id, settings.Query.ToReadOptions());
+                stopwatch.Stop();
+
+                Console.WriteLine(
+                    $"Created service request found and read back in {stopwatch.ElapsedMilliseconds} ms.");
+                Console.WriteLine();
+                ServiceRequestPrinter.Write(
+                    new ServiceRequestPage { Items = [record ?? created] }, full: true);
+                return 0;
+            }
+            catch (ApiException exception)
+            {
+                stopwatch.Stop();
+                return Fail(
+                    stopwatch,
+                    $"ICM returned {(int)exception.StatusCode} {exception.StatusCode}.",
+                    Explain(exception),
+                    responseBody: exception.Content);
+            }
+            catch (ApiRequestException exception)
+            {
+                stopwatch.Stop();
+                return FailUnreachable(stopwatch, exception, "ICM");
+            }
         }
 
         /// <summary>Stage three: read one named record, to check a specific case by hand.</summary>
@@ -316,8 +476,11 @@ namespace Icm.Api.ConsoleApp
 
         private static void WriteHeader(ConsoleSettings settings, OAuthClientCredentials credentials)
         {
-            Console.WriteLine("ICM Service Request query");
+            Console.WriteLine(settings.IsBusPassMode
+                ? "ICM bus pass submission (transaction INT-316) + read-back"
+                : "ICM Service Request query");
             Console.WriteLine(new string('-', 60));
+            Console.WriteLine($"  Mode         {settings.Mode}");
             Console.WriteLine($"  ICM          {settings.Icm.BaseUrl}");
             Console.WriteLine(
                 $"  Trusted user {settings.Icm.TrustedUserName ?? "(none - no X-ICM-TrustedUserName header)"}");

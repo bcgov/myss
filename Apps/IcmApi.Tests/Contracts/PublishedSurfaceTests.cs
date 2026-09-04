@@ -27,6 +27,14 @@ namespace Icm.Api.Tests.Contracts
             string[] expected =
             [
                 "Icm.Api.Models.AccessToken",
+                "Icm.Api.Models.BusPassAddress",
+                "Icm.Api.Models.BusPassApplicantType",
+                "Icm.Api.Models.BusPassApplication",
+                "Icm.Api.Models.BusPassAttachment",
+                "Icm.Api.Models.BusPassContactMethod",
+                "Icm.Api.Models.BusPassPhoneType",
+                "Icm.Api.Models.BusPassRequestType",
+                "Icm.Api.Models.BusPassResult",
                 "Icm.Api.Models.OAuthClientCredentials",
                 "Icm.Api.Models.ServiceRequest",
                 "Icm.Api.Models.ServiceRequestInput",
@@ -34,12 +42,16 @@ namespace Icm.Api.Tests.Contracts
                 "Icm.Api.Models.ServiceRequestPage",
                 "Icm.Api.Models.ServiceRequestQuery",
                 "Icm.Api.Models.ServiceRequestReadOptions",
+                "Icm.Api.Repositories.BusPassRepository",
+                "Icm.Api.Repositories.IBusPassRepository",
                 "Icm.Api.Repositories.IOAuthTokenRepository",
                 "Icm.Api.Repositories.IServiceRequestRepository",
                 "Icm.Api.Repositories.IcmResponseException",
                 "Icm.Api.Repositories.OAuthTokenException",
                 "Icm.Api.Repositories.OAuthTokenRepository",
                 "Icm.Api.Repositories.ServiceRequestRepository",
+                "Icm.Api.Services.BusPassService",
+                "Icm.Api.Services.IBusPassService",
                 "Icm.Api.Services.IOAuthTokenService",
                 "Icm.Api.Services.IServiceRequestService",
                 "Icm.Api.Services.OAuthTokenService",
@@ -54,9 +66,11 @@ namespace Icm.Api.Tests.Contracts
         {
             // The same rule stated as an invariant, so a new wire contract is caught even
             // if someone updates the list above without thinking about it.
+            // ".Contracts." rather than the full namespace, so the workflow contracts
+            // under Icm.Api.Workflows.Contracts are held to the same rule.
             string[] leaked = [.. Library.GetExportedTypes()
                 .Select(type => type.FullName!)
-                .Where(name => name.StartsWith("Icm.Api.Contracts.", StringComparison.Ordinal)
+                .Where(name => name.Contains(".Contracts.", StringComparison.Ordinal)
                     || name.Contains("Siebel", StringComparison.Ordinal)
                     || name.EndsWith("Api", StringComparison.Ordinal))];
 

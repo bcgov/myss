@@ -8,8 +8,22 @@ namespace Icm.Api.ConsoleApp.Configuration
         /// <summary>Gets or sets the ICM connection and credentials.</summary>
         public IcmSettings Icm { get; set; } = new();
 
+        /// <summary>
+        /// Gets or sets what to run: <c>query</c> (the Service Request search this tool
+        /// started as) or <c>buspass</c> (submit a bus pass request through the workflow,
+        /// then read the created service request back — a hand-run integration test).
+        /// </summary>
+        public string Mode { get; set; } = "query";
+
+        /// <summary>Gets a value indicating whether this run submits a bus pass.</summary>
+        public bool IsBusPassMode =>
+            string.Equals(Mode, "buspass", StringComparison.OrdinalIgnoreCase);
+
         /// <summary>Gets or sets the search to run.</summary>
         public QuerySettings Query { get; set; } = new();
+
+        /// <summary>Gets or sets the bus pass submission for <c>buspass</c> mode.</summary>
+        public BusPassSettings BusPass { get; set; } = new();
 
         /// <summary>Gets or sets how much of each record to print: <c>full</c> or <c>summary</c>.</summary>
         public string Output { get; set; } = "full";
@@ -55,6 +69,16 @@ namespace Icm.Api.ConsoleApp.Configuration
             if (Query.StartRowNum < 0)
             {
                 found.Add($"Query:StartRowNum cannot be negative (it is {Query.StartRowNum}).");
+            }
+
+            if (!string.Equals(Mode, "query", StringComparison.OrdinalIgnoreCase) && !IsBusPassMode)
+            {
+                found.Add($"Mode must be 'query' or 'buspass' (it is '{Mode}').");
+            }
+
+            if (IsBusPassMode)
+            {
+                BusPass.Validate(found);
             }
 
             problems = found.Count == 0 ? null : found;

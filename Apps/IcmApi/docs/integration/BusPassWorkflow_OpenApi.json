@@ -1,0 +1,684 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "SblWfICMReceiveBusPassO",
+        "description": "OpenAPI specification for SiebelWorkflow - API : workflow/ICM Receive Bus Pass Online Request Wrapper WF",
+        "contact": {
+            "email": "sample@sample.com"
+        },
+        "version": "1.0"
+    },
+    "externalDocs": {
+        "description": "OpenAPI",
+        "url": "https://openapis.org"
+    },
+    "servers": [
+        {
+            "url": "https://sit1-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+        },
+        {
+            "url": "http://sit1-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+        }
+    ],
+    "tags": [
+        {
+            "name": "workflow/ICM Receive Bus Pass Online Request Wrapper WF/"
+        }
+    ],
+    "paths": {
+        "/workflow/ICM Receive Bus Pass Online Request Wrapper WF/": {
+            "post": {
+                "tags": [
+                    "workflow/ICM Receive Bus Pass Online Request Wrapper WF/"
+                ],
+                "operationId": "workflow_ICM_Receive_Bus_Pass_Online_Request_Wrapper_WF__post",
+                "parameters": [
+                    {
+                        "name": "excludeEmptyFieldsInResponse",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "false"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/workflow_ICM_Receive_Bus_Pass_Online_Request_Wrapper_WF__in_args"
+                            }
+                        },
+                        "application/xml": {
+                            "schema": {
+                                "$ref": "#/components/schemas/workflow_ICM_Receive_Bus_Pass_Online_Request_Wrapper_WF__in_args"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/workflow_ICM_Receive_Bus_Pass_Online_Request_Wrapper_WF__out_args"
+                                }
+                            },
+                            "application/xml": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/workflow_ICM_Receive_Bus_Pass_Online_Request_Wrapper_WF__out_args"
+                                }
+                            }
+                        }
+                    },
+                    "204": {
+                        "description": "No Resource Found",
+                        "content": {}
+                    },
+                    "304": {
+                        "description": "Not Modified",
+                        "content": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {}
+                    },
+                    "403": {
+                        "description": "Access Forbidden",
+                        "content": {}
+                    },
+                    "404": {
+                        "description": "There is no data for the requested resource",
+                        "content": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {}
+                    }
+                },
+                "security": [
+                    {
+                        "basicAuth": [],
+                        "oAuth2.0": []
+                    }
+                ],
+                "x-codegen-request-body-name": "body"
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "workflow_ICM_Receive_Bus_Pass_Online_Request_Wrapper_WF__in_args": {
+                "type": "object",
+                "properties": {
+                    "SRInboundMessage": {
+                        "title": "SRInboundMessage",
+                        "type": "object",
+                        "properties": {
+                            "MessageId": {
+                                "type": "string",
+                                "example": ""
+                            },
+                            "MessageType": {
+                                "type": "string",
+                                "example": "Integration Object"
+                            },
+                            "IntObjectName": {
+                                "type": "string",
+                                "example": "ICMSRBusPassInboundIO"
+                            },
+                            "IntObjectFormat": {
+                                "type": "string",
+                                "example": "Siebel Hierarchical"
+                            },
+                            "ListOfICMSRBusPassInboundIO": {
+                                "type": "object",
+                                "properties": {
+                                    "ICMSRInbound": {
+                                        "maxItems": 1,
+                                        "minItems": 1,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "ListOfHeader": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "Header": {
+                                                            "maxItems": 1,
+                                                            "minItems": 1,
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "TransactionName": {
+                                                                        "title": "TransactionName",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "WMInstanceId": {
+                                                                        "title": "WMInstanceId",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "SourceReference": {
+                                                                        "title": "SourceReference",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "TargetReference": {
+                                                                        "title": "TargetReference",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "UserId": {
+                                                                        "title": "UserId",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "SourceSystem": {
+                                                                        "title": "SourceSystem",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "TargetSystem": {
+                                                                        "title": "TargetSystem",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Timestamp": {
+                                                                        "title": "Timestamp",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Status": {
+                                                                        "title": "Status",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "ErrorCode": {
+                                                                        "title": "ErrorCode",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "ErrorMessage": {
+                                                                        "title": "ErrorMessage",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Attribute1": {
+                                                                        "title": "Attribute1",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Attribute2": {
+                                                                        "title": "Attribute2",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Attribute3": {
+                                                                        "title": "Attribute3",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Attribute4": {
+                                                                        "title": "Attribute4",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Attribute5": {
+                                                                        "title": "Attribute5",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "ListOfPayload": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "Payload": {
+                                                            "maxItems": 1,
+                                                            "minItems": 1,
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "ClientId": {
+                                                                        "title": "ClientId",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "CommMethod": {
+                                                                        "title": "CommMethod",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "ICMBusPassRequestType": {
+                                                                        "title": "ICMBusPassRequestType",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "SRSubSubType": {
+                                                                        "title": "SRSubSubType",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "SRSubType": {
+                                                                        "title": "SRSubType",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "SRType": {
+                                                                        "title": "SRType",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Status": {
+                                                                        "title": "Status",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "SRKey": {
+                                                                        "title": "SRKey",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "SvcOff": {
+                                                                        "title": "SvcOff",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Priority": {
+                                                                        "title": "Priority",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "Memo": {
+                                                                        "title": "Memo",
+                                                                        "type": "string",
+                                                                        "x-siebel-precision": "0",
+                                                                        "x-maxLength": "0",
+                                                                        "x-siebel-scale": "0",
+                                                                        "x-siebel-datatype": "DTYPE_TEXT"
+                                                                    },
+                                                                    "ListOfSRProspects": {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "SRProspects": {
+                                                                                "minItems": 1,
+                                                                                "type": "array",
+                                                                                "items": {
+                                                                                    "type": "object",
+                                                                                    "properties": {
+                                                                                        "AlternatePhone#": {
+                                                                                            "title": "AlternatePhone#",
+                                                                                            "type": "string",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_PHONE"
+                                                                                        },
+                                                                                        "CellularPhone#": {
+                                                                                            "title": "CellularPhone#",
+                                                                                            "type": "string",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_PHONE"
+                                                                                        },
+                                                                                        "HomePhone#": {
+                                                                                            "title": "HomePhone#",
+                                                                                            "type": "string",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_PHONE"
+                                                                                        },
+                                                                                        "Unit#": {
+                                                                                            "title": "Unit#",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "WorkPhone#": {
+                                                                                            "title": "WorkPhone#",
+                                                                                            "type": "string",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_PHONE"
+                                                                                        },
+                                                                                        "ProspectKey": {
+                                                                                            "title": "ProspectKey",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "FstNme": {
+                                                                                            "title": "FstNme",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "LstNme": {
+                                                                                            "title": "LstNme",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "DOB": {
+                                                                                            "title": "DOB",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "Phone": {
+                                                                                            "title": "Phone",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "StAdd": {
+                                                                                            "title": "StAdd",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "FreeText": {
+                                                                                            "title": "FreeText",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "MethodOfCommunication": {
+                                                                                            "title": "MethodOfCommunication",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "StAdd2": {
+                                                                                            "title": "StAdd2",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "BusPassRequestType": {
+                                                                                            "title": "BusPassRequestType",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "City": {
+                                                                                            "title": "City",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "Prov": {
+                                                                                            "title": "Prov",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "Postal": {
+                                                                                            "title": "Postal",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "SIN": {
+                                                                                            "title": "SIN",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "Role": {
+                                                                                            "title": "Role",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "ClientId": {
+                                                                                            "title": "ClientId",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "EmailAddress": {
+                                                                                            "title": "EmailAddress",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "ListOfSRAttachments": {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "SRAttachments": {
+                                                                                "minItems": 1,
+                                                                                "type": "array",
+                                                                                "items": {
+                                                                                    "type": "object",
+                                                                                    "properties": {
+                                                                                        "AttKey": {
+                                                                                            "title": "AttKey",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "AttName": {
+                                                                                            "title": "AttName",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        },
+                                                                                        "Base64Strng": {
+                                                                                            "title": "Base64Strng",
+                                                                                            "type": "string",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_ATTACHMENT"
+                                                                                        },
+                                                                                        "OrgXMLStrng": {
+                                                                                            "title": "OrgXMLStrng",
+                                                                                            "type": "string",
+                                                                                            "x-siebel-precision": "0",
+                                                                                            "x-maxLength": "0",
+                                                                                            "x-siebel-scale": "0",
+                                                                                            "x-siebel-datatype": "DTYPE_TEXT"
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "x-siebel-datatype": "Integration Object"
+                    }
+                }
+            },
+            "workflow_ICM_Receive_Bus_Pass_Online_Request_Wrapper_WF__out_args": {
+                "type": "object",
+                "properties": {
+                    "ApplicationNumber": {
+                        "title": "ApplicationNumber",
+                        "type": "string",
+                        "x-siebel-datatype": "String"
+                    },
+                    "Error Code": {
+                        "title": "Error Code",
+                        "type": "string",
+                        "x-siebel-datatype": "String"
+                    },
+                    "Error Message": {
+                        "title": "Error Message",
+                        "type": "string",
+                        "x-siebel-datatype": "String"
+                    },
+                    "First Name": {
+                        "title": "First Name",
+                        "type": "string",
+                        "x-siebel-datatype": "String"
+                    },
+                    "Last Name": {
+                        "title": "Last Name",
+                        "type": "string",
+                        "x-siebel-datatype": "String"
+                    },
+                    "Status": {
+                        "title": "Status",
+                        "type": "string",
+                        "x-siebel-datatype": "String"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "basicAuth": {
+                "type": "http",
+                "scheme": "basic"
+            },
+            "oAuth2.0": {
+                "type": "oauth2",
+                "flows": {
+                    "implicit": {
+                        "authorizationUrl": "http://openAPI.io/",
+                        "scopes": {
+                            "write:": "modify",
+                            "read:": "read only"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "x-original-swagger-version": "3.0"
+}

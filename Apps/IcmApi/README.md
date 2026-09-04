@@ -21,6 +21,7 @@ suite runs against canned responses, on purpose.
 | Upstream API | Spec | Published as |
 | --- | --- | --- |
 | Service Request (`data/ServiceRequest/ServiceRequest`) | [`docs/integration/SR_OpenApi.json`](docs/integration/SR_OpenApi.json) | `IServiceRequestService` / `IServiceRequestRepository` |
+| Bus pass workflow (`workflow/ICM Receive Bus Pass Online Request Wrapper WF`) | [`docs/integration/BusPassWorkflow_OpenApi.json`](docs/integration/BusPassWorkflow_OpenApi.json) | `IBusPassService` / `IBusPassRepository` |
 | OAuth 2.0 token endpoint (client credentials) | RFC 6749 §4.4 | `IOAuthTokenService` |
 
 The token request uses **`client_secret_post`** (RFC 6749 §2.3.1) — `client_id` and
@@ -62,19 +63,31 @@ calls `Created By Id`, while ICM's `Created By` is the login name the document c
 ## Layout
 
 ```console
-Api/            Refit interfaces + settings                    internal
-Api/Contracts/  Siebel and OAuth wire models, the mapper       internal
-Models/         the published models                           public
-Repositories/   data access — call, map, translate status      public
-Services/       behaviour — token caching, authentication      public
-docs/           the upstream specs this client implements
+Api/                 Refit interfaces + settings — direct REST      internal
+Api/Contracts/       Siebel and OAuth wire models, the mapper       internal
+Workflows/           Refit interfaces — Siebel workflow endpoints   internal
+Workflows/Contracts/ workflow wire envelopes, their mappers         internal
+Models/              the published models                           public
+Repositories/        data access — call, map, translate status      public
+Services/            behaviour — token caching, authentication      public
+docs/                the upstream specs this client implements
 ```
+
+`Api/` and `Workflows/` are peers with one distinction. `Api/` is direct REST over a
+business component: the caller names the record and the fields, and Siebel does exactly
+that. `Workflows/` calls Siebel workflow processes, which call other services behind
+them — the bus pass workflow matches or creates the contact, creates the service request
+and files the transaction itself. The caller sends a message and gets an outcome, not a
+record. Everything published still comes out through `Models/`, `Repositories/` and
+`Services/`, so a consumer cannot tell which kind of endpoint served it — which is the
+point.
 
 Namespaces follow the folders, except that `Api/` adds no segment — `Icm.Api.Api` reads
 worse than it informs. So: `Icm.Api`, `Icm.Api.Contracts`, `Icm.Api.Models`,
-`Icm.Api.Repositories`, `Icm.Api.Services`.
+`Icm.Api.Repositories`, `Icm.Api.Services`, `Icm.Api.Workflows`,
+`Icm.Api.Workflows.Contracts`.
 
-**Everything from `Api/` down is `internal`.** `IcmApi.Tests` reaches it through
+**Everything from `Api/` and `Workflows/` down is `internal`.** `IcmApi.Tests` reaches it through
 `InternalsVisibleTo`; nothing else can. That is what makes the boundary real rather than a
 convention: a consumer cannot get at a Siebel wire model or a Refit interface, so it
 cannot bypass the mapping or the status-code handling that make ICM's answers usable.
@@ -151,6 +164,85 @@ public class Example(IServiceRequestService serviceRequests)
 Reach for `IServiceRequestRepository` directly only when the caller already holds a token
 of its own — a request carrying a citizen's token, say, where a client-credentials token
 would be the wrong identity entirely.
+
+## The bus pass integration (INT-316)
+
+Two names, two things: **INT-316 is MySS's integration** — the only MySS integration
+that calls this workflow, named in the message header's `TransactionName` — and
+**`ICM Receive Bus Pass Online Request Wrapper WF` is the workflow** it calls, which is
+ICM's and serves other callers too. Calling the workflow "INT-316" conflates the caller
+with the callee.
+
+`IBusPassService.SubmitAsync` takes a `BusPassApplication` — the same facts the old MCP
+`/BusPass` form captured, per the INT-316 field-mapping analysis — and posts it to
+`workflow/ICM Receive Bus Pass Online Request Wrapper WF`, the REST receiver the retired
+SOAP integration fed. The envelope's header reproduces the old `SetGenericHeader` values
+(`TransactionName: INT-316`, `SourceSystem: MCP`, `UserId: MCP_proxy`, empty bookkeeping
+fields); the applicant travels as one `SRProspects` row.
+
+**A business rejection is a 200.** The workflow reports failure in its out-args
+(`Error Code` / `Error Message`), not in the status code, and its status vocabulary is
+undocumented — so `BusPassResult` carries the outcome whole and callers must check
+`ErrorCode`. An HTTP-level failure still throws `ApiException`. A rejected match is not
+even silent on the ICM side: the workflow files an SR of sub type `Error - Web` with the
+reason in `Memo` (`Contact or Case Match not Found`, observed on stored records).
+
+**What the workflow's own output establishes.** MEASURED against SIT2 on 2026-09-03, by
+querying the SRs this workflow has been creating since 2022 (`Created By SIEBEL_EAI`,
+`Comm Method Web` — including SR `1-11082491438` / row `1-53A894E`, created 2026-08-10)
+and reading their `SRProspects` child rows over the gateway:
+
+- The workflow classifies its SRs as `SR Type "Bus Pass"`, sub type **`Application` /
+  `Change of Circumstance` / `Replacement`** (other channels add `Application PWD`,
+  `AANDC Online Request`, `Card Replacement`, and the error sub types), sub sub type
+  **`One Address` / `Multiple Addresses`**, status `Ready`, priority `3-Standard`.
+- One prospect row per address set. A single-address submission stores
+  `Purpose: "Residence/Mailing"`; rows with `Purpose: "Residence"` appear on
+  `Multiple Addresses` SRs. `Preferred Communication Method` holds **`Home Phone` /
+  `Cell Phone` / `Email`** — the phone preference is qualified by which phone, not the
+  old form's bare `Phone`. SIN and phones are stored as bare digits; the address's
+  province lands in a field the gateway calls `State`.
+- The prospect business component reads back with **spelled-out names** (`First Name`,
+  `Social Security Number`, `Street Address`, `Birth Date`), not the integration
+  object's abbreviations — the same two-namings situation the Service Request API has.
+- Searchspec field names are the *spec's*, not the response's: `[SR Type]` works where
+  `[Type]` matches nothing, `[Contact Last Name]` where `[Last Name]` errors, and
+  `[Created] >= "MM/DD/YYYY"` comparisons work. `LIKE "*…*"` silently matches nothing.
+- A live submission through the **retired SOAP path** (SR `1-11085201468` / row
+  `1-53BUC70`, 2026-09-03) stores in exactly the same shape, so both channels land on the
+  same workflow. It also showed: a duplicate-case rejection still files the SR (sub type
+  `Error - Web`, the reason in `Memo`) **and still returns that SR's number to the
+  caller** — so an `ApplicationNumber` coming back is not by itself a success; the phone
+  type selected on the form picks the stored field (Home was selected, `Home Phone #` is
+  where the number landed — confirming this client's typed-field routing) though the
+  number is *also* copied into `Alternate Phone #` (this client fills only the typed
+  field — unknown whether the workflow or the old sender duplicates it); and the
+  SR-level `Address` is the *matched contact's* address on file, not the submitted one.
+
+`BusPassMapper` sends that measured vocabulary. What is still inference (marked at the
+line in the mapper, pinned by `BusPassMapperTests`):
+
+1. **Input equals output.** The request-type and role *inputs* are assumed to use the
+   same words the workflow *stores* (`Application`…, `Residence/Mailing`…). Free text on
+   the wire, so a wrong word misroutes rather than fails.
+2. **The mailing address as a second prospect row** with role `Mailing` — implied by
+   `Multiple Addresses` and per-row `Purpose`, but no stored `Mailing` row has been
+   observed.
+3. **The account number in `ClientId`** — still the only identifier slot; the stored
+   prospect rows carry no account field, so the workflow's use of it is invisible.
+4. **The DOB write format** — sent `MM/DD/YYYY`, the only shape this gateway has ever
+   shown; the retired SOAP integration sent `yyyy MMM d` to the old interface.
+5. **Applicant type, the two acknowledgements, and the leave-message consent** still
+   have no field and are **not sent**.
+6. **Attachments** (`minItems: 1` in the spec) and whether `ApplicationNumber` is the SR
+   number — both awaiting a successful live call.
+
+**The first live POST is blocked on authorization, not on the contract.** Attempted
+2026-09-03: the space-encoded path resolved to the right Siebel resource, and ICM
+answered `403` `SBL-DAT-00825` — `Access to Resource 'ICM Receive Bus Pass Online
+Request Wrapper WF' of type BUS_PROC is denied`. The gateway client (`myss-api` acting
+as `SIEBEL_EAI`) needs that business process granted before `IcmApi.Console`'s
+`--Mode=buspass` run (below) can verify the rest.
 
 ## Things worth knowing before you change it
 
@@ -246,7 +338,12 @@ They mirror the layers, and each one exists for a reason the layer above cannot 
 ## Functional test
 
 `Apps/IcmApi.Console` is a console app that runs one Service Request search against a real
-ICM and prints what came back. Everything in `IcmApi.Tests` runs against canned responses —
+ICM and prints what came back. It has a second mode, `--Mode=buspass`, which **creates a
+record in the target ICM**: it submits the synthetic application in the committed
+`BusPass` settings section as transaction INT-316 through the bus pass workflow, prints the out-args (unmodelled
+fields included), then searches recent Bus Pass SRs for the returned `ApplicationNumber`
+and reads the created record back — the hand-run integration test for the workflow
+client. The default mode remains the read-only query. Everything in `IcmApi.Tests` runs against canned responses —
 deliberately, so the suite is fast and needs no credentials — which leaves exactly one
 class of question open: whether the assumptions this client is built on hold upstream.
 This is how you find out.

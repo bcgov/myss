@@ -31,6 +31,7 @@
              change to ICM's spec lands in the same diff as the client that follows it. -->
         <None Include="README.md" />
         <None Include="docs\integration\SR_OpenApi.json" />
+        <None Include="docs\integration\BusPassWorkflow_OpenApi.json" />
     </ItemGroup>
 
 </Project>
