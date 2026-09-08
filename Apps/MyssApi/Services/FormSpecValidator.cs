@@ -57,6 +57,11 @@ namespace Myss.Api.Services
         [
             "button", "content", "htmlelement", "panel", "columns",
             "fieldset", "well", "table", "tabs",
+
+            // MYSS-206: custom BC Gov display component (the "status" accordion,
+            // rendered client-side by a registered Form.io component). Carries no
+            // citizen answer, so treat it like other non-data content components.
+            "bcgovAccordion",
         ];
 
         /// <summary>

@@ -15,7 +15,11 @@ import {
   type FormSpecRow,
 } from "./form-spec-rules";
 
-import { seededFormSpecs, testFormSpecV1 } from "./form-spec-seed-data";
+import {
+  eligibilityEstimatorSpecV3,
+  seededFormSpecs,
+  testFormSpecV1,
+} from "./form-spec-seed-data";
 
 const keywords = (violations: { keyword: string }[]) => violations.map((v) => v.keyword);
 
@@ -83,6 +87,14 @@ describe("validateFormSpec", () => {
 
   it("passes a seeded spec that has been serialised, as the admin panel sends it", () => {
     expect(validateFormSpec(JSON.stringify(testFormSpecV1))).toEqual([]);
+  });
+
+  it("passes estimator v3 (custom BC Gov component types + new conditionals)", () => {
+    // MYSS-206: the custom `bcgovTooltip`/`bcgovAccordion` types keep unique
+    // keys and use advanced (json) conditionals, so there is no simple
+    // `conditional.when` target to resolve — v3 must publish with no violations.
+    expect(validateFormSpec(eligibilityEstimatorSpecV3)).toEqual([]);
+    expect(validateFormSpec(JSON.stringify(eligibilityEstimatorSpecV3))).toEqual([]);
   });
 
   it("rejects a missing or empty components array", () => {

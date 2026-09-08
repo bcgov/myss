@@ -1,5 +1,6 @@
 import { Form } from "@formio/react";
 import { useEffect, useRef, useState } from "react";
+import { InlineAlert } from "@bcgov/design-system-react-components";
 
 import "@formio/js/dist/formio.form.min.css";
 
@@ -22,13 +23,19 @@ import styles from "./EligibilityEstimatorPage.module.css";
 // (Decision A). The spouse section (incl. partnerPwd) is revealed by the seed's
 // own Form.io conditional on married / marriage-like (Decision B).
 
-// --- Pending programme content (clearly-marked placeholders; see plan §8) ---
-// TODO(content): real copy + URLs pending from the programme / content designer.
+// --- Programme content (URLs confirmed; some copy still placeholder — see plan §8) ---
+// TODO(content): remaining real copy pending from the programme / content designer.
 const PENDING = {
-  // Link target for the "current income assistance rates" reference.
-  ratesInfoUrl: "#",
+  // "current income assistance rates" reference → gov.bc.ca IA rate table.
+  ratesInfoUrl:
+    "https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/bc-employment-and-assistance-rate-tables/income-assistance-rate-table",
   // "Contact us…" hardship-assistance link (shown on a $0 / ineligible result).
-  hardshipUrl: "#",
+  hardshipUrl:
+    "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/access-services",
+  // "residency requirements" link inside the Q2="No" warning (0901 ee-05) →
+  // same citizenship-requirements page as the status-help accordion.
+  residenceReqUrl:
+    "https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/eligibility/citizenship-requirements",
   // Copy for a residency / status pre-check "No" (no artboard exists for this yet).
   preCheckFailLede:
     "Based on your answers, you may not be eligible for assistance from this ministry.",
@@ -126,6 +133,11 @@ export default function EligibilityEstimatorPage() {
   const spec = useEstimatorSpec();
   const rates = useEstimatorRates();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // Latest live form answers, used to show the inline "not eligible" warning the
+  // moment Q2 is answered "No" — before submit. Read from the Form.io instance
+  // (onChange's payload is (value, flags, modified), not a { data } submission).
+  const [liveAnswers, setLiveAnswers] = useState<Record<string, unknown>>({});
+  const formInstanceRef = useRef<{ data?: unknown } | null>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
 
   // Move focus to the result when it appears, so a screen-reader user is told
@@ -133,6 +145,90 @@ export default function EligibilityEstimatorPage() {
   useEffect(() => {
     if (outcome) resultHeadingRef.current?.focus();
   }, [outcome]);
+
+  // Design 0901 ee-05: this page reads white edge-to-edge. The app shell paints
+  // an off-white ground on #root (App.css), which shows through the whole
+  // viewport. Override it to white while the estimator is mounted and restore it
+  // on leave — scoped to this route only, and nothing inside the estimator's own
+  // markup is touched (the privacy banner and Q2="No" warning keep their own
+  // backgrounds).
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const previous = root.style.backgroundColor;
+    root.style.backgroundColor = "#ffffff";
+    return () => {
+      root.style.backgroundColor = previous;
+    };
+  }, []);
+
+  // Form.io fires onChange on every edit. Its first arg may carry `.data`, but
+  // the instance's current `.data` is the reliable source; spread into a new
+  // object so React re-renders. (v3 gates the rest of the form + submit on
+  // Q2=Yes, so when Q2=No only Q1/Q2 are visible and the warning sits below.)
+  function handleFormReady(instance: {
+    data?: unknown;
+    getComponent?: (
+      key: string,
+    ) =>
+      | {
+          component?: {
+            validate?: Record<string, unknown>;
+            errors?: Record<string, unknown>;
+          };
+        }
+      | undefined;
+  }) {
+    formInstanceRef.current = instance;
+    // `partnerPwd` cannot be server-`required` (an advanced-conditional required
+    // field fails the FormSpecValidator and would reject singles — Decision B).
+    // Mark it required at RUNTIME, with a matching message, so Form.io renders the
+    // SAME inline error as the applicant PWD field. It is shown only for couples,
+    // so singles — where it stays hidden — are never validated. The couple-check
+    // in handleSubmit remains as a fallback.
+    const partner = instance.getComponent?.("partnerPwd");
+    if (partner?.component) {
+      partner.component.validate = {
+        ...(partner.component.validate ?? {}),
+        required: true,
+      };
+      partner.component.errors = {
+        ...(partner.component.errors ?? {}),
+        required: "Please select an option.",
+      };
+    }
+  }
+
+  function handleChange(value?: { data?: unknown }) {
+    const data = (value?.data ?? formInstanceRef.current?.data) as
+      | Record<string, unknown>
+      | undefined;
+    if (data) setLiveAnswers({ ...data });
+  }
+
+  // Hide any previously shown estimate so a stale result card can't linger over
+  // an errored form. Only clears when there is something to clear (functional
+  // updater keeps a no-op cheap — no re-render when there's no result).
+  function clearStaleResult() {
+    setOutcome((prev) => (prev ? null : prev));
+  }
+
+  // Q2 ("status that allows you to live in Canada") answered "No". The v3 seed
+  // pins dataType "string" so this is "false", but accept the boolean form too
+  // in case a spec is served without it. Copy is hardcoded for this increment;
+  // the §5 content pass will source it from estimator-content.
+  const showStatusWarning =
+    liveAnswers.hasEligibleStatus === "false" ||
+    liveAnswers.hasEligibleStatus === false;
+
+  // If the answers move into the Q2 = "No" screen-fail state (the inline "might
+  // not be eligible" warning), a previously shown estimate now contradicts the
+  // form — clear it so a stale result card can't sit under the warning. A plain
+  // field edit still leaves the result untouched; only this eligibility-gating
+  // change clears it.
+  useEffect(() => {
+    if (showStatusWarning) setOutcome((prev) => (prev ? null : prev));
+  }, [showStatusWarning]);
 
   function handleSubmit(submission: { data: Record<string, unknown> }) {
     const answers = submission.data;
@@ -188,7 +284,65 @@ export default function EligibilityEstimatorPage() {
       {!loading && !loadError && spec.data && (
         <div className={styles.formHost}>
           {/* Anonymous render of the served spec — not the old hardcoded components. */}
-          <Form src={spec.data.spec} onSubmit={handleSubmit} />
+          <Form
+            src={spec.data.spec}
+            // MYSS 0903 (screen 08): design is inline-only, so suppress Form.io's
+            // aggregated `.alert-danger` summary banner. Per-field errors remain.
+            // NOTE: a11y follow-up — move focus to the first invalid field on a
+            // blocked submit to replace the summary's jump links.
+            options={{ noAlerts: true }}
+            onSubmit={handleSubmit}
+            onChange={handleChange}
+            onFormReady={handleFormReady}
+            // Form.io v5 short-circuits a submit blocked by validation: it emits
+            // NO form-level `submit`/`submitError`/`error`, only a per-field
+            // `componentError`. So `onSubmit` never runs to refresh the result,
+            // leaving a stale estimate over the errored form. Clearing on
+            // `componentError` hides it. A VALID submit emits no componentError,
+            // so a good estimate is never flickered away.
+            otherEvents={{ "formio.componentError": clearStaleResult }}
+          />
+        </div>
+      )}
+
+      {/* Inline, progressive "not eligible" warning (0901 ee-02/ee-05). Shows
+          the moment Q2 is answered "No"; the v3 seed keeps the rest of the form
+          hidden in that state, so this sits directly under the visible questions. */}
+      {showStatusWarning && (
+        <div className={styles.statusWarning}>
+          <InlineAlert variant="warning">
+            {/* This InlineAlert renders its `title` prop only when it has no
+                children; since we need a rich body, we render the title inside
+                children using the component's own title markup (class "title",
+                id "alert-title" — the target of the container's aria-labelledby). */}
+            <span className="title" id="alert-title">
+              You might not be eligible for assistance
+            </span>
+            <p>
+              Based on your answer, you might not meet the{" "}
+              <a
+                className={styles.inlineLink}
+                href={PENDING.residenceReqUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                residency requirements
+              </a>{" "}
+              for assistance in British Columbia.
+            </p>
+            <p>
+              <strong>Not eligible but still in need?</strong> You may be able to
+              receive hardship assistance, depending on your circumstances.{" "}
+              <a
+                className={styles.inlineLink}
+                href={PENDING.hardshipUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Contact us to find out more about this kind of support.
+              </a>
+            </p>
+          </InlineAlert>
         </div>
       )}
 
@@ -220,7 +374,12 @@ export default function EligibilityEstimatorPage() {
               <p className={styles.prose}>
                 You may be able to receive hardship assistance, depending on your
                 circumstances.{" "}
-                <a className={styles.inlineLink} href={PENDING.hardshipUrl}>
+                <a
+                  className={styles.inlineLink}
+                  href={PENDING.hardshipUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   Contact us to find out more about this kind of support.
                 </a>
               </p>
@@ -277,7 +436,12 @@ export default function EligibilityEstimatorPage() {
               <p className={styles.prose}>
                 You may be able to receive hardship assistance, depending on your
                 circumstances.{" "}
-                <a className={styles.inlineLink} href={PENDING.hardshipUrl}>
+                <a
+                  className={styles.inlineLink}
+                  href={PENDING.hardshipUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   Contact us to find out more about this kind of support.
                 </a>
               </p>

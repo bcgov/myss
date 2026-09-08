@@ -113,7 +113,7 @@ describe("mapAnswersToEstimate", () => {
 });
 
 describe("screenPreCheck", () => {
-  it("passes only when both residency and status are Yes", () => {
+  it("passes when status (Q2) is Yes and the applicant resides in BC", () => {
     const pre = screenPreCheck({
       residesInBc: "true",
       hasEligibleStatus: "true",
@@ -123,26 +123,29 @@ describe("screenPreCheck", () => {
     expect(pre.hasEligibleStatus).toBe(true);
   });
 
-  it("fails when residency is No", () => {
+  it("MYSS-206: passes when Q1=No but Q2=Yes (residency no longer blocks)", () => {
     const pre = screenPreCheck({
       residesInBc: "false",
       hasEligibleStatus: "true",
     });
-    expect(pre.passed).toBe(false);
+    expect(pre.passed).toBe(true);
+    expect(pre.residesInBc).toBe(false);
+    expect(pre.hasEligibleStatus).toBe(true);
   });
 
-  it("fails when status is No", () => {
-    const pre = screenPreCheck({
+  it("fails only when status (Q2) is No, whatever the residency answer", () => {
+    expect(
+      screenPreCheck({ residesInBc: "true", hasEligibleStatus: "false" }).passed,
+    ).toBe(false);
+    expect(
+      screenPreCheck({ residesInBc: "false", hasEligibleStatus: "false" }).passed,
+    ).toBe(false);
+  });
+
+  it("short-circuits before an EligibilityRequest is built when status is No", () => {
+    const answers = {
       residesInBc: "true",
       hasEligibleStatus: "false",
-    });
-    expect(pre.passed).toBe(false);
-  });
-
-  it("short-circuits before an EligibilityRequest is built when a pre-check is No", () => {
-    const answers = {
-      residesInBc: "false",
-      hasEligibleStatus: "true",
       relationshipStatus: "single",
       monthlyIncome: 100,
     };

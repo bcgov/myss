@@ -7,10 +7,30 @@
   max-width: 820px;
   margin: 0 auto;
   width: 100%;
+  /* Decision-0 fix for the BCDS components (accordion + InlineAlert). Their text
+     is sized in rem via @bcgov/design-tokens (e.g. --typography-bold-body:
+     700 1rem/1.688rem), but the app's Bootstrap sets html{font-size:10px}, so
+     1rem = 10px and every BCDS label/body renders at ~62.5%. The estimator's own
+     text was converted to explicit px (Phase 1); these components were not, so
+     the accordion label + alert text came out smaller than the px-pinned Q1/Q2.
+     Redefine the rem font tokens to their intended px here (scoped to the
+     estimator), so the BCDS components render at design size. Only the accordion
+     and InlineAlert consume these tokens under .page — the privacy banner is
+     plain markup, and the estimator's own rules use explicit px, not these. */
+  --typography-regular-body: 400 16px/1.688 "BC Sans";
+  --typography-bold-body: 700 16px/1.688 "BC Sans";
+  /* Accordion group title (BCDS renders a string label in a <span>). */
+  --typography-bold-large-body: 700 18px/1.7 "BC Sans";
+  --typography-bold-h1: 700 36px/1.5 "BC Sans";
+  --typography-bold-h2: 700 32px/1.5 "BC Sans";
+  --typography-bold-h3: 700 28px/1.714 "BC Sans";
+  --typography-bold-h4: 700 24px/1.5 "BC Sans";
+  --typography-bold-h5: 700 20px/1.7 "BC Sans";
+  --typography-bold-h6: 700 18px/1.7 "BC Sans";
 }
 
 .title {
-  font-size: 2rem;
+  font-size: 36px;
   font-weight: 700;
   line-height: 1.15;
   margin: 0 0 var(--layout-margin-large, 24px);
@@ -19,7 +39,8 @@
 
 /* Privacy banner: light panel with a BC-blue accent bar. */
 .privacyBanner {
-  border-left: 4px solid var(--surface-color-primary-button-default, #234075);
+  border-left: 4px solid var(--surface-color-border-default, #d8d8d8);
+  border-radius: 4px;
   background: var(--surface-color-background-light-gray, #f2f2f2);
   padding: var(--layout-margin-medium, 16px) var(--layout-margin-large, 20px);
   margin-bottom: var(--layout-margin-medium, 16px);
@@ -37,7 +58,7 @@
 
 .requiredNote {
   margin: 0 0 var(--layout-margin-large, 24px);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* Screen-reader-only utility. Form.io's label template emits
@@ -60,6 +81,9 @@
    full width where the design keeps them contained. */
 .formHost {
   margin-top: var(--layout-margin-medium, 16px);
+  /* MYSS-206 (§4.1): the form reads white, matching the approved design (the
+     default surface can appear slightly grey). */
+  background: var(--surface-color-background-white, #fff);
 }
 
 .loading,
@@ -78,7 +102,7 @@
 }
 
 .resultTitle {
-  font-size: 1.6rem;
+  font-size: 32px;
   font-weight: 700;
   margin: 0 0 var(--layout-margin-medium, 16px);
 }
@@ -92,15 +116,15 @@
 }
 
 .estimateCard {
-  border: 1px solid var(--surface-color-border-default, #d0d5dd);
-  border-radius: 8px;
-  padding: var(--layout-margin-xlarge, 32px);
+  border: 1px solid var(--surface-color-border-medium, #898785);
+  border-radius: 6px;
+  padding: 30px; /* design 09 (was 20/32px) */
   text-align: center;
   margin-bottom: var(--layout-margin-large, 24px);
 }
 
 .estimateHeading {
-  font-size: 1.5rem;
+  font-size: 28px;
   font-weight: 700;
   margin: 0 0 var(--layout-margin-small, 8px);
 }
@@ -110,14 +134,14 @@
 }
 
 .estimateAmount {
-  font-size: 2.25rem;
+  font-size: 32px;
   font-weight: 700;
-  color: var(--surface-color-primary-button-default, #1a5a96);
+  color: var(--typography-color-link, #255a90);
   margin: 0 0 var(--layout-margin-small, 8px);
 }
 
 .perMonth {
-  font-size: 1rem;
+  font-size: 18px;
   font-weight: 400;
   color: var(--typography-color-primary, #1a1a1a);
 }
@@ -125,23 +149,52 @@
 .estimateCaveat {
   margin: 0;
   color: var(--typography-color-secondary, #474543);
-  font-size: 0.9rem;
+  font-size: 18px;
+}
+
+/* Leading exclamation-circle before the caveat (design 09). Drawn in pure CSS —
+   no icon font — mirroring the tooltip (ⓘ) and error (!) icons. Inherits the
+   caveat's colour via currentColor. */
+.estimateCaveat::before {
+  content: "!";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.8em;
+  line-height: 1;
+  vertical-align: 0.02em;
 }
 
 .subHeading {
-  font-size: 1.3rem;
+  font-size: 28px;
   font-weight: 700;
   margin: var(--layout-margin-large, 24px) 0 var(--layout-margin-small, 8px);
 }
 
 .prose {
   margin: 0 0 var(--layout-margin-medium, 16px);
+  font-size: 18px;
   line-height: 1.6;
 }
 
 .inlineLink {
-  color: var(--surface-color-primary-button-default, #1a5a96);
+  color: var(--typography-color-link, #255a90);
   text-decoration: underline;
+}
+
+/* Unify link colour to design link-blue across the estimator content (form host,
+   accordion, and result panel). Site header/footer links are app chrome outside
+   .formHost/.result and are governed by the global theme, not here. */
+.formHost :global(a),
+.result a {
+  color: var(--typography-color-link, #255a90);
 }
 
 /* "Your information" echo (replaces the removed itemised table). */
@@ -151,6 +204,11 @@
 
 .infoList {
   margin: 0;
+  /* Design 0901 ee-10: the "Your information" rows read at the same size as the
+     "How your estimate was calculated" body prose (.prose). Without this they
+     inherit the smaller app base and look undersized. */
+  font-size: 18px;
+  line-height: 1.6;
 }
 
 .infoRow {
@@ -160,7 +218,8 @@
 }
 
 .infoRow dt {
-  font-weight: 600;
+  /* Design 0901 ee-10: labels are regular weight, same as their values. */
+  font-weight: 400;
 }
 
 .infoRow dt::after {
@@ -223,6 +282,14 @@
 .formHost :global(.formio-component-panel .card-body) {
   padding: 0 16px 14px;
   color: var(--typography-color-secondary, #474543);
+}
+
+/* v3 accordion (bcgovAccordion, key "statusHelp") — Form.io gives the custom
+   component no bottom spacing, so it crowds the next question. The design's
+   question stack is gap 24px (0901 ee-04 §Content/Setup), which the v2 panel
+   above carried via its own margin; restore the same 24px below the v3 accordion. */
+.formHost :global(.formio-component-statusHelp) {
+  margin-bottom: var(--layout-margin-large, 24px);
 }
 
 /* Money fields carry a "$" prefix (every number field except the dependent-
@@ -298,15 +365,94 @@
 .formHost :global(h2) {
   /* Section headings ("Do you have assets…" / "Does your spouse…") match the
      page title (.title) — same size and weight. */
-  font-size: 2rem;
+  font-size: 32px;
   font-weight: 700;
   line-height: 1.15;
 }
 .formHost :global(.col-form-label) {
-  font-size: 1.125rem; /* 18px — question titles */
+  font-size: 16px; /* question label — design 16 */
   font-weight: 700;
 }
 .formHost :global(.radio label),
 .formHost :global(.form-check-label) {
-  font-size: 1rem; /* 16px — Yes / No and other options */
+  font-size: 16px; /* option label — Yes / No, design 16 */
+}
+
+/* MYSS-206 (§4.1): CTA spacing — separate "Get Estimate" from the last field,
+   which the design shows with clear breathing room. */
+.formHost :global(.formio-component-submit) {
+  margin-top: var(--layout-margin-large, 24px);
+}
+
+/* Submit button colour/size to match design; myss-theme .btn-primary is #1a5a96. */
+.formHost :global(.formio-component-submit .btn-primary) {
+  background-color: var(--surface-color-primary-button-default, #013366);
+  border-color: var(--surface-color-primary-button-default, #013366);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* MYSS-206: inline Q2="No" warning (BC Gov InlineAlert) sits below the form. */
+.statusWarning {
+  margin-top: var(--layout-margin-medium, 16px);
+}
+
+/* The BCDS InlineAlert only styles direct children with class .title / .description.
+   Our warning body is plain <p>, so it would inherit the app base size and read
+   smaller than the title. Give it the regular-body token (16px via the .page
+   override) so title and body match the design (0901 ee-05). */
+.statusWarning p {
+  font: var(--typography-regular-body);
+}
+
+/* Links inside the warning box follow the design (0901 ee-05): underlined, in the
+   alert's own dark text colour rather than the blue link colour used elsewhere. */
+.statusWarning a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Text-input border to design; Bootstrap .form-control default is #ccc. */
+.formHost :global(.form-control) {
+  border-color: var(--surface-color-border-medium, #898785);
+}
+
+/* -----------------------------------------------------------------------------
+   Phase 7 — validation error state (MYSS 0903 screen 08). Form.io's stock CSS
+   gives a pink fill (.formio-error-wrapper) + an aggregated banner; the banner
+   is disabled via <Form options={{ noAlerts:true }}>. Here we replace the pink
+   group with a 2px danger border + drawn icon and colour the message red. All
+   scoped to .formHost. NOTE: the message text sits in a parent/child pair
+   (.formio-errors.invalid-feedback > .form-text.error); we COLOUR both rather
+   than hide, to avoid removing the only message — confirm in DevTools whether it
+   paints as one line or two before hiding either.
+   --------------------------------------------------------------------------- */
+.formHost :global(.formio-error-wrapper) {
+  background-color: transparent;
+  color: inherit;
+  border: 2px solid var(--typography-color-danger, #ce3e39);
+  border-radius: var(--layout-border-radius-default, 4px);
+  padding: var(--layout-padding-small, 8px);
+}
+.formHost :global(.formio-errors .form-text.error),
+.formHost :global(.formio-errors.invalid-feedback) {
+  color: var(--typography-color-danger, #ce3e39);
+}
+/* Leading danger icon — drawn (no icon font), same approach as the tooltip/chevron.
+   Placeholder circle-"!" pending the exact Figma danger glyph. */
+.formHost :global(.formio-errors .form-text.error)::before {
+  content: "!";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 6px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.85em;
+  line-height: 1;
+  vertical-align: -0.15em;
 }
