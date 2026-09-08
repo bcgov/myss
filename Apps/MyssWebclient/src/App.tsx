@@ -1,6 +1,4 @@
 import { Button, Header, Footer } from "@bcgov/design-system-react-components";
-import { Outlet } from "react-router";
-import { Header, Footer } from "@bcgov/design-system-react-components";
 import { Outlet, useLocation } from "react-router";
 
 import "./App.css";
