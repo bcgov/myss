@@ -17,11 +17,6 @@ function App() {
     return (
         <>
             <Header title="My Self Serve" />
-            <AnnouncementBanner>
-                Please call us at{" "}
-                <a href="tel:+18668660800">1-866-866-0800</a> if you need help
-                registering for or accessing My Self Serve
-            </AnnouncementBanner>
             {idleWarning && (
                 <AnnouncementBanner>
                     You&rsquo;ve been inactive for a while and will be signed out
@@ -31,7 +26,7 @@ function App() {
             <main id="main-content">
                 <Outlet />
             </main>
-            <Footer hideAcknowledgement />
+            <Footer />
         </>
     );
 }

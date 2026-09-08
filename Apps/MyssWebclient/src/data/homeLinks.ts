@@ -91,6 +91,6 @@ export const otherResources: ResourceLink[] = [
 
 // YouTube video IDs embedded on the prod home page.
 export const homeVideos: { id: string; title: string }[] = [
-    { id: "rHgD9GOB4nQ", title: "My Self Serve overview" },
-    { id: "Mng2RHEpb-o", title: "Applying for assistance with My Self Serve" },
+    { id: "rHgD9GOB4nQ", title: "How to use MySS" },
+    { id: "Mng2RHEpb-o", title: "How to use MySS in ASL" },
 ];
