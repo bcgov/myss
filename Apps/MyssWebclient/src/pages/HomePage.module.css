@@ -20,6 +20,7 @@
 .introBandContent {
     max-width: 900px;
     margin: 0 auto;
+    padding: 0 var(--layout-padding-xlarge);
 }
 
 .calendarBand {
@@ -82,6 +83,7 @@
     align-items: start;
     margin: 0 auto;
     max-width: 900px;
+    padding: 0 var(--layout-padding-xlarge);
 }
 
 @media (max-width: 768px) {
@@ -92,5 +94,13 @@
 
     .faqRow {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .introBandContent,
+    .faqRow {
+        padding-left: var(--layout-padding-medium);
+        padding-right: var(--layout-padding-medium);
     }
 }
