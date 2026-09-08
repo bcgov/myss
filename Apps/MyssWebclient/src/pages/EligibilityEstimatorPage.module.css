@@ -312,6 +312,14 @@
   padding-left: 26px;
 }
 
+/* Match design (MYSS 0903 / 0901-ee-07): BCDS TextField size="small" renders a
+   contained input (~600px in the 800px well), not the full column width that
+   Form.io's .form-control defaults to. Covers the dependent-children field and
+   all money fields; radios and the panel are unaffected. */
+.formHost :global(.formio-component-number input.form-control) {
+  max-width: 600px;
+}
+
 /* Rely on the "*All fields are required." note; hide the per-field red stars. */
 .formHost :global(.required-star) {
   display: none !important;
