@@ -1,7 +1,5 @@
 import {
     SvgBcOutlineIcon,
-    SvgCheckCircleIcon,
-    SvgInfoIcon,
 } from "@bcgov/design-system-react-components";
 
 import styles from "./AboutMySS.module.css";
@@ -14,12 +12,12 @@ const information = [
     },
     {
         title: "Apply for assistance",
-        icon: <SvgCheckCircleIcon />,
+        icon: <i className="fa fa-file-o" aria-hidden="true" />,
         text: "If you are not currently in receipt of income or disability assistance, MySS will guide you through the application process.",
     },
     {
         title: "Manage your assistance",
-        icon: <SvgInfoIcon />,
+        icon: <i className="fa fa-folder-open-o" aria-hidden="true" />,
         text: "If you are currently in receipt of income or disability assistance, MySS will allow you to securely access your current information online. For example, you can view personal messages from the ministry, submit your monthly report, and upload forms.",
     },
 ];
