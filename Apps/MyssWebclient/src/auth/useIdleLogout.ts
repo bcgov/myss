@@ -132,7 +132,13 @@ export function useIdleLogout(): {
             ACTIVITY_EVENTS.forEach((e) =>
                 window.removeEventListener(e, onActivity),
             );
-            warningRef.current = false;
+            // Keep the ref and rendered state in sync if authentication ends
+            // without a full-page logout, such as during token recovery or a
+            // future server-backed authentication flow.
+            if (warningRef.current) {
+                warningRef.current = false;
+                setWarning(false);
+            }
         };
     }, [isAuthenticated]);
 

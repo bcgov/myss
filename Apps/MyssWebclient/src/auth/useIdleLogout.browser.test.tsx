@@ -23,6 +23,7 @@ import { IDLE_MS, useIdleLogout, WARNING_MS } from "./useIdleLogout";
 describe("useIdleLogout", () => {
     beforeEach(() => {
         vi.useFakeTimers();
+        session.isAuthenticated = true;
         session.logout.mockClear();
     });
 
@@ -79,6 +80,23 @@ describe("useIdleLogout", () => {
         await hook.act(() => vi.advanceTimersByTime(IDLE_MS));
 
         expect(session.logout).toHaveBeenCalledOnce();
+        await hook.unmount();
+    });
+
+    it("does not retain a warning across re-authentication", async () => {
+        const hook = await renderHook(() => useIdleLogout());
+
+        await hook.act(() => vi.advanceTimersByTime(WARNING_MS));
+        expect(hook.result.current.warning).toBe(true);
+
+        session.isAuthenticated = false;
+        await hook.rerender();
+        expect(hook.result.current.warning).toBe(false);
+
+        session.isAuthenticated = true;
+        await hook.rerender();
+        expect(hook.result.current.warning).toBe(false);
+
         await hook.unmount();
     });
 });
