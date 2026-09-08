@@ -1,4 +1,4 @@
-import { Header, Footer } from "@bcgov/design-system-react-components";
+import { Button, Header, Footer } from "@bcgov/design-system-react-components";
 import { Outlet } from "react-router";
 
 import "./App.css";
@@ -12,15 +12,16 @@ import { useIdleLogout } from "@/auth/useIdleLogout";
 // idle-logout timer (RULE-IDA-07).
 function App() {
     useApiAuth();
-    const { warning: idleWarning } = useIdleLogout();
+    const { warning: idleWarning, extendSession } = useIdleLogout();
 
     return (
         <>
             <Header title="My Self Serve" />
             {idleWarning && (
                 <AnnouncementBanner>
-                    You&rsquo;ve been inactive for a while and will be signed out
-                    soon. Move your mouse or press a key to stay signed in.
+                    You&rsquo;ve been inactive for a while and will be signed
+                    out soon.{" "}
+                    <Button onPress={extendSession}>Stay signed in</Button>
                 </AnnouncementBanner>
             )}
             <main id="main-content">

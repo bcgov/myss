@@ -1,9 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 
 import {
     buildKeycloakLogoutUrl,
     buildSiteMinderLogoutUrl,
+    siteMinderLogout,
 } from "./siteMinderLogout";
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("buildKeycloakLogoutUrl", () => {
     it("includes id_token_hint and post_logout_redirect_uri", () => {
@@ -30,7 +33,7 @@ describe("buildSiteMinderLogoutUrl", () => {
         const result = buildSiteMinderLogoutUrl({
             authority: "https://dev.loginproxy.gov.bc.ca/auth/realms/standard",
             idTokenHint: "id.token.jwt",
-            postLogoutRedirectUri: "http://localhost:5173",
+            postLogoutRedirectUri: "http://localhost:5173/auth/login",
         });
         const url = new URL(result);
         expect(url.origin).toBe("https://logon7.gov.bc.ca");
@@ -43,16 +46,62 @@ describe("buildSiteMinderLogoutUrl", () => {
             "dev.loginproxy.gov.bc.ca/auth/realms/standard/protocol/openid-connect/logout",
         );
         expect(returl).toContain("id_token_hint=id.token.jwt");
+        expect(
+            new URL(returl).searchParams.get("post_logout_redirect_uri"),
+        ).toBe("http://localhost:5173/auth/login");
     });
 
     it("allows overriding the SiteMinder logoff base", () => {
         const result = buildSiteMinderLogoutUrl({
             authority: "https://dev.loginproxy.gov.bc.ca/auth/realms/standard",
             postLogoutRedirectUri: "http://localhost:5173",
-            siteMinderLogoffUrl: "https://logontest7.gov.bc.ca/clp-cgi/logoff.cgi",
+            siteMinderLogoffUrl:
+                "https://logontest7.gov.bc.ca/clp-cgi/logoff.cgi",
         });
-        expect(result.startsWith("https://logontest7.gov.bc.ca/clp-cgi/logoff.cgi")).toBe(
-            true,
+        expect(
+            result.startsWith(
+                "https://logontest7.gov.bc.ca/clp-cgi/logoff.cgi",
+            ),
+        ).toBe(true);
+    });
+});
+
+describe("siteMinderLogout", () => {
+    it("clears the local user and returns to the login page", async () => {
+        const removeUser = vi.fn().mockResolvedValue(undefined);
+        const assign = vi.fn();
+        vi.stubGlobal("window", {
+            location: {
+                origin: "http://localhost:5173",
+                assign,
+            },
+        });
+
+        await siteMinderLogout(
+            {
+                user: { id_token: "id.token.jwt" },
+                settings: {
+                    authority:
+                        "https://dev.loginproxy.gov.bc.ca/auth/realms/standard",
+                },
+                removeUser,
+            } as never,
+            {
+                siteMinderLogoffUrl:
+                    "https://logontest7.gov.bc.ca/clp-cgi/logoff.cgi",
+            },
+        );
+
+        expect(removeUser).toHaveBeenCalledOnce();
+        expect(assign).toHaveBeenCalledOnce();
+        expect(removeUser.mock.invocationCallOrder[0]).toBeLessThan(
+            assign.mock.invocationCallOrder[0],
+        );
+
+        const siteMinderUrl = new URL(assign.mock.calls[0][0]);
+        const keycloakUrl = new URL(siteMinderUrl.searchParams.get("returl")!);
+        expect(keycloakUrl.searchParams.get("post_logout_redirect_uri")).toBe(
+            "http://localhost:5173/auth/login",
         );
     });
 });
