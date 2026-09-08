@@ -58,12 +58,16 @@ const ACTIVITY_EVENTS = [
     "touchstart",
 ] as const;
 
-// Mount once (in App). Returns `warning`, true during the final minute so the
-// app can show the 14-minute warning; any user activity resets the timer and
-// clears the warning. Inactive while unauthenticated.
-export function useIdleLogout(): { warning: boolean } {
+// Mount once (in App). Activity resets the timer until the warning appears;
+// after that, the user must explicitly extend the session. Inactive while
+// unauthenticated.
+export function useIdleLogout(): {
+    warning: boolean;
+    extendSession: () => void;
+} {
     const { isAuthenticated, logout } = useSession();
     const [warning, setWarning] = useState(false);
+    const timerRef = useRef<IdleTimer | undefined>(undefined);
 
     // Keep the latest logout without restarting the timer effect each render.
     //
@@ -80,6 +84,20 @@ export function useIdleLogout(): { warning: boolean } {
 
     const warningRef = useRef(false);
 
+    const clearWarning = () => {
+        if (warningRef.current) {
+            warningRef.current = false;
+            setWarning(false);
+        }
+    };
+
+    // Restarts both deadlines when the user confirms they want to remain
+    // signed in from the timeout warning.
+    const extendSession = () => {
+        timerRef.current?.reset();
+        clearWarning();
+    };
+
     useEffect(() => {
         // Nothing to time while signed out. The warning is cleared by masking
         // it on the way out (see the return below) rather than by calling
@@ -91,22 +109,18 @@ export function useIdleLogout(): { warning: boolean } {
             warningRef.current = true;
             setWarning(true);
         };
-        const clearWarning = () => {
-            if (warningRef.current) {
-                warningRef.current = false;
-                setWarning(false);
-            }
-        };
 
         const timer = new IdleTimer({
             onWarn: showWarning,
             onLogout: () => logoutRef.current(),
         });
+        timerRef.current = timer;
         timer.start();
 
         const onActivity = () => {
-            timer.reset();
-            clearWarning();
+            // Once warned, ambient activity must not dismiss the prompt before
+            // the user can choose the explicit extension action.
+            if (!warningRef.current) timer.reset();
         };
         ACTIVITY_EVENTS.forEach((e) =>
             window.addEventListener(e, onActivity, { passive: true }),
@@ -114,6 +128,7 @@ export function useIdleLogout(): { warning: boolean } {
 
         return () => {
             timer.stop();
+            timerRef.current = undefined;
             ACTIVITY_EVENTS.forEach((e) =>
                 window.removeEventListener(e, onActivity),
             );
@@ -132,5 +147,8 @@ export function useIdleLogout(): { warning: boolean } {
     // entirely, and signing back in is likewise a redirect. Masking here covers
     // the gap between removeUser() flipping isAuthenticated and the browser
     // actually leaving the page.
-    return { warning: isAuthenticated && warning };
+    return {
+        warning: isAuthenticated && warning,
+        extendSession,
+    };
 }

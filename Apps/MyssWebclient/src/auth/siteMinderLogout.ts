@@ -6,6 +6,8 @@
 
 import type { AuthContextProps } from "react-oidc-context";
 
+import { paths } from "@/routes/paths";
+
 // Default SiteMinder logoff endpoint (prod). Dev/test uses logontest7.
 const DEFAULT_SITEMINDER_LOGOFF = "https://logon7.gov.bc.ca/clp-cgi/logoff.cgi";
 
@@ -14,9 +16,7 @@ export function buildKeycloakLogoutUrl(params: {
     idTokenHint?: string;
     postLogoutRedirectUri: string;
 }): string {
-    const url = new URL(
-        `${params.authority}/protocol/openid-connect/logout`,
-    );
+    const url = new URL(`${params.authority}/protocol/openid-connect/logout`);
     url.searchParams.set(
         "post_logout_redirect_uri",
         params.postLogoutRedirectUri,
@@ -41,8 +41,9 @@ export function buildSiteMinderLogoutUrl(params: {
     return url.toString();
 }
 
-// Runtime logout used by the useSession seam. Clears the local oidc user, then
-// navigates through SiteMinder -> Keycloak end-session -> back to the SPA.
+// Runtime logout used by the useSession seam. Clearing the local user and
+// leaving the SPA discards its in-memory state; the external logout chain then
+// returns the client to the sign-in page with a clean session.
 export async function siteMinderLogout(
     auth: AuthContextProps,
     opts: { siteMinderLogoffUrl?: string } = {},
@@ -51,7 +52,10 @@ export async function siteMinderLogout(
     const url = buildSiteMinderLogoutUrl({
         authority: auth.settings.authority,
         idTokenHint,
-        postLogoutRedirectUri: window.location.origin,
+        postLogoutRedirectUri: new URL(
+            paths.signIn,
+            window.location.origin,
+        ).toString(),
         siteMinderLogoffUrl: opts.siteMinderLogoffUrl,
     });
     await auth.removeUser();
