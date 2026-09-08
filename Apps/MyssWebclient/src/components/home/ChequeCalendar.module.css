@@ -1,62 +1,64 @@
 .wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.content {
+    display: grid;
+    gap: var(--layout-margin-large, 24px);
+    grid-template-columns: minmax(140px, 0.7fr) 2fr;
+    width: 100%;
+}
+
+.dateCard {
+    align-items: center;
+    background-color: #ffffff;
     border: 1px solid var(--surface-color-border-default, #d9d9d9);
     border-radius: var(--layout-border-radius-medium, 4px);
-    overflow: hidden;
-}
-
-.header {
-    background-color: var(--surface-color-primary-default, #013366);
-    color: #ffffff;
-    text-align: center;
-    padding: var(--layout-padding-small, 8px);
-    font-weight: 700;
-}
-
-.monthNav {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--layout-padding-small, 8px);
-}
-
-.monthNav button {
-    background: none;
-    border: none;
-    font-size: 1.25rem;
-    cursor: pointer;
-    color: var(--typography-color-primary, #292929);
-    padding: 0 8px;
-}
-
-.monthNav button:disabled {
-    color: var(--typography-color-disabled, #b3b3b3);
-    cursor: default;
-}
-
-.calendar {
-    width: 100%;
-    border-collapse: collapse;
+    flex-direction: column;
+    justify-content: flex-start;
+    max-width: 220px;
+    min-height: 100px;
     text-align: center;
-    font-size: 0.85rem;
 }
 
-.calendar th,
-.calendar td {
-    padding: 4px;
+.dateCard p {
+    margin: 0;
 }
 
-.calendar th {
-    color: var(--typography-color-secondary, #606060);
-    font-weight: 600;
-}
-
-.muted {
-    color: var(--typography-color-disabled, #9f9d9c);
-}
-
-.issueDay {
-    background-color: var(--surface-color-primary-default, #013366);
-    color: #ffffff;
+.dateCardHeader {
+    background-color: var(--surface-color-background-light-blue, #eaf4fb);
     font-weight: 700;
-    border-radius: 3px;
+    margin-top: 0;
+    padding: 4px;
+    width: 100%;
+}
+
+.dateCard > b {
+    font-size: 2rem;
+    margin: 2px 0;
+}
+
+.information {
+    align-self: center;
+}
+
+.information p {
+    margin-top: 0;
+}
+
+.information a {
+    color: var(--typography-color-link, #255a90);
+}
+
+@media (max-width: 600px) {
+    .content {
+        grid-template-columns: 1fr;
+    }
+
+    .dateCard {
+        max-width: none;
+    }
 }

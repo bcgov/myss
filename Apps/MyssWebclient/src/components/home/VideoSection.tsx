@@ -1,18 +1,14 @@
-import { Fragment } from "react";
-import { Link } from "react-router";
-
 import { homeVideos } from "@/data/homeLinks";
-import { paths } from "@/routes/paths";
 import styles from "./VideoSection.module.css";
 
-// Informational videos plus the "Estimate your eligibility" call-to-action.
-// Prod separates each block with a horizontal rule; we mirror that here.
-// The eligibility link routes internally to the placeholder estimator page.
+// Informational videos 
+// Rendered as a responsive grid of embedded YouTube videos.
 export default function VideoSection() {
     return (
         <div className={styles.wrapper}>
             {homeVideos.map((video) => (
-                <Fragment key={video.id}>
+                <div className={styles.videoItem} key={video.id}>
+                    <h3>{video.title}</h3>
                     <div className={styles.videoFrame}>
                         <iframe
                             src={`https://www.youtube.com/embed/${video.id}`}
@@ -21,17 +17,8 @@ export default function VideoSection() {
                             allowFullScreen
                         />
                     </div>
-                    <hr className={styles.rule} />
-                </Fragment>
+                </div>
             ))}
-
-            <p className={styles.estimatorLink}>
-                <Link to={paths.eligibilityEstimator}>
-                    Estimate your eligibility before applying for assistance
-                    &nbsp;&rsaquo;
-                </Link>
-            </p>
-            <hr className={styles.rule} />
         </div>
     );
 }

@@ -28,6 +28,9 @@ jobs:
       - name: Run API tests
         run: dotnet test Apps/MyssApi.Tests --configuration Release
 
+      - name: Run ICM client tests
+        run: dotnet test Apps/IcmApi.Tests --configuration Release
+
   mysscontent-tests:
     name: MyssContent tests
     runs-on: ubuntu-latest

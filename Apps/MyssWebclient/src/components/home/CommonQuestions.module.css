@@ -1,0 +1,15 @@
+.group {
+    background-color: var(--surface-color-background-light-gray, #f2f2f2);
+    font-size: 1.125rem;
+}
+
+.group :global(.bcds-react-aria-Disclosure--Button),
+.group :global(.bcds-react-aria-Disclosure--Panel) {
+    font-size: 1.125rem;
+}
+
+.group :global(.bcds-react-aria-Disclosure--Button) {
+    justify-content: flex-start;
+    text-align: left;
+    width: 100%;
+}
