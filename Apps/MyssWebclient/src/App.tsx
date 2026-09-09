@@ -13,7 +13,7 @@ import { useIdleLogout } from "@/auth/useIdleLogout";
 // idle-logout timer (RULE-IDA-07).
 function App() {
     useApiAuth();
-    const { warning: idleWarning } = useIdleLogout();
+    const { warning: idleWarning, extendSession } = useIdleLogout();
     // The eligibility estimator (MYSS-169 / 0901 design) has no footer, so hide
     // the shared BC Gov footer on that route only — every other page keeps it.
     const { pathname } = useLocation();
