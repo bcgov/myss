@@ -6,6 +6,11 @@
 
 FROM node:22-alpine AS dev
 WORKDIR /opt/app
+# node:22 bundles npm 10, but the team generates package-lock.json with npm 11,
+# and npm 10's stricter `ci` rejects npm-11-shaped lockfiles (it demands nested
+# optional-peer entries npm 11 prunes — yaml under vitest/vite, recurringly).
+# Same npm major as the developers, or the build breaks on every lockfile touch.
+RUN npm install -g npm@11
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
@@ -15,6 +20,8 @@ CMD ["npm", "run", "develop"]
 
 FROM node:22-alpine AS build
 WORKDIR /opt/app
+# Same npm-major alignment as the dev stage above.
+RUN npm install -g npm@11
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
