@@ -55,9 +55,5 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
         );
     }
 
-    if (!isAuthenticated) {
-        return <SignInChooser />;
-    }
-
-    return null;
+    return <SignInChooser />;
 }

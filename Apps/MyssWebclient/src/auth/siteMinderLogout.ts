@@ -63,10 +63,17 @@ export async function siteMinderLogout(
         siteMinderLogoffUrl: opts.siteMinderLogoffUrl,
     });
     logoutInProgress = true;
+    let navigationStarted = false;
     try {
         await auth.removeUser();
         window.location.assign(url);
+        navigationStarted = true;
     } finally {
-        logoutInProgress = false;
+        // A successful full-page navigation unloads this module. Keep the
+        // flag set through that transition; only clear it if navigation never
+        // started because cleanup or assignment failed.
+        if (!navigationStarted) {
+            logoutInProgress = false;
+        }
     }
 }

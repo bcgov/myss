@@ -95,7 +95,9 @@ describe("siteMinderLogout", () => {
 
         expect(removeUser).toHaveBeenCalledOnce();
         expect(assign).toHaveBeenCalledOnce();
-        expect(isLogoutInProgress()).toBe(false);
+        // The real browser unloads after assign(); the mocked navigation keeps
+        // this module alive, so the suppression flag remains set here.
+        expect(isLogoutInProgress()).toBe(true);
         expect(removeUser.mock.invocationCallOrder[0]).toBeLessThan(
             assign.mock.invocationCallOrder[0],
         );

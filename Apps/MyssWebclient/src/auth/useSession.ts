@@ -53,8 +53,8 @@ export function buildSession(
 // Option-1 body: back the seam with react-oidc-context plus the me query.
 export function useSession(): Session {
   const auth = useAuth();
-  // A disabled query (signed out) reports pending forever; buildSession only
-  // treats pending as loading while actually authenticated.
+  // A disabled query (signed out) reports pending forever. Keep its state
+  // separate from authentication loading so it cannot block the page shell.
   const me = useMe(auth.isAuthenticated, auth.user?.profile.sub);
   return buildSession(
     auth,
