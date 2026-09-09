@@ -68,6 +68,12 @@ export async function siteMinderLogout(
         await auth.removeUser();
         window.location.assign(url);
         navigationStarted = true;
+
+        // In a real browser this triggers a full-page unload. If navigation
+        // is blocked or ignored, avoid leaving the SPA stuck in logout state.
+        globalThis.setTimeout(() => {
+            logoutInProgress = false;
+        }, 10_000);
     } finally {
         // A successful full-page navigation unloads this module. Keep the
         // flag set through that transition; only clear it if navigation never
