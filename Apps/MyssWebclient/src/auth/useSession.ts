@@ -24,9 +24,9 @@ export interface Session {
 // Pure shaper (unit-testable without React). Composes the two halves of the
 // caller's identity: display fields from the id token, roles from the server's
 // /auth/me response — the API's effective roles (RoleCalculator, ADR-0007),
-// which the browser cannot compute. While the me query is still pending the
-// session reports loading, so role-gated rendering never flashes a wrong nav;
-// if the query errors, roles stay [] and the UI fails closed.
+// which the browser cannot compute. The /auth/me query is allowed to resolve
+// independently so it cannot block the authenticated page shell; if it errors,
+// roles stay [] and role-gated UI fails closed.
 export function buildSession(
   auth: AuthContextProps,
   logout: () => void,
@@ -38,7 +38,7 @@ export function buildSession(
       ? { ...normalizeUser(auth.user.profile), roles: me?.roles ?? [] }
       : undefined,
     isAuthenticated: auth.isAuthenticated,
-    isLoading: auth.isLoading || (auth.isAuthenticated && isMeLoading),
+    isLoading: auth.isLoading,
     login: (idp, returnTo) =>
       auth.signinRedirect({
         extraQueryParams: { kc_idp_hint: IDP_ALIAS[idp] },

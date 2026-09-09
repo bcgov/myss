@@ -41,57 +41,6 @@ export const router = createBrowserRouter([
             { path: paths.authCallback, element: <AuthCallbackPage /> },
             { path: paths.simpleLogin, element: <SimpleLoginPage /> },
 
-      // ---- Protected (Forms / Strapi): only after login/auth ----
-      {
-        path: "techdemos",
-        element: (
-          <RequireAuth>
-            <TechDemos />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "techdemos/forms",
-        element: (
-          <RequireAuth>
-            <FormsTechDemo />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "techdemos/bc-bus-pass",
-        element: (
-          <RequireAuth>
-            <BusPassPage />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "techdemos/forms/submissions/:id",
-        element: (
-          <RequireAuth>
-            <SubmissionView />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "techdemos/attachments",
-        element: (
-          <RequireAuth>
-            <AttachmentsTechDemo />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: paths.profile,
-        element: (
-          <RequireAuth>
-            <ProfilePage />
-          </RequireAuth>
-        ),
-      },
-    ],
-  },
             // ---- Administration: direct URL entry for authenticated IDIR users ----
             {
                 path: paths.admin,
@@ -111,6 +60,14 @@ export const router = createBrowserRouter([
             },
 
             // ---- Protected (Forms / Strapi): only after login/auth ----
+            {
+                path: paths.profile,
+                element: (
+                    <RequireAuth>
+                        <ProfilePage />
+                    </RequireAuth>
+                ),
+            },
             {
                 path: "techdemos",
                 element: (

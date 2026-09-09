@@ -89,9 +89,9 @@ describe("buildSession", () => {
       expect(s.user?.roles).toEqual([]);
     });
 
-    it("reports loading while authenticated and the me query is pending", () => {
+    it("does not block authentication while the me query is pending", () => {
       const s = buildSession(authed(), vi.fn(), undefined, true);
-      expect(s.isLoading).toBe(true);
+      expect(s.isLoading).toBe(false);
     });
 
     it("does not report loading for a signed-out visitor", () => {
