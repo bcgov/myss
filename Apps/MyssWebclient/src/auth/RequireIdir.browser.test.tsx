@@ -22,7 +22,7 @@ vi.mock("@/auth/useSession", () => ({
 
 import RequireIdir from "./RequireIdir";
 
-function renderGuard(initialEntry = paths.admin) {
+function renderGuard(initialEntry: string = paths.admin) {
     return render(
         <MemoryRouter initialEntries={[initialEntry]}>
             <Routes>
