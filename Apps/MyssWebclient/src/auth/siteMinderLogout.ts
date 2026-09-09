@@ -71,7 +71,7 @@ export async function siteMinderLogout(
 
         // In a real browser this triggers a full-page unload; if navigation is
         // blocked/ignored, avoid leaving the SPA stuck in "Signing you out…".
-        window.setTimeout(() => {
+        globalThis.setTimeout(() => {
             logoutInProgress = false;
         }, 10_000);
     } finally {
