@@ -90,9 +90,9 @@ describe("validateFormSpec", () => {
   });
 
   it("passes estimator v3 (custom BC Gov component types + new conditionals)", () => {
-    // MYSS-206: the custom `bcgovTooltip`/`bcgovAccordion` types keep unique
-    // keys and use advanced (json) conditionals, so there is no simple
-    // `conditional.when` target to resolve — v3 must publish with no violations.
+    // MYSS-206: the custom `bcgovAccordion` type uses advanced (json) conditionals,
+    // so there is no simple `conditional.when` target to resolve — v3 must publish
+    // with no violations.
     expect(validateFormSpec(eligibilityEstimatorSpecV3)).toEqual([]);
     expect(validateFormSpec(JSON.stringify(eligibilityEstimatorSpecV3))).toEqual([]);
   });
