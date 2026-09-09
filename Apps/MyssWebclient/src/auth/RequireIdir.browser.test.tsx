@@ -11,6 +11,7 @@ const session = vi.hoisted(
             user: undefined,
             isAuthenticated: false,
             isLoading: false,
+            isMeLoading: false,
             login: vi.fn(),
             logout: vi.fn(),
         }) as Session & { login: ReturnType<typeof vi.fn> },
