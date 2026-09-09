@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 
 import { paths } from "@/routes/paths";
 import { useSession } from "./useSession";
@@ -8,14 +8,16 @@ export default function RequireIdir({
     children,
 }: Readonly<{ children: ReactNode }>) {
     const { user, isAuthenticated, isLoading, login } = useSession();
+    const location = useLocation();
     const loginStarted = useRef(false);
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated && !loginStarted.current) {
             loginStarted.current = true;
-            login("idir", paths.admin);
+            login("idir", returnTo);
         }
-    }, [isAuthenticated, isLoading, login]);
+    }, [isAuthenticated, isLoading, login, returnTo]);
 
     if (isLoading) {
         return (

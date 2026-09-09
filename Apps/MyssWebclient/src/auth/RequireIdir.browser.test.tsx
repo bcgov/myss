@@ -22,13 +22,13 @@ vi.mock("@/auth/useSession", () => ({
 
 import RequireIdir from "./RequireIdir";
 
-function renderGuard() {
+function renderGuard(initialEntry = paths.admin) {
     return render(
-        <MemoryRouter initialEntries={[paths.admin]}>
+        <MemoryRouter initialEntries={[initialEntry]}>
             <Routes>
                 <Route path={paths.home} element={<p>Regular landing</p>} />
                 <Route
-                    path={paths.admin}
+                    path="/admin/*"
                     element={
                         <RequireIdir>
                             <p>Admin landing</p>
@@ -57,8 +57,9 @@ describe("RequireIdir", () => {
         expect(session.login).not.toHaveBeenCalled();
     });
 
-    it("starts IDIR login once and preserves the admin destination", async () => {
-        const screen = await renderGuard();
+    it("starts IDIR login once and preserves the exact admin destination", async () => {
+        const destination = `${paths.adminFormManagement}?view=drafts#latest`;
+        const screen = await renderGuard(destination);
 
         await expect
             .element(screen.getByText("Redirecting to IDIR sign in…"))
@@ -66,7 +67,7 @@ describe("RequireIdir", () => {
         await vi.waitFor(() => {
             expect(session.login).toHaveBeenCalledOnce();
         });
-        expect(session.login).toHaveBeenCalledWith("idir", paths.admin);
+        expect(session.login).toHaveBeenCalledWith("idir", destination);
     });
 
     it("redirects an authenticated non-IDIR user to home", async () => {
