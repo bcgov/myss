@@ -98,5 +98,22 @@ describe("buildSession", () => {
       const s = buildSession(fakeAuth() as never, vi.fn(), undefined, true);
       expect(s.isLoading).toBe(false);
     });
+
+    it("login preserves an optional return path", () => {
+      const auth = fakeAuth();
+      const s = buildSession(auth as never, vi.fn());
+      s.login("idir", "/admin");
+      expect(auth.signinRedirect).toHaveBeenCalledWith({
+        extraQueryParams: { kc_idp_hint: "idir" },
+        state: { returnTo: "/admin" },
+      });
+    });
+
+    it("logout delegates to the injected logout function", () => {
+      const logout = vi.fn();
+      const s = buildSession(fakeAuth() as never, logout);
+      s.logout();
+      expect(logout).toHaveBeenCalledOnce();
+    });
   });
 });

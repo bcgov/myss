@@ -1,0 +1,41 @@
+.heading {
+    border-bottom: 1px solid var(--surface-color-border-default, #d0d5dd);
+    padding-bottom: var(--layout-padding-large, 20px);
+}
+
+.heading h1 {
+    color: var(--typography-color-primary, #1a1a1a);
+    font-size: 2rem;
+    line-height: 1.15;
+    margin: 0;
+}
+
+.eyebrow {
+    color: var(--typography-color-secondary, #474543);
+    font-size: 0.875rem;
+    font-weight: 700;
+    margin: 0 0 var(--layout-margin-small, 8px);
+    text-transform: uppercase;
+}
+
+.sectionTitle {
+    font-size: 1.375rem;
+    margin: 0 0 var(--layout-margin-medium, 16px);
+}
+
+.capabilityList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.capabilityItem {
+    background-color: #ffffff;
+    border-left: 4px solid var(--surface-color-primary-button-default, #234075);
+    border-top: 1px solid var(--surface-color-border-default, #d0d5dd);
+    border-bottom: 1px solid var(--surface-color-border-default, #d0d5dd);
+    color: var(--typography-color-primary, #1a1a1a);
+    font-size: 1.125rem;
+    font-weight: 700;
+    padding: var(--layout-padding-large, 20px);
+}
