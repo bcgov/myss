@@ -189,7 +189,8 @@ const estimatorSpecWithRequiredName = {
 
 // The spec the stubbed API serves; reset before each test, overridden by the one
 // test that needs the required-name variant.
-let activeSpec: typeof estimatorSpec = estimatorSpec;
+let activeSpec: typeof estimatorSpec | typeof estimatorSpecWithRequiredName =
+  estimatorSpec;
 
 /** MYSS-25 August-2023 rate table (matches the seed + parked C#). */
 const rates = {
