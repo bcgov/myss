@@ -197,9 +197,14 @@ export function missingRequiredCoupleAnswers(
 }
 
 /**
- * The residency/citizenship hard screen. Passes only when BOTH answers are
- * "Yes"; a "No" to either fails the screen. The page runs this first and, on a
- * failure, shows the not-eligible outcome without building a request.
+ * The eligibility hard screen. Passes when Q2 (`hasEligibleStatus`) = "Yes".
+ *
+ * MYSS-206: residency (`residesInBc`, Q1) NO LONGER blocks the estimate — a
+ * non-resident with a status that allows them to live in Canada (Q1=No, Q2=Yes)
+ * proceeds to a full estimate. Only Q2 gates. `residesInBc` is still returned
+ * for reference. The v3 seed gates the remaining questions and the submit button
+ * on Q2=Yes too, so a failing submission should not normally reach here; this
+ * stays as a defensive server-of-truth for the outcome.
  */
 export function screenPreCheck(answers: Record<string, unknown>): PreCheckResult {
   const residesInBc = toBool(answers.residesInBc);
@@ -207,7 +212,7 @@ export function screenPreCheck(answers: Record<string, unknown>): PreCheckResult
   return {
     residesInBc,
     hasEligibleStatus,
-    passed: residesInBc && hasEligibleStatus,
+    passed: hasEligibleStatus,
   };
 }
 

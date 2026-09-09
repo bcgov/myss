@@ -5,6 +5,7 @@ import {
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   eligibilityEstimatorSpecV1,
   eligibilityEstimatorSpecV2,
+  eligibilityEstimatorSpecV3,
   seededForms,
   type Json,
 } from "./form-spec-seed-data";
@@ -84,7 +85,7 @@ const MONEY_FIELDS = [
 describe("eligibility estimator seed", () => {
   const spec = eligibilityEstimatorSpecV1;
 
-  it("is registered in seededForms with published v1 and v2", () => {
+  it("is registered in seededForms with published v1, v2 and v3", () => {
     const estimator = seededForms.find(
       (form) => form.formSpecId === ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     );
@@ -93,6 +94,7 @@ describe("eligibility estimator seed", () => {
     expect(estimator?.versions).toEqual([
       { version: 1, spec: eligibilityEstimatorSpecV1 },
       { version: 2, spec: eligibilityEstimatorSpecV2 },
+      { version: 3, spec: eligibilityEstimatorSpecV3 },
     ]);
   });
 
@@ -318,5 +320,107 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
   it("has unique component keys", () => {
     const keys = keysOf(v2);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("eligibility estimator seed — v3 (MYSS-206 conditional display + BC Gov)", () => {
+  const v3 = eligibilityEstimatorSpecV3;
+
+  /** Reveal-once-Q1-answered gate (advanced json-logic). */
+  const Q1_ANSWERED = {
+    in: [{ var: "data.residesInBc" }, ["true", "false"]],
+  };
+  /** Reveal-only-when-Q2-Yes gate (simple conditional). */
+  const HAS_STATUS = { show: true, when: "hasEligibleStatus", eq: "true" };
+  /** Reveal-for-a-couple gate (unchanged from v1/v2). */
+  const PARTNERED = {
+    in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
+  };
+
+  /** Every remaining question + the submit button gate on Q2 = Yes. */
+  const HAS_STATUS_FIELDS = [
+    "relationshipStatus",
+    "dependentChildren",
+    "pwd",
+    "assetsSectionHeading",
+    "monthlyIncome",
+    "vehicleValueMinusTransportation",
+    "vehicleValue",
+    "assetValue",
+    "submit",
+  ] as const;
+
+  it("has unique component keys", () => {
+    const keys = keysOf(v3);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("keeps residesInBc always shown and required (Q1 is the entry point)", () => {
+    const q1 = componentByKey(v3, "residesInBc");
+    expect(q1.validate?.required).toBe(true);
+    expect(q1.conditional).toBeUndefined();
+  });
+
+  it("pins dataType 'string' on the pre-check radios so conditionals match", () => {
+    // Load-bearing: without dataType 'string', Form.io coerces "true"/"false"
+    // to booleans and the string-based conditionals never fire (MYSS-206 bug).
+    for (const key of ["residesInBc", "hasEligibleStatus"]) {
+      expect((componentByKey(v3, key) as { dataType?: unknown }).dataType).toBe(
+        "string",
+      );
+    }
+  });
+
+  it("reveals Q2 + the help accordion once Q1 is answered (either value)", () => {
+    for (const key of ["hasEligibleStatus", "statusHelp"]) {
+      expect(componentByKey(v3, key).conditional?.json).toEqual(Q1_ANSWERED);
+    }
+    // Q2 stays required and is NOT gated on Q1's value (Q1=No must still reach it).
+    expect(componentByKey(v3, "hasEligibleStatus").validate?.required).toBe(true);
+  });
+
+  it("has no Q2 tooltip and makes the help a BC Gov accordion", () => {
+    // The Q2 info tooltip was removed; the explanation lives solely in the
+    // "What does 'status…' mean?" accordion below.
+    const q2 = componentByKey(v3, "hasEligibleStatus") as { tooltip?: unknown };
+    expect(q2.tooltip).toBeUndefined();
+    // The help is a custom BC Gov accordion, no longer a Form.io panel.
+    const accordion = componentByKey(v3, "statusHelp");
+    expect(accordion.type).toBe("bcgovAccordion");
+    expect(accordion.type).not.toBe("panel");
+  });
+
+  it("gates every remaining question and the submit button on Q2 = Yes", () => {
+    for (const key of HAS_STATUS_FIELDS) {
+      expect(componentByKey(v3, key).conditional).toEqual(HAS_STATUS);
+    }
+  });
+
+  it("leaves the spouse fields + spouse heading on the advanced partnered gate", () => {
+    for (const key of [...PARTNER_FIELDS, "spouseSectionHeading"]) {
+      const field = componentByKey(v3, key);
+      expect(field.conditional?.when).toBeUndefined();
+      expect(field.conditional?.json).toEqual(PARTNERED);
+      // partnerPwd + the four partner financial fields must never be server-required.
+      if (key !== "spouseSectionHeading") {
+        expect(field.validate?.required).toBeUndefined();
+      }
+    }
+  });
+
+  it("preserves the exact v2 key set (the mapper contract is unchanged)", () => {
+    const v2Keys = new Set(keysOf(eligibilityEstimatorSpecV2));
+    const v3Keys = new Set(keysOf(v3));
+    for (const key of v2Keys) expect(v3Keys.has(key)).toBe(true);
+    // v3 adds no new keys — statusHelp changed type (panel -> bcgovAccordion) but
+    // kept its key (the Q2 tooltip property was dropped, not a key change).
+    const added = [...v3Keys].filter((key) => !v2Keys.has(key));
+    expect(added).toEqual([]);
+  });
+
+  it("keeps every money/count input floored at zero", () => {
+    for (const key of MONEY_FIELDS) {
+      expect(componentByKey(v3, key).validate?.min).toBe(0);
+    }
   });
 });
