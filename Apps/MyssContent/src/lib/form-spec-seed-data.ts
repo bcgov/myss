@@ -756,7 +756,7 @@ export const eligibilityEstimatorSpecV3: Json = {
         "<li>Certain other qualifying statuses</li>",
         "</ul>",
         "<p>If you do not have legal status in Canada, talk to a lawyer before you apply for benefits. If you get benefits that you do not qualify for, you may have to pay the money back.</p>",
-        '<p>Learn more about <a href="https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/eligibility/citizenship-requirements" target="_blank" rel="noreferrer">residence requirements for income assistance</a></p>',
+        '<p>Learn more about <a href="https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/eligibility/citizenship-requirements" target="_blank" rel="noopener noreferrer">residence requirements for income assistance</a></p>',
       ].join(""),
       conditional: q1AnsweredConditional,
     },

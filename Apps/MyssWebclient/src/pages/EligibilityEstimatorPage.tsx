@@ -324,7 +324,7 @@ export default function EligibilityEstimatorPage() {
                 className={styles.inlineLink}
                 href={PENDING.residenceReqUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
               >
                 residency requirements
               </a>{" "}
