@@ -3,6 +3,7 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 import {
     buildKeycloakLogoutUrl,
     buildSiteMinderLogoutUrl,
+    isLogoutInProgress,
     siteMinderLogout,
 } from "./siteMinderLogout";
 
@@ -67,7 +68,7 @@ describe("buildSiteMinderLogoutUrl", () => {
 });
 
 describe("siteMinderLogout", () => {
-    it("clears the local user and returns to the login page", async () => {
+    it("clears the local user and returns to the landing page", async () => {
         const removeUser = vi.fn().mockResolvedValue(undefined);
         const assign = vi.fn();
         vi.stubGlobal("window", {
@@ -94,6 +95,7 @@ describe("siteMinderLogout", () => {
 
         expect(removeUser).toHaveBeenCalledOnce();
         expect(assign).toHaveBeenCalledOnce();
+        expect(isLogoutInProgress()).toBe(false);
         expect(removeUser.mock.invocationCallOrder[0]).toBeLessThan(
             assign.mock.invocationCallOrder[0],
         );
@@ -101,7 +103,7 @@ describe("siteMinderLogout", () => {
         const siteMinderUrl = new URL(assign.mock.calls[0][0]);
         const keycloakUrl = new URL(siteMinderUrl.searchParams.get("returl")!);
         expect(keycloakUrl.searchParams.get("post_logout_redirect_uri")).toBe(
-            "http://localhost:5173/auth/login",
+            "http://localhost:5173/",
         );
     });
 });

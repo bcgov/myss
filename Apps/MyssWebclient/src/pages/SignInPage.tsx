@@ -13,7 +13,7 @@ export default function SignInPage() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (isAuthenticated) navigate(paths.home, { replace: true });
+        if (isAuthenticated) navigate(paths.profile, { replace: true });
     }, [isAuthenticated, navigate]);
 
     return (
