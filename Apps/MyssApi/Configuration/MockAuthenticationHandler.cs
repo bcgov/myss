@@ -16,11 +16,13 @@ namespace Myss.Api.Configuration
     /// <param name="Roles">Roles granted to the persona.</param>
     /// <param name="BceidGuid">Basic BCeID GUID, for citizen personas.</param>
     /// <param name="IdirUsername">IDIR username, for staff personas.</param>
+    /// <param name="IdentityProvider">The <c>identity_provider</c> claim, when the persona mirrors a brokered token.</param>
     public sealed record MockPersona(
         string Subject,
         string[] Roles,
         string? BceidGuid = null,
-        string? IdirUsername = null);
+        string? IdirUsername = null,
+        string? IdentityProvider = null);
 
     /// <summary>
     /// Signs every request in as a fixed development persona.
@@ -51,6 +53,15 @@ namespace Myss.Api.Configuration
                 // Deliberately has the WORKER role but no IDIR identity, so the
                 // WorkerWithIdir policy can be shown to reject it.
                 ["workernoidir"] = new("mock-worker-no-idir", [MyssRoles.Worker]),
+
+                // Mirrors a REAL Basic BCeID token: an identity_provider claim and NO
+                // roles — CLIENT comes from RoleCalculator (ADR-0007), not the token.
+                // alice/bob/carol predate the calculator and carry CLIENT explicitly.
+                ["bceid"] = new(
+                    "mock-bceid",
+                    [],
+                    BceidGuid: "44444444-4444-4444-4444-444444444444",
+                    IdentityProvider: IdentityProviders.BceidBasic),
             };
 
         private readonly string defaultPersona;
@@ -114,6 +125,12 @@ namespace Myss.Api.Configuration
             if (!string.IsNullOrWhiteSpace(persona.IdirUsername))
             {
                 claims.Add(new Claim(KeycloakClaims.IdirUsernameClaimType, persona.IdirUsername));
+            }
+
+            if (!string.IsNullOrWhiteSpace(persona.IdentityProvider))
+            {
+                claims.Add(new Claim(
+                    KeycloakClaims.IdentityProviderClaimType, persona.IdentityProvider));
             }
 
             var identity = new ClaimsIdentity(

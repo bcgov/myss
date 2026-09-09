@@ -17,6 +17,7 @@ from the target architecture, the event-sourcing/Temporal split, and any
 | [ADR-0004](0004-promotion-saga-atomicity.md)             | Promotion-saga atomicity model (orchestrated-compensating vs coarse transactional endpoint)                           | Proposed — pending SB-02 |
 | [ADR-0005](0005-durable-event-broker.md)                 | Durable event-broker selection (if/when OCR/AI activate)                                                              | Deferred                 |
 | [ADR-0006](0006-mis-portalservices-cache-per-session.md) | MIS PORTALSERVICES cache = once per session (freshness tuned by DS-02)                                                | Accepted                 |
+| [ADR-0007](0007-citizen-role-derivation.md)              | Citizen CLIENT role derives from the identity provider (RoleCalculator); worker roles stay CSS-assigned               | Proposed — implemented, pending IDIM confirmation |
 
 ## Adding an ADR
 
