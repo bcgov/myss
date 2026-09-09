@@ -9,6 +9,7 @@ const session = vi.hoisted(
             user: { sub: "client", roles: [] },
             isAuthenticated: true,
             isLoading: false,
+            isMeLoading: false,
             login: vi.fn(),
             logout: vi.fn(),
         }) as Session & { logout: ReturnType<typeof vi.fn> },
