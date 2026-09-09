@@ -12,13 +12,20 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
     const [signedOutSettled, setSignedOutSettled] = useState(false);
 
     useEffect(() => {
+        // Reset when the auth library starts resolving again.
         if (isLoading) {
+            setSignedOutSettled(false);
+            return;
+        }
+
+        // No need to delay rendering when we already know we’re authenticated.
+        if (isAuthenticated) {
             return;
         }
 
         const timer = window.setTimeout(() => setSignedOutSettled(true), 300);
         return () => window.clearTimeout(timer);
-    }, [isLoading]);
+    }, [isLoading, isAuthenticated]);
 
     if (isLoading) {
         return (
