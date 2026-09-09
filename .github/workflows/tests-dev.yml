@@ -52,6 +52,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Mirrors the image build (Dockerfile `build` stage): vitest transpiles
+      # with esbuild and never typechecks, so without this step type errors
+      # first surface in the deploy pipeline, after merge.
+      - name: Typecheck and build
+        run: DATABASE_CLIENT=postgres npx strapi ts:generate-types && npm run build
+
       - name: Run unit tests
         run: npm test
 
@@ -75,6 +81,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # `tsc -b && vite build` — the same command the image build runs.
+      # Vitest transpiles with esbuild and never typechecks, so without this
+      # step type errors first surface in the deploy pipeline, after merge.
+      - name: Typecheck and build
+        run: npm run build
 
       - name: Run unit tests
         run: npm run test:unit
