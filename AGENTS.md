@@ -345,7 +345,9 @@ deliberately absent pending verification of the mod-11 spec.
 - **Comments explain *why*, and record what was measured.** Several files carry
   observations verified against a running system on a date. Do not delete those; if you
   change the behaviour they describe, update the note.
-- **Webclient**: path alias `@` → `src`; test files are `*.unit.test.ts` (node) or
+- **Webclient**: see `Apps/MyssWebclient/AGENTS.md` for the frontend architecture
+  (pages/widgets/components hierarchy, token rules, BCDS-first components) and the
+  full docs under `Apps/MyssWebclient/Docs/`. Path alias `@` → `src`; test files are `*.unit.test.ts` (node) or
   `*.browser.test.tsx` (Playwright/chromium) — the vitest projects select on those
   suffixes. CSS modules per component. Routes go in `src/routes/paths.ts`. Runtime
   config resolves `window.APP_CONFIG` (written by `entrypoint.sh` at container start) →
