@@ -14,7 +14,7 @@ export interface Session {
     user?: CurrentUser;
     isAuthenticated: boolean;
     isLoading: boolean;
-    login: (idp: IdpName) => void;
+    login: (idp: IdpName, returnTo?: string) => void;
     logout: () => void;
 }
 
@@ -28,9 +28,10 @@ export function buildSession(
         user: auth.user ? normalizeUser(auth.user.profile) : undefined,
         isAuthenticated: auth.isAuthenticated,
         isLoading: auth.isLoading,
-        login: (idp) =>
+        login: (idp, returnTo) =>
             auth.signinRedirect({
                 extraQueryParams: { kc_idp_hint: IDP_ALIAS[idp] },
+                ...(returnTo ? { state: { returnTo } } : {}),
             }),
         logout,
     };
