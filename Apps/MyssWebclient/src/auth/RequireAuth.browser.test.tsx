@@ -56,5 +56,8 @@ describe("RequireAuth", () => {
             </RequireAuth>,
         );
         await expect.element(screen.getByText("secret")).toBeInTheDocument();
+        await expect
+            .element(screen.getByText("Checking your session…"))
+            .not.toBeInTheDocument();
     });
 });

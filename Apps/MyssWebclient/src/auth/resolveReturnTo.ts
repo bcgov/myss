@@ -14,7 +14,7 @@ import { paths } from "@/routes/paths";
  *
  * Callers may pass `state: { returnTo }` to `signinRedirect` to come back to
  * the page they started from; anything else — including the plain sign-in
- * chooser, which passes no state — goes home.
+ * chooser, which passes no state — goes to the profile page.
  *
  * Only same-site absolute paths are honoured. `state` survives a round trip
  * through the identity provider and is therefore attacker-influenceable, so a
@@ -33,5 +33,5 @@ export function resolveReturnTo(state: unknown): string {
     ) {
         return returnTo;
     }
-    return paths.home;
+    return paths.profile;
 }

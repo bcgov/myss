@@ -2,6 +2,7 @@
 // Add new routes here as pages are built out during the rebuild.
 export const paths = {
     home: "/",
+    profile: "/profile",
     eligibilityEstimator: "/eligibility-estimator",
     // In-app sign-in chooser (Option 1) and the OIDC redirect target.
     signIn: "/auth/login",
