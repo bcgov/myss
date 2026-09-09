@@ -47,6 +47,13 @@ namespace Myss.Api.Configuration
         /// <summary>Canonical claim type for the IDIR username.</summary>
         public const string IdirUsernameClaimType = "idir_username";
 
+        /// <summary>
+        /// Claim type naming which identity provider authenticated the user (the standard
+        /// realm mints the broker alias, e.g. <c>bceidbasic</c>). Consumed by
+        /// <see cref="RoleCalculator"/>.
+        /// </summary>
+        public const string IdentityProviderClaimType = "identity_provider";
+
         /// <summary>Alternate spelling of the BCeID GUID seen on some BC Gov realms.</summary>
         private const string BceidGuidAltClaimType = "bceid_guid";
 

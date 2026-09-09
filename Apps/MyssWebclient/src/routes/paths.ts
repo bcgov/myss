@@ -7,6 +7,9 @@ export const paths = {
     // In-app sign-in chooser (Option 1) and the OIDC redirect target.
     signIn: "/auth/login",
     authCallback: "/auth/callback",
+    // Direct-entry route for IDIR administrative capabilities.
+    admin: "/admin",
+    adminFormManagement: "/admin/form-management",
     // Minimal standalone login harness. Deliberately independent of the home
     // page so home can keep changing without disturbing a known-good way to
     // exercise the auth flow end to end.
