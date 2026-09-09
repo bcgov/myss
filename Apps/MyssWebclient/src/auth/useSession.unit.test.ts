@@ -20,6 +20,7 @@ describe("buildSession", () => {
     );
     expect(s.isAuthenticated).toBe(true);
     expect(s.isLoading).toBe(false);
+    expect(s.isMeLoading).toBe(false);
   });
 
   it("normalizes the user profile when present", () => {
@@ -89,14 +90,16 @@ describe("buildSession", () => {
       expect(s.user?.roles).toEqual([]);
     });
 
-    it("does not block authentication while the me query is pending", () => {
+    it("reports me loading without blocking authentication", () => {
       const s = buildSession(authed(), vi.fn(), undefined, true);
       expect(s.isLoading).toBe(false);
+      expect(s.isMeLoading).toBe(true);
     });
 
     it("does not report loading for a signed-out visitor", () => {
       const s = buildSession(fakeAuth() as never, vi.fn(), undefined, true);
       expect(s.isLoading).toBe(false);
+      expect(s.isMeLoading).toBe(false);
     });
 
     it("login preserves an optional return path", () => {
