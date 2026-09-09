@@ -34,6 +34,8 @@ type FormioComponentCtor = {
 
 interface FormioComponentInstance {
   component: Record<string, unknown>;
+  /** Render options; Utils.sanitize reads its sanitize config from here. */
+  options: Record<string, unknown>;
   refs: Record<string, HTMLElement | undefined>;
   loadRefs(element: HTMLElement, refs: Record<string, string>): void;
   render(children?: string): string;
