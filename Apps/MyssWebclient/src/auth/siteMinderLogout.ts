@@ -11,6 +11,12 @@ import { paths } from "@/routes/paths";
 // Default SiteMinder logoff endpoint (prod). Dev/test uses logontest7.
 const DEFAULT_SITEMINDER_LOGOFF = "https://logon7.gov.bc.ca/clp-cgi/logoff.cgi";
 
+let logoutInProgress = false;
+
+export function isLogoutInProgress(): boolean {
+    return logoutInProgress;
+}
+
 export function buildKeycloakLogoutUrl(params: {
     authority: string;
     idTokenHint?: string;
@@ -43,7 +49,7 @@ export function buildSiteMinderLogoutUrl(params: {
 
 // Runtime logout used by the useSession seam. Clearing the local user and
 // leaving the SPA discards its in-memory state; the external logout chain then
-// returns the client to the sign-in page with a clean session.
+// returns the client to the landing page with a clean session.
 export async function siteMinderLogout(
     auth: AuthContextProps,
     opts: { siteMinderLogoffUrl?: string } = {},
@@ -53,11 +59,26 @@ export async function siteMinderLogout(
         authority: auth.settings.authority,
         idTokenHint,
         postLogoutRedirectUri: new URL(
-            paths.signIn,
-            window.location.origin,
-        ).toString(),
+            paths.home, window.location.origin).toString(),
         siteMinderLogoffUrl: opts.siteMinderLogoffUrl,
     });
-    await auth.removeUser();
-    window.location.assign(url);
+    logoutInProgress = true;
+    let navigationStarted = false;
+    try {
+        await auth.removeUser();
+        window.location.assign(url);
+        navigationStarted = true;
+
+        // In a real browser this triggers a full-page unload; if navigation is
+        // blocked/ignored, avoid leaving the SPA stuck in "Signing you out…".
+        globalThis.setTimeout(() => {
+            logoutInProgress = false;
+        }, 10_000);
+    } finally {
+        // Only clear immediately if cleanup or assignment failed before we even
+        // attempted to navigate away.
+        if (!navigationStarted) {
+            logoutInProgress = false;
+        }
+    }
 }
