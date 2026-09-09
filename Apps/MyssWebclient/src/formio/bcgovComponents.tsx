@@ -22,7 +22,7 @@
 
 import type { ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Components } from "@formio/js";
+import { Components, Utils } from "@formio/js";
 import { Accordion } from "@bcgov/design-system-react-components";
 
 // The base Form.io component class. `@formio/js` types the registry loosely, so
@@ -104,7 +104,13 @@ class BcgovAccordionComponent extends ReactFormioComponent {
 
   protected renderReact(): ReactNode {
     const label = String(this.component.accordionLabel ?? "");
-    const body = String(this.component.accordionBody ?? "");
+    // accordionBody is HTML sourced from the form spec (CMS/Strapi). Sanitize
+    // via Form.io's DOMPurify-backed Utils.sanitize before rendering, so spec
+    // content can never inject scripts/handlers (defence-in-depth XSS guard).
+    const body = Utils.sanitize(
+      String(this.component.accordionBody ?? ""),
+      this.options ?? {},
+    );
     return (
       <Accordion label={label}>
         <div dangerouslySetInnerHTML={{ __html: body }} />
