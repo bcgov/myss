@@ -1,6 +1,7 @@
 namespace Myss.Api.Models
 {
     using System;
+    using System.Collections.Generic;
     using System.Text.Json;
 
     /// <summary>
@@ -107,5 +108,43 @@ namespace Myss.Api.Models
         /// Null on create responses.
         /// </summary>
         public FormSpecModel? Spec { get; set; }
+    }
+
+    /// <summary>
+    /// One logical form and its versions, for the admin editor's forms list.
+    /// </summary>
+    public class FormSummaryModel
+    {
+        /// <summary>
+        /// Gets or sets the logical form identifier.
+        /// </summary>
+        public required string FormSpecId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the human-readable title, or null when unset.
+        /// </summary>
+        public string? Title { get; set; }
+
+        /// <summary>
+        /// Gets or sets the versions of this form, oldest first.
+        /// </summary>
+        public required IReadOnlyList<FormVersionSummaryModel> Versions { get; set; }
+    }
+
+    /// <summary>
+    /// One version of a form and whether it is published or a draft only.
+    /// </summary>
+    public class FormVersionSummaryModel
+    {
+        /// <summary>
+        /// Gets or sets the version number.
+        /// </summary>
+        public required int Version { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this version has been
+        /// published. False means the version exists only as an in-progress draft.
+        /// </summary>
+        public required bool IsPublished { get; set; }
     }
 }

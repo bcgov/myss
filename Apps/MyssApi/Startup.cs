@@ -63,6 +63,11 @@ namespace Myss.Api
             services.AddDbContext<FormsDbContext>(options =>
                 options.UseNpgsql(this.startupConfig.Configuration.GetConnectionString("FormsDb")));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
+
+            // Admin form editor (MYSS-209) write path: a SEPARATE typed client bound to
+            // the write-scoped Strapi:AdminApiToken, so the citizen read path above keeps
+            // its read-only token. Brokered server-side; the token never reaches the browser.
+            services.AddHttpClient<IFormSpecAdminProvider, StrapiFormSpecAdminProvider>();
             services.AddHttpClient<IPdfProvider, CdogsPdfProvider>();
             services.AddSingleton<ITemplateProvider, EmbeddedTemplateProvider>();
             services.AddScoped<IFormsService, FormsService>();
