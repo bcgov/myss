@@ -12,7 +12,6 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.Logging;
-    using Myss.Api.Data;
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Services;
@@ -84,7 +83,7 @@ namespace Myss.Api.Controllers
             }
 
             BusPassSubmissionResponseModel response = result.Response!;
-            if (response.Outcome == BusPassDispatchOutcome.Failed)
+            if (response.Outcome == BusPassSubmissionOutcome.Failed)
             {
                 ObjectResult problem = Problem(
                     statusCode: StatusCodes.Status503ServiceUnavailable,

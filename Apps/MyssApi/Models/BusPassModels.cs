@@ -3,7 +3,6 @@ namespace Myss.Api.Models
     using System;
     using System.Collections.Generic;
     using System.Text.Json.Serialization;
-    using Myss.Api.Data;
 
     /// <summary>
     /// What the applicant is asking the BC Bus Pass Program for.
@@ -181,6 +180,21 @@ namespace Myss.Api.Models
     }
 
     /// <summary>
+    /// How the hand-off to ICM ended, as reported to the citizen.
+    /// </summary>
+    public enum BusPassSubmissionOutcome
+    {
+        /// <summary>ICM accepted the request and assigned a reference number.</summary>
+        Accepted,
+
+        /// <summary>ICM received the request and declined it.</summary>
+        Rejected,
+
+        /// <summary>The submission is stored but could not be delivered to ICM.</summary>
+        Failed,
+    }
+
+    /// <summary>
     /// What the citizen gets back after a bus pass submission: where it was
     /// stored, and what the ministry's case system said.
     /// </summary>
@@ -199,8 +213,8 @@ namespace Myss.Api.Models
         public string? ReferenceNumber { get; set; }
 
         /// <summary>Gets or sets how the dispatch to ICM ended.</summary>
-        [JsonConverter(typeof(JsonStringEnumConverter<BusPassDispatchOutcome>))]
-        public required BusPassDispatchOutcome Outcome { get; set; }
+        [JsonConverter(typeof(JsonStringEnumConverter<BusPassSubmissionOutcome>))]
+        public required BusPassSubmissionOutcome Outcome { get; set; }
 
         /// <summary>Gets or sets the stable keyword for a non-accepted outcome, for the client to match on.</summary>
         public string? Keyword { get; set; }

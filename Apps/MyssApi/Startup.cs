@@ -126,6 +126,14 @@ namespace Myss.Api
             }
 
             services.TryAddSingleton(TimeProvider.System);
+
+            // One correlation id per request, stamped on the dispatch log and
+            // forwarded to the middleware as X-Request-ID (handbook Part 4.12).
+            // Singleton over IHttpContextAccessor, which is async-local, so the
+            // client factory's handler chain sees the current request too.
+            services.AddHttpContextAccessor();
+            services.TryAddSingleton<ICorrelationIdAccessor, CorrelationIdAccessor>();
+            services.AddTransient<CorrelationIdForwardingHandler>();
             services.AddHttpClient(IcmApiBusPassSubmissionProvider.HttpClientName, client =>
                 {
                     // A trailing slash so the relative route appends instead
@@ -139,6 +147,7 @@ namespace Myss.Api
                         + IcmApiResilience.TotalTimeoutMargin
                         + TimeSpan.FromSeconds(5);
                 })
+                .AddHttpMessageHandler<CorrelationIdForwardingHandler>()
                 .AddStandardResilienceHandler(options => IcmApiResilience.Configure(options, icmApi));
             services.AddSingleton<IBusPassSubmissionProvider, IcmApiBusPassSubmissionProvider>();
             services.AddScoped<IBusPassSubmissionService, BusPassSubmissionService>();

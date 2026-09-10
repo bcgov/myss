@@ -56,6 +56,7 @@ namespace Myss.Api.Tests.Services
 
         private readonly FakeFormSpecProvider _specProvider = new();
         private readonly FakeBusPassSubmissionProvider _middleware = new();
+        private readonly FakeCorrelationIdAccessor _correlation = new("req-123");
         private readonly FakeTimeProvider _clock = new(Now);
 
         /// <summary>Initializes a new instance of the <see cref="BusPassSubmissionServiceTests"/> class.</summary>
@@ -65,7 +66,7 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public async Task Accepted_StoresTheSubmissionAndAnAcceptedDispatch()
+        public async Task Accepted_StoresTheSubmissionAndAStartedThenAcceptedEvent()
         {
             using FormsDbContext db = NewDb();
             BusPassSubmissionService service = NewService(db);
@@ -74,7 +75,7 @@ namespace Myss.Api.Tests.Services
 
             Assert.True(result.IsValid);
             BusPassSubmissionResponseModel response = result.Response!;
-            Assert.Equal(BusPassDispatchOutcome.Accepted, response.Outcome);
+            Assert.Equal(BusPassSubmissionOutcome.Accepted, response.Outcome);
             Assert.Equal("1-TEST-0001", response.ReferenceNumber);
             Assert.Null(response.Keyword);
             Assert.Equal(BusPassSubmissionService.FormSpecId, response.FormSpecId);
@@ -82,12 +83,28 @@ namespace Myss.Api.Tests.Services
             FormSubmission submission = Assert.Single(await db.FormSubmissions.ToListAsync());
             Assert.Equal(response.SubmissionId, submission.Id);
 
-            BusPassDispatch dispatch = Assert.Single(await db.BusPassDispatches.ToListAsync());
-            Assert.Equal(submission.Id, dispatch.SubmissionId);
-            Assert.Equal(BusPassDispatchOutcome.Accepted, dispatch.Outcome);
-            Assert.Equal("1-TEST-0001", dispatch.ReferenceNumber);
-            Assert.Equal(Now, dispatch.AttemptedAt);
-            Assert.Equal(Now, dispatch.CompletedAt);
+            List<BusPassDispatchEvent> events = await Events(db);
+            Assert.Equal(
+                [BusPassDispatchEventType.Started, BusPassDispatchEventType.Accepted],
+                events.Select(e => e.Type).ToArray());
+            Assert.All(events, e => Assert.Equal(submission.Id, e.SubmissionId));
+            Assert.All(events, e => Assert.Equal(Now, e.OccurredAt));
+            Assert.Single(events.Select(e => e.AttemptId).Distinct());
+            Assert.Null(events[0].ReferenceNumber);
+            Assert.Equal("1-TEST-0001", events[1].ReferenceNumber);
+        }
+
+        [Fact]
+        public async Task EveryEvent_CarriesTheRequestsCorrelationId()
+        {
+            // The same X-Request-ID that went to the middleware, so a row can be
+            // matched to its trace (handbook Part 4.12).
+            using FormsDbContext db = NewDb();
+            BusPassSubmissionService service = NewService(db);
+
+            await service.SubmitAsync(Request(NewApplicant()), CancellationToken.None);
+
+            Assert.All(await Events(db), e => Assert.Equal("req-123", e.RequestId));
         }
 
         [Fact]
@@ -122,15 +139,16 @@ namespace Myss.Api.Tests.Services
             BusPassSubmissionResultModel result = await service.SubmitAsync(Request(NewApplicant()), CancellationToken.None);
 
             Assert.True(result.IsValid);
-            Assert.Equal(BusPassDispatchOutcome.Rejected, result.Response!.Outcome);
+            Assert.Equal(BusPassSubmissionOutcome.Rejected, result.Response!.Outcome);
             Assert.Equal(BusPassErrorKeywords.Rejected, result.Response.Keyword);
             Assert.Equal("NO_MATCH", result.Response.ErrorCode);
             Assert.Equal("1-ERR-0002", result.Response.ReferenceNumber);
 
-            BusPassDispatch dispatch = Assert.Single(await db.BusPassDispatches.ToListAsync());
-            Assert.Equal(BusPassDispatchOutcome.Rejected, dispatch.Outcome);
-            Assert.Equal("NO_MATCH", dispatch.ErrorCode);
-            Assert.Equal("Contact or Case Match not Found", dispatch.ErrorMessage);
+            List<BusPassDispatchEvent> events = await Events(db);
+            Assert.Equal(BusPassDispatchEventType.Rejected, events[^1].Type);
+            Assert.Equal("NO_MATCH", events[^1].ErrorCode);
+            Assert.Equal("Contact or Case Match not Found", events[^1].ErrorMessage);
+            Assert.Equal("1-ERR-0002", events[^1].ReferenceNumber);
             Assert.Single(await db.FormSubmissions.ToListAsync());
         }
 
@@ -144,23 +162,24 @@ namespace Myss.Api.Tests.Services
             BusPassSubmissionResultModel result = await service.SubmitAsync(Request(NewApplicant()), CancellationToken.None);
 
             Assert.True(result.IsValid);
-            Assert.Equal(BusPassDispatchOutcome.Failed, result.Response!.Outcome);
+            Assert.Equal(BusPassSubmissionOutcome.Failed, result.Response!.Outcome);
             Assert.Equal(BusPassErrorKeywords.IcmUnavailable, result.Response.Keyword);
             Assert.Null(result.Response.ReferenceNumber);
 
             Assert.Single(await db.FormSubmissions.ToListAsync());
-            BusPassDispatch dispatch = Assert.Single(await db.BusPassDispatches.ToListAsync());
-            Assert.Equal(BusPassDispatchOutcome.Failed, dispatch.Outcome);
-            Assert.Equal("The ICM middleware could not be reached.", dispatch.ErrorMessage);
-            Assert.Equal(Now, dispatch.CompletedAt);
+            List<BusPassDispatchEvent> events = await Events(db);
+            Assert.Equal(
+                [BusPassDispatchEventType.Started, BusPassDispatchEventType.Failed],
+                events.Select(e => e.Type).ToArray());
+            Assert.Equal("The ICM middleware could not be reached.", events[^1].ErrorMessage);
         }
 
         [Fact]
-        public async Task ACrashDuringTheCall_LeavesAPendingRowBehind()
+        public async Task ACrashDuringTheCall_LeavesAStartedEventWithNoClosingEvent()
         {
             // Anything other than the provider's own failure type is not ours
-            // to interpret. The pending row is the evidence that ICM may have
-            // the request, and the reason it must never be re-sent blindly.
+            // to interpret. An unclosed attempt is the evidence that ICM may
+            // have the request, and the reason it must never be re-sent blindly.
             using FormsDbContext db = NewDb();
             _middleware.Failure = new InvalidOperationException("IcmApi:Auth is not configured");
             BusPassSubmissionService service = NewService(db);
@@ -168,9 +187,23 @@ namespace Myss.Api.Tests.Services
             await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.SubmitAsync(Request(NewApplicant()), CancellationToken.None));
 
-            BusPassDispatch dispatch = Assert.Single(await db.BusPassDispatches.ToListAsync());
-            Assert.Equal(BusPassDispatchOutcome.Pending, dispatch.Outcome);
-            Assert.Null(dispatch.CompletedAt);
+            BusPassDispatchEvent only = Assert.Single(await Events(db));
+            Assert.Equal(BusPassDispatchEventType.Started, only.Type);
+        }
+
+        [Fact]
+        public async Task ASecondSubmission_IsItsOwnAttempt()
+        {
+            using FormsDbContext db = NewDb();
+            BusPassSubmissionService service = NewService(db);
+
+            await service.SubmitAsync(Request(NewApplicant()), CancellationToken.None);
+            await service.SubmitAsync(Request(NewApplicant()), CancellationToken.None);
+
+            List<BusPassDispatchEvent> events = await Events(db);
+            Assert.Equal(4, events.Count);
+            Assert.Equal(2, events.Select(e => e.AttemptId).Distinct().Count());
+            Assert.Equal(2, events.Select(e => e.SubmissionId).Distinct().Count());
         }
 
         [Fact]
@@ -186,7 +219,7 @@ namespace Myss.Api.Tests.Services
             Assert.False(result.IsValid);
             Assert.Contains(result.Errors, e => e.Keyword == BusPassErrorKeywords.IdentifierRequired);
             Assert.Empty(await db.FormSubmissions.ToListAsync());
-            Assert.Empty(await db.BusPassDispatches.ToListAsync());
+            Assert.Empty(await Events(db));
             Assert.Empty(_middleware.Submitted);
         }
 
@@ -269,8 +302,12 @@ namespace Myss.Api.Tests.Services
                 db,
                 forms,
                 _middleware,
+                _correlation,
                 _clock);
         }
+
+        private static Task<List<BusPassDispatchEvent>> Events(FormsDbContext db) =>
+            db.BusPassDispatchEvents.OrderBy(e => e.OccurredAt).ThenBy(e => e.Type).ToListAsync();
 
         private sealed class UnexpectedPdfProvider : IPdfProvider
         {

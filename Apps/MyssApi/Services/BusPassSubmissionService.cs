@@ -10,21 +10,23 @@ namespace Myss.Api.Services
 
     /// <summary>
     /// BC Bus Pass submissions: validate and store through the forms module,
-    /// then dispatch to ICM through the middleware and record the outcome.
+    /// then dispatch to ICM through the middleware and record what happened.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The order is deliberate and mirrors the attachments pipeline: the
-    /// submission and a pending dispatch row are written before the call to
-    /// ICM, so a crash mid-call leaves a findable pending row rather than a
-    /// request ICM may have and MySS has no record of. Because ICM files a
-    /// service request on every call and has no idempotency key, a pending row
-    /// is the signal that a submission must never be re-sent automatically.
+    /// The order is deliberate and mirrors the attachments pipeline and the
+    /// handbook's audit-before-promotion rule: the submission and a started
+    /// event are written before the call to ICM, so a crash mid-call leaves a
+    /// findable record rather than a request ICM may have and MySS has no trace
+    /// of. Because ICM files a service request on every call and has no
+    /// idempotency key, a started event with no closing event is the signal
+    /// that a submission must never be re-sent automatically.
     /// </para>
     /// <para>
-    /// A rejection from ICM and a failure to reach it are both stored and both
-    /// returned as outcomes. The citizen's submission exists in MySS in every
-    /// case; only the reference number depends on ICM.
+    /// The log is append-only. A rejection from ICM and a failure to reach it
+    /// are both recorded as events and both returned as outcomes; the citizen's
+    /// submission exists in MySS in every case, and only the reference number
+    /// depends on ICM.
     /// </para>
     /// </remarks>
     public class BusPassSubmissionService : IBusPassSubmissionService
@@ -38,6 +40,7 @@ namespace Myss.Api.Services
         private readonly FormsDbContext _dbContext;
         private readonly IFormsService _formsService;
         private readonly IBusPassSubmissionProvider _submissionProvider;
+        private readonly ICorrelationIdAccessor _correlationIdAccessor;
         private readonly TimeProvider _timeProvider;
 
         /// <summary>
@@ -47,18 +50,21 @@ namespace Myss.Api.Services
         /// <param name="dbContext">Injected forms db context.</param>
         /// <param name="formsService">Injected forms service, for validation and storage.</param>
         /// <param name="submissionProvider">Injected boundary to the ICM middleware.</param>
+        /// <param name="correlationIdAccessor">Injected correlation id accessor, to stamp the log.</param>
         /// <param name="timeProvider">Injected clock.</param>
         public BusPassSubmissionService(
             ILogger<BusPassSubmissionService> logger,
             FormsDbContext dbContext,
             IFormsService formsService,
             IBusPassSubmissionProvider submissionProvider,
+            ICorrelationIdAccessor correlationIdAccessor,
             TimeProvider timeProvider)
         {
             _logger = logger;
             _dbContext = dbContext;
             _formsService = formsService;
             _submissionProvider = submissionProvider;
+            _correlationIdAccessor = correlationIdAccessor;
             _timeProvider = timeProvider;
         }
 
@@ -86,15 +92,14 @@ namespace Myss.Api.Services
             FormSubmissionResponseModel submission = stored.Submission!;
             BusPassApplicationModel application = BusPassApplicationMapper.Build(submission.Answers);
 
-            var dispatch = new BusPassDispatch
-            {
-                Id = Guid.NewGuid(),
-                SubmissionId = submission.Id,
-                AttemptedAt = _timeProvider.GetUtcNow(),
-                Outcome = BusPassDispatchOutcome.Pending,
-            };
-            _dbContext.BusPassDispatches.Add(dispatch);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            Guid attemptId = Guid.NewGuid();
+            string? requestId = _correlationIdAccessor.CorrelationId;
+            await AppendAsync(
+                submission.Id,
+                attemptId,
+                requestId,
+                BusPassDispatchEventType.Started,
+                cancellationToken: cancellationToken);
 
             BusPassSubmissionOutcomeModel outcome;
             try
@@ -103,44 +108,84 @@ namespace Myss.Api.Services
             }
             catch (IcmApiUnavailableException ex)
             {
-                dispatch.Outcome = BusPassDispatchOutcome.Failed;
-                dispatch.CompletedAt = _timeProvider.GetUtcNow();
-                dispatch.ErrorMessage = Truncate(ex.Message);
-
                 // Recorded even when the caller has gone away: the row is the
                 // evidence an operator needs to decide whether ICM has this.
-                await _dbContext.SaveChangesAsync(CancellationToken.None);
+                await AppendAsync(
+                    submission.Id,
+                    attemptId,
+                    requestId,
+                    BusPassDispatchEventType.Failed,
+                    errorMessage: ex.Message,
+                    cancellationToken: CancellationToken.None);
 
                 _logger.LogError(
                     ex,
-                    "Bus pass submission {SubmissionId} could not be delivered to the ICM middleware",
-                    submission.Id);
+                    "Bus pass submission {SubmissionId} could not be delivered to the ICM middleware (attempt {AttemptId})",
+                    submission.Id,
+                    attemptId);
 
-                return BusPassSubmissionResultModel.Completed(ToResponse(submission, dispatch, BusPassErrorKeywords.IcmUnavailable));
+                return BusPassSubmissionResultModel.Completed(
+                    ToResponse(submission, BusPassSubmissionOutcome.Failed, null, null, BusPassErrorKeywords.IcmUnavailable));
             }
 
-            dispatch.Outcome = outcome.IsAccepted ? BusPassDispatchOutcome.Accepted : BusPassDispatchOutcome.Rejected;
-            dispatch.CompletedAt = _timeProvider.GetUtcNow();
-            dispatch.ReferenceNumber = outcome.ApplicationNumber;
-            dispatch.ErrorCode = outcome.ErrorCode;
-            dispatch.ErrorMessage = Truncate(outcome.ErrorMessage);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            BusPassDispatchEventType closing = outcome.IsAccepted
+                ? BusPassDispatchEventType.Accepted
+                : BusPassDispatchEventType.Rejected;
+            await AppendAsync(
+                submission.Id,
+                attemptId,
+                requestId,
+                closing,
+                outcome.ApplicationNumber,
+                outcome.ErrorCode,
+                outcome.ErrorMessage,
+                cancellationToken);
 
             // Ids and codes only; the answers and ICM's free text stay out of the log.
             _logger.LogInformation(
                 "Bus pass submission {SubmissionId} dispatched: {Outcome}, reference {ReferenceNumber}, error code {ErrorCode}",
                 submission.Id,
-                dispatch.Outcome,
-                dispatch.ReferenceNumber ?? "-",
-                dispatch.ErrorCode ?? "-");
+                closing,
+                outcome.ApplicationNumber ?? "-",
+                outcome.ErrorCode ?? "-");
 
-            string? keyword = outcome.IsAccepted ? null : BusPassErrorKeywords.Rejected;
-            return BusPassSubmissionResultModel.Completed(ToResponse(submission, dispatch, keyword));
+            return outcome.IsAccepted
+                ? BusPassSubmissionResultModel.Completed(
+                    ToResponse(submission, BusPassSubmissionOutcome.Accepted, outcome.ApplicationNumber, null, null))
+                : BusPassSubmissionResultModel.Completed(
+                    ToResponse(submission, BusPassSubmissionOutcome.Rejected, outcome.ApplicationNumber, outcome.ErrorCode, BusPassErrorKeywords.Rejected));
+        }
+
+        private async Task AppendAsync(
+            Guid submissionId,
+            Guid attemptId,
+            string? requestId,
+            BusPassDispatchEventType type,
+            string? referenceNumber = null,
+            string? errorCode = null,
+            string? errorMessage = null,
+            CancellationToken cancellationToken = default)
+        {
+            _dbContext.BusPassDispatchEvents.Add(new BusPassDispatchEvent
+            {
+                Id = Guid.NewGuid(),
+                SubmissionId = submissionId,
+                AttemptId = attemptId,
+                Type = type,
+                OccurredAt = _timeProvider.GetUtcNow(),
+                RequestId = requestId,
+                ReferenceNumber = referenceNumber,
+                ErrorCode = errorCode,
+                ErrorMessage = Truncate(errorMessage),
+            });
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         private static BusPassSubmissionResponseModel ToResponse(
             FormSubmissionResponseModel submission,
-            BusPassDispatch dispatch,
+            BusPassSubmissionOutcome outcome,
+            string? referenceNumber,
+            string? errorCode,
             string? keyword)
         {
             return new BusPassSubmissionResponseModel
@@ -148,10 +193,10 @@ namespace Myss.Api.Services
                 SubmissionId = submission.Id,
                 FormSpecId = submission.FormSpecId,
                 FormSpecVersion = submission.FormSpecVersion,
-                ReferenceNumber = dispatch.ReferenceNumber,
-                Outcome = dispatch.Outcome,
+                ReferenceNumber = referenceNumber,
+                Outcome = outcome,
                 Keyword = keyword,
-                ErrorCode = dispatch.ErrorCode,
+                ErrorCode = errorCode,
             };
         }
 
