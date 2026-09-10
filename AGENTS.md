@@ -89,8 +89,9 @@ cd Apps/MyssApi
 dotnet tool restore                                       # dotnet-ef, pinned in .config/dotnet-tools.json
 dotnet ef database update --context FormsDbContext
 dotnet ef database update --context AttachmentsDbContext
-dotnet ef migrations add <Name> --context AttachmentsDbContext --output-dir Migrations/Attachments
 ```
+
+(Adding a migration: see `Apps/MyssApi/AGENTS.md`.)
 
 Run:
 
@@ -144,43 +145,13 @@ An ADR is required for any cross-module dependency, any deviation from the targe
 architecture, and any three-options technology selection. Copy `TEMPLATE.md`, add a row
 to the ADRs `README.md`, and review it in the same PR as the change it justifies.
 
-### MyssApi layering
+### MyssApi
 
-`Controllers → Services (I*Service) → Providers (I*Provider) → Data (EF DbContexts)`.
-Providers are the boundary to anything external (Strapi, ClamAV, S3, CDOGS); services
-hold the rules; everything is registered by interface in `Startup.ConfigureServices` so
-tests substitute fakes (`MyssApi.Tests/TestDoubles/`) rather than mocking HTTP.
-
-`Program.cs` is a thin shim over `Configuration/ProgramConfiguration` +
-`Startup`/`Configuration/StartupConfiguration` (the old-style two-class host, not
-minimal APIs). Configuration precedence: `appsettings.json` →
-`appsettings.{Environment}.json` → `appsettings.local.json` (gitignored) →
-environment variables **prefixed `Myss_`** (`Myss_Strapi__ApiToken`,
-`Myss_ObjectStorage__Bucket`, …).
-
-Endpoints are versioned: `[Route("v{version:apiVersion}/...")]`, responses wrapped in
-`BaseResponseModel<T>`.
-
-**Fail-closed startup is deliberate.** `ObjectStorage` missing → the app refuses to
-start. `Strapi:ApiToken` is not defaulted. Preserve that shape rather than adding
-permissive fallbacks.
-
-### Auth
-
-Option 1 (current): the API is a stateless resource server validating Keycloak bearer
-tokens; the SPA does Auth Code + PKCE. `StartupConfiguration.ConfigureAuthentication`
-is the documented swap point to Option 2 (BFF cookie + OIDC) — the lines marked SHARED
-move across verbatim and nothing outside that method changes. Keep it that way.
-
-`Configuration/KeycloakClaims` flattens Keycloak's nested `realm_access`/`resource_access`
-roles so `Configuration/AuthorizationPolicies` (`Client`, `Worker`, `Admin`,
-`WorkerWithIdir`) works identically under either option.
-
-`Configuration/MockAuthGate` is a three-lock, fail-closed dev sign-in
-(`AllowMockAuth` + `MockAuth` + a non-production `EnvironmentName`, all explicit).
-A production-named environment with either flag set throws at startup. Enable it via
-`appsettings.local.json` (see `appsettings.local.sample.json`); pick a persona with
-`MockAuthPersona` or the `X-Mock-Persona` header.
+`Controllers → Services (I*Service) → Providers (I*Provider) → Data (EF DbContexts)`;
+providers are the boundary to anything external, and **fail-closed startup on missing
+config is deliberate** — preserve it. Layering, configuration precedence (`Myss_` env
+prefix), auth (the Option 1 ↔ 2 swap point, MockAuthGate) and the attachments
+pipeline: see `Apps/MyssApi/AGENTS.md`.
 
 ### Forms
 
@@ -201,130 +172,12 @@ check.
 ### IcmApi
 
 A client library for ICM (Siebel), layered so that Siebel's shape never leaves the
-assembly. `Apps/IcmApi/README.md` is the fuller guide — structure, wiring, and the
-gotchas — and `Apps/IcmApi/docs/integration/` holds the upstream specs it implements. Namespaces are `Icm.Api` (Refit interfaces), `Icm.Api.Contracts`,
-`Icm.Api.Models`, `Icm.Api.Repositories`, `Icm.Api.Services`, `Icm.Api.Workflows`,
-`Icm.Api.Workflows.Contracts` — the `Api/` folder does not
-add a segment, since `Icm.Api.Api` reads worse than it informs.
-
-```
-Services/            IServiceRequestService, IBusPassService, IOAuthTokenService  ← inject these
-Repositories/        IServiceRequestRepository, IBusPassRepository, IOAuthTokenRepository
-Api/                 IServiceRequestApi, IOAuthTokenApi (Refit)       ┐
-Api/Contracts/       Siebel* and Token* wire models, the mapper       │ internal
-Workflows/           IBusPassWorkflowApi (Refit)                      │
-Workflows/Contracts/ SiebelBusPass* wire envelope, BusPassMapper      ┘
-Models/              the published models
-```
-
-`Api/` is direct REST over a business component; `Workflows/` calls Siebel workflow
-processes that invoke other services behind them (the bus pass workflow matches the
-contact and creates the service request itself). Both publish only through
-`Models`/`Repositories`/`Services`. The bus pass mapping's vocabulary is MEASURED (SIT2
-2026-09-03) from the SRs the workflow itself creates; what remains inference (input words
-assumed to equal stored words, the account number riding in `ClientId`, the mailing
-address as a second prospect row) is listed in the README's "The bus pass integration
-(INT-316)" section (INT-316 names MySS's integration, the caller — the workflow itself
-is ICM's `ICM Receive Bus Pass Online Request Wrapper WF`). The first live POST is
-blocked on ICM-side authorization
-(`SBL-DAT-00825`, BUS_PROC access) — `IcmApi.Console --Mode=buspass` is the
-submit-and-read-back integration test to run once access is granted (it creates a record
-in the target ICM).
-
-**Everything from `Api/` and `Workflows/` down is `internal`**, reachable only by `IcmApi.Tests` through
-`InternalsVisibleTo` — ADR-0002 names exactly this as one of the .NET readings of the
-module-boundary rule. A consumer physically cannot get at `SiebelServiceRequest` or the
-Refit interfaces, so the mapping and the status-code handling cannot be bypassed.
-`Contracts/PublishedSurfaceTests` pins the exported type list, so widening the surface
-means saying so in that file rather than doing it with one stray keyword.
-
-Each layer earns its place:
-
-- **Api + Contracts** speak Siebel: spaced field names, `"Y"`/`"N"` flags,
-  everything a nullable string, `items` an array on a read and an object on a write.
-  Refit methods return `IApiResponse<T>` because the status code is the only thing
-  separating "found nothing" from a real failure.
-- **Repositories** are the published data-access boundary. They map, and they turn ICM's
-  status codes into terms a caller can use: missing is `null` or an empty page (ICM says
-  204 on some operations and 404 on others), `304` is "nothing changed", and anything
-  else throws `ApiException`. They take a bearer token as a parameter, because ICM applies
-  the calling identity's Siebel visibility to every read and write. The second half of that
-  identity is `X-ICM-TrustedUserName`, naming the ICM user a call acts as — configured once
-  on `ServiceRequestRepository` from `Icm:TrustedUserName` (a secret), and omitted entirely
-  rather than sent empty when there is none.
-- **Services** add behaviour. `OAuthTokenService` is pure caching over
-  `IOAuthTokenRepository`; `ServiceRequestService` ties that token to the repository so
-  callers deal in service requests and never in tokens. Reach for a repository directly
-  only when the caller already holds a token of its own.
-- **Models** are worth the mapping only because they are better than the wire. Every
-  property is typed from the spec's `x-siebel-datatype`: `Y`/`N` is `bool?`, and the
-  three Siebel date types stay distinct — `DTYPE_UTCDATETIME` is a `DateTimeOffset`,
-  `DTYPE_DATETIME` a zone-less `DateTime`, `DTYPE_DATE` a `DateOnly`. (The record has no
-  numeric fields at all; the only integers in the spec are `PageSize`/`StartRowNum`.)
-  `ServiceRequest` (read, `init`-only) is also split from `ServiceRequestInput` (the 34
-  fields ICM will actually accept), so setting a Siebel-calculated field is a compile
-  error rather than a silently ignored one.
-
-  **Field names come from real responses, not from the OpenAPI documents** — MEASURED on
-  2026-08-28, they disagree on 27 of 51 fields (`SR Number` vs `Service Request Number`,
-  `SR Type` vs `Type`). Not an environment difference: `docs/integration/` holds both the
-  SIT1 and SIT2 documents and they are identical bar `CP Outcome`, with neither using a
-  single live name. Both describe the direct Siebel host (`*-ai2.icm.gov.bc.ca:8443`) while
-  the client calls the API gateway (`icmsit2.api.gov.bc.ca`), which is the likeliest
-  explanation but is not confirmed. The specs still supply read-only flags. Anything unmodelled lands
-  in `ServiceRequest.AdditionalFields` as raw JSON rather than being dropped, which is how
-  the mismatch was found; `--Output=raw` on the console app shows the untouched response.
-  The four date fields are zone-less `DateTime`, not `DateTimeOffset`: the wire carries no
-  offset and the value matches the Siebel UI verbatim.
-
-  Dates come back as `MM/DD/YYYY HH:MM:SS` — Siebel's display format, MEASURED against SIT
-  on 2026-08-28. The vendor's date-format page specifies ISO 8601 but describes a different
-  connector; both shapes are accepted on reads, writes use the observed one and are
-  untested. Month-first is established by evidence (`03/28/2016`, `06/17/2026`,
-  `08/28/2026` — second component above 12), not assumed. An unrecognised shape still lands
-  in `ServiceRequest.UnparsedValues` with the raw text, which is how the format was caught.
-
-  `DTYPE_DATE` → `DateOnly` is load-bearing, not cosmetic: the same Oracle page warns that
-  a date defaulting to midnight UTC shifts to the previous day in Western Hemisphere zones,
-  which is every zone this runs in. The date is read exactly as written and never zone-
-  converted.
-
-Token caching is keyed on token URL + client id + **scope**, and deliberately not on the
-secret — a narrower cached token served to a caller that asked for more scopes would fail
-later at the resource server, and secrets do not belong in cache keys. Register the token
-service as a singleton; per-request means no cache. A single-flight gate stops a
-cold-cache burst from becoming one token request per caller, and failures are never
-cached.
-
-`IcmApi.Console` is the functional test: it reads `appsettings.json` (committed,
-placeholders) then the user-secret store (`dotnet user-secrets set "Icm:Auth:ClientSecret"
-"…"` — keyed by the csproj's `UserSecretsId`) then `Icm_` environment variables then the
-command line, gets a token, runs one search against a real ICM and dumps the result. The token endpoint
-is composed from `Icm:Auth:BaseUrl` + `Icm:Auth:Realm` (both non-secret, both committed) so
-the realm is a visible setting rather than a path segment inside a pasted URL; an optional
-`Icm:Auth:TokenUrl` overrides both. Nothing in the unit
-suite touches the network, so this is the only thing that can confirm the date format and
-the `ViewMode` default against SIT. Exit codes: 0 success, 1 bad settings, 2 failed call.
-
-**It needs the ministry VPN.** `*.icm.gov.bc.ca` is internal and does not resolve in
-public DNS, so without it the run dies at DNS lookup (`nodename nor servname provided`).
-The token endpoint `*.loginproxy.gov.bc.ca` *is* public, so a run that gets a token and
-then fails on the ICM call is the signature of a VPN that is down — not a credentials
-problem. Building and `dotnet test Apps/IcmApi.Tests` need neither VPN nor credentials.
-
-Tests mirror the layers: `Contracts/` covers the wire contract and the mapper, `Api/`
-asserts on real `HttpRequestMessage`s through a recording handler (Refit generates its
-implementation at compile time, so a dropped query parameter is otherwise invisible),
-`Repositories/` runs the real Refit stack over canned responses, and `Services/` uses
-fakes to count round trips.
-
-### Attachments
-
-`validate → insert quarantined row → ClamAV INSTREAM scan → object store → release`.
-The row is written before the scan on purpose, so a crash leaves a findable quarantined
-row instead of an orphaned object; a flagged file keeps its row as an audit record and
-its content never reaches the store. `Attachments:MaxSizeBytes` must stay at or below
-clamd's `StreamMaxLength`.
+assembly: everything below the published `Models`/`Repositories`/`Services` surface
+is `internal`, enforced by `InternalsVisibleTo` + `Contracts/PublishedSurfaceTests`
+(ADR-0002's module-boundary rule). The measured wire truths (field names, date
+formats), token caching, the `IcmApi.Console` functional test and its VPN
+requirement: see `Apps/IcmApi/AGENTS.md`; `Apps/IcmApi/README.md` is the fuller
+guide.
 
 ### Shared validation vectors
 
@@ -345,11 +198,6 @@ deliberately absent pending verification of the mod-11 spec.
 - **Comments explain *why*, and record what was measured.** Several files carry
   observations verified against a running system on a date. Do not delete those; if you
   change the behaviour they describe, update the note.
-- **Webclient**: see `Apps/MyssWebclient/AGENTS.md` for the frontend architecture
-  (pages/widgets/components hierarchy, token rules, BCDS-first components) and the
-  full docs under `Apps/MyssWebclient/Docs/`. Path alias `@` → `src`; test files are `*.unit.test.ts` (node) or
-  `*.browser.test.tsx` (Playwright/chromium) — the vitest projects select on those
-  suffixes. CSS modules per component. Routes go in `src/routes/paths.ts`. Runtime
-  config resolves `window.APP_CONFIG` (written by `entrypoint.sh` at container start) →
-  `import.meta.env.VITE_*` → default; adding a value means touching `entrypoint.sh`,
-  `public/config.js` and `src/constants.ts` together.
+- **Webclient**: see `Apps/MyssWebclient/AGENTS.md` — frontend architecture
+  (pages/widgets/components hierarchy), token rules, BCDS-first components, test and
+  runtime-config conventions — and the full docs under `Apps/MyssWebclient/Docs/`.
