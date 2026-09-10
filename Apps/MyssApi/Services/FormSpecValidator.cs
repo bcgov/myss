@@ -11,10 +11,9 @@ namespace Myss.Api.Services
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The handbook is unambiguous that client-side validation is a UX
-    /// convenience and never a security control: "the back-end re-validates
-    /// every value regardless of what the form said". This class is that
-    /// re-validation. It is pure — spec in, answers in, failures out — so it can
+    /// Client-side validation is a UX convenience and never a security
+    /// control: the back-end re-validates every value regardless of what the
+    /// form said. This class is that re-validation. It is pure — spec in, answers in, failures out — so it can
     /// be exercised without a database, an HTTP request or a browser.
     /// </para>
     /// <para><b>How a field opts in to a domain rule.</b> Form.io has no notion

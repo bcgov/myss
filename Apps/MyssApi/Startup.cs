@@ -7,6 +7,7 @@ namespace Myss.Api
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.DependencyInjection.Extensions;
     using Microsoft.Extensions.Logging;
     using Myss.Api.Configuration;
     using Myss.Api.Configuration.Models;
@@ -105,6 +106,54 @@ namespace Myss.Api
 
             services.AddSingleton<IFileStorageProvider, S3FileStorageProvider>();
             services.AddScoped<IAttachmentsService, AttachmentsService>();
+
+            // Bus pass hand-off to ICM. MyssApi never calls Siebel: everything
+            // ICM-bound goes to the IcmApi middleware over REST, which owns the
+            // ICM credentials and the Siebel translation, so nothing Siebel-shaped
+            // enters this codebase. This side owns the resilience envelope on the
+            // named client: retry, circuit breaker and timeouts, written once here
+            // rather than per caller.
+            services.Configure<IcmApiConfig>(configuration.GetSection("IcmApi"));
+            IcmApiConfig icmApi = new();
+            configuration.GetSection("IcmApi").Bind(icmApi);
+            if (!icmApi.IsConfigured)
+            {
+                // Same fail-closed idea as ObjectStorage above: only the
+                // non-secret base URL is required to boot; the service
+                // credentials are checked at the first call.
+                throw new InvalidOperationException(
+                    "IcmApi is not configured (BaseUrl is required). "
+                    + "Locally: appsettings.Development.json points at a local middleware. "
+                    + "Deployed: set Myss_IcmApi__BaseUrl to the in-cluster icm-api Service.");
+            }
+
+            services.TryAddSingleton(TimeProvider.System);
+
+            // One correlation id per request, stamped on the dispatch log and
+            // forwarded to the middleware as X-Request-ID, so one citizen action
+            // can be followed from this API's logs into the middleware's and ICM's.
+            // Singleton over IHttpContextAccessor, which is async-local, so the
+            // client factory's handler chain sees the current request too.
+            services.AddHttpContextAccessor();
+            services.TryAddSingleton<ICorrelationIdAccessor, CorrelationIdAccessor>();
+            services.AddTransient<CorrelationIdForwardingHandler>();
+            services.AddHttpClient(IcmApiBusPassSubmissionProvider.HttpClientName, client =>
+                {
+                    // A trailing slash so the relative route appends instead
+                    // of replacing the last path segment.
+                    client.BaseAddress = new Uri(icmApi.BaseUrl!.AbsoluteUri.TrimEnd('/') + "/");
+
+                    // The resilience handler owns the attempt and total
+                    // timeouts; the client's own must sit above them or it
+                    // fires first and hides the real cause.
+                    client.Timeout = TimeSpan.FromSeconds(icmApi.TimeoutSeconds * (IcmApiResilience.MaxRetryAttempts + 1))
+                        + IcmApiResilience.TotalTimeoutMargin
+                        + TimeSpan.FromSeconds(5);
+                })
+                .AddHttpMessageHandler<CorrelationIdForwardingHandler>()
+                .AddStandardResilienceHandler(options => IcmApiResilience.Configure(options, icmApi));
+            services.AddSingleton<IBusPassSubmissionProvider, IcmApiBusPassSubmissionProvider>();
+            services.AddScoped<IBusPassSubmissionService, BusPassSubmissionService>();
 
             // CORS services are required by the inline UseCors policy in
             // StartupConfiguration.UseHttp, which is driven by the AllowOrigins config.

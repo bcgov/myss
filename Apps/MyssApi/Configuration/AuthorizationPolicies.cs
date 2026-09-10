@@ -4,8 +4,8 @@ namespace Myss.Api.Configuration
 
     /// <summary>
     /// The role names carried in the token. NOTE: the final role set is still to be confirmed
-    /// with IDIM (the handbook proposes APPLICANT/CLIENT/WORKER/REVIEWER/SUPERVISOR/ADMIN);
-    /// these mirror the original application's set.
+    /// with IDIM. The target design proposes APPLICANT, CLIENT, WORKER, REVIEWER, SUPERVISOR
+    /// and ADMIN; these mirror the original application's set.
     /// </summary>
     public static class MyssRoles
     {

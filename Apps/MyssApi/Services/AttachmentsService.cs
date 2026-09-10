@@ -89,8 +89,9 @@ namespace Myss.Api.Services
             using var buffer = new MemoryStream();
             await content.CopyToAsync(buffer, cancellationToken);
 
-            // Check the magic bytes; the browser's Content-Type alone is not
-            // to be trusted (forms architecture, Part 4.13).
+            // Check the magic bytes; the browser's Content-Type header is
+            // caller-supplied and not to be trusted on its own. Accepting it
+            // unchecked was a confirmed defect in the legacy upload path.
             if (!MatchesSignature(contentType, buffer.GetBuffer().AsSpan(0, (int)buffer.Length)))
             {
                 return AttachmentUploadResult.Rejected(
