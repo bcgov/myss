@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 
-import { authHeaders } from "@/auth/accessToken";
 import BusPassForm from "@/components/BusPassForm";
 import { API_URL } from "@/constants";
 import { useSubmissions } from "@/hooks/usePocForm";
@@ -17,9 +16,8 @@ async function openSubmissionPdf(id: string) {
   popup.opener = null;
 
   try {
-    const res = await fetch(`${API_URL}/v1/bus-pass/submissions/${id}/pdf`, {
-      headers: authHeaders(),
-    });
+    // Public endpoint: bus pass PDFs do not require a signed-in session.
+    const res = await fetch(`${API_URL}/v1/bus-pass/submissions/${id}/pdf`);
 
     if (!res.ok) {
       console.error(`PDF fetch failed (${res.status})`);
