@@ -2,6 +2,27 @@
 
 "My Self Serve (MySS) provides online access to income and disability assistance for residents of British Columbia."
 
+# Guidance for AI agents (and humans): the AGENTS.md hierarchy
+
+Agent guidance is layered, and each layer is authoritative for its own
+depth — deeper files add app specifics, they never restate what a level
+above already says:
+
+```
+AGENTS.md                     workspace-wide rules: commands, architecture,
+                              conventions, secrets policy (CLAUDE.md points here)
+Apps/<App>/AGENTS.md          app-specific rules; links the app's full docs
+Apps/<App>/Docs/*.md          the full docs (architecture, design principles,
+                              accessibility, …) — each carries a status banner
+                              saying whether it describes reality or a target
+```
+
+Today `Apps/MyssWebclient` has the app level built out
+([AGENTS.md](Apps/MyssWebclient/AGENTS.md),
+[Docs/](Apps/MyssWebclient/Docs/)); other apps add theirs as they grow
+one. When guidance changes, update the layer that owns it — duplicated
+rules drift.
+
 # Local development
 
 Prerequisites: Docker, the .NET 10 SDK, Node 22+.
