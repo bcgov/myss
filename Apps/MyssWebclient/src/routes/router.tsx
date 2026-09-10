@@ -2,7 +2,8 @@ import { createBrowserRouter } from "react-router";
 
 import App from "@/App";
 import HomePage from "@/pages/HomePage";
-import ProfilePage from "@/pages/ProfilePage";
+import DashboardPage from "@/pages/DashboardPage";
+import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
 import AuthCallbackPage from "@/pages/AuthCallbackPage";
@@ -33,9 +34,14 @@ export const router = createBrowserRouter([
         children: [
             // ---- Public ----
             { index: true, element: <HomePage /> },
+            { path: paths.register, element: <RegistrationPage /> },
             {
                 path: paths.eligibilityEstimator,
                 element: <EligibilityEstimatorPage />,
+            },
+            {
+                path: paths.busPass,
+                element: <BusPassPage />,
             },
             { path: paths.signIn, element: <SignInPage /> },
             { path: paths.authCallback, element: <AuthCallbackPage /> },
@@ -61,10 +67,10 @@ export const router = createBrowserRouter([
 
             // ---- Protected (Forms / Strapi): only after login/auth ----
             {
-                path: paths.profile,
+                path: paths.dashboard,
                 element: (
                     <RequireAuth>
-                        <ProfilePage />
+                        <DashboardPage />
                     </RequireAuth>
                 ),
             },
@@ -81,14 +87,6 @@ export const router = createBrowserRouter([
                 element: (
                     <RequireAuth>
                         <FormsTechDemo />
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "techdemos/bc-bus-pass",
-                element: (
-                    <RequireAuth>
-                        <BusPassPage />
                     </RequireAuth>
                 ),
             },

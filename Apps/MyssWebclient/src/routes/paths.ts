@@ -2,8 +2,9 @@
 // Add new routes here as pages are built out during the rebuild.
 export const paths = {
     home: "/",
-    profile: "/profile",
+    dashboard: "/dashboard",
     eligibilityEstimator: "/eligibility-estimator",
+    busPass: "/buspass",
     // In-app sign-in chooser (Option 1) and the OIDC redirect target.
     signIn: "/auth/login",
     authCallback: "/auth/callback",
@@ -14,9 +15,8 @@ export const paths = {
     // page so home can keep changing without disturbing a known-good way to
     // exercise the auth flow end to end.
     simpleLogin: "/simplelogin",
-    // Placeholder wired to the real prod destination for now; swap to an
-    // internal route as the registration flow is rebuilt.
-    register: "/registration/step1",
+    // Placeholder page until the registration flow is rebuilt.
+    register: "/registration",
 } as const;
 
 export type AppPath = (typeof paths)[keyof typeof paths];
