@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router";
 import App from "@/App";
 import HomePage from "@/pages/HomePage";
 import DashboardPage from "@/pages/DashboardPage";
+import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
 import AuthCallbackPage from "@/pages/AuthCallbackPage";
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
         children: [
             // ---- Public ----
             { index: true, element: <HomePage /> },
+            { path: paths.register, element: <RegistrationPage /> },
             {
                 path: paths.eligibilityEstimator,
                 element: <EligibilityEstimatorPage />,

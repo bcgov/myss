@@ -50,9 +50,7 @@ export default function AccountPanel() {
                         <Button
                             variant="secondary"
                             size="large"
-                            onPress={() => {
-                                window.location.href = paths.register;
-                            }}
+                            onPress={() => navigate(paths.register)}
                         >
                             Create an account
                         </Button>
