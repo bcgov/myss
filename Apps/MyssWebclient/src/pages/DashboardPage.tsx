@@ -1,9 +1,9 @@
 import { Button } from "@bcgov/design-system-react-components";
 
 import { useSession } from "@/auth/useSession";
-import styles from "./ProfilePage.module.css";
+import styles from "./DashboardPage.module.css";
 
-export default function ProfilePage() {
+export default function DashboardPage() {
     const { user, logout } = useSession();
     const name = user?.name ?? user?.email ?? "there";
 

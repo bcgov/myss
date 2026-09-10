@@ -27,8 +27,8 @@ describe("resolveReturnTo", () => {
     ["state without returnTo", {}],
     ["a non-string returnTo", { returnTo: 42 }],
     ["an empty returnTo", { returnTo: "" }],
-  ])("falls back to the profile for %s", (_label, state) => {
-    expect(resolveReturnTo(state)).toBe(paths.profile);
+  ])("falls back to the dashboard for %s", (_label, state) => {
+    expect(resolveReturnTo(state)).toBe(paths.dashboard);
   });
 
   it.each([
@@ -36,7 +36,7 @@ describe("resolveReturnTo", () => {
     ["a bare host", "evil.example"],
     ["a relative path", "dashboard"],
   ])("refuses %s", (_label, returnTo) => {
-    expect(resolveReturnTo({ returnTo })).toBe(paths.profile);
+    expect(resolveReturnTo({ returnTo })).toBe(paths.dashboard);
   });
 
   /**
@@ -47,7 +47,7 @@ describe("resolveReturnTo", () => {
    */
   it("refuses a protocol-relative URL", () => {
     expect(resolveReturnTo({ returnTo: "//evil.example/steal" })).toBe(
-      paths.profile,
+      paths.dashboard,
     );
   });
 });

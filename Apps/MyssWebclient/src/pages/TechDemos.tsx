@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
 import useDemo from "@/hooks/useDemo";
+import { paths } from "@/routes/paths";
 
 export default function TechDemos() {
   const { data, error, isPending } = useDemo();
@@ -27,9 +28,7 @@ export default function TechDemos() {
           </Link>
         </li>
         <li>
-          <Link to="/techdemos/bc-bus-pass">
-            BC Bus Pass - request a bus pass
-          </Link>
+          <Link to={paths.busPass}>BC Bus Pass - request a bus pass</Link>
         </li>
         <li>
           <Link to="/techdemos/attachments">

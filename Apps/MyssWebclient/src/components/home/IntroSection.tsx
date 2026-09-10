@@ -27,6 +27,19 @@ export default function IntroSection() {
                     Check your eligibility
                 </Link>
             </p>
+            <p>
+                <b>Do you need a Bus Pass for transit?</b><br />
+                Apply for a BC Bus Pass online.
+            </p>
+            <p>
+                <Link
+                    href={paths.busPass}
+                    isButton
+                    buttonVariant="secondary"
+                >
+                    Request a BC Bus Pass
+                </Link>
+            </p>
         </div>
     );
 }

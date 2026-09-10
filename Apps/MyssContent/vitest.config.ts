@@ -7,8 +7,12 @@ import { defineConfig } from "vitest/config";
  * module tested here.
  */
 export default defineConfig({
-  test: {
-    include: ["src/**/*.test.ts"],
-    environment: "node",
-  },
+    test: {
+        include: ["src/**/*.test.ts"],
+        environment: "node",
+        coverage: {
+            provider: "v8",
+            reporter: ["text", ["lcov", { projectRoot: "../../" }]],
+        },
+    },
 });

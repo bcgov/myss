@@ -2,6 +2,27 @@
 
 "My Self Serve (MySS) provides online access to income and disability assistance for residents of British Columbia."
 
+# Guidance for AI agents (and humans): the AGENTS.md hierarchy
+
+Agent guidance is layered, and each layer is authoritative for its own
+depth — deeper files add app specifics, they never restate what a level
+above already says:
+
+```
+AGENTS.md                     workspace-wide rules: commands, architecture,
+                              conventions, secrets policy (CLAUDE.md points here)
+Apps/<App>/AGENTS.md          app-specific rules; links the app's full docs
+Apps/<App>/Docs/*.md          the full docs (architecture, design principles,
+                              accessibility, …) — each carries a status banner
+                              saying whether it describes reality or a target
+```
+
+Today `Apps/MyssWebclient` has the app level built out
+([AGENTS.md](Apps/MyssWebclient/AGENTS.md),
+[Docs/](Apps/MyssWebclient/Docs/)); other apps add theirs as they grow
+one. When guidance changes, update the layer that owns it — duplicated
+rules drift.
+
 # Local development
 
 Prerequisites: Docker, the .NET 10 SDK, Node 22+.
@@ -90,6 +111,24 @@ compose Postgres.
 - Webclient: `cd Apps/MyssWebclient && npm run test:unit` and
   `npm run test:browser-headless` — the browser tests need a one-time
   `npx playwright install chromium`
+
+## SonarQube Cloud
+
+Non-draft pull requests from this repository targeting `dev` run four SonarQube Cloud
+analyses, each with its own quality gate. Fork pull requests skip analysis because they
+cannot access the `SONAR_TOKEN` secret.
+
+| Project         | Key                               |
+| --------------- | --------------------------------- |
+| MySS API        | `bcgov-sonarcloud_myss_api`       |
+| MySS Web Client | `bcgov-sonarcloud_myss_webclient` |
+| MySS Content    | `bcgov-sonarcloud_myss_content`   |
+| MySS ICM Client | `bcgov-sonarcloud_myss_icmapi`    |
+
+The workflow imports OpenCover reports from the .NET tests and LCOV reports from both
+TypeScript test suites. Configure the `SONAR_TOKEN` GitHub Actions secret for the
+`bcgov-sonarcloud` organization, and disable Automatic Analysis for all four projects
+so the CI analyses are the single source of results.
 
 ## Reset
 
