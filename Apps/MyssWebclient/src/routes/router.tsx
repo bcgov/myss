@@ -2,7 +2,7 @@ import { createBrowserRouter } from "react-router";
 
 import App from "@/App";
 import HomePage from "@/pages/HomePage";
-import ProfilePage from "@/pages/ProfilePage";
+import DashboardPage from "@/pages/DashboardPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
 import AuthCallbackPage from "@/pages/AuthCallbackPage";
@@ -61,10 +61,10 @@ export const router = createBrowserRouter([
 
             // ---- Protected (Forms / Strapi): only after login/auth ----
             {
-                path: paths.profile,
+                path: paths.dashboard,
                 element: (
                     <RequireAuth>
-                        <ProfilePage />
+                        <DashboardPage />
                     </RequireAuth>
                 ),
             },
