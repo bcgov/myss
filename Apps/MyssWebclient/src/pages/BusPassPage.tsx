@@ -50,7 +50,7 @@ export default function BusPassPage() {
   return (
     <>
       <nav aria-label="Breadcrumb">
-        <Link to="/techdemos">← Tech demos</Link>
+        <Link to="/">← Home</Link>
       </nav>
       <BusPassForm />
 

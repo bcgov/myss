@@ -4,6 +4,7 @@ export const paths = {
     home: "/",
     dashboard: "/dashboard",
     eligibilityEstimator: "/eligibility-estimator",
+    busPass: "/buspass",
     // In-app sign-in chooser (Option 1) and the OIDC redirect target.
     signIn: "/auth/login",
     authCallback: "/auth/callback",

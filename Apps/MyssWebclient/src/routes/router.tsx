@@ -39,6 +39,10 @@ export const router = createBrowserRouter([
                 path: paths.eligibilityEstimator,
                 element: <EligibilityEstimatorPage />,
             },
+            {
+                path: paths.busPass,
+                element: <BusPassPage />,
+            },
             { path: paths.signIn, element: <SignInPage /> },
             { path: paths.authCallback, element: <AuthCallbackPage /> },
             { path: paths.simpleLogin, element: <SimpleLoginPage /> },
@@ -83,14 +87,6 @@ export const router = createBrowserRouter([
                 element: (
                     <RequireAuth>
                         <FormsTechDemo />
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "techdemos/bc-bus-pass",
-                element: (
-                    <RequireAuth>
-                        <BusPassPage />
                     </RequireAuth>
                 ),
             },
