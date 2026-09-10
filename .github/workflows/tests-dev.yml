@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pr-validation-${{ github.event.pull_request.number }}
+  group: validation-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -91,7 +91,14 @@ jobs:
         run: DATABASE_CLIENT=postgres npx strapi ts:generate-types && npm run build
 
       - name: Run unit tests
-        run: npm test
+        run: npm run test:coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: mysscontent-coverage
+          path: Apps/MyssContent/coverage/lcov.info
+          retention-days: 1
 
   webclient-tests:
     name: Web client tests
@@ -120,11 +127,211 @@ jobs:
       - name: Typecheck and build
         run: npm run build
 
-      - name: Run unit tests
-        run: npm run test:unit
-
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run browser tests
-        run: npm run test:browser-headless
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: webclient-coverage
+          path: Apps/MyssWebclient/coverage/lcov.info
+          retention-days: 1
+
+  sonarcloud-api:
+    name: SonarQube Cloud - MySS API
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.fork == false }}
+    needs:
+      - api-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Begin MySS API analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >-
+          dotnet sonarscanner begin
+          /k:"bcgov-sonarcloud_myss_api"
+          /n:"MySS API"
+          /o:"bcgov-sonarcloud"
+          /d:sonar.token="$SONAR_TOKEN"
+          /d:sonar.sourceEncoding="UTF-8"
+          /d:sonar.scanner.scanAll="false"
+          /d:sonar.cs.opencover.reportsPaths="Apps/MyssApi.Tests/TestResults/**/coverage.opencover.xml"
+          /d:sonar.qualitygate.wait="true"
+
+      - name: Build MySS API
+        run: dotnet build Apps/MyssApi.Tests --configuration Release --no-incremental --disable-build-servers
+
+      - name: Run API tests with coverage
+        run: >-
+          dotnet test Apps/MyssApi.Tests
+          --configuration Release
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --results-directory Apps/MyssApi.Tests/TestResults
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: Complete MySS API analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
+  sonarcloud-icmapi:
+    name: SonarQube Cloud - MySS ICM Client
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.fork == false }}
+    needs:
+      - api-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Begin MySS ICM Client analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >-
+          dotnet sonarscanner begin
+          /k:"bcgov-sonarcloud_myss_icmapi"
+          /n:"MySS ICM Client"
+          /o:"bcgov-sonarcloud"
+          /d:sonar.token="$SONAR_TOKEN"
+          /d:sonar.sourceEncoding="UTF-8"
+          /d:sonar.scanner.scanAll="false"
+          /d:sonar.cs.opencover.reportsPaths="Apps/IcmApi.Tests/TestResults/**/coverage.opencover.xml"
+          /d:sonar.qualitygate.wait="true"
+
+      - name: Build MySS ICM Client
+        run: dotnet build Apps/IcmApi.Tests --configuration Release --no-incremental --disable-build-servers
+
+      - name: Run ICM client tests with coverage
+        run: >-
+          dotnet test Apps/IcmApi.Tests
+          --configuration Release
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --results-directory Apps/IcmApi.Tests/TestResults
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: Complete MySS ICM Client analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
+  sonarcloud-webclient:
+    name: SonarQube Cloud - MySS Web Client
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.fork == false }}
+    needs:
+      - webclient-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Apps/MyssWebclient/package-lock.json
+
+      - name: Install dependencies
+        working-directory: Apps/MyssWebclient
+        run: npm ci
+
+      - name: Download coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: webclient-coverage
+          path: Apps/MyssWebclient/coverage
+
+      - name: Analyze MySS Web Client
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >-
+            -Dsonar.projectKey=bcgov-sonarcloud_myss_webclient
+            "-Dsonar.projectName=MySS Web Client"
+            -Dsonar.organization=bcgov-sonarcloud
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.sources=Apps/MyssWebclient/src
+            -Dsonar.tests=Apps/MyssWebclient/src
+            -Dsonar.exclusions=Apps/MyssWebclient/src/**/*.unit.test.ts,Apps/MyssWebclient/src/**/*.browser.test.tsx,Apps/MyssWebclient/src/api/generated/**
+            -Dsonar.test.inclusions=Apps/MyssWebclient/src/**/*.unit.test.ts,Apps/MyssWebclient/src/**/*.browser.test.tsx
+            -Dsonar.javascript.lcov.reportPaths=Apps/MyssWebclient/coverage/lcov.info
+            -Dsonar.qualitygate.wait=true
+
+  sonarcloud-content:
+    name: SonarQube Cloud - MySS Content
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.fork == false }}
+    needs:
+      - mysscontent-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Apps/MyssContent/package-lock.json
+
+      - name: Install dependencies
+        working-directory: Apps/MyssContent
+        run: npm ci
+
+      - name: Download coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: mysscontent-coverage
+          path: Apps/MyssContent/coverage
+
+      - name: Analyze MySS Content
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >-
+            -Dsonar.projectKey=bcgov-sonarcloud_myss_content
+            "-Dsonar.projectName=MySS Content"
+            -Dsonar.organization=bcgov-sonarcloud
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.sources=Apps/MyssContent/src
+            -Dsonar.tests=Apps/MyssContent/src
+            -Dsonar.exclusions=Apps/MyssContent/src/**/*.test.ts,Apps/MyssContent/src/admin/*.example.ts,Apps/MyssContent/src/admin/*.example.tsx
+            -Dsonar.test.inclusions=Apps/MyssContent/src/**/*.test.ts
+            -Dsonar.javascript.lcov.reportPaths=Apps/MyssContent/coverage/lcov.info
+            -Dsonar.qualitygate.wait=true

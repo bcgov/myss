@@ -91,6 +91,24 @@ compose Postgres.
   `npm run test:browser-headless` — the browser tests need a one-time
   `npx playwright install chromium`
 
+## SonarQube Cloud
+
+Non-draft pull requests from this repository targeting `dev` run four SonarQube Cloud
+analyses, each with its own quality gate. Fork pull requests skip analysis because they
+cannot access the `SONAR_TOKEN` secret.
+
+| Project         | Key                               |
+| --------------- | --------------------------------- |
+| MySS API        | `bcgov-sonarcloud_myss_api`       |
+| MySS Web Client | `bcgov-sonarcloud_myss_webclient` |
+| MySS Content    | `bcgov-sonarcloud_myss_content`   |
+| MySS ICM Client | `bcgov-sonarcloud_myss_icmapi`    |
+
+The workflow imports OpenCover reports from the .NET tests and LCOV reports from both
+TypeScript test suites. Configure the `SONAR_TOKEN` GitHub Actions secret for the
+`bcgov-sonarcloud` organization, and disable Automatic Analysis for all four projects
+so the CI analyses are the single source of results.
+
 ## Reset
 
 `docker compose down` keeps the data. `docker compose down -v` wipes it — the
