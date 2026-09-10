@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - dev
+  schedule:
+    - cron: "0 8 * * *" # Daily at midnight PST
 
 permissions:
   contents: read
