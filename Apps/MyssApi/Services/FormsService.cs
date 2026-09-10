@@ -56,7 +56,17 @@ namespace Myss.Api.Services
         }
 
         /// <inheritdoc/>
-        public async Task<FormSubmissionResultModel> SubmitAsync(string formSpecId, FormSubmissionRequestModel request, CancellationToken cancellationToken)
+        public Task<FormSubmissionResultModel> SubmitAsync(string formSpecId, FormSubmissionRequestModel request, CancellationToken cancellationToken)
+        {
+            return SubmitAsync(formSpecId, request, domainRules: null, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public async Task<FormSubmissionResultModel> SubmitAsync(
+            string formSpecId,
+            FormSubmissionRequestModel request,
+            Func<JsonElement, IReadOnlyList<ValidationErrorModel>>? domainRules,
+            CancellationToken cancellationToken)
         {
             // Resolve the version the client claims to have rendered, NOT the
             // latest. §7.2 of the assessment calls this non-negotiable: a
@@ -85,6 +95,15 @@ namespace Myss.Api.Services
 
             IReadOnlyList<ValidationErrorModel> errors =
                 FormSpecValidator.Validate(spec.Spec, request.Answers);
+
+            if (domainRules is not null)
+            {
+                IReadOnlyList<ValidationErrorModel> domainErrors = domainRules(request.Answers);
+                if (domainErrors.Count > 0)
+                {
+                    errors = [.. errors, .. domainErrors];
+                }
+            }
 
             if (errors.Count > 0)
             {
