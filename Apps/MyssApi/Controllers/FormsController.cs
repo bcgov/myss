@@ -15,7 +15,8 @@ namespace Myss.Api.Controllers
 
     /// <summary>
     /// The forms controller: versioned specs and submissions.
-    /// Protected: forms are only available after the user has authenticated.
+    /// Protected by default; <see cref="PubliclyAccessibleFormSpecIds"/> lists the forms
+    /// (currently just the BC Bus Pass request) reachable without signing in.
     /// </summary>
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/forms")]
@@ -23,6 +24,14 @@ namespace Myss.Api.Controllers
     [Authorize]
     public class FormsController : Controller
     {
+        /// <summary>Form specs that do not require authentication.</summary>
+        private static readonly HashSet<string> PubliclyAccessibleFormSpecIds = new(
+            StringComparer.OrdinalIgnoreCase
+        )
+        {
+            "bc-bus-pass",
+        };
+
         private readonly ILogger<FormsController> _logger;
 
         private readonly IFormsService _formsService;
@@ -39,11 +48,27 @@ namespace Myss.Api.Controllers
         }
 
         /// <summary>
+        /// Rejects anonymous callers for any form spec other than a publicly accessible one.
+        /// [AllowAnonymous] on these actions bypasses [Authorize] entirely, so the check has
+        /// to be made here instead.
+        /// </summary>
+        private ActionResult? RequireAuthUnlessPublicForm(string formSpecId)
+        {
+            if (PubliclyAccessibleFormSpecIds.Contains(formSpecId))
+            {
+                return null;
+            }
+
+            return User.Identity?.IsAuthenticated == true ? null : Unauthorized();
+        }
+
+        /// <summary>
         /// Returns the latest published spec for a form (content-engine proxy).
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet("{formSpecId}/spec")]
+        [AllowAnonymous]
         [Produces("application/json")]
         [EndpointName("GetFormSpec")]
         [ProducesResponseType(typeof(BaseResponseModel<FormSpecModel>), StatusCodes.Status200OK)]
@@ -53,6 +78,11 @@ namespace Myss.Api.Controllers
             CancellationToken cancellationToken
         )
         {
+            if (RequireAuthUnlessPublicForm(formSpecId) is ActionResult unauthorized)
+            {
+                return unauthorized;
+            }
+
             FormSpecModel? spec = await _formsService.GetLatestSpecAsync(
                 formSpecId,
                 cancellationToken
@@ -77,6 +107,7 @@ namespace Myss.Api.Controllers
         /// <param name="request">The submission payload.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPost("{formSpecId}/submissions")]
+        [AllowAnonymous]
         [Produces("application/json")]
         [EndpointName("SubmitForm")]
         [ProducesResponseType(
@@ -93,6 +124,11 @@ namespace Myss.Api.Controllers
             CancellationToken cancellationToken
         )
         {
+            if (RequireAuthUnlessPublicForm(formSpecId) is ActionResult unauthorized)
+            {
+                return unauthorized;
+            }
+
             FormSubmissionResultModel result = await _formsService.SubmitAsync(
                 formSpecId,
                 request,
@@ -127,6 +163,7 @@ namespace Myss.Api.Controllers
         /// <param name="formSpecId">The logical form identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet("{formSpecId}/submissions")]
+        [AllowAnonymous]
         [Produces("application/json")]
         [EndpointName("ListFormSubmissions")]
         [ProducesResponseType(
@@ -137,6 +174,11 @@ namespace Myss.Api.Controllers
             ActionResult<BaseResponseModel<IReadOnlyList<FormSubmissionSummaryModel>>>
         > ListSubmissions(string formSpecId, CancellationToken cancellationToken)
         {
+            if (RequireAuthUnlessPublicForm(formSpecId) is ActionResult unauthorized)
+            {
+                return unauthorized;
+            }
+
             IReadOnlyList<FormSubmissionSummaryModel> submissions =
                 await _formsService.ListSubmissionsAsync(formSpecId, cancellationToken);
             return new BaseResponseModel<IReadOnlyList<FormSubmissionSummaryModel>>

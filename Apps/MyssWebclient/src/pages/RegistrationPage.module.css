@@ -1,0 +1,8 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-large, 24px);
+    margin: 0 auto;
+    max-width: 900px;
+    width: 100%;
+}

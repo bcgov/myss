@@ -144,8 +144,10 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
-        public async Task SubmitRequiresAuthentication()
+        public async Task SubmitIsPublic_LikeTheLegacyForm()
         {
+            // The BC Bus Pass Program links seniors and other non-clients to
+            // this form directly; there is no account to sign in with.
             HttpClient client = CreateClient(mockAuth: false);
 
             using var request = new HttpRequestMessage(HttpMethod.Post, Route)
@@ -154,7 +156,8 @@ namespace Myss.Api.Tests
             };
             using HttpResponseMessage response = await client.SendAsync(request);
 
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Single(_middleware.Submitted);
         }
 
         private static Task<HttpResponseMessage> Submit(HttpClient client, Dictionary<string, object?> answers)

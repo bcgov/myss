@@ -1,5 +1,5 @@
 // The in-app sign-in chooser page (paths.signIn). Replaces the old external
-// redirect. Already-authenticated users are sent to their profile page.
+// redirect. Already-authenticated users are sent to their dashboard page.
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
@@ -13,7 +13,7 @@ export default function SignInPage() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (isAuthenticated) navigate(paths.profile, { replace: true });
+        if (isAuthenticated) navigate(paths.dashboard, { replace: true });
     }, [isAuthenticated, navigate]);
 
     return (

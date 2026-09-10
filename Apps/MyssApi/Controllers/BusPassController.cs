@@ -19,7 +19,8 @@ namespace Myss.Api.Controllers
 
     /// <summary>
     /// BC Bus Pass submission endpoints.
-    /// Protected: bus pass submissions are only available after the user has authenticated.
+    /// Public: like <see cref="EligibilityEstimatorController"/>, this does not require the
+    /// caller to be signed in, matching the legacy form the program linked to directly.
     /// A submission is validated, stored, then handed to ICM through the middleware;
     /// the response says which of those happened. Non-accepted outcomes carry a
     /// stable dotted keyword (e.g. <c>BUSPASS.SUBMIT.REJECTED</c>) for the
@@ -28,7 +29,7 @@ namespace Myss.Api.Controllers
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/bus-pass")]
     [ApiController]
-    [Authorize]
+    [AllowAnonymous]
     public class BusPassController : Controller
     {
         private readonly ILogger<BusPassController> _logger;
