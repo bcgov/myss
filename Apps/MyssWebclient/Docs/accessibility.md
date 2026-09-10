@@ -27,7 +27,7 @@ A regression in an accessible behaviour is a **defect, not a tweak**.
 | **Contrast & sizing**     | Meet AA contrast for text and UI components; support reflow and 200% zoom; never convey meaning by colour alone (status pills carry text + colour). | Low-vision and colour-blind users excluded.                 |
 | **Accessible challenges** | Any bot-protection is an accessible challenge, never an image CAPTCHA.                                                                              | An applicant locked out at the very first step.             |
 
-## The footgun: breaking what BCDS gives for free
+## Common ways accessibility gets broken
 
 `@bcgov/design-system-react-components` is accessible by default; that
 property is easy to destroy downstream:

@@ -65,5 +65,5 @@ added.
 
 WCAG 2.1 AA is a hard commitment and a Definition-of-Done item; a
 regression in an accessible behaviour is a defect, not a tweak. The
-patterns, the BCDS footgun list, and the testing practices live in
-[accessibility.md](accessibility.md).
+patterns, the common ways accessibility gets broken, and the testing
+practices live in [accessibility.md](accessibility.md).

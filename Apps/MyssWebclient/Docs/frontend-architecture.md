@@ -87,7 +87,7 @@ before pushing; CI runs it on every PR.
 
 New code follows this structure now. Existing files move in a dedicated
 mechanical PR (pure renames, no behaviour) scheduled when few feature
-branches are open, to keep rebase pain low:
+branches are open, to minimize merge conflicts:
 
 | Today                                                 | Target                                               |
 | ----------------------------------------------------- | ---------------------------------------------------- |
