@@ -8,7 +8,7 @@ namespace Myss.Api.Providers
     /// <summary>
     /// Puts the current request's correlation id on every outbound call, so the
     /// middleware and ICM see the same <c>X-Request-ID</c> the citizen's request
-    /// carried (handbook Part 4.12: threaded through the adapter's outbound calls).
+    /// carried, and one action can be followed end to end across the three systems.
     /// </summary>
     /// <remarks>
     /// Registered outside the resilience handler, so the header is set once and

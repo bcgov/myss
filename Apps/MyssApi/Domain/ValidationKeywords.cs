@@ -8,8 +8,9 @@ namespace Myss.Api.Domain
     /// human half. Keeping them separate means the text can later be sourced
     /// from the content engine and translated without changing this code, and
     /// the client can key its WCAG error summary off something that does not
-    /// move when wording changes. The scheme follows the handbook
-    /// (<c>IDA.SIN.INVALID_CHECKSUM</c> and so on).
+    /// move when wording changes. The scheme is a dotted, domain-scoped
+    /// <c>DOMAIN.CONTEXT.NAME</c> (<c>IDA.SIN.INVALID_CHECKSUM</c> and so on),
+    /// and a keyword is never reused for a different meaning.
     /// <para>
     /// These strings are a contract shared with the browser implementation via
     /// <c>Shared/validation/validation-vectors.json</c>. Renaming one means

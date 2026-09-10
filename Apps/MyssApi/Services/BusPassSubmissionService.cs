@@ -14,9 +14,10 @@ namespace Myss.Api.Services
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The order is deliberate and mirrors the attachments pipeline and the
-    /// handbook's audit-before-promotion rule: the submission and a started
-    /// event are written before the call to ICM, so a crash mid-call leaves a
+    /// The order is deliberate and mirrors the attachments pipeline, where the
+    /// quarantined row is written before the scan: the record of an action is
+    /// written before the call that performs it. The submission and a started
+    /// event are stored before the call to ICM, so a crash mid-call leaves a
     /// findable record rather than a request ICM may have and MySS has no trace
     /// of. Because ICM files a service request on every call and has no
     /// idempotency key, a started event with no closing event is the signal

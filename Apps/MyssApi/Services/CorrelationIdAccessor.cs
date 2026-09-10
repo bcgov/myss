@@ -17,8 +17,8 @@ namespace Myss.Api.Services
     public class CorrelationIdAccessor : ICorrelationIdAccessor
     {
         /// <summary>
-        /// The header the id travels in, inbound and outbound. The handbook names
-        /// it <c>X-Request-ID</c>.
+        /// The header the id travels in, inbound and outbound: <c>X-Request-ID</c>,
+        /// the name the middleware and ICM are expected to carry it under too.
         /// </summary>
         public const string HeaderName = "X-Request-ID";
 

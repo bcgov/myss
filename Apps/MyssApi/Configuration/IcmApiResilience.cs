@@ -8,9 +8,9 @@ namespace Myss.Api.Configuration
     using Polly;
 
     /// <summary>
-    /// The resilience envelope for calls to the ICM middleware: the retry,
-    /// circuit breaker and timeouts the handbook's Siebel adapter section asks
-    /// the MySS side to own (Part 4.2).
+    /// The resilience envelope for calls to the ICM middleware: retry, circuit
+    /// breaker and timeouts. The middleware owns the Siebel translation; this
+    /// side owns resilience, written once here rather than per caller.
     /// </summary>
     public static class IcmApiResilience
     {

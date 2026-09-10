@@ -109,8 +109,10 @@ namespace Myss.Api
 
             // Bus pass hand-off to ICM. MyssApi never calls Siebel: everything
             // ICM-bound goes to the IcmApi middleware over REST, which owns the
-            // ICM credentials and the Siebel translation (handbook Part 4.2 /
-            // 8.1). This side owns the resilience envelope on the named client.
+            // ICM credentials and the Siebel translation, so nothing Siebel-shaped
+            // enters this codebase. This side owns the resilience envelope on the
+            // named client: retry, circuit breaker and timeouts, written once here
+            // rather than per caller.
             services.Configure<IcmApiConfig>(configuration.GetSection("IcmApi"));
             IcmApiConfig icmApi = new();
             configuration.GetSection("IcmApi").Bind(icmApi);
@@ -128,7 +130,8 @@ namespace Myss.Api
             services.TryAddSingleton(TimeProvider.System);
 
             // One correlation id per request, stamped on the dispatch log and
-            // forwarded to the middleware as X-Request-ID (handbook Part 4.12).
+            // forwarded to the middleware as X-Request-ID, so one citizen action
+            // can be followed from this API's logs into the middleware's and ICM's.
             // Singleton over IHttpContextAccessor, which is async-local, so the
             // client factory's handler chain sees the current request too.
             services.AddHttpContextAccessor();

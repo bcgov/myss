@@ -98,7 +98,7 @@ namespace Myss.Api.Tests.Services
         public async Task EveryEvent_CarriesTheRequestsCorrelationId()
         {
             // The same X-Request-ID that went to the middleware, so a row can be
-            // matched to its trace (handbook Part 4.12).
+            // matched to its trace and to the middleware's log line for the call.
             using FormsDbContext db = NewDb();
             BusPassSubmissionService service = NewService(db);
 

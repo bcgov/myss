@@ -31,8 +31,9 @@ namespace Myss.Api.Data
     /// submission. Rows are inserted and never updated: an attempt is a started
     /// event followed, when the call returns, by exactly one accepted, rejected
     /// or failed event sharing its attempt id. The history of a submission is
-    /// the list of its events, in the spirit of the handbook's event-sourced
-    /// state model (Part 3.4), rather than a status column overwritten in place.
+    /// the list of its events, so nothing that happened is lost to a status
+    /// column overwritten in place, and the audit trail and the state are the
+    /// same rows.
     /// </summary>
     public class BusPassDispatchEvent
     {

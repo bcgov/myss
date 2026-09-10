@@ -3,7 +3,7 @@ namespace Myss.Api.Services
     /// <summary>
     /// The correlation id of the request being served, so one citizen action
     /// can be followed through logs, stored records and outbound calls to the
-    /// ICM middleware (handbook Part 4.12).
+    /// ICM middleware, and from there into ICM.
     /// </summary>
     public interface ICorrelationIdAccessor
     {

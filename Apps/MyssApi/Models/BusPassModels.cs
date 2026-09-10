@@ -254,7 +254,9 @@ namespace Myss.Api.Models
     /// <summary>
     /// Stable dotted keywords for the bus pass module. The keyword is the
     /// contract: the frontend matches on it and it doubles as the content key
-    /// for the user-facing text (handbook §2.6).
+    /// for the user-facing text, which lives in the content engine rather than
+    /// in code. A keyword is language-independent and is never reused for a
+    /// different meaning.
     /// </summary>
     public static class BusPassErrorKeywords
     {
