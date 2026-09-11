@@ -360,6 +360,25 @@ namespace Myss.Api.Tests.Providers
                 NewProvider().GetDraftAsync("f", CancellationToken.None));
         }
 
+        [Fact]
+        public async Task ListForms_PagesBeyondTheHundredRowCap()
+        {
+            // Strapi caps REST at 100 rows/request; a full first page must trigger a second
+            // fetch, or forms/versions past 100 would be silently dropped.
+            string fullPage = Data(Enumerable.Range(1, 100).Select(i => Row("form", i, "F")).ToArray());
+            _http.Enqueue(Ok(fullPage));                        // published page 1 (full -> more)
+            _http.Enqueue(Ok(Data(Row("form", 101, "F"))));     // published page 2 (short -> stop)
+            _http.Enqueue(Ok("""{ "data": [] }"""));            // draft page 1 (empty -> stop)
+
+            IReadOnlyList<FormSummaryModel> forms = await NewProvider().ListFormsAsync(CancellationToken.None);
+
+            FormSummaryModel form = Assert.Single(forms);
+            Assert.Equal(101, form.Versions.Count);
+            Assert.Contains("pagination[page]=1", _http.Requests[0].RequestUri!.Query);
+            Assert.Contains("pagination[pageSize]=100", _http.Requests[0].RequestUri!.Query);
+            Assert.Contains("pagination[page]=2", _http.Requests[1].RequestUri!.Query);
+        }
+
         private StrapiFormSpecAdminProvider NewProvider(string? adminToken = null)
         {
             var settings = new Dictionary<string, string?> { ["Strapi:BaseUrl"] = "http://strapi.test" };

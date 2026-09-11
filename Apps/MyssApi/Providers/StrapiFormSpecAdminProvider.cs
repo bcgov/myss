@@ -33,6 +33,10 @@ namespace Myss.Api.Providers
     {
         private const string FormSpecsPath = "/api/form-specs";
 
+        // MyssContent caps the REST maxLimit at 100 (config/api.ts), so results are
+        // paged at that size rather than requested in one over-limit call.
+        private const int PageSize = 100;
+
         private readonly ILogger<StrapiFormSpecAdminProvider> _logger;
         private readonly HttpClient _httpClient;
 
@@ -79,10 +83,10 @@ namespace Myss.Api.Providers
             // in-progress (never-published) version. A version is "published"
             // when it appears in the published set.
             const string fields = "&fields[0]=formSpecId&fields[1]=version&fields[2]=title";
-            const string paging = "&sort=formSpecId:asc,version:asc&pagination[limit]=1000";
+            const string sort = "&sort=formSpecId:asc,version:asc";
 
-            IReadOnlyList<Row> published = await GetRowsAsync($"{FormSpecsPath}?status=published{fields}{paging}", cancellationToken);
-            IReadOnlyList<Row> drafts = await GetRowsAsync($"{FormSpecsPath}?status=draft{fields}{paging}", cancellationToken);
+            IReadOnlyList<Row> published = await GetAllRowsAsync($"{FormSpecsPath}?status=published{fields}{sort}", cancellationToken);
+            IReadOnlyList<Row> drafts = await GetAllRowsAsync($"{FormSpecsPath}?status=draft{fields}{sort}", cancellationToken);
 
             var publishedVersions = published
                 .GroupBy(r => r.FormSpecId)
@@ -298,6 +302,37 @@ namespace Myss.Api.Providers
 
                 return dataElement.Clone();
             }
+        }
+
+        /// <summary>
+        /// Reads every row for a query by paging at <see cref="PageSize"/> (the content
+        /// engine's REST maxLimit). A single over-limit request would be silently capped
+        /// and drop forms/versions, so this pages until a short page signals the end.
+        /// </summary>
+        private async Task<IReadOnlyList<Row>> GetAllRowsAsync(string baseQuery, CancellationToken cancellationToken)
+        {
+            var all = new List<Row>();
+            for (int page = 1; ; page++)
+            {
+                string query = $"{baseQuery}&pagination[page]={page}&pagination[pageSize]={PageSize}";
+                IReadOnlyList<Row> pageRows = await GetRowsAsync(query, cancellationToken);
+                all.AddRange(pageRows);
+
+                // A short (or empty) page is the last one. A full page means there may be
+                // more; the cap guards against a misconfigured engine never short-paging.
+                if (pageRows.Count < PageSize)
+                {
+                    break;
+                }
+
+                if (page >= 1000)
+                {
+                    throw new ContentEngineUnavailableException(
+                        "The content engine returned an unexpectedly large form-spec result set.");
+                }
+            }
+
+            return all;
         }
 
         private async Task<IReadOnlyList<Row>> GetRowsAsync(string query, CancellationToken cancellationToken)
