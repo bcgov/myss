@@ -36,6 +36,13 @@ namespace Myss.Api.Configuration
         /// deliberate hardening control, not a reproduction of the original behaviour.
         /// </summary>
         public const string WorkerWithIdir = "WorkerWithIdir";
+
+        /// <summary>
+        /// Admin form-editor endpoints: any authenticated caller with a
+        /// government (IDIR) identity. Narrower than [Authorize] alone, which also
+        /// admits BCeID citizens signing in; the IDIR claim is the gate.
+        /// </summary>
+        public const string AdminIdir = "AdminIdir";
     }
 
     /// <summary>
@@ -70,6 +77,11 @@ namespace Myss.Api.Configuration
                     policy => policy
                         .RequireAuthenticatedUser()
                         .RequireRole(MyssRoles.Worker, MyssRoles.Admin)
+                        .RequireClaim(KeycloakClaims.IdirUsernameClaimType))
+                .AddPolicy(
+                    MyssPolicies.AdminIdir,
+                    policy => policy
+                        .RequireAuthenticatedUser()
                         .RequireClaim(KeycloakClaims.IdirUsernameClaimType));
 
             return services;

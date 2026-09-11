@@ -50,6 +50,7 @@ namespace Myss.Api.Tests
             Assert.False((await Evaluate(anonymous, MyssPolicies.Worker)).Succeeded);
             Assert.False((await Evaluate(anonymous, MyssPolicies.Admin)).Succeeded);
             Assert.False((await Evaluate(anonymous, MyssPolicies.WorkerWithIdir)).Succeeded);
+            Assert.False((await Evaluate(anonymous, MyssPolicies.AdminIdir)).Succeeded);
         }
 
         [Fact]
@@ -128,6 +129,27 @@ namespace Myss.Api.Tests
             Assert.True((await Evaluate(principal, MyssPolicies.Worker)).Succeeded);
         }
 
+        [Fact]
+        public async Task AdminIdirAcceptsAnyIdirIdentity()
+        {
+            // The form editor gates on a government identity, not on a staff role:
+            // an IDIR sign-in is enough, a BCeID citizen is not.
+            var idir = User(new Claim(KeycloakClaims.IdirUsernameClaimType, "AJONES"));
+
+            Assert.True((await Evaluate(idir, MyssPolicies.AdminIdir)).Succeeded);
+        }
+
+        [Fact]
+        public async Task AdminIdirRejectsAnAuthenticatedCitizenWithoutIdir()
+        {
+            Assert.False((await Evaluate(WithRoles(MyssRoles.Client), MyssPolicies.AdminIdir)).Succeeded);
+        }
+
+        [Fact]
+        public async Task AdminIdirRejectsAWorkerWithoutAnIdirIdentity()
+        {
+            Assert.False((await Evaluate(WithRoles(MyssRoles.Worker), MyssPolicies.AdminIdir)).Succeeded);
+        }
         [Theory]
         [InlineData("alice", MyssPolicies.Client, true)]
         [InlineData("alice", MyssPolicies.Worker, false)]
@@ -137,6 +159,10 @@ namespace Myss.Api.Tests
         [InlineData("workernoidir", MyssPolicies.WorkerWithIdir, false)]
         [InlineData("admin", MyssPolicies.Worker, true)]
         [InlineData("admin", MyssPolicies.Admin, true)]
+        [InlineData("alice", MyssPolicies.AdminIdir, false)]
+        [InlineData("worker", MyssPolicies.AdminIdir, true)]
+        [InlineData("admin", MyssPolicies.AdminIdir, true)]
+        [InlineData("workernoidir", MyssPolicies.AdminIdir, false)]
         public async Task MockPersonasAuthorizeAsExpected(string persona, string policy, bool expected)
         {
             var principal = MockAuthenticationHandler.BuildPrincipal(
