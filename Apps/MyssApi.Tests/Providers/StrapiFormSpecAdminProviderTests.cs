@@ -379,6 +379,50 @@ namespace Myss.Api.Tests.Providers
             Assert.Contains("pagination[page]=2", _http.Requests[1].RequestUri!.Query);
         }
 
+        [Fact]
+        public async Task Write_NonPositiveVersion_ThrowsContentEngineUnavailable()
+        {
+            // A present version below the schema minimum of 1 is a malformed response.
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": { "formSpecId": "f", "version": 0, "spec": {} } }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().SaveDraftAsync("f", Spec("{}"), "t", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Write_WrongTypedVersion_ThrowsContentEngineUnavailable()
+        {
+            // A present-but-wrong-type version must be rejected, not masked by the fallback.
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": { "formSpecId": "f", "version": "3", "spec": {} } }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().SaveDraftAsync("f", Spec("{}"), "t", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Write_WrongTypedFormSpecId_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": { "formSpecId": 123, "version": 1, "spec": {} } }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().SaveDraftAsync("f", Spec("{}"), "t", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetDraft_NonPositiveVersion_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("""{ "data": [ { "documentId": "d", "formSpecId": "f", "version": 0, "spec": {} } ] }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
         private StrapiFormSpecAdminProvider NewProvider(string? adminToken = null)
         {
             var settings = new Dictionary<string, string?> { ["Strapi:BaseUrl"] = "http://strapi.test" };

@@ -479,7 +479,8 @@ namespace Myss.Api.Providers
         /// <summary>
         /// Builds the model echoed by a successful write. The entity must carry a valid
         /// object-valued spec (so an empty <c>{ }</c> is rejected as unproven); id and
-        /// version fall back to the values we sent when the response omits them.
+        /// version fall back to the values we sent only when the response OMITS them - a
+        /// present-but-malformed id or version is rejected, not masked.
         /// </summary>
         private static FormSpecModel BuildModel(JsonElement entity, string? fallbackFormSpecId, int? fallbackVersion)
         {
@@ -497,33 +498,42 @@ namespace Myss.Api.Providers
             };
         }
 
-        /// <summary>Reads a required non-empty string field, using a fallback when the response omits it.</summary>
+        /// <summary>
+        /// Reads a required non-empty string field. The fallback is used only when the
+        /// field is ABSENT; a present value that is not a non-empty string is a malformed
+        /// response and is rejected rather than masked by the fallback.
+        /// </summary>
         private static string ReadRequiredString(JsonElement entity, string name, string? fallback)
         {
-            if (entity.TryGetProperty(name, out JsonElement el)
-                && el.ValueKind == JsonValueKind.String
-                && el.GetString() is { Length: > 0 } value)
+            if (!entity.TryGetProperty(name, out JsonElement el))
             {
-                return value;
+                return string.IsNullOrEmpty(fallback)
+                    ? throw new ContentEngineUnavailableException($"The content engine response is missing '{name}'.")
+                    : fallback;
             }
 
-            return string.IsNullOrEmpty(fallback)
-                ? throw new ContentEngineUnavailableException($"The content engine response is missing a valid '{name}'.")
-                : fallback;
+            return el.ValueKind == JsonValueKind.String && el.GetString() is { Length: > 0 } value
+                ? value
+                : throw new ContentEngineUnavailableException($"The content engine returned an invalid '{name}'.");
         }
 
-        /// <summary>Reads a required in-range integer version, using a fallback when the response omits it.</summary>
+        /// <summary>
+        /// Reads a required positive integer <c>version</c> (the schema minimum is 1). The
+        /// fallback is used only when the field is ABSENT; a present value that is the wrong
+        /// type, non-integral, or below 1 is a malformed response and is rejected.
+        /// </summary>
         private static int ReadRequiredVersion(JsonElement entity, int? fallback)
         {
-            if (entity.TryGetProperty("version", out JsonElement el)
-                && el.ValueKind == JsonValueKind.Number
-                && el.TryGetInt32(out int value))
+            if (!entity.TryGetProperty("version", out JsonElement el))
             {
-                return value;
+                return fallback ?? throw new ContentEngineUnavailableException(
+                    "The content engine response is missing a 'version'.");
             }
 
-            return fallback ?? throw new ContentEngineUnavailableException(
-                "The content engine response is missing a valid 'version'.");
+            return el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out int value) && value >= 1
+                ? value
+                : throw new ContentEngineUnavailableException(
+                    "The content engine returned a 'version' that is not a positive integer.");
         }
 
         /// <summary>Reads an optional string field; a present value of any other type is a malformed response.</summary>

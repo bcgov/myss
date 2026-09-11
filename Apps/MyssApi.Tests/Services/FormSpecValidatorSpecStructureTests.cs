@@ -107,6 +107,21 @@ namespace Myss.Api.Tests.Services
             Assert.Empty(errors);
         }
 
+        [Theory]
+        [InlineData("null")]
+        [InlineData("[]")]
+        [InlineData("\"just a string\"")]
+        [InlineData("123")]
+        public void NonObjectSpec_ReportsSpecNotAnObject(string specJson)
+        {
+            // Match the authoritative lifecycle: a non-object spec is SPEC.NOT_AN_OBJECT,
+            // not COMPONENTS.MISSING.
+            IReadOnlyList<ValidationErrorModel> errors = Validate(specJson);
+
+            Assert.Contains(FormSpecStructureKeywords.SpecNotAnObject, Keywords(errors));
+            Assert.DoesNotContain(FormSpecStructureKeywords.ComponentsMissing, Keywords(errors));
+        }
+
         private static IReadOnlyList<ValidationErrorModel> Validate(string specJson) =>
             FormSpecValidator.ValidateSpecStructure(JsonDocument.Parse(specJson).RootElement.Clone());
 
