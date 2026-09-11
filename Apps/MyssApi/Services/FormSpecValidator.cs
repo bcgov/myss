@@ -130,6 +130,144 @@ namespace Myss.Api.Services
             return errors;
         }
 
+        /// <summary>
+        /// Validates the STRUCTURE of a form spec (not answers): the fast, cheap
+        /// checks a designer can trip over just by editing. Mirrors the structural
+        /// subset of MyssContent's <c>form-spec-rules.ts</c> — a non-empty
+        /// <c>components</c> array, every component keyed, keys unique across the
+        /// whole form, and every <c>conditional.when</c> pointing at a real field.
+        /// Version sequence and immutability are left to Strapi's lifecycle, the
+        /// only place that can see the other rows; this is a fast 422, not the gate.
+        /// </summary>
+        /// <param name="spec">The Form.io spec body.</param>
+        /// <returns>Every structural failure found. Empty when the spec is well-formed.</returns>
+        public static IReadOnlyList<ValidationErrorModel> ValidateSpecStructure(JsonElement spec)
+        {
+            if (spec.ValueKind != JsonValueKind.Object
+                || !spec.TryGetProperty("components", out JsonElement componentsArray)
+                || componentsArray.ValueKind != JsonValueKind.Array)
+            {
+                return [Error("components", FormSpecStructureKeywords.ComponentsMissing, "The form spec must have a `components` array.")];
+            }
+
+            List<JsonElement> components = [];
+            CollectAll(spec, components);
+
+            if (components.Count == 0)
+            {
+                return [Error("components", FormSpecStructureKeywords.ComponentsEmpty, "The form spec has no components.")];
+            }
+
+            List<ValidationErrorModel> errors = [];
+            HashSet<string> seen = [];
+            SortedSet<string> duplicates = [];
+            bool missingKeyReported = false;
+
+            foreach (JsonElement component in components)
+            {
+                string? key = component.TryGetProperty("key", out JsonElement k) && k.ValueKind == JsonValueKind.String
+                    ? k.GetString()
+                    : null;
+
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    // Report the missing-key fault once: the message is identical for
+                    // every keyless component, so repeating it only clutters the summary.
+                    if (!missingKeyReported)
+                    {
+                        errors.Add(Error("components", FormSpecStructureKeywords.ComponentKeyMissing, "Every component needs a non-empty `key`."));
+                        missingKeyReported = true;
+                    }
+
+                    continue;
+                }
+
+                if (!seen.Add(key))
+                {
+                    duplicates.Add(key);
+                }
+            }
+
+            foreach (string key in duplicates)
+            {
+                errors.Add(Error(key, FormSpecStructureKeywords.ComponentKeyDuplicate, $"Duplicate component key \"{key}\". Keys must be unique across the whole form."));
+            }
+
+            SortedSet<string> unknownTargets = [];
+            foreach (JsonElement component in components)
+            {
+                if (component.TryGetProperty("conditional", out JsonElement cond)
+                    && cond.ValueKind == JsonValueKind.Object
+                    && cond.TryGetProperty("when", out JsonElement when)
+                    && when.ValueKind == JsonValueKind.String
+                    && when.GetString() is { Length: > 0 } target
+                    && !seen.Contains(target))
+                {
+                    unknownTargets.Add(target);
+                }
+            }
+
+            foreach (string target in unknownTargets)
+            {
+                errors.Add(Error(target, FormSpecStructureKeywords.ConditionalUnknownField, $"A conditional refers to \"{target}\", which is not a field in this form."));
+            }
+
+            return errors;
+        }
+
+        /// <summary>
+        /// Walks every component node (panels included), so key-uniqueness and
+        /// conditional checks see the whole tree. Unlike <see cref="Collect"/> this
+        /// keeps container components too, because a duplicate key on a panel is
+        /// still a duplicate.
+        /// </summary>
+        private static void CollectAll(JsonElement node, List<JsonElement> into)
+        {
+            if (node.TryGetProperty("components", out JsonElement children) && children.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement child in children.EnumerateArray())
+                {
+                    if (child.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    into.Add(child);
+                    CollectAll(child, into);
+                }
+            }
+
+            if (node.TryGetProperty("columns", out JsonElement columns) && columns.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement column in columns.EnumerateArray())
+                {
+                    if (column.ValueKind == JsonValueKind.Object)
+                    {
+                        CollectAll(column, into);
+                    }
+                }
+            }
+
+            if (node.TryGetProperty("rows", out JsonElement rows) && rows.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement row in rows.EnumerateArray())
+                {
+                    if (row.ValueKind != JsonValueKind.Array)
+                    {
+                        continue;
+                    }
+
+                    foreach (JsonElement cell in row.EnumerateArray())
+                    {
+                        if (cell.ValueKind == JsonValueKind.Object)
+                        {
+                            CollectAll(cell, into);
+                        }
+                    }
+                }
+            }
+        }
+
         private static void ApplyDomainRules(
             string key,
             ComponentInfo component,

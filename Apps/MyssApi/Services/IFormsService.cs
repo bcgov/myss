@@ -2,6 +2,7 @@ namespace Myss.Api.Services
 {
     using System;
     using System.Collections.Generic;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Myss.Api.Models;
@@ -62,5 +63,41 @@ namespace Myss.Api.Services
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The submission summaries.</returns>
         Task<IReadOnlyList<FormSubmissionSummaryModel>> ListSubmissionsAsync(string formSpecId, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Lists every form and its versions for the admin editor (MYSS-209).
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>One summary per logical form.</returns>
+        Task<IReadOnlyList<FormSummaryModel>> ListFormsAsync(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Gets the spec to open in the admin editor: the in-progress draft, or
+        /// the latest published version as the starting point for a new draft.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The spec to edit, or null when the form does not exist.</returns>
+        Task<FormSpecModel?> GetDraftAsync(string formSpecId, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Validates the spec's structure, then saves it as a draft. Nothing is
+        /// written when the structure check fails.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="spec">The edited Form.io specification JSON.</param>
+        /// <param name="title">The human-readable title, or null to leave it unset.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The saved draft, or the structural failures that stopped it.</returns>
+        Task<FormSpecWriteResultModel<FormSpecModel>> SaveDraftAsync(string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Validates the in-progress draft, then publishes it as the next version.
+        /// Nothing is written when the structure check fails or there is no draft.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The published version number, or the reasons it was refused.</returns>
+        Task<FormSpecWriteResultModel<PublishResultModel>> PublishAsync(string formSpecId, CancellationToken cancellationToken);
     }
 }

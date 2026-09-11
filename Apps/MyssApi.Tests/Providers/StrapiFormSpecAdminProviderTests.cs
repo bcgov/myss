@@ -148,7 +148,7 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(Ok(Data(Row("f", 3, "F"))));   // draft latest -> v3
             _http.Enqueue(Ok(Data(Row("f", 3, "F"))));   // published latest -> v3 (nothing new)
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsAsync<NoDraftToPublishException>(() =>
                 NewProvider().PublishAsync("f", CancellationToken.None));
         }
 
@@ -193,6 +193,173 @@ namespace Myss.Api.Tests.Providers
             Assert.Null(_http.Requests[0].Headers.Authorization);
         }
 
+        [Fact]
+        public async Task Write_ConnectionFailure_ThrowsContentEngineUnavailable()
+        {
+            // SaveDraft's first call is a read; a transport failure there must surface
+            // as unavailable (=> 502), not a raw HttpRequestException (=> 500).
+            _http.EnqueueThrow(new HttpRequestException("connection refused"));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().SaveDraftAsync("f", Spec("{}"), "t", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Timeout_ThrowsContentEngineUnavailable()
+        {
+            // HttpClient surfaces a timeout as a TaskCanceledException whose token is
+            // not the caller's; with CancellationToken.None it is an upstream failure.
+            _http.EnqueueThrow(new TaskCanceledException("timed out"));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CallerCancellation_Propagates_NotMappedToUnavailable()
+        {
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+            _http.EnqueueThrow(new OperationCanceledException(cts.Token));
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+                NewProvider().GetDraftAsync("f", cts.Token));
+        }
+
+        [Fact]
+        public async Task Read_NonSuccessStatus_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(new HttpResponseMessage(HttpStatusCode.Forbidden));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Read_MalformedSuccessBody_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("not json {"));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Read_UnexpectedRowShape_ThrowsContentEngineUnavailable()
+        {
+            // A 200 whose row is missing required fields is an upstream failure, not a
+            // silent mis-parse.
+            _http.Enqueue(Ok("""{ "data": [ { "documentId": "d1" } ] }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Read_MissingDataProperty_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("{}"));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Read_NonArrayData_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("""{ "data": {} }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Read_NonObjectRoot_ThrowsContentEngineUnavailable()
+        {
+            // Previously a non-object root threw InvalidOperationException outside the
+            // parse guard (=> 500); it must now be an upstream failure (=> 502).
+            _http.Enqueue(Ok("[]"));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Write_EmptyObjectResponse_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("""{ "data": [] }"""));   // draft latest -> none
+            _http.Enqueue(Ok("""{ "data": [] }"""));   // published latest -> none
+            _http.Enqueue(Ok("{}"));                     // POST create -> malformed (no data object)
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().SaveDraftAsync("f", Spec("{}"), "t", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Write_NonObjectRootResponse_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("""{ "data": [] }"""));   // draft latest -> none
+            _http.Enqueue(Ok("""{ "data": [] }"""));   // published latest -> none
+            _http.Enqueue(Ok("[]"));                     // POST create -> array root
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().SaveDraftAsync("f", Spec("{}"), "t", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Write_EmptyDataObject_ThrowsContentEngineUnavailable()
+        {
+            // A 200 whose entity is {} is not evidence Strapi saved the draft.
+            _http.Enqueue(Ok("""{ "data": [] }"""));   // draft latest -> none
+            _http.Enqueue(Ok("""{ "data": [] }"""));   // published latest -> none
+            _http.Enqueue(Ok("""{ "data": {} }"""));   // POST create -> empty entity
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().SaveDraftAsync("f", Spec("{}"), "t", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Write_WrongTypedTitle_ThrowsContentEngineUnavailable()
+        {
+            // A wrong-typed echoed field must be a 502, not an uncaught 500.
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": { "formSpecId": "f", "version": 1, "spec": {}, "title": 123 } }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().SaveDraftAsync("f", Spec("{}"), "t", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Publish_EmptyResponse_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok(Data(RowWithDoc("f", 4, "d4"))));   // draft latest -> v4
+            _http.Enqueue(Ok(Data(Row("f", 3, "F"))));           // published latest -> v3
+            _http.Enqueue(Ok("""{ "data": {} }"""));             // PUT publish -> empty entity
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().PublishAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetDraft_ScalarSpec_ThrowsContentEngineUnavailable()
+        {
+            // An editable draft must have an object-valued spec; a scalar is malformed.
+            _http.Enqueue(Ok("""{ "data": [ { "documentId": "d", "formSpecId": "f", "version": 1, "spec": "scalar" } ] }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetDraft_NullFormSpecId_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("""{ "data": [ { "documentId": "d", "formSpecId": null, "version": 1, "spec": {} } ] }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetDraftAsync("f", CancellationToken.None));
+        }
+
         private StrapiFormSpecAdminProvider NewProvider(string? adminToken = null)
         {
             var settings = new Dictionary<string, string?> { ["Strapi:BaseUrl"] = "http://strapi.test" };
@@ -235,21 +402,26 @@ namespace Myss.Api.Tests.Providers
         /// </summary>
         private sealed class QueueHttpHandler : HttpMessageHandler
         {
-            private readonly Queue<HttpResponseMessage> _responses = new();
+            private readonly Queue<Func<HttpResponseMessage>> _steps = new();
 
             public List<HttpRequestMessage> Requests { get; } = new();
 
             public List<string?> Bodies { get; } = new();
 
-            public void Enqueue(HttpResponseMessage response) => _responses.Enqueue(response);
+            public void Enqueue(HttpResponseMessage response) => _steps.Enqueue(() => response);
+
+            public void EnqueueThrow(Exception ex) => _steps.Enqueue(() => throw ex);
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 Requests.Add(request);
                 Bodies.Add(request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken));
-                return _responses.Count > 0
-                    ? _responses.Dequeue()
-                    : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{ "data": [] }""", Encoding.UTF8, "application/json") };
+                if (_steps.Count > 0)
+                {
+                    return _steps.Dequeue()();
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{ "data": [] }""", Encoding.UTF8, "application/json") };
             }
         }
     }

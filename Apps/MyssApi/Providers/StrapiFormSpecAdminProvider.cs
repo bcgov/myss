@@ -143,7 +143,7 @@ namespace Myss.Api.Providers
                     $"{FormSpecsPath}/{Uri.EscapeDataString(draft.DocumentId)}?status=draft",
                     BuildData(formSpecId: null, version: null, title: title, spec: spec),
                     cancellationToken);
-                return ToModel(saved, fallbackFormSpecId: formSpecId, fallbackVersion: draft.Version);
+                return BuildModel(saved, fallbackFormSpecId: formSpecId, fallbackVersion: draft.Version);
             }
 
             // No in-progress draft: this edit becomes the next version. MyssApi
@@ -155,7 +155,7 @@ namespace Myss.Api.Providers
                 $"{FormSpecsPath}?status=draft",
                 BuildData(formSpecId: formSpecId, version: nextVersion, title: title, spec: spec),
                 cancellationToken);
-            return ToModel(created, fallbackFormSpecId: formSpecId, fallbackVersion: nextVersion);
+            return BuildModel(created, fallbackFormSpecId: formSpecId, fallbackVersion: nextVersion);
         }
 
         /// <inheritdoc/>
@@ -166,17 +166,24 @@ namespace Myss.Api.Providers
             {
                 // Nothing unpublished to release. Surface a clear error rather
                 // than a confusing Strapi refusal or a silent no-op.
-                throw new InvalidOperationException(
-                    $"No in-progress draft to publish for form '{formSpecId}'. Save a draft before publishing.");
+                throw new NoDraftToPublishException(formSpecId);
             }
 
             // The version was assigned at save time; the lifecycle validates the
             // sequence and immutability when the document flips to published.
-            await WriteAsync(
+            JsonElement published = await WriteAsync(
                 HttpMethod.Put,
                 $"{FormSpecsPath}/{Uri.EscapeDataString(draft.DocumentId)}?status=published",
                 data: null,
                 cancellationToken);
+
+            // A real publish echoes the published entity; an empty object is not
+            // evidence the document flipped to published.
+            if (published.ValueKind != JsonValueKind.Object || !published.EnumerateObject().Any())
+            {
+                throw new ContentEngineUnavailableException("The content engine returned an empty publish response.");
+            }
+
             return draft.Version;
         }
 
@@ -241,7 +248,8 @@ namespace Myss.Api.Providers
                 request.Content = new StringContent(data, Encoding.UTF8, "application/json");
             }
 
-            using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
+            using HttpResponseMessage response = await SendGuardedAsync(
+                () => _httpClient.SendAsync(request, cancellationToken), cancellationToken);
             string body = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -265,24 +273,59 @@ namespace Myss.Api.Providers
                 throw new StrapiWriteException(response.StatusCode, body);
             }
 
-            using JsonDocument document = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
-            return document.RootElement.TryGetProperty("data", out JsonElement dataElement)
-                ? dataElement.Clone()
-                : document.RootElement.Clone();
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+            }
+            catch (JsonException ex)
+            {
+                throw new ContentEngineUnavailableException("The content engine returned a malformed response.", ex);
+            }
+
+            using (document)
+            {
+                JsonElement root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object
+                    || !root.TryGetProperty("data", out JsonElement dataElement)
+                    || dataElement.ValueKind != JsonValueKind.Object)
+                {
+                    // A successful write must echo the saved entity as { "data": { ... } };
+                    // anything else is a malformed upstream response, not a usable result.
+                    throw new ContentEngineUnavailableException(
+                        "The content engine returned a malformed write response.");
+                }
+
+                return dataElement.Clone();
+            }
         }
 
         private async Task<IReadOnlyList<Row>> GetRowsAsync(string query, CancellationToken cancellationToken)
         {
             using JsonDocument document = await GetAsync(query, cancellationToken);
-            if (!document.RootElement.TryGetProperty("data", out JsonElement data) || data.ValueKind != JsonValueKind.Array)
+            JsonElement root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("data", out JsonElement data)
+                || data.ValueKind != JsonValueKind.Array)
             {
-                return Array.Empty<Row>();
+                // A legitimate "no results" is data:[] (still an array). A missing or
+                // non-array data, or a non-object root, is a malformed upstream response.
+                throw new ContentEngineUnavailableException(
+                    "The content engine returned a malformed list response.");
             }
 
             var rows = new List<Row>(data.GetArrayLength());
-            foreach (JsonElement entry in data.EnumerateArray())
+            try
             {
-                rows.Add(ParseRow(entry));
+                foreach (JsonElement entry in data.EnumerateArray())
+                {
+                    rows.Add(ParseRow(entry));
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException or FormatException)
+            {
+                throw new ContentEngineUnavailableException(
+                    "The content engine returned a form-spec row in an unexpected shape.", ex);
             }
 
             return rows;
@@ -296,7 +339,8 @@ namespace Myss.Api.Providers
 
         private async Task<JsonDocument> GetAsync(string query, CancellationToken cancellationToken)
         {
-            using HttpResponseMessage response = await _httpClient.GetAsync(query, cancellationToken);
+            using HttpResponseMessage response = await SendGuardedAsync(
+                () => _httpClient.GetAsync(query, cancellationToken), cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning(
@@ -310,53 +354,167 @@ namespace Myss.Api.Providers
                         "The content engine rejected the request as unauthorized. Check that Strapi:AdminApiToken "
                         + "is set and grants find and findOne on form-spec.");
                 }
+
+                // A non-success read is an upstream/config fault (bad token, outage),
+                // not a business outcome - surface it as unavailable, mapped to 502.
+                throw new ContentEngineUnavailableException(
+                    $"The content engine returned {(int)response.StatusCode} for a read.");
             }
 
-            response.EnsureSuccessStatusCode();
-
             string body = await response.Content.ReadAsStringAsync(cancellationToken);
-            return JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+            try
+            {
+                return JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+            }
+            catch (JsonException ex)
+            {
+                throw new ContentEngineUnavailableException("The content engine returned a malformed response.", ex);
+            }
+        }
+
+        /// <summary>
+        /// Runs an HTTP send, converting a transport failure (cannot connect) or a
+        /// timeout into <see cref="ContentEngineUnavailableException"/>. A cancellation
+        /// requested through the caller's own token is left to propagate as a cancellation,
+        /// never disguised as an upstream failure.
+        /// </summary>
+        /// <param name="send">The send to run.</param>
+        /// <param name="cancellationToken">The caller's cancellation token.</param>
+        /// <returns>The HTTP response.</returns>
+        private async Task<HttpResponseMessage> SendGuardedAsync(
+            Func<Task<HttpResponseMessage>> send, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await send();
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Could not reach the content engine.");
+                throw new ContentEngineUnavailableException("The content engine could not be reached.", ex);
+            }
+            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogError(ex, "The content engine did not respond in time.");
+                throw new ContentEngineUnavailableException("The content engine did not respond in time.", ex);
+            }
         }
 
         private static Row ParseRow(JsonElement entry)
         {
-            JsonElement? spec = entry.TryGetProperty("spec", out JsonElement s) ? s.Clone() : null;
+            if (entry.ValueKind != JsonValueKind.Object)
+            {
+                throw new ContentEngineUnavailableException("The content engine returned a non-object form-spec row.");
+            }
+
             bool published = entry.TryGetProperty("publishedAt", out JsonElement pub)
                 && pub.ValueKind is not JsonValueKind.Null;
 
             return new Row(
-                DocumentId: entry.TryGetProperty("documentId", out JsonElement doc) ? doc.GetString() ?? string.Empty : string.Empty,
-                FormSpecId: entry.GetProperty("formSpecId").GetString()!,
-                Version: entry.GetProperty("version").GetInt32(),
-                Title: entry.TryGetProperty("title", out JsonElement title) ? title.GetString() : null,
-                Spec: spec,
+                DocumentId: ReadOptionalString(entry, "documentId") ?? string.Empty,
+                FormSpecId: ReadRequiredString(entry, "formSpecId", fallback: null),
+                Version: ReadRequiredVersion(entry, fallback: null),
+                Title: ReadOptionalString(entry, "title"),
+                Spec: entry.TryGetProperty("spec", out JsonElement spec) ? spec.Clone() : null,
                 Published: published);
         }
 
-        private static FormSpecModel ToModel(Row row) => new()
+        /// <summary>
+        /// Builds the editable model for a loaded draft. A draft query returns the full
+        /// entity, so the spec must be an object; a missing or scalar spec is a malformed
+        /// upstream response, not an editable form.
+        /// </summary>
+        private static FormSpecModel ToModel(Row row)
         {
-            FormSpecId = row.FormSpecId,
-            Version = row.Version,
-            Title = row.Title,
-            Spec = row.Spec ?? EmptySpec(),
-        };
+            if (row.Spec is not { ValueKind: JsonValueKind.Object } spec)
+            {
+                throw new ContentEngineUnavailableException(
+                    "The content engine returned a form-spec without an object-valued spec.");
+            }
 
-        private static FormSpecModel ToModel(JsonElement entry, string fallbackFormSpecId, int fallbackVersion) => new()
-        {
-            FormSpecId = entry.TryGetProperty("formSpecId", out JsonElement id) && id.ValueKind == JsonValueKind.String
-                ? id.GetString()!
-                : fallbackFormSpecId,
-            Version = entry.TryGetProperty("version", out JsonElement v) && v.ValueKind == JsonValueKind.Number
-                ? v.GetInt32()
-                : fallbackVersion,
-            Title = entry.TryGetProperty("title", out JsonElement t) ? t.GetString() : null,
-            Spec = entry.TryGetProperty("spec", out JsonElement s) ? s.Clone() : EmptySpec(),
-        };
+            return new FormSpecModel
+            {
+                FormSpecId = row.FormSpecId,
+                Version = row.Version,
+                Title = row.Title,
+                Spec = spec,
+            };
+        }
 
-        private static JsonElement EmptySpec()
+        /// <summary>
+        /// Builds the model echoed by a successful write. The entity must carry a valid
+        /// object-valued spec (so an empty <c>{ }</c> is rejected as unproven); id and
+        /// version fall back to the values we sent when the response omits them.
+        /// </summary>
+        private static FormSpecModel BuildModel(JsonElement entity, string? fallbackFormSpecId, int? fallbackVersion)
         {
-            using JsonDocument empty = JsonDocument.Parse("{}");
-            return empty.RootElement.Clone();
+            if (entity.ValueKind != JsonValueKind.Object)
+            {
+                throw new ContentEngineUnavailableException("The content engine returned a non-object form-spec entity.");
+            }
+
+            return new FormSpecModel
+            {
+                FormSpecId = ReadRequiredString(entity, "formSpecId", fallbackFormSpecId),
+                Version = ReadRequiredVersion(entity, fallbackVersion),
+                Title = ReadOptionalString(entity, "title"),
+                Spec = ReadRequiredObject(entity, "spec"),
+            };
+        }
+
+        /// <summary>Reads a required non-empty string field, using a fallback when the response omits it.</summary>
+        private static string ReadRequiredString(JsonElement entity, string name, string? fallback)
+        {
+            if (entity.TryGetProperty(name, out JsonElement el)
+                && el.ValueKind == JsonValueKind.String
+                && el.GetString() is { Length: > 0 } value)
+            {
+                return value;
+            }
+
+            return string.IsNullOrEmpty(fallback)
+                ? throw new ContentEngineUnavailableException($"The content engine response is missing a valid '{name}'.")
+                : fallback;
+        }
+
+        /// <summary>Reads a required in-range integer version, using a fallback when the response omits it.</summary>
+        private static int ReadRequiredVersion(JsonElement entity, int? fallback)
+        {
+            if (entity.TryGetProperty("version", out JsonElement el)
+                && el.ValueKind == JsonValueKind.Number
+                && el.TryGetInt32(out int value))
+            {
+                return value;
+            }
+
+            return fallback ?? throw new ContentEngineUnavailableException(
+                "The content engine response is missing a valid 'version'.");
+        }
+
+        /// <summary>Reads an optional string field; a present value of any other type is a malformed response.</summary>
+        private static string? ReadOptionalString(JsonElement entity, string name)
+        {
+            if (!entity.TryGetProperty(name, out JsonElement el) || el.ValueKind == JsonValueKind.Null)
+            {
+                return null;
+            }
+
+            return el.ValueKind == JsonValueKind.String
+                ? el.GetString()
+                : throw new ContentEngineUnavailableException(
+                    $"The content engine returned a '{name}' of an unexpected type.");
+        }
+
+        /// <summary>Reads a required object-valued field (a clone), else a malformed response.</summary>
+        private static JsonElement ReadRequiredObject(JsonElement entity, string name)
+        {
+            if (entity.TryGetProperty(name, out JsonElement el) && el.ValueKind == JsonValueKind.Object)
+            {
+                return el.Clone();
+            }
+
+            throw new ContentEngineUnavailableException(
+                $"The content engine response is missing an object-valued '{name}'.");
         }
 
         /// <summary>
@@ -399,5 +557,49 @@ namespace Myss.Api.Providers
         /// Gets the raw response body the content engine returned, if any.
         /// </summary>
         public string? Body { get; }
+    }
+
+    /// <summary>
+    /// Thrown when the content engine cannot be reached, times out, returns a
+    /// non-success status on a read, or returns a malformed response - an
+    /// infrastructure/configuration failure rather than a business refusal. The API
+    /// maps it to 502 with a generic message; the detail is logged, not returned.
+    /// </summary>
+    public class ContentEngineUnavailableException : Exception
+    {
+        /// <summary>Initializes a new instance of the <see cref="ContentEngineUnavailableException"/> class.</summary>
+        /// <param name="message">A description of the failure.</param>
+        public ContentEngineUnavailableException(string message)
+            : base(message)
+        {
+        }
+
+        /// <summary>Initializes a new instance of the <see cref="ContentEngineUnavailableException"/> class.</summary>
+        /// <param name="message">A description of the failure.</param>
+        /// <param name="innerException">The underlying transport or parse failure.</param>
+        public ContentEngineUnavailableException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Thrown by the admin provider when a publish is requested but the form has no
+    /// in-progress (never-published) draft to release. A distinct type so the service
+    /// catches ONLY this case, never an unrelated <see cref="System.InvalidOperationException"/>
+    /// (for example one raised while parsing a malformed upstream response).
+    /// </summary>
+    public class NoDraftToPublishException : Exception
+    {
+        /// <summary>Initializes a new instance of the <see cref="NoDraftToPublishException"/> class.</summary>
+        /// <param name="formSpecId">The form that had no in-progress draft.</param>
+        public NoDraftToPublishException(string formSpecId)
+            : base($"No in-progress draft to publish for form '{formSpecId}'. Save a draft before publishing.")
+        {
+            this.FormSpecId = formSpecId;
+        }
+
+        /// <summary>Gets the form that had no in-progress draft.</summary>
+        public string FormSpecId { get; }
     }
 }

@@ -147,4 +147,31 @@ namespace Myss.Api.Models
         /// </summary>
         public required bool IsPublished { get; set; }
     }
+
+    /// <summary>
+    /// The body of a save-draft request: the edited spec and its title.
+    /// </summary>
+    public class SaveDraftRequestModel
+    {
+        /// <summary>
+        /// Gets or sets the edited Form.io specification JSON.
+        /// </summary>
+        public required JsonElement Spec { get; set; }
+
+        /// <summary>
+        /// Gets or sets the human-readable title, or null to leave it unset.
+        /// </summary>
+        public string? Title { get; set; }
+    }
+
+    /// <summary>
+    /// The result of publishing a form: the version number that went live.
+    /// </summary>
+    public class PublishResultModel
+    {
+        /// <summary>
+        /// Gets or sets the version number that was published.
+        /// </summary>
+        public required int Version { get; set; }
+    }
 }

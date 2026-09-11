@@ -57,4 +57,34 @@ namespace Myss.Api.Models
             IReadOnlyList<ValidationErrorModel> errors
         ) => new() { Errors = errors };
     }
+
+    /// <summary>
+    /// The outcome of an admin form-spec write (save draft or publish): the
+    /// value produced, or the reasons it was refused. Mirrors
+    /// <see cref="FormSubmissionResultModel"/> so the controller can shape a
+    /// 422-with-errors the same way for both.
+    /// </summary>
+    /// <typeparam name="T">The success payload type.</typeparam>
+    public class FormSpecWriteResultModel<T>
+        where T : class
+    {
+        /// <summary>Gets or sets the produced value. Null when validation failed.</summary>
+        public T? Value { get; set; }
+
+        /// <summary>Gets or sets every reason the write was refused.</summary>
+        public IReadOnlyList<ValidationErrorModel> Errors { get; set; } = [];
+
+        /// <summary>Gets a value indicating whether the write was accepted.</summary>
+        public bool IsValid => Errors.Count == 0;
+
+        /// <summary>Creates an accepted result.</summary>
+        /// <param name="value">The produced value.</param>
+        /// <returns>An accepted result.</returns>
+        public static FormSpecWriteResultModel<T> Accepted(T value) => new() { Value = value };
+
+        /// <summary>Creates a refused result.</summary>
+        /// <param name="errors">Every reason for refusal.</param>
+        /// <returns>A refused result.</returns>
+        public static FormSpecWriteResultModel<T> Refused(IReadOnlyList<ValidationErrorModel> errors) => new() { Errors = errors };
+    }
 }
