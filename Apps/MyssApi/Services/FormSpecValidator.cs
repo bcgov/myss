@@ -143,8 +143,12 @@ namespace Myss.Api.Services
         /// <returns>Every structural failure found. Empty when the spec is well-formed.</returns>
         public static IReadOnlyList<ValidationErrorModel> ValidateSpecStructure(JsonElement spec)
         {
-            if (spec.ValueKind != JsonValueKind.Object
-                || !spec.TryGetProperty("components", out JsonElement componentsArray)
+            if (spec.ValueKind != JsonValueKind.Object)
+            {
+                return [Error("spec", FormSpecStructureKeywords.SpecNotAnObject, "The form spec must be a JSON object with a `components` array.")];
+            }
+
+            if (!spec.TryGetProperty("components", out JsonElement componentsArray)
                 || componentsArray.ValueKind != JsonValueKind.Array)
             {
                 return [Error("components", FormSpecStructureKeywords.ComponentsMissing, "The form spec must have a `components` array.")];
