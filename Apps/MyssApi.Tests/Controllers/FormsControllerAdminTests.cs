@@ -259,7 +259,7 @@ namespace Myss.Api.Tests.Controllers
             public Task<IReadOnlyList<FormSummaryModel>> ListFormsAsync(CancellationToken cancellationToken) =>
                 ListFormsException is not null ? throw ListFormsException : Task.FromResult(Forms);
 
-            public Task<FormSpecModel?> GetDraftAsync(string formSpecId, CancellationToken cancellationToken) =>
+            public Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken) =>
                 GetDraftException is not null ? throw GetDraftException : Task.FromResult(Draft);
 
             public Task<FormSpecWriteResultModel<FormSpecModel>> SaveDraftAsync(

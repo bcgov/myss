@@ -38,7 +38,7 @@ namespace Myss.Api.Configuration
         public const string WorkerWithIdir = "WorkerWithIdir";
 
         /// <summary>
-        /// Admin form-editor endpoints (MYSS-209): any authenticated caller with a
+        /// Admin form-editor endpoints: any authenticated caller with a
         /// government (IDIR) identity. Narrower than [Authorize] alone, which also
         /// admits BCeID citizens signing in; the IDIR claim is the gate.
         /// </summary>

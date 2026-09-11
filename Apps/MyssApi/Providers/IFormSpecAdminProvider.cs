@@ -8,7 +8,7 @@ namespace Myss.Api.Providers
 
     /// <summary>
     /// Write-side counterpart to <see cref="IFormSpecProvider"/>: the four
-    /// operations the admin form editor (MYSS-209) needs, and nothing else.
+    /// operations the brokered admin write path needs, and nothing else.
     /// Kept separate from the read interface on purpose - the citizen read path
     /// keeps using its read-only Strapi token, so adding write support never
     /// widens the privileges of the endpoints citizens hit. Implementations
@@ -19,27 +19,25 @@ namespace Myss.Api.Providers
     {
         /// <summary>
         /// Lists every form and its versions, with the published/draft state of
-        /// each version, for the editor's forms list.
+        /// each version, for the admin forms list.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>One <see cref="FormSummaryModel"/> per logical form.</returns>
         Task<IReadOnlyList<FormSummaryModel>> ListFormsAsync(CancellationToken cancellationToken);
 
         /// <summary>
-        /// Gets the spec to open in the editor: the in-progress draft when one
-        /// exists, otherwise the latest published version as the starting point
-        /// for a new draft.
+        /// Gets the current draft spec: the in-progress draft when one exists,
+        /// otherwise the latest published version as the baseline for a new draft.
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The spec to edit, or null when the form does not exist.</returns>
-        Task<FormSpecModel?> GetDraftAsync(string formSpecId, CancellationToken cancellationToken);
+        /// <returns>The current draft spec, or null when the form does not exist.</returns>
+        Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken);
 
         /// <summary>
         /// Saves an edited spec as a draft without publishing it. Updates the
         /// in-progress draft when one exists, otherwise creates a new draft at
-        /// the next version. The saved draft is not visible to citizens until
-        /// <see cref="PublishAsync"/> releases it.
+        /// the next version.
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>
         /// <param name="spec">The edited Form.io specification JSON.</param>

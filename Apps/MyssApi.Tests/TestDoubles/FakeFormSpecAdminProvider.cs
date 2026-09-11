@@ -22,7 +22,7 @@ namespace Myss.Api.Tests.TestDoubles
         /// <summary>Gets or sets the forms returned by <see cref="ListFormsAsync"/>.</summary>
         public IReadOnlyList<FormSummaryModel> Forms { get; set; } = [];
 
-        /// <summary>Gets or sets the spec returned by <see cref="GetDraftAsync"/>.</summary>
+        /// <summary>Gets or sets the spec returned by <see cref="GetDraftOrLatestPublishedAsync"/>.</summary>
         public FormSpecModel? Draft { get; set; }
 
         /// <summary>Gets or sets the spec returned by <see cref="SaveDraftAsync"/> (defaults to a spec built from the arguments).</summary>
@@ -42,7 +42,7 @@ namespace Myss.Api.Tests.TestDoubles
             Task.FromResult(Forms);
 
         /// <inheritdoc/>
-        public Task<FormSpecModel?> GetDraftAsync(string formSpecId, CancellationToken cancellationToken) =>
+        public Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken) =>
             Task.FromResult(Draft);
 
         /// <inheritdoc/>

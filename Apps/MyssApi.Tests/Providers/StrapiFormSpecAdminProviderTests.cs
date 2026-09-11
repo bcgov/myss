@@ -53,7 +53,7 @@ namespace Myss.Api.Tests.Providers
         {
             _http.Enqueue(Ok(Data(RowWithSpec("estimator", 4, "Estimator", """{ "display": "form" }"""))));
 
-            FormSpecModel? spec = await NewProvider().GetDraftAsync("estimator", CancellationToken.None);
+            FormSpecModel? spec = await NewProvider().GetDraftOrLatestPublishedAsync("estimator", CancellationToken.None);
 
             Assert.NotNull(spec);
             Assert.Equal("estimator", spec.FormSpecId);
@@ -67,7 +67,7 @@ namespace Myss.Api.Tests.Providers
         {
             _http.Enqueue(Ok("""{ "data": [] }"""));
 
-            FormSpecModel? spec = await NewProvider().GetDraftAsync("nope", CancellationToken.None);
+            FormSpecModel? spec = await NewProvider().GetDraftOrLatestPublishedAsync("nope", CancellationToken.None);
 
             Assert.Null(spec);
         }
@@ -175,7 +175,7 @@ namespace Myss.Api.Tests.Providers
         {
             _http.Enqueue(Ok("""{ "data": [] }"""));
 
-            await NewProvider("tok-admin-123").GetDraftAsync("f", CancellationToken.None);
+            await NewProvider("tok-admin-123").GetDraftOrLatestPublishedAsync("f", CancellationToken.None);
 
             var auth = _http.Requests[0].Headers.Authorization;
             Assert.NotNull(auth);
@@ -188,7 +188,7 @@ namespace Myss.Api.Tests.Providers
         {
             _http.Enqueue(Ok("""{ "data": [] }"""));
 
-            await NewProvider(adminToken: null).GetDraftAsync("f", CancellationToken.None);
+            await NewProvider(adminToken: null).GetDraftOrLatestPublishedAsync("f", CancellationToken.None);
 
             Assert.Null(_http.Requests[0].Headers.Authorization);
         }
@@ -212,7 +212,7 @@ namespace Myss.Api.Tests.Providers
             _http.EnqueueThrow(new TaskCanceledException("timed out"));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
         }
 
         [Fact]
@@ -223,7 +223,7 @@ namespace Myss.Api.Tests.Providers
             _http.EnqueueThrow(new OperationCanceledException(cts.Token));
 
             await Assert.ThrowsAsync<OperationCanceledException>(() =>
-                NewProvider().GetDraftAsync("f", cts.Token));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", cts.Token));
         }
 
         [Fact]
@@ -232,7 +232,7 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(new HttpResponseMessage(HttpStatusCode.Forbidden));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
         }
 
         [Fact]
@@ -241,7 +241,7 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(Ok("not json {"));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
         }
 
         [Fact]
@@ -252,7 +252,7 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(Ok("""{ "data": [ { "documentId": "d1" } ] }"""));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
         }
 
         [Fact]
@@ -261,7 +261,7 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(Ok("{}"));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
         }
 
         [Fact]
@@ -270,7 +270,7 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(Ok("""{ "data": {} }"""));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
         }
 
         [Fact]
@@ -281,7 +281,7 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(Ok("[]"));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
         }
 
         [Fact]
@@ -348,7 +348,7 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(Ok("""{ "data": [ { "documentId": "d", "formSpecId": "f", "version": 1, "spec": "scalar" } ] }"""));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
         }
 
         [Fact]
@@ -357,7 +357,7 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(Ok("""{ "data": [ { "documentId": "d", "formSpecId": null, "version": 1, "spec": {} } ] }"""));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
         }
 
         [Fact]
@@ -420,7 +420,20 @@ namespace Myss.Api.Tests.Providers
             _http.Enqueue(Ok("""{ "data": [ { "documentId": "d", "formSpecId": "f", "version": 0, "spec": {} } ] }"""));
 
             await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
-                NewProvider().GetDraftAsync("f", CancellationToken.None));
+                NewProvider().GetDraftOrLatestPublishedAsync("f", CancellationToken.None));
+        }
+
+        [Fact]
+        public void Constructor_MissingBaseUrl_Throws()
+        {
+            // A missing Strapi:BaseUrl must fail fast, not silently default to localhost.
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>())
+                .Build();
+
+            Assert.Throws<InvalidOperationException>(() =>
+                new StrapiFormSpecAdminProvider(
+                    NullLogger<StrapiFormSpecAdminProvider>.Instance, new HttpClient(_http), config));
         }
 
         private StrapiFormSpecAdminProvider NewProvider(string? adminToken = null)

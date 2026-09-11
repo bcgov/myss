@@ -18,7 +18,7 @@ namespace Myss.Api.Providers
     /// Writes form specs to the Strapi content engine over its stock Content
     /// REST API (Strapi 5.51). Built the same way as <see cref="StrapiFormSpecProvider"/>,
     /// but authenticated with the write-scoped <c>Strapi:AdminApiToken</c> and
-    /// using the draft/publish calls confirmed in MYSS-209 Step 2:
+    /// using these stock draft/publish REST calls:
     /// <list type="bullet">
     ///   <item><description>Create draft: <c>POST /api/form-specs?status=draft</c></description></item>
     ///   <item><description>Update draft: <c>PUT /api/form-specs/{documentId}?status=draft</c></description></item>
@@ -53,10 +53,19 @@ namespace Myss.Api.Providers
         {
             _logger = logger;
             _httpClient = httpClient;
-            _httpClient.BaseAddress = new Uri(configuration.GetValue<string>("Strapi:BaseUrl") ?? "http://localhost:1337");
+            string? baseUrl = configuration.GetValue<string>("Strapi:BaseUrl");
+            if (string.IsNullOrWhiteSpace(baseUrl))
+            {
+                // Fail fast rather than silently defaulting to localhost: a missing base
+                // URL in a deployed environment is a misconfiguration, not a usable default.
+                throw new InvalidOperationException(
+                    "Strapi:BaseUrl is not configured. Set it per environment (e.g., in appsettings.Development.json or as an environment variable).");
+            }
+
+            _httpClient.BaseAddress = new Uri(baseUrl);
 
             // Writes use a SEPARATE, write-scoped token from the read path, so
-            // adding an editor never widens the privileges of the endpoints
+            // adding a write path never widens the privileges of the endpoints
             // citizens hit. The token is deliberately NOT defaulted: an unset
             // value must fail loudly (a 403 from Strapi) rather than silently
             // do nothing.
@@ -121,7 +130,7 @@ namespace Myss.Api.Providers
         }
 
         /// <inheritdoc/>
-        public async Task<FormSpecModel?> GetDraftAsync(string formSpecId, CancellationToken cancellationToken)
+        public async Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken)
         {
             // The highest-version draft is the editing starting point: an
             // in-progress draft when one exists. When there is none, fall back to
@@ -130,7 +139,7 @@ namespace Myss.Api.Providers
             // whether Strapi lists a published document's draft copy or not).
             Row? row = await GetFirstRowAsync(DraftLatestQuery(formSpecId), cancellationToken)
                 ?? await GetFirstRowAsync(PublishedLatestQuery(formSpecId), cancellationToken);
-            return row is { } r ? ToModel(r) : null;
+            return row is Row r ? ToModel(r) : null;
         }
 
         /// <inheritdoc/>
@@ -138,7 +147,7 @@ namespace Myss.Api.Providers
         {
             Row? inProgress = await FindInProgressDraftAsync(formSpecId, cancellationToken);
 
-            if (inProgress is { } draft)
+            if (inProgress is Row draft)
             {
                 // A never-published draft already exists for this form - update it
                 // in place so repeated edits don't spawn a new version each save.
@@ -150,9 +159,7 @@ namespace Myss.Api.Providers
                 return BuildModel(saved, fallbackFormSpecId: formSpecId, fallbackVersion: draft.Version);
             }
 
-            // No in-progress draft: this edit becomes the next version. MyssApi
-            // assigns version = latestPublished + 1 (Step 2); Strapi's lifecycle
-            // then validates the sequence and rejects a wrong number.
+            // No in-progress draft: this edit becomes the next version (see NextVersionAsync).
             int nextVersion = await NextVersionAsync(formSpecId, cancellationToken);
             JsonElement created = await WriteAsync(
                 HttpMethod.Post,
@@ -166,7 +173,7 @@ namespace Myss.Api.Providers
         public async Task<int> PublishAsync(string formSpecId, CancellationToken cancellationToken)
         {
             Row? inProgress = await FindInProgressDraftAsync(formSpecId, cancellationToken);
-            if (inProgress is not { } draft)
+            if (inProgress is not Row draft)
             {
                 // Nothing unpublished to release. Surface a clear error rather
                 // than a confusing Strapi refusal or a silent no-op.
@@ -206,7 +213,7 @@ namespace Myss.Api.Providers
         private async Task<Row?> FindInProgressDraftAsync(string formSpecId, CancellationToken cancellationToken)
         {
             Row? latestDraft = await GetFirstRowAsync(DraftLatestQuery(formSpecId), cancellationToken);
-            if (latestDraft is not { } draft)
+            if (latestDraft is not Row draft)
             {
                 return null;
             }
@@ -216,6 +223,14 @@ namespace Myss.Api.Providers
             return draft.Version > publishedVersion ? draft : null;
         }
 
+        /// <summary>
+        /// Computes the version a new draft should take: the latest published version + 1,
+        /// or 1 when the form has never been published. MyssApi assigns the version because
+        /// writes go through the stock Strapi Content REST API - there is no server-side
+        /// route of our own to allocate it - so the write carries the number and Strapi's
+        /// lifecycle validates the sequence, rejecting a wrong or stale value rather than
+        /// silently accepting it.
+        /// </summary>
         private async Task<int> NextVersionAsync(string formSpecId, CancellationToken cancellationToken)
         {
             Row? latestPublished = await GetFirstRowAsync(PublishedLatestQuery(formSpecId), cancellationToken);
@@ -272,7 +287,7 @@ namespace Myss.Api.Providers
                         + "is set and grants create, update and publish on form-spec.");
                 }
 
-                // Pass Strapi's own error body up so the service (Step 5) can turn
+                // Pass Strapi's own error body up so the service can turn
                 // a lifecycle refusal into a readable validation error for the designer.
                 throw new StrapiWriteException(response.StatusCode, body);
             }
@@ -572,79 +587,5 @@ namespace Myss.Api.Providers
             string? Title,
             JsonElement? Spec,
             bool Published);
-    }
-
-    /// <summary>
-    /// Thrown when the content engine refuses a form-spec write. Carries Strapi's
-    /// HTTP status and raw error body so the caller can surface the reason (for
-    /// example, a lifecycle validation refusal) rather than a generic failure.
-    /// </summary>
-    public class StrapiWriteException : Exception
-    {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="StrapiWriteException"/> class.
-        /// </summary>
-        /// <param name="statusCode">The HTTP status Strapi returned.</param>
-        /// <param name="body">The raw response body Strapi returned.</param>
-        public StrapiWriteException(HttpStatusCode statusCode, string? body)
-            : base($"Strapi refused the form-spec write with {(int)statusCode}.")
-        {
-            this.StatusCode = statusCode;
-            this.Body = body;
-        }
-
-        /// <summary>
-        /// Gets the HTTP status the content engine returned.
-        /// </summary>
-        public HttpStatusCode StatusCode { get; }
-
-        /// <summary>
-        /// Gets the raw response body the content engine returned, if any.
-        /// </summary>
-        public string? Body { get; }
-    }
-
-    /// <summary>
-    /// Thrown when the content engine cannot be reached, times out, returns a
-    /// non-success status on a read, or returns a malformed response - an
-    /// infrastructure/configuration failure rather than a business refusal. The API
-    /// maps it to 502 with a generic message; the detail is logged, not returned.
-    /// </summary>
-    public class ContentEngineUnavailableException : Exception
-    {
-        /// <summary>Initializes a new instance of the <see cref="ContentEngineUnavailableException"/> class.</summary>
-        /// <param name="message">A description of the failure.</param>
-        public ContentEngineUnavailableException(string message)
-            : base(message)
-        {
-        }
-
-        /// <summary>Initializes a new instance of the <see cref="ContentEngineUnavailableException"/> class.</summary>
-        /// <param name="message">A description of the failure.</param>
-        /// <param name="innerException">The underlying transport or parse failure.</param>
-        public ContentEngineUnavailableException(string message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-    }
-
-    /// <summary>
-    /// Thrown by the admin provider when a publish is requested but the form has no
-    /// in-progress (never-published) draft to release. A distinct type so the service
-    /// catches ONLY this case, never an unrelated <see cref="System.InvalidOperationException"/>
-    /// (for example one raised while parsing a malformed upstream response).
-    /// </summary>
-    public class NoDraftToPublishException : Exception
-    {
-        /// <summary>Initializes a new instance of the <see cref="NoDraftToPublishException"/> class.</summary>
-        /// <param name="formSpecId">The form that had no in-progress draft.</param>
-        public NoDraftToPublishException(string formSpecId)
-            : base($"No in-progress draft to publish for form '{formSpecId}'. Save a draft before publishing.")
-        {
-            this.FormSpecId = formSpecId;
-        }
-
-        /// <summary>Gets the form that had no in-progress draft.</summary>
-        public string FormSpecId { get; }
     }
 }

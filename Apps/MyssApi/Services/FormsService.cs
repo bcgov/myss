@@ -68,9 +68,9 @@ namespace Myss.Api.Services
         }
 
         /// <inheritdoc/>
-        public Task<FormSpecModel?> GetDraftAsync(string formSpecId, CancellationToken cancellationToken)
+        public Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken)
         {
-            return _formSpecAdminProvider.GetDraftAsync(formSpecId, cancellationToken);
+            return _formSpecAdminProvider.GetDraftOrLatestPublishedAsync(formSpecId, cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -110,7 +110,7 @@ namespace Myss.Api.Services
         {
             // Fast structural re-check on the draft about to go live; the Strapi
             // lifecycle stays the authoritative gate for version + immutability.
-            FormSpecModel? draft = await _formSpecAdminProvider.GetDraftAsync(formSpecId, cancellationToken);
+            FormSpecModel? draft = await _formSpecAdminProvider.GetDraftOrLatestPublishedAsync(formSpecId, cancellationToken);
             if (draft is not null)
             {
                 IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.ValidateSpecStructure(draft.Spec);

@@ -10,7 +10,7 @@ namespace Myss.Api.Domain
     /// authoritative publish-time gate: MyssApi's <c>ValidateSpecStructure</c> is
     /// only a convenience that catches the cheap structural mistakes early, so it
     /// speaks the same keyword vocabulary. If a keyword changes there, change it
-    /// here (and in the Step 8 client mirror) together.
+    /// here together.
     /// </summary>
     public static class FormSpecStructureKeywords
     {

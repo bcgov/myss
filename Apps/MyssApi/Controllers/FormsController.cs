@@ -274,7 +274,7 @@ namespace Myss.Api.Controllers
             FormSpecModel? draft;
             try
             {
-                draft = await _formsService.GetDraftAsync(formSpecId, cancellationToken);
+                draft = await _formsService.GetDraftOrLatestPublishedAsync(formSpecId, cancellationToken);
             }
             catch (ContentEngineUnavailableException ex)
             {
@@ -331,9 +331,7 @@ namespace Myss.Api.Controllers
                 return ContentEngineUnavailable(ex);
             }
 
-            // 422 with the full error collection, mirroring Submit: the request was
-            // understood and refused on its contents, and the client builds one
-            // WCAG error summary from the whole list.
+            // 422 with the full error collection
             if (!result.IsValid)
             {
                 return UnprocessableEntity(
