@@ -55,6 +55,12 @@ namespace Myss.Api.Tests
         [HttpGet("worker-idir")]
         [Microsoft.AspNetCore.Authorization.Authorize(Policy = MyssPolicies.WorkerWithIdir)]
         public string WorkerWithIdir() => this.currentUser.User.IdirUsername ?? string.Empty;
+
+        /// <summary>Admin form-editor endpoint requiring an IDIR identity.</summary>
+        /// <returns>The caller's IDIR username.</returns>
+        [HttpGet("admin-idir")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Policy = MyssPolicies.AdminIdir)]
+        public string AdminIdir() => this.currentUser.User.IdirUsername ?? string.Empty;
     }
 
     /// <summary>
@@ -212,6 +218,38 @@ namespace Myss.Api.Tests
             Assert.Equal("MWORKER", await response.Content.ReadAsStringAsync());
         }
 
+        [Fact]
+        public async Task AdminIdirEndpointRejectsACitizenWith403()
+        {
+            // The check that proves the policy does something [Authorize] alone would not:
+            // a signed-in BCeID citizen is refused the admin form editor.
+            HttpClient client = this.CreateMockAuthClient();
+
+            HttpResponseMessage response = await client.SendAsync(Get("/test-only/admin-idir", "alice"));
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task AdminIdirEndpointAdmitsAnIdirPersona()
+        {
+            HttpClient client = this.CreateMockAuthClient();
+
+            HttpResponseMessage response = await client.SendAsync(Get("/test-only/admin-idir", "worker"));
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("MWORKER", await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public async Task AdminIdirEndpointRejectsAnonymousWith401()
+        {
+            HttpClient client = this.CreateBearerClient();
+
+            HttpResponseMessage response = await client.GetAsync("/test-only/admin-idir");
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
         [Fact]
         public async Task UnknownPersonaIsNotSignedIn()
         {

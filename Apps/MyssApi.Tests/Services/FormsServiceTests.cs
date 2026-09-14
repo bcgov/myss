@@ -17,6 +17,7 @@ namespace Myss.Api.Tests.Services
     {
         private readonly FakeFormSpecProvider _provider = new();
         private readonly IPdfProvider _pdfProvider = new UnexpectedPdfProvider();
+        private readonly FakeFormSpecAdminProvider _adminProvider = new();
         private readonly ITemplateProvider _templateProvider = new UnexpectedTemplateProvider();
 
         [Fact]
@@ -177,7 +178,8 @@ namespace Myss.Api.Tests.Services
                 db,
                 _provider,
                 _pdfProvider,
-                _templateProvider);
+                _templateProvider,
+                _adminProvider);
         }
 
         private static FormsDbContext NewDb()
