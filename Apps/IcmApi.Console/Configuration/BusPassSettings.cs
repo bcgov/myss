@@ -19,6 +19,13 @@ namespace Icm.Api.ConsoleApp.Configuration
         /// </summary>
         public string RequestType { get; set; } = "NewApplication";
 
+        /// <summary>
+        /// Gets or sets the applicant type for a new application: <c>Over65</c>,
+        /// <c>FirstNations</c> or <c>Neither</c>. Empty sends none. <c>FirstNations</c>
+        /// routes the request as <c>AANDC Online Request</c>.
+        /// </summary>
+        public string? ApplicantType { get; set; }
+
         /// <summary>Gets or sets the applicant's first name.</summary>
         public string? FirstName { get; set; }
 
@@ -68,6 +75,14 @@ namespace Icm.Api.ConsoleApp.Configuration
                     + "NewApplication, AddressUpdate, Replacement.");
             }
 
+            if (!string.IsNullOrWhiteSpace(ApplicantType)
+                && !Enum.TryParse<BusPassApplicantType>(ApplicantType, ignoreCase: true, out _))
+            {
+                problems.Add(
+                    $"BusPass:ApplicantType '{ApplicantType}' is not one of "
+                    + "Over65, FirstNations, Neither.");
+            }
+
             if (!string.IsNullOrWhiteSpace(PhoneType)
                 && !Enum.TryParse<BusPassPhoneType>(PhoneType, ignoreCase: true, out _))
             {
@@ -88,6 +103,9 @@ namespace Icm.Api.ConsoleApp.Configuration
             new()
             {
                 RequestType = Enum.Parse<BusPassRequestType>(RequestType, ignoreCase: true),
+                ApplicantType = string.IsNullOrWhiteSpace(ApplicantType)
+                    ? null
+                    : Enum.Parse<BusPassApplicantType>(ApplicantType, ignoreCase: true),
                 FirstName = NullIfBlank(FirstName),
                 LastName = NullIfBlank(LastName),
                 SocialInsuranceNumber = NullIfBlank(Sin),

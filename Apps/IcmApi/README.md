@@ -178,9 +178,11 @@ with the callee.
 `IBusPassService.SubmitAsync` takes a `BusPassApplication` — the same facts the old MCP
 `/BusPass` form captured, per the INT-316 field-mapping analysis — and posts it to
 `workflow/ICM Receive Bus Pass Online Request Wrapper WF`, the REST receiver the retired
-SOAP integration fed. The envelope's header reproduces the old `SetGenericHeader` values
-(`TransactionName: INT-316`, `SourceSystem: MCP`, `UserId: MCP_proxy`, empty bookkeeping
-fields); the applicant travels as one `SRProspects` row.
+SOAP integration fed. The envelope's header carries the old `SetGenericHeader`
+identities (`TransactionName: INT-316`, `SourceSystem: MCP`, `UserId: MCP_proxy`); the
+bookkeeping fields the old integration sent as empty strings are omitted — MEASURED
+SIT2 2026-09-10, submissions succeed identically without them (SR `1-11085048718`).
+The applicant travels as one `SRProspects` row.
 
 **A business rejection is a 200.** The workflow reports failure in its out-args
 (`Error Code` / `Error Message`), not in the status code, and its status vocabulary is
@@ -195,8 +197,10 @@ querying the SRs this workflow has been creating since 2022 (`Created By SIEBEL_
 and reading their `SRProspects` child rows over the gateway:
 
 - The workflow classifies its SRs as `SR Type "Bus Pass"`, sub type **`Application` /
-  `Change of Circumstance` / `Replacement`** (other channels add `Application PWD`,
-  `AANDC Online Request`, `Card Replacement`, and the error sub types), sub sub type
+  `Change of Circumstance` / `Replacement`** (other sub types exist: `Application PWD`,
+  `Card Replacement`, the error sub types — and `AANDC Online Request`, which MEASURED
+  2026-09-10 is what the old form's **First Nations toggle** files as, row `1-53CBZL6`,
+  accepted cleanly *without* a contact match), sub sub type
   **`One Address` / `Multiple Addresses`**, status `Ready`, priority `3-Standard`.
 - One prospect row per address set. A single-address submission stores
   `Purpose: "Residence/Mailing"`; rows with `Purpose: "Residence"` appear on
@@ -210,6 +214,15 @@ and reading their `SRProspects` child rows over the gateway:
 - Searchspec field names are the *spec's*, not the response's: `[SR Type]` works where
   `[Type]` matches nothing, `[Contact Last Name]` where `[Last Name]` errors, and
   `[Created] >= "MM/DD/YYYY"` comparisons work. `LIKE "*…*"` silently matches nothing.
+- A clean old-path **Replacement** (SR `1-11086394388` / row `1-53CJWNO`, 2026-09-14,
+  applicant matched to contact `1-30CFI36`) stores as sub type `Replacement`, sub sub
+  type `One Address`, no `Memo`, prospect row `Purpose: "Residence/Mailing"` — and
+  nothing on the SR or the prospect row records the form's replacement acknowledgement.
+  The SR-level `Given Names`/`Last Name`/`Address` are the *matched contact's*, not the
+  submitted ones. The prospect business component exposes 37 fields (empties included;
+  read them with `--Query:ChildCollection=SRProspects` below); none is named for an
+  acknowledgement, a leave-message consent or an applicant type — `Applicant Flag` is
+  `N` on every row seen, the First Nations one included.
 - A live submission through the **retired SOAP path** (SR `1-11085201468` / row
   `1-53BUC70`, 2026-09-03) stores in exactly the same shape, so both channels land on the
   same workflow. It also showed: a duplicate-case rejection still files the SR (sub type
@@ -221,30 +234,89 @@ and reading their `SRProspects` child rows over the gateway:
   field — unknown whether the workflow or the old sender duplicates it); and the
   SR-level `Address` is the *matched contact's* address on file, not the submitted one.
 
-`BusPassMapper` sends that measured vocabulary. What is still inference (marked at the
-line in the mapper, pinned by `BusPassMapperTests`):
+**The upsert needs caller-supplied keys.** MEASURED against SIT2 on 2026-09-10, the
+first live submissions through this client: with `SRKey` absent — or present but
+empty — the workflow fails its `Create SR_Prospect_Att` upsert with `SBL-EAI-04397`
+(`No user key can be used for the Integration Component instance 'Service Request'`),
+returned as `WF_ERR_CUSTOM_1` in the out-args. With a non-empty `SRKey` (and
+`ProspectKey`/`AttKey` on the child rows) the same submission succeeds — SR
+`1-11085048654`, row `1-53BR2A6`. The mapper generates the keys from the submission
+moment plus a random suffix, unique per call — or, when the caller sets
+`BusPassApplication.SubmissionKey`, from that, so a retry after a lost answer carries the
+same key and the upsert can recognise the earlier record instead of filing a second SR
+(the recognition itself is what upsert semantics promise; it has not been exercised
+live).
 
-1. **Input equals output.** The request-type and role *inputs* are assumed to use the
-   same words the workflow *stores* (`Application`…, `Residence/Mailing`…). Free text on
-   the wire, so a wrong word misroutes rather than fails.
-2. **The mailing address as a second prospect row** with role `Mailing` — implied by
-   `Multiple Addresses` and per-row `Purpose`, but no stored `Mailing` row has been
-   observed.
-3. **The account number in `ClientId`** — still the only identifier slot; the stored
-   prospect rows carry no account field, so the workflow's use of it is invisible.
-4. **The DOB write format** — sent `MM/DD/YYYY`, the only shape this gateway has ever
-   shown; the retired SOAP integration sent `yyyy MMM d` to the old interface.
-5. **Applicant type, the two acknowledgements, and the leave-message consent** still
-   have no field and are **not sent**.
-6. **Attachments** (`minItems: 1` in the spec) and whether `ApplicationNumber` is the SR
-   number — both awaiting a successful live call.
+**A failed match reports SUCCESS in the out-args.** MEASURED on that same submission:
+the applicant was the made-up "Myss IntegrationTest", no ICM contact matched — and the
+out-args still came back `Status: "SUCCESS"` with an `ApplicationNumber` and empty
+`Error Code`/`Error Message`. The rejection is visible only in the stored SR itself:
+sub type `Error - Web`, the reason in `Memo` (`Contact or Case Match not Found`). So
+the out-args establish only that the workflow accepted and filed the message; whether
+the request actually attached to a client requires reading the SR back and checking
+its sub type. `Error Code` catches workflow malfunctions (like the missing-key
+failure above), not business rejections.
 
-**The first live POST is blocked on authorization, not on the contract.** Attempted
-2026-09-03: the space-encoded path resolved to the right Siebel resource, and ICM
-answered `403` `SBL-DAT-00825` — `Access to Resource 'ICM Receive Bus Pass Online
-Request Wrapper WF' of type BUS_PROC is denied`. The gateway client (`myss-api` acting
-as `SIEBEL_EAI`) needs that business process granted before `IcmApi.Console`'s
-`--Mode=buspass` run (below) can verify the rest.
+`BusPassMapper` sends that measured vocabulary. **MEASURED SIT2 2026-09-14, ten
+submissions** (four through the old Test1 form, six through this client — see the
+"Reference records" table in the console app's memory notes for row ids):
+
+1. **The SR classification is the caller's.** A request-type word alone stores an SR
+   with *no* sub type, *no* sub sub type and no prospect `Purpose`, even for a matched
+   contact (SR `1-11086395524`), and a no-case contact then files as `Error - Web`.
+   Sending `SRType: "Bus Pass"`, `SRSubType` (the request-type words) and
+   `SRSubSubType` (`One Address` / `Multiple Addresses`) together files every scenario
+   exactly as the old path does — Replacement `1-11086395541`, a new Application for a
+   contact with no case `1-11086395558` (the old form's own filed the same way,
+   `1-11086391783`), Change of Circumstance / Multiple Addresses `1-11086395579`. All
+   three must travel together: `SR Sub Sub Type` is a bounded hierarchical picklist, and
+   `One Address` sent without its parents fails the upsert (`SBL-EAI-04401`) and files
+   nothing.
+2. **`FreeText` feeds the prospect's `Purpose`.** `Role` — as `Residence/Mailing` or
+   `Residential` — lands in no visible field and yields no `Purpose`; the submission that
+   carried `FreeText: "Residence/Mailing"` stored exactly that (`1-11086395601`). So the
+   mapper sends the purpose words in `FreeText` and does not send `Role`.
+3. **The workflow keeps one prospect row.** The old form's differing-mailing-address
+   submission (`1-53CJUMM`, `Multiple Addresses`) stores one row, `Purpose: "Residence"`;
+   so did this client's two-row submission. The second row is still sent, since nothing
+   else carries the mailing address; where it goes is not visible from the SR.
+4. **Over 65 and Neither both file as plain `Application`** on the old path
+   (`1-53CJUNB`, `1-53CJXFC`). Nothing on the stored SR or prospect distinguishes them,
+   so they are not transmitted. **`FirstNations` is reproduced by the `Memo`.**
+   `AANDC Online Request` as request type and sub type alone still filed an unmatched
+   applicant as `Error - Web` (`1-53CJXME`); with `Memo: "New Application"` added, the
+   same submission filed exactly like the old form's First Nations one — sub type
+   `AANDC Online Request`, `Primary Contact Id: No Match Row Id`, that Memo
+   (`1-53CJXMS` vs `1-53CBZL6`). The old path stores that Memo only on its First
+   Nations SR, so the mapper sends it only then; it also lets a plain `Application`
+   through unmatched (`1-53CJXN6`) — though so does no Memo at all (`1-53CJXO6`): a new
+   application never needs a contact match, only the AANDC one did. A First Nations
+   client who already holds a pass still gets the duplicate-case rejection
+   (`1-53CJXNP`).
+5. **The acknowledgements** leave no trace anywhere on the old path's records
+   (`1-53CJWNO` replacement with acknowledgement) and are **not sent**. **The
+   leave-message consent is `Alternate Phone #`:** across four old-form submissions
+   made for this, the one with "leave messages" ticked stores the number there too
+   (`1-53CJUMM`) and the three without do not (`1-53CJUNB`, `1-53CJXFC`, `1-53CJV62`),
+   whatever the phone type; `AlternatePhone#` on the wire fills it (`1-11086395601`).
+   The mapper does the same.
+6. **The DOB write format is `MM/DD/YYYY`** — MEASURED 2026-09-14: `01/25/2000` sent,
+   `Birth Date: 01/25/2000` stored (row `1-53CJXMK`).
+7. **The account number matches the old path in failure only.** A replacement
+   identified by a made-up account number and no SIN files identically on both paths —
+   `Error - Web` / `Contact or Case Match not Found`, `No Match Row Id`, the number
+   stored nowhere visible (`1-53CJV62` old, `1-53CJXOP` this client, which sends it as
+   the prospect `ClientId`). Whether ICM matches a *real* account number sent that way
+   needs a client with a known account number; the old SOAP payload carried it on a
+   `Case` element, and the payload-level `ClientId` is the other candidate slot.
+8. **Attachments** (`minItems: 1` in the spec) — still awaiting a live call that sends
+   one.
+
+**The authorization block is history.** The first attempt (2026-09-03) failed with
+`403` `SBL-DAT-00825` — `Access to Resource 'ICM Receive Bus Pass Online Request
+Wrapper WF' of type BUS_PROC is denied`; ICM granted the gateway client (`myss-api`
+acting as `SIEBEL_EAI`) execute access, and live submissions have succeeded since
+2026-09-10.
 
 ## Things worth knowing before you change it
 
@@ -340,7 +412,10 @@ They mirror the layers, and each one exists for a reason the layer above cannot 
 ## Functional test
 
 `Apps/IcmApi.Console` is a console app that runs one Service Request search against a real
-ICM and prints what came back. It has a second mode, `--Mode=buspass`, which **creates a
+ICM and prints what came back. With `Query:ServiceRequestKey` set it then reads that row,
+and with `Query:ChildCollection` set (say `SRProspects`) it reads that child collection
+of the row raw — the library has no child-collection support yet, and a bus pass SR's
+applicant rows live there. It has a second mode, `--Mode=buspass`, which **creates a
 record in the target ICM**: it submits the synthetic application in the committed
 `BusPass` settings section as transaction INT-316 through the bus pass workflow, prints the out-args (unmodelled
 fields included), then searches recent Bus Pass SRs for the returned `ApplicationNumber`
