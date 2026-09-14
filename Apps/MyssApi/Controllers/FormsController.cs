@@ -224,7 +224,7 @@ namespace Myss.Api.Controllers
         }
 
         /// <summary>
-        /// Lists every form and its versions (admin form editor). [AC 1]
+        /// Lists every form and its versions (admin form editor).
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet]
@@ -294,7 +294,7 @@ namespace Myss.Api.Controllers
         }
 
         /// <summary>
-        /// Validates and saves an edited spec as a draft (not published). [AC 4, half of AC 5]
+        /// Validates and saves an edited spec as a draft (not published).
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>
         /// <param name="request">The edited spec and title.</param>
@@ -351,7 +351,7 @@ namespace Myss.Api.Controllers
         }
 
         /// <summary>
-        /// Publishes the current draft as the next version. [AC 5]
+        /// Publishes the current draft as the next version.
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
