@@ -25,14 +25,22 @@ Models/              the published models
 processes that invoke other services behind them (the bus pass workflow matches the
 contact and creates the service request itself). Both publish only through
 `Models`/`Repositories`/`Services`. The bus pass mapping's vocabulary is MEASURED (SIT2
-2026-09-03) from the SRs the workflow itself creates; what remains inference (input words
-assumed to equal stored words, the account number riding in `ClientId`, the mailing
-address as a second prospect row) is listed in the README's "The bus pass integration
-(INT-316)" section (INT-316 names MySS's integration, the caller — the workflow itself
-is ICM's `ICM Receive Bus Pass Online Request Wrapper WF`). The first live POST is
-blocked on ICM-side authorization (`SBL-DAT-00825`, BUS_PROC access) —
-`IcmApi.Console --Mode=buspass` is the submit-and-read-back integration test to run once
-access is granted (it creates a record in the target ICM).
+2026-09-03 and a ten-submission comparison against the old form on 2026-09-14): the
+caller sends the SR classification triple (`SRType`/`SRSubType`/`SRSubSubType`, all
+three or the upsert fails), the prospect `Purpose` comes from `FreeText`, and the old
+path's `Alternate Phone #` is mirrored; a First Nations new application adds `Memo: "New
+Application"` (what lets it file unmatched, as the old form's does), and the
+leave-message consent travels as `AlternatePhone#`; what remains inference (whether a
+real account number in the prospect `ClientId` matches, attachments) is listed in the
+README's "The bus pass integration (INT-316)" section (INT-316 names MySS's integration, the caller — the workflow itself
+is ICM's `ICM Receive Bus Pass Online Request Wrapper WF`). Live since 2026-09-10 (the
+earlier `SBL-DAT-00825` BUS_PROC block is lifted), and two things are MEASURED from
+those first submissions: the workflow's upsert requires non-empty caller-supplied keys
+(`SRKey`/`ProspectKey`/`AttKey` — the mapper generates them, unique per submission),
+and a business rejection still answers `Status: "SUCCESS"` with an `ApplicationNumber`
+— the rejection is visible only in the filed SR (sub type `Error - Web`, reason in
+`Memo`), so submit-and-read-back is the only real verification.
+`IcmApi.Console --Mode=buspass` is that test (it creates a record in the target ICM).
 
 ## The published surface is enforced
 
@@ -80,7 +88,8 @@ stray keyword.
   explanation but is not confirmed. The specs still supply read-only flags. Anything
   unmodelled lands in `ServiceRequest.AdditionalFields` as raw JSON rather than being
   dropped, which is how the mismatch was found; `--Output=raw` on the console app shows
-  the untouched response. The four date fields are zone-less `DateTime`, not
+  the untouched wire traffic (outgoing request bodies and every response). The four
+  date fields are zone-less `DateTime`, not
   `DateTimeOffset`: the wire carries no offset and the value matches the Siebel UI
   verbatim.
 
@@ -117,11 +126,13 @@ is a visible setting rather than a path segment inside a pasted URL; an optional
 this is the only thing that can confirm the date format and the `ViewMode` default
 against SIT. Exit codes: 0 success, 1 bad settings, 2 failed call.
 
-**It needs the ministry VPN.** `*.icm.gov.bc.ca` is internal and does not resolve in
-public DNS, so without it the run dies at DNS lookup (`nodename nor servname provided`).
-The token endpoint `*.loginproxy.gov.bc.ca` *is* public, so a run that gets a token and
-then fails on the ICM call is the signature of a VPN that is down — not a credentials
-problem. Building and `dotnet test Apps/IcmApi.Tests` need neither VPN nor credentials.
+**It needs the ministry VPN.** The direct Siebel hosts (`*.icm.gov.bc.ca`) are internal
+and do not resolve in public DNS, so a run against them dies at DNS lookup (`nodename
+nor servname provided`). The API gateway (`icmsit2.api.gov.bc.ca`) resolves publicly
+but rejects a non-allowlisted source IP with `403` and a body naming it
+(`IP address not allowed: …`) — MEASURED 2026-09-10. The token endpoint
+`*.loginproxy.gov.bc.ca` *is* public, so a run that gets a token and then fails on the
+ICM call is the signature of a VPN that is down — not a credentials problem. Building and `dotnet test Apps/IcmApi.Tests` need neither VPN nor credentials.
 
 ## Tests
 

@@ -28,7 +28,7 @@ namespace Icm.Api.ConsoleApp.Configuration
         /// <summary>
         /// Gets or sets how much of each record to print: <c>full</c> (every selected
         /// field), <c>summary</c> (one line per record), or <c>raw</c> (full, plus the
-        /// untouched response bodies).
+        /// untouched wire traffic — outgoing request bodies and response bodies).
         /// </summary>
         public string Output { get; set; } = "full";
 
@@ -254,6 +254,14 @@ namespace Icm.Api.ConsoleApp.Configuration
 
         /// <summary>Gets or sets the child business components to link.</summary>
         public string? ChildLinks { get; set; }
+
+        /// <summary>
+        /// Gets or sets a child business component to read after the single-record
+        /// read — <c>SRProspects</c>, say — or null to skip it. The child rows are
+        /// fetched raw (<c>…/{key}/{child}/</c>) and printed as ICM sent them, because
+        /// the library has no child-collection support yet.
+        /// </summary>
+        public string? ChildCollection { get; set; }
 
         /// <summary>Gets or sets the records per page.</summary>
         public int PageSize { get; set; } = 5;

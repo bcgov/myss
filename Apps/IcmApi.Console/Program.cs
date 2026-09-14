@@ -103,7 +103,7 @@ namespace Icm.Api.ConsoleApp
             // HttpClient takes ownership of the handler chain and disposes it, which is
             // what the `using` on the client covers.
             using HttpMessageHandler icmHandler = raw
-                ? new RawResponseHandler { InnerHandler = new HttpClientHandler() }
+                ? new RawWireHandler { InnerHandler = new HttpClientHandler() }
                 : new HttpClientHandler();
             using HttpClient icmClient = new(icmHandler, disposeHandler: false);
             icmClient.BaseAddress = new Uri(settings.Icm.BaseUrl!);
@@ -116,8 +116,9 @@ namespace Icm.Api.ConsoleApp
                 tokenService,
                 credentials);
 
-            // The same HttpClient on purpose: same host, same raw-response handler, so
-            // --Output=raw shows the workflow's untouched answer too.
+            // The same HttpClient on purpose: same host, same raw-wire handler, so
+            // --Output=raw shows the outgoing envelope and the workflow's untouched
+            // answer too.
             IBusPassService busPass = new BusPassService(
                 new BusPassRepository(icmClient, settings.Icm.TrustedUserName),
                 tokenService,
@@ -147,7 +148,100 @@ namespace Icm.Api.ConsoleApp
                 return searchResult;
             }
 
-            return await GetOneAsync(serviceRequests, settings);
+            int getResult = await GetOneAsync(serviceRequests, settings);
+            if (getResult != 0 || string.IsNullOrWhiteSpace(settings.Query.ChildCollection))
+            {
+                return getResult;
+            }
+
+            return await GetChildAsync(icmClient, tokenService, credentials, settings);
+        }
+
+        /// <summary>
+        /// Stage four: read one child collection of that record — the prospect rows a
+        /// bus pass SR carries, say. A raw GET, because the library has no
+        /// child-collection support yet; the body is printed as ICM sent it.
+        /// </summary>
+        private static async Task<int> GetChildAsync(
+            HttpClient icmClient,
+            IOAuthTokenService tokenService,
+            OAuthClientCredentials credentials,
+            ConsoleSettings settings)
+        {
+            string key = settings.Query.ServiceRequestKey!;
+            string child = settings.Query.ChildCollection!;
+            Console.WriteLine();
+            Console.WriteLine(new string('-', 60));
+            Console.WriteLine($"Reading {child} of service request {key}");
+            Console.WriteLine(new string('-', 60));
+            Console.WriteLine();
+
+            string query = "uniformresponse=Y";
+            if (!string.IsNullOrWhiteSpace(settings.Query.ViewMode))
+            {
+                query += $"&ViewMode={Uri.EscapeDataString(settings.Query.ViewMode)}";
+            }
+
+            if (settings.Query.ExcludeEmptyFields is { } exclude)
+            {
+                query += $"&excludeEmptyFieldsInResponse={(exclude ? "true" : "false")}";
+            }
+
+            // Absolute, appended to the configured base URL the way Refit appends its
+            // routes — HttpClient's relative-URI resolution would drop the base's last
+            // segment (/gov/v1.0 → /gov/). The key and child name are path segments, not
+            // one encoded value: the gateway answers 400 to %2F.
+            string path = $"{settings.Icm.BaseUrl!.TrimEnd('/')}/data/ServiceRequest/ServiceRequest/{Uri.EscapeDataString(key)}/{Uri.EscapeDataString(child)}?{query}";
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            try
+            {
+                using HttpRequestMessage request = new(HttpMethod.Get, path);
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+                    "Bearer", await tokenService.GetTokenAsync(credentials));
+                if (!string.IsNullOrWhiteSpace(settings.Icm.TrustedUserName))
+                {
+                    request.Headers.Add("X-ICM-TrustedUserName", settings.Icm.TrustedUserName);
+                }
+
+                using HttpResponseMessage response = await icmClient.SendAsync(request);
+                string body = await response.Content.ReadAsStringAsync();
+                stopwatch.Stop();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return Fail(
+                        stopwatch,
+                        $"ICM returned {(int)response.StatusCode} {response.StatusCode}.",
+                        "The child collection name is passed through as written; check it against the record's child links.",
+                        responseBody: body);
+                }
+
+                Console.WriteLine($"{(int)response.StatusCode} {response.StatusCode} in {stopwatch.ElapsedMilliseconds} ms.");
+                Console.WriteLine();
+                Console.WriteLine(PrettyJson(body));
+                return 0;
+            }
+            catch (HttpRequestException exception)
+            {
+                stopwatch.Stop();
+                return Fail(stopwatch, "Could not reach ICM.", exception.Message);
+            }
+        }
+
+        private static readonly System.Text.Json.JsonSerializerOptions PrettyJsonOptions = new() { WriteIndented = true };
+
+        private static string PrettyJson(string body)
+        {
+            try
+            {
+                using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(body);
+                return System.Text.Json.JsonSerializer.Serialize(document.RootElement, PrettyJsonOptions);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return body;
+            }
         }
 
         /// <summary>
@@ -484,7 +578,8 @@ namespace Icm.Api.ConsoleApp
 
         /// <summary>
         /// Whether to print every mapped field per record. Only <c>summary</c> does not —
-        /// <c>raw</c> shows the untouched response as well, which is a superset.
+        /// <c>raw</c> shows the untouched wire traffic as well — outgoing request bodies
+        /// and every response — which is a superset.
         /// </summary>
         private static bool IsFull(ConsoleSettings settings) =>
             !string.Equals(settings.Output, "summary", StringComparison.OrdinalIgnoreCase);

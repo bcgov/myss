@@ -70,6 +70,18 @@ namespace Icm.Api.Workflows.Contracts
         /// <summary>The header status an outbound message carries.</summary>
         public const string HeaderStatus = "SUCCESS";
 
+        /// <summary>The SR type every bus pass request files under.</summary>
+        public const string SRTypeValue = "Bus Pass";
+
+        /// <summary>The sub sub type of a submission with one address set.</summary>
+        public const string OneAddress = "One Address";
+
+        /// <summary>The sub sub type of a submission with a differing mailing address.</summary>
+        public const string MultipleAddresses = "Multiple Addresses";
+
+        /// <summary>The memo a First Nations new application carries (see <see cref="ToPayload"/>).</summary>
+        public const string NewApplicationMemo = "New Application";
+
         /// <summary>
         /// The header timestamp format the retired integration used
         /// (<c>DateTime.UtcNow</c> as <c>yyyyMMddTHHmmssZ</c>).
@@ -90,10 +102,10 @@ namespace Icm.Api.Workflows.Contracts
             {
                 SRInboundMessage = new SiebelBusPassMessage
                 {
-                    // Empty rather than omitted: the retired integration sent the
-                    // identification and bookkeeping fields as empty strings, and the
-                    // receiving side is old enough to care about the difference.
-                    MessageId = string.Empty,
+                    // MessageId is omitted, not sent empty. The retired SOAP integration
+                    // sent the bookkeeping fields as empty strings, but MEASURED SIT2
+                    // 2026-09-10: a submission without them succeeds identically
+                    // (SR 1-11085048718), so only the meaningful fields are sent.
                     MessageType = MessageType,
                     IntObjectName = IntObjectName,
                     IntObjectFormat = IntObjectFormat,
@@ -109,7 +121,7 @@ namespace Icm.Api.Workflows.Contracts
                                 },
                                 ListOfPayload = new SiebelBusPassPayloadList
                                 {
-                                    Payload = [ToPayload(application)],
+                                    Payload = [ToPayload(application, utcNow)],
                                 },
                             },
                         ],
@@ -138,75 +150,112 @@ namespace Icm.Api.Workflows.Contracts
         private static SiebelBusPassHeader ToHeader(DateTimeOffset utcNow) =>
             new()
             {
+                // Only the fields that carry a value. The retired integration also sent
+                // WMInstanceId, the references, the error slots and Attribute1-5 as empty
+                // strings; MEASURED SIT2 2026-09-10, the workflow accepts and files the
+                // submission identically without them (SR 1-11085048718).
                 TransactionName = TransactionName,
-                WMInstanceId = string.Empty,
-                SourceReference = string.Empty,
-                TargetReference = string.Empty,
                 UserId = UserId,
                 SourceSystem = SourceSystem,
                 TargetSystem = TargetSystem,
                 Timestamp = utcNow.UtcDateTime.ToString(TimestampFormat, CultureInfo.InvariantCulture),
                 Status = HeaderStatus,
-                ErrorCode = string.Empty,
-                ErrorMessage = string.Empty,
-                Attribute1 = string.Empty,
-                Attribute2 = string.Empty,
-                Attribute3 = string.Empty,
-                Attribute4 = string.Empty,
-                Attribute5 = string.Empty,
             };
 
-        private static SiebelBusPassPayload ToPayload(BusPassApplication application) =>
-            new()
+        private static SiebelBusPassPayload ToPayload(
+            BusPassApplication application, DateTimeOffset utcNow)
+        {
+            // The integration object carries a caller-supplied key at every level
+            // (SRKey / ProspectKey / AttKey) — the user keys the workflow's upsert
+            // matches on. MEASURED SIT2 2026-09-10: with them absent OR empty, the
+            // upsert dies at Create SR_Prospect_Att with SBL-EAI-04397 ("No user key
+            // can be used for the Integration Component instance 'Service Request'").
+            // The value is unique per submission so the upsert can only ever create,
+            // never accidentally match and update an earlier record.
+            string srKey = $"MYSS-{utcNow.UtcDateTime.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture)}";
+
+            return new()
             {
-                // The SR classification fields (SRType, SRSubType, Status, …) stay unset:
-                // MEASURED SIT2 2026-09-03, the workflow derives them itself — SR Type
-                // "Bus Pass", the sub type from the request type, the sub sub type
-                // "One Address"/"Multiple Addresses" from how many address sets arrive.
-                ICMBusPassRequestType = ToRequestTypeValue(application.RequestType),
+                // The classification is the caller's, not derived. MEASURED SIT2
+                // 2026-09-14: a request-type word alone stores an SR with NO sub type,
+                // NO sub sub type and no prospect Purpose even when the contact matches
+                // (SR 1-11086395524); a no-case contact then files as "Error - Web".
+                // With SRType/SRSubType/SRSubSubType sent together, the same
+                // submissions file exactly like the old path's — Replacement
+                // (1-11086395541), Application for a no-case contact (1-11086395558,
+                // where the old path's own filed the same way), Change of Circumstance
+                // / Multiple Addresses (1-11086395579). All three are needed: SR Sub
+                // Sub Type is a bounded, hierarchical picklist, and "One Address" sent
+                // without its parents fails the upsert with SBL-EAI-04401 and files
+                // nothing.
+                ICMBusPassRequestType = ToRequestTypeValue(
+                    application.RequestType, application.ApplicantType),
+                SRType = SRTypeValue,
+                SRSubType = ToRequestTypeValue(application.RequestType, application.ApplicantType),
+                SRSubSubType = application.MailingAddress is null ? OneAddress : MultipleAddresses,
+
+                // What makes a First Nations application file without a contact match.
+                // MEASURED SIT2 2026-09-14: "AANDC Online Request" as request type and
+                // sub type alone still filed an unmatched applicant as "Error - Web"
+                // (1-53CJXME); with Memo "New Application" added, the same submission
+                // filed exactly like the old form's — sub type "AANDC Online Request",
+                // Primary Contact "No Match Row Id", that Memo (1-53CJXMS vs the old
+                // path's 1-53CBZL6). The old path stores that Memo only on its First
+                // Nations SR, never on Over 65 / Neither ones, so it is sent only then —
+                // it also lets a plain Application through unmatched (1-53CJXN6), which
+                // the old path does not do.
+                Memo = application.ApplicantType == BusPassApplicantType.FirstNations
+                    && application.RequestType == BusPassRequestType.NewApplication
+                    ? NewApplicationMemo
+                    : null,
+                SRKey = srKey,
                 ListOfSRProspects = new SiebelBusPassProspectList
                 {
-                    SRProspects = ToProspects(application),
+                    SRProspects = ToProspects(application, srKey),
                 },
-                ListOfSRAttachments = ToAttachments(application.Attachments),
+                ListOfSRAttachments = ToAttachments(application.Attachments, srKey),
             };
+        }
 
         /// <summary>
-        /// The applicant, as one prospect row per address set. MEASURED SIT2 2026-09-03:
-        /// a single-address submission is stored as one row whose <c>Purpose</c> is
-        /// <c>Residence/Mailing</c>, and the SR sub sub type says <c>One Address</c> or
-        /// <c>Multiple Addresses</c>. UNVERIFIED: that a differing mailing address goes in
-        /// as a second row with role <c>Mailing</c> is the natural reading of those two
-        /// facts, but no stored <c>Mailing</c> row has been observed — the ones sampled
-        /// may simply not have kept it.
+        /// The applicant, as one prospect row per address set. MEASURED SIT2 2026-09-14:
+        /// the stored row's <c>Purpose</c> is <c>Residence/Mailing</c> for a one-address
+        /// submission and <c>Residence</c> for a multiple-address one (old path,
+        /// 1-53CJWNO / 1-53CJUMM), and the workflow keeps only one prospect row either
+        /// way — the old path's Multiple Addresses SR stores one row, and so did this
+        /// client's two-row submission (1-11086395579). The second row is still sent:
+        /// nothing else in the integration object carries the mailing address, and what
+        /// the workflow does with it (the contact's mailing address?) is not visible
+        /// from the SR.
         /// </summary>
-        private static IList<SiebelBusPassProspect> ToProspects(BusPassApplication application)
+        private static IList<SiebelBusPassProspect> ToProspects(
+            BusPassApplication application, string srKey)
         {
             if (application.MailingAddress is null)
             {
-                return [ToProspect(application, application.ResidentialAddress, "Residence/Mailing")];
+                return [ToProspect(application, application.ResidentialAddress, "Residence/Mailing", $"{srKey}-1")];
             }
 
             return
             [
-                ToProspect(application, application.ResidentialAddress, "Residence"),
-                ToProspect(application, application.MailingAddress, "Mailing"),
+                ToProspect(application, application.ResidentialAddress, "Residence", $"{srKey}-1"),
+                ToProspect(application, application.MailingAddress, "Mailing", $"{srKey}-2"),
             ];
         }
 
         private static SiebelBusPassProspect ToProspect(
-            BusPassApplication application, BusPassAddress? address, string role)
+            BusPassApplication application, BusPassAddress? address, string purpose, string prospectKey)
         {
             SiebelBusPassProspect prospect = new()
             {
+                ProspectKey = prospectKey,
                 FstNme = application.FirstName,
                 LstNme = application.LastName,
 
-                // MM/DD/YYYY, the one date shape this gateway has ever been seen to use
-                // (stored Birth Dates read back that way). The retired SOAP integration
-                // sent "yyyy MMM d" to the old direct-host interface; UNVERIFIED which of
-                // the two this workflow parses, and a wrong one fails to match a client
-                // rather than failing the call.
+                // MM/DD/YYYY. MEASURED SIT2 2026-09-14: "01/25/2000" sent stored as
+                // Birth Date 01/25/2000 (row 1-53CJXMK) — a day above 12, so the order is
+                // established, not assumed. (The retired SOAP integration sent
+                // "yyyy MMM d" to the old direct-host interface.)
                 DOB = SiebelDate.FromDate(application.DateOfBirth),
                 SIN = Digits(application.SocialInsuranceNumber),
 
@@ -215,6 +264,9 @@ namespace Icm.Api.Workflows.Contracts
                 // account number rides there until the ICM team says otherwise. The
                 // prospect rows read back from SIT2 show no account field at all, so
                 // whatever the workflow does with this is not stored where we can see it.
+                // MEASURED SIT2 2026-09-14: a prospect-level ClientId of "T9" landed in no
+                // visible field either (1-11086395601); the old form's account-number
+                // path has not been exercised, so this stays UNVERIFIED.
                 ClientId = Digits(application.BusPassAccountNumber),
                 EmailAddress = application.EmailAddress,
                 MethodOfCommunication = ToContactMethodValue(
@@ -223,11 +275,16 @@ namespace Icm.Api.Workflows.Contracts
                 // UNVERIFIED: the prospect row repeats the request type the payload
                 // carries; both fields exist and nothing says which one the workflow
                 // reads, so both are sent with the same value.
-                BusPassRequestType = ToRequestTypeValue(application.RequestType),
+                BusPassRequestType = ToRequestTypeValue(
+                    application.RequestType, application.ApplicantType),
 
-                // UNVERIFIED name-to-name, but the stored rows carry a Purpose of exactly
-                // these values, and Role is the only prospect input field left to feed it.
-                Role = role,
+                // FreeText is what the stored row's Purpose comes from. MEASURED SIT2
+                // 2026-09-14 by elimination: Role alone — as "Residence/Mailing"
+                // (1-11086395541) or "Residential" (1-11086395619) — stores no Purpose
+                // and lands in no visible field at all; the one submission that carried
+                // FreeText = "Residence/Mailing" (1-11086395601) stored exactly that as
+                // Purpose. Role is therefore not sent.
+                FreeText = purpose,
                 Unit = address?.Unit,
                 StAdd = address?.Line1,
                 StAdd2 = address?.Line2,
@@ -256,11 +313,22 @@ namespace Icm.Api.Workflows.Contracts
                     break;
             }
 
+            // Alternate Phone # is how the old path carries the leave-a-message consent.
+            // MEASURED SIT2 2026-09-14 on four old-form submissions made for this: the one
+            // with "leave messages" ticked stores the number in Alternate Phone # too
+            // (1-53CJUMM); the three without do not (1-53CJUNB, 1-53CJXFC, 1-53CJV62),
+            // whatever the phone type. AlternatePhone# on the wire fills it
+            // (1-11086395601).
+            if (application.LeaveMessageAllowed == true)
+            {
+                prospect.AlternatePhone = phone;
+            }
+
             return prospect;
         }
 
         private static SiebelBusPassAttachmentList? ToAttachments(
-            IReadOnlyList<BusPassAttachment>? attachments)
+            IReadOnlyList<BusPassAttachment>? attachments, string srKey)
         {
             if (attachments is null || attachments.Count == 0)
             {
@@ -269,8 +337,9 @@ namespace Icm.Api.Workflows.Contracts
 
             return new SiebelBusPassAttachmentList
             {
-                SRAttachments = [.. attachments.Select(attachment => new SiebelBusPassAttachment
+                SRAttachments = [.. attachments.Select((attachment, index) => new SiebelBusPassAttachment
                 {
+                    AttKey = $"{srKey}-A{index + 1}",
                     AttName = attachment.FileName,
                     Base64Strng = Convert.ToBase64String(attachment.Content.Span),
                 })],
@@ -278,15 +347,42 @@ namespace Icm.Api.Workflows.Contracts
         }
 
         /// <summary>
-        /// The request-type value. MEASURED SIT2 2026-09-03: SRs the workflow created
-        /// carry exactly these three as their sub type (<c>Application</c>,
-        /// <c>Change of Circumstance</c>, <c>Replacement</c>). UNVERIFIED only in that the
-        /// input is assumed to use the same words the output stores; a wrong value is not
-        /// rejected — the field is free text on the wire — it misroutes the request.
+        /// The request-type value, sent both as <c>ICMBusPassRequestType</c> and as the
+        /// SR sub type. MEASURED SIT2 2026-09-03: SRs the workflow created carry exactly
+        /// these three as their sub type (<c>Application</c>, <c>Change of
+        /// Circumstance</c>, <c>Replacement</c>); MEASURED 2026-09-14 that sending the
+        /// same words as <c>SRSubType</c> files them that way, and that the old form's
+        /// Over 65 and Neither applicant types both file as plain <c>Application</c>
+        /// (1-53CJUNB, 1-53CJXFC) — nothing distinguishes them on the stored SR.
         /// </summary>
-        private static string ToRequestTypeValue(BusPassRequestType requestType) =>
+        /// <remarks>
+        /// <para>
+        /// A First Nations new application is not an <c>Application</c>: MEASURED SIT2
+        /// 2026-09-10, the old system's submission with the First Nations flag on filed
+        /// as sub type <c>AANDC Online Request</c> (row 1-53CBZL6) — the flag exists
+        /// only as that distinct sub type, and that path files cleanly even without a
+        /// contact match (the band office follows up instead). The applicant type only
+        /// qualifies a new application; an existing client's request has no applicant
+        /// type on the old form, so it never rewrites the other two words.
+        /// </para>
+        /// <para>
+        /// <b>Sending the word is not enough.</b> MEASURED 2026-09-10 (row 1-53BR2CI)
+        /// and again 2026-09-14 with the full classification triple (row 1-53CJXME):
+        /// <c>AANDC Online Request</c> as request type and sub type is accepted, but an
+        /// unmatched applicant still goes down the match-required path and files as
+        /// <c>Error - Web</c> with the sub type overwritten, where the old path's First
+        /// Nations flag accepted the same unmatched applicant (1-53CBZL6). Whatever
+        /// grants the AANDC no-match acceptance, this integration object does not
+        /// expose it — the word stays as the best-guess vocabulary, and the real
+        /// trigger is an open question for the ICM team.
+        /// </para>
+        /// </remarks>
+        private static string ToRequestTypeValue(
+            BusPassRequestType requestType, BusPassApplicantType? applicantType) =>
             requestType switch
             {
+                BusPassRequestType.NewApplication when applicantType == BusPassApplicantType.FirstNations
+                    => "AANDC Online Request",
                 BusPassRequestType.NewApplication => "Application",
                 BusPassRequestType.AddressUpdate => "Change of Circumstance",
                 BusPassRequestType.Replacement => "Replacement",

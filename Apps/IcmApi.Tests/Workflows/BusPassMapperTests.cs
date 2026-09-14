@@ -36,18 +36,20 @@ namespace Icm.Api.Tests.Workflows
             SiebelBusPassEnvelope envelope = BusPassMapper.ToSiebel(Application(), Now);
 
             SiebelBusPassMessage message = envelope.SRInboundMessage!;
-            Assert.Equal(string.Empty, message.MessageId);
+            Assert.Null(message.MessageId);
             Assert.Equal("Integration Object", message.MessageType);
             Assert.Equal("ICMSRBusPassInboundIO", message.IntObjectName);
             Assert.Equal("Siebel Hierarchical", message.IntObjectFormat);
         }
 
         [Fact]
-        public void TheHeaderMatchesWhatTheRetiredIntegrationSent()
+        public void TheHeaderCarriesTheIdentitiesAndNothingElse()
         {
-            // Field-for-field what ICMClient.SetGenericHeader filled, per the INT-316
-            // field-mapping analysis: fixed identities, a stamped timestamp, and empty
-            // strings — not omitted fields — for the bookkeeping slots.
+            // The fixed identities and the stamped timestamp are what
+            // ICMClient.SetGenericHeader filled, per the INT-316 field-mapping analysis.
+            // The retired integration also sent the bookkeeping slots as empty strings;
+            // MEASURED SIT2 2026-09-10, submissions succeed identically without them
+            // (SR 1-11085048718), so they are omitted — null here, absent on the wire.
             SiebelBusPassHeader header = Header(BusPassMapper.ToSiebel(Application(), Now));
 
             Assert.Equal("INT-316", header.TransactionName);
@@ -56,13 +58,13 @@ namespace Icm.Api.Tests.Workflows
             Assert.Equal("MCP_proxy", header.UserId);
             Assert.Equal("SUCCESS", header.Status);
             Assert.Equal("20260903T173005Z", header.Timestamp);
-            Assert.Equal(string.Empty, header.ErrorCode);
-            Assert.Equal(string.Empty, header.ErrorMessage);
-            Assert.Equal(string.Empty, header.SourceReference);
-            Assert.Equal(string.Empty, header.TargetReference);
-            Assert.Equal(string.Empty, header.WMInstanceId);
-            Assert.Equal(string.Empty, header.Attribute1);
-            Assert.Equal(string.Empty, header.Attribute5);
+            Assert.Null(header.ErrorCode);
+            Assert.Null(header.ErrorMessage);
+            Assert.Null(header.SourceReference);
+            Assert.Null(header.TargetReference);
+            Assert.Null(header.WMInstanceId);
+            Assert.Null(header.Attribute1);
+            Assert.Null(header.Attribute5);
         }
 
         [Fact]
@@ -90,6 +92,61 @@ namespace Icm.Api.Tests.Workflows
 
             Assert.Equal(expected, Payload(envelope).ICMBusPassRequestType);
             Assert.Equal(expected, Prospect(envelope).BusPassRequestType);
+
+            // MEASURED SIT2 2026-09-14: the classification is the caller's, and all three
+            // must travel together — the word alone stores an unclassified SR, the sub sub
+            // type alone fails the upsert (bounded hierarchical picklist).
+            Assert.Equal("Bus Pass", Payload(envelope).SRType);
+            Assert.Equal(expected, Payload(envelope).SRSubType);
+            Assert.Equal("One Address", Payload(envelope).SRSubSubType);
+        }
+
+        [Theory]
+        [InlineData(BusPassRequestType.NewApplication, "AANDC Online Request")]
+        [InlineData(BusPassRequestType.AddressUpdate, "Change of Circumstance")]
+        [InlineData(BusPassRequestType.Replacement, "Replacement")]
+        public void AFirstNationsApplicantRoutesANewApplicationAsAandc(
+            BusPassRequestType requestType, string expected)
+        {
+            // MEASURED SIT2 2026-09-10: the old system's First Nations submission filed
+            // as sub type "AANDC Online Request" (row 1-53CBZL6) — the flag exists only
+            // as that distinct sub type. It qualifies a new application only; an
+            // existing client's request has no applicant type on the old form.
+            SiebelBusPassEnvelope envelope = BusPassMapper.ToSiebel(
+                new BusPassApplication
+                {
+                    RequestType = requestType,
+                    ApplicantType = BusPassApplicantType.FirstNations,
+                },
+                Now);
+
+            Assert.Equal(expected, Payload(envelope).ICMBusPassRequestType);
+            Assert.Equal(expected, Prospect(envelope).BusPassRequestType);
+
+            // MEASURED SIT2 2026-09-14: the classification is the caller's, and all three
+            // must travel together — the word alone stores an unclassified SR, the sub sub
+            // type alone fails the upsert (bounded hierarchical picklist).
+            Assert.Equal("Bus Pass", Payload(envelope).SRType);
+            Assert.Equal(expected, Payload(envelope).SRSubType);
+            Assert.Equal("One Address", Payload(envelope).SRSubSubType);
+        }
+
+        [Theory]
+        [InlineData(BusPassApplicantType.Over65)]
+        [InlineData(BusPassApplicantType.Neither)]
+        [InlineData(null)]
+        public void OtherApplicantTypesStillFileAPlainApplication(
+            BusPassApplicantType? applicantType)
+        {
+            SiebelBusPassEnvelope envelope = BusPassMapper.ToSiebel(
+                new BusPassApplication
+                {
+                    RequestType = BusPassRequestType.NewApplication,
+                    ApplicantType = applicantType,
+                },
+                Now);
+
+            Assert.Equal("Application", Payload(envelope).ICMBusPassRequestType);
         }
 
         [Fact]
@@ -133,9 +190,11 @@ namespace Icm.Api.Tests.Workflows
             Assert.Equal("BC", prospect.Prov);
             Assert.Equal("V8V 1V1", prospect.Postal);
 
-            // MEASURED SIT2 2026-09-03: a single-address submission is stored with this
-            // exact combined role.
-            Assert.Equal("Residence/Mailing", prospect.Role);
+            // MEASURED SIT2 2026-09-14: a single-address submission stores this exact
+            // combined Purpose, and FreeText is the input that produces it — Role lands
+            // nowhere, so it is not sent.
+            Assert.Equal("Residence/Mailing", prospect.FreeText);
+            Assert.Null(prospect.Role);
         }
 
         [Fact]
@@ -151,15 +210,46 @@ namespace Icm.Api.Tests.Workflows
                 },
                 Now);
 
+            Assert.Equal("Multiple Addresses", Payload(envelope).SRSubSubType);
             var prospects = Payload(envelope).ListOfSRProspects!.SRProspects!;
             Assert.Equal(2, prospects.Count);
-            Assert.Equal("Residence", prospects[0].Role);
+            Assert.Equal("Residence", prospects[0].FreeText);
             Assert.Equal("123 Main St", prospects[0].StAdd);
-            Assert.Equal("Mailing", prospects[1].Role);
+            Assert.Equal("Mailing", prospects[1].FreeText);
             Assert.Equal("PO Box 9", prospects[1].StAdd);
 
             // Both rows are the same person, so the identity travels on both.
             Assert.Equal("Example", prospects[1].LstNme);
+        }
+
+        [Fact]
+        public void EveryLevelCarriesAUniqueUpsertKey()
+        {
+            // MEASURED SIT2 2026-09-10: without a non-empty SRKey the workflow's upsert
+            // fails with SBL-EAI-04397 ("No user key can be used for the Integration
+            // Component instance 'Service Request'"); with these keys it creates the SR
+            // (1-11085048654). The value is the submission moment, so it can never match
+            // an earlier record and turn the upsert into an update.
+            SiebelBusPassEnvelope envelope = BusPassMapper.ToSiebel(
+                new BusPassApplication
+                {
+                    RequestType = BusPassRequestType.AddressUpdate,
+                    ResidentialAddress = new BusPassAddress { Line1 = "123 Main St" },
+                    MailingAddress = new BusPassAddress { Line1 = "PO Box 9" },
+                    Attachments = [new BusPassAttachment { FileName = "proof.pdf", Content = new byte[] { 1 } }],
+                },
+                Now);
+
+            SiebelBusPassPayload payload = Payload(envelope);
+            Assert.Equal("MYSS-20260903173005000", payload.SRKey);
+
+            var prospects = payload.ListOfSRProspects!.SRProspects!;
+            Assert.Equal("MYSS-20260903173005000-1", prospects[0].ProspectKey);
+            Assert.Equal("MYSS-20260903173005000-2", prospects[1].ProspectKey);
+
+            Assert.Equal(
+                "MYSS-20260903173005000-A1",
+                payload.ListOfSRAttachments!.SRAttachments![0].AttKey);
         }
 
         [Theory]
@@ -216,6 +306,30 @@ namespace Icm.Api.Tests.Workflows
             Assert.Equal("2505550100", typed[(int)phoneType]);
             Assert.Equal(2, typed.Count(value => value is null));
             Assert.Null(prospect.Phone);
+
+            Assert.Null(prospect.AlternatePhone);
+        }
+
+        [Theory]
+        [InlineData(true, "2505550100")]
+        [InlineData(false, null)]
+        [InlineData(null, null)]
+        public void TheLeaveMessageConsentRepeatsTheNumberInAlternatePhone(bool? allowed, string? expected)
+        {
+            // MEASURED SIT2 2026-09-14: the old path stores the number in Alternate Phone #
+            // exactly when "leave messages" was ticked, whatever the phone type.
+            SiebelBusPassProspect prospect = Prospect(BusPassMapper.ToSiebel(
+                new BusPassApplication
+                {
+                    RequestType = BusPassRequestType.Replacement,
+                    PhoneNumber = "(250) 555-0100",
+                    PhoneType = BusPassPhoneType.Work,
+                    LeaveMessageAllowed = allowed,
+                },
+                Now));
+
+            Assert.Equal("2505550100", prospect.WorkPhone);
+            Assert.Equal(expected, prospect.AlternatePhone);
         }
 
         [Fact]
@@ -258,10 +372,10 @@ namespace Icm.Api.Tests.Workflows
         [Fact]
         public void TheFieldsWithNoHomeInTheIntegrationObjectAreNotSmuggledInElsewhere()
         {
-            // ApplicantType, the two acknowledgements and the leave-message consent have
-            // no field in ICMSRBusPassInboundIO. Until the ICM team names one, they must
-            // not leak into Memo or FreeText — inventing protocol would fail silently on
-            // the other end.
+            // The two acknowledgements have no field in ICMSRBusPassInboundIO, and the
+            // old path leaves no trace of them either. They must not leak into Memo (which
+            // a First Nations *new application* uses) or into FreeText beyond the purpose
+            // words — inventing protocol would fail silently on the other end.
             SiebelBusPassEnvelope envelope = BusPassMapper.ToSiebel(
                 new BusPassApplication
                 {
@@ -276,7 +390,25 @@ namespace Icm.Api.Tests.Workflows
             SiebelBusPassPayload payload = Payload(envelope);
             Assert.Null(payload.Memo);
             SiebelBusPassProspect prospect = Assert.Single(payload.ListOfSRProspects!.SRProspects!);
-            Assert.Null(prospect.FreeText);
+            Assert.Equal("Residence/Mailing", prospect.FreeText);
+        }
+
+        [Theory]
+        [InlineData(BusPassRequestType.NewApplication, BusPassApplicantType.FirstNations, "New Application")]
+        [InlineData(BusPassRequestType.NewApplication, BusPassApplicantType.Over65, null)]
+        [InlineData(BusPassRequestType.NewApplication, null, null)]
+        [InlineData(BusPassRequestType.Replacement, BusPassApplicantType.FirstNations, null)]
+        public void OnlyAFirstNationsNewApplicationCarriesTheNewApplicationMemo(
+            BusPassRequestType requestType, BusPassApplicantType? applicantType, string? expectedMemo)
+        {
+            // MEASURED SIT2 2026-09-14: the Memo is what lets an AANDC request file
+            // without a contact match, exactly as the old form's First Nations submission
+            // does; the old path never stores it on any other sub type.
+            SiebelBusPassEnvelope envelope = BusPassMapper.ToSiebel(
+                new BusPassApplication { RequestType = requestType, ApplicantType = applicantType },
+                Now);
+
+            Assert.Equal(expectedMemo, Payload(envelope).Memo);
         }
 
         [Fact]
