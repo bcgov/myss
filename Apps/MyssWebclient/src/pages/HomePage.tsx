@@ -56,7 +56,9 @@ export default function HomePage() {
                 </div>
             </section>
 
-            <AboutMySS className={styles.aboutSection} />
+            <section className={styles.aboutSection}>
+                <AboutMySS />
+            </section>           
         </div>
     );
 }

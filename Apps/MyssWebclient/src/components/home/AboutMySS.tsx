@@ -22,13 +22,9 @@ const information = [
     },
 ];
 
-interface AboutMySSProps {
-    className?: string;
-}
-
-export default function AboutMySS({ className }: AboutMySSProps) {
+export default function AboutMySS() {
     return (
-        <section className={className} aria-labelledby="about-myss-heading">
+        <section className={styles.aboutSection} aria-labelledby="about-myss-heading">
             <h2 id="about-myss-heading">About MySS</h2>
             <div className={styles.columns}>
                 {information.map((item) => (
