@@ -2,6 +2,7 @@ namespace Myss.Api.Services
 {
     using System;
     using System.Collections.Generic;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Myss.Api.Models;
@@ -30,6 +31,29 @@ namespace Myss.Api.Services
         /// being stored. Nothing is persisted when the result is invalid.
         /// </returns>
         Task<FormSubmissionResultModel> SubmitAsync(string formSpecId, FormSubmissionRequestModel request, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Stores a submission with its version stamp, after the spec validation
+        /// and a caller-supplied set of domain rules both pass.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="request">The submission payload.</param>
+        /// <param name="domainRules">
+        /// Rules the spec cannot express (cross-field checks, conditionally
+        /// required fields), run on the answers after the spec validation. Their
+        /// failures are reported together with the spec's, so the citizen sees
+        /// everything at once.
+        /// </param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>
+        /// The stored submission, or every validation failure that stopped it
+        /// being stored. Nothing is persisted when the result is invalid.
+        /// </returns>
+        Task<FormSubmissionResultModel> SubmitAsync(
+            string formSpecId,
+            FormSubmissionRequestModel request,
+            Func<JsonElement, IReadOnlyList<ValidationErrorModel>>? domainRules,
+            CancellationToken cancellationToken);
 
         /// <summary>
         /// Loads a submission together with the archived spec version that rendered it.

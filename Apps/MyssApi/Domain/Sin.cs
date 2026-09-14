@@ -8,7 +8,8 @@ namespace Myss.Api.Domain
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The C# half of the branded-constructor pattern in Handbook §2.4. The
+    /// The C# half of the branded-constructor pattern: a validated value has one
+    /// validating constructor, so an invalid one cannot be represented. The
     /// constructor is private, so the only way to obtain a <see cref="Sin"/> is
     /// through <see cref="TryCreate"/> — a value of this type cannot exist
     /// without having been validated. The TypeScript <c>makeSin</c> built in
