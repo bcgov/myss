@@ -148,9 +148,12 @@ namespace Icm.Api.ConsoleApp
                 return searchResult;
             }
 
-            int getResult = await GetOneAsync(serviceRequests, settings);
-            if (getResult != 0 || string.IsNullOrWhiteSpace(settings.Query.ChildCollection))
+            (int getResult, bool found) = await GetOneAsync(serviceRequests, settings);
+            if (getResult != 0 || !found || string.IsNullOrWhiteSpace(settings.Query.ChildCollection))
             {
+                // No child read for a parent that was not found: the not-found result is
+                // the useful one, and a child request for a missing row would replace it
+                // with an unrelated error.
                 return getResult;
             }
 
@@ -221,6 +224,17 @@ namespace Icm.Api.ConsoleApp
                 Console.WriteLine();
                 Console.WriteLine(PrettyJson(body));
                 return 0;
+            }
+            catch (OperationCanceledException exception)
+            {
+                // HttpClient reports its own timeout as a cancellation, not as an
+                // HttpRequestException; the other ICM calls get this from Refit as
+                // ApiRequestException and go through FailUnreachable.
+                stopwatch.Stop();
+                return Fail(
+                    stopwatch,
+                    $"ICM did not answer within {settings.Icm.TimeoutSeconds} seconds.",
+                    exception.Message);
             }
             catch (HttpRequestException exception)
             {
@@ -416,7 +430,8 @@ namespace Icm.Api.ConsoleApp
         }
 
         /// <summary>Stage three: read one named record, to check a specific case by hand.</summary>
-        private static async Task<int> GetOneAsync(
+        /// <returns>The exit code, and whether the record was found.</returns>
+        private static async Task<(int ExitCode, bool Found)> GetOneAsync(
             IServiceRequestService serviceRequests, ConsoleSettings settings)
         {
             string serviceRequestKey = settings.Query.ServiceRequestKey!;
@@ -444,33 +459,33 @@ namespace Icm.Api.ConsoleApp
                         "ICM reports \"no such record\" and \"not yours to see\" the same way, so this "
                         + "is either a wrong row id or a visibility question — try widening "
                         + "Query:ViewMode before assuming the record is gone.");
-                    return 0;
+                    return (0, false);
                 }
 
                 Console.WriteLine($"Found in {stopwatch.ElapsedMilliseconds} ms.");
                 Console.WriteLine();
                 ServiceRequestPrinter.Write(new ServiceRequestPage { Items = [record] }, full: true);
-                return 0;
+                return (0, true);
             }
             catch (ApiException exception)
             {
                 stopwatch.Stop();
-                return Fail(
+                return (Fail(
                     stopwatch,
                     $"ICM returned {(int)exception.StatusCode} {exception.StatusCode}.",
                     Explain(exception),
-                    responseBody: exception.Content);
+                    responseBody: exception.Content), false);
             }
             catch (ApiRequestException exception)
             {
                 stopwatch.Stop();
-                return FailUnreachable(stopwatch, exception, "ICM");
+                return (FailUnreachable(stopwatch, exception, "ICM"), false);
             }
             catch (IcmResponseException exception)
             {
                 stopwatch.Stop();
-                return Fail(
-                    stopwatch, "ICM reported success but the response was not usable.", exception.Message);
+                return (Fail(
+                    stopwatch, "ICM reported success but the response was not usable.", exception.Message), false);
             }
         }
 

@@ -4,6 +4,7 @@ namespace Icm.Api.Workflows.Contracts
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
+    using System.Security.Cryptography;
     using System.Text.Json;
     using Icm.Api.Contracts;
     using Icm.Api.Models;
@@ -171,8 +172,12 @@ namespace Icm.Api.Workflows.Contracts
             // upsert dies at Create SR_Prospect_Att with SBL-EAI-04397 ("No user key
             // can be used for the Integration Component instance 'Service Request'").
             // The value is unique per submission so the upsert can only ever create,
-            // never accidentally match and update an earlier record.
-            string srKey = $"MYSS-{utcNow.UtcDateTime.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture)}";
+            // never accidentally match and update an earlier record. The timestamp makes
+            // it readable; the random suffix makes it unique even when two submissions
+            // share a millisecond or a caller reuses the same clock reading.
+            string srKey = string.Create(
+                CultureInfo.InvariantCulture,
+                $"MYSS-{utcNow.UtcDateTime:yyyyMMddHHmmssfff}-{RandomNumberGenerator.GetHexString(8, lowercase: true)}");
 
             return new()
             {

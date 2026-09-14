@@ -241,15 +241,22 @@ namespace Icm.Api.Tests.Workflows
                 Now);
 
             SiebelBusPassPayload payload = Payload(envelope);
-            Assert.Equal("MYSS-20260903173005000", payload.SRKey);
+            string srKey = payload.SRKey!;
+            Assert.Matches("^MYSS-20260903173005000-[0-9a-f]{8}$", srKey);
 
             var prospects = payload.ListOfSRProspects!.SRProspects!;
-            Assert.Equal("MYSS-20260903173005000-1", prospects[0].ProspectKey);
-            Assert.Equal("MYSS-20260903173005000-2", prospects[1].ProspectKey);
+            Assert.Equal($"{srKey}-1", prospects[0].ProspectKey);
+            Assert.Equal($"{srKey}-2", prospects[1].ProspectKey);
 
             Assert.Equal(
-                "MYSS-20260903173005000-A1",
+                $"{srKey}-A1",
                 payload.ListOfSRAttachments!.SRAttachments![0].AttKey);
+
+            // Two submissions at the same instant still get different keys, so the
+            // upsert can never match one against the other.
+            SiebelBusPassEnvelope again = BusPassMapper.ToSiebel(
+                new BusPassApplication { RequestType = BusPassRequestType.AddressUpdate }, Now);
+            Assert.NotEqual(srKey, Payload(again).SRKey);
         }
 
         [Theory]
