@@ -11,7 +11,7 @@ interface LinkListProps {
 // "Links to other resources".
 export default function LinkList({ title, links }: LinkListProps) {
     return (
-        <nav aria-label={title}>
+        <nav className={styles.nav} aria-label={title}>
             <h2>{title}</h2>
             <ul className={styles.list}>
                 {links.map((link) => (
