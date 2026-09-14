@@ -276,6 +276,13 @@ namespace Myss.Api.Tests.Controllers
             public Task<FormSubmissionResultModel> SubmitAsync(string formSpecId, FormSubmissionRequestModel request, CancellationToken cancellationToken) =>
                 throw new NotSupportedException();
 
+            public Task<FormSubmissionResultModel> SubmitAsync(
+                string formSpecId,
+                FormSubmissionRequestModel request,
+                Func<JsonElement, IReadOnlyList<ValidationErrorModel>>? domainRules,
+                CancellationToken cancellationToken) =>
+                throw new NotSupportedException();
+
             public Task<FormSubmissionResponseModel?> GetSubmissionAsync(Guid id, CancellationToken cancellationToken) =>
                 throw new NotSupportedException();
 
