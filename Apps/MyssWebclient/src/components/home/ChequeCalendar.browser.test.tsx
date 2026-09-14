@@ -7,7 +7,7 @@ describe("ChequeCalendar", () => {
     it("renders the next cheque issue date and days-from-now", async () => {
         const screen = await render(<ChequeCalendar />);
 
-        await expect.element(screen.getByText("July 29")).toBeInTheDocument();
+        await expect.element(screen.getByText("July 29", { exact: true })).toBeInTheDocument();
         await expect.element(screen.getByText("17 days from now")).toBeInTheDocument();
     });
 
