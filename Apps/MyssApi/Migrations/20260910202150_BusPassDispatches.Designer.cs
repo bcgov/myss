@@ -3,6 +3,7 @@ using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Myss.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Myss.Api.Migrations
 {
     [DbContext(typeof(FormsDbContext))]
-    partial class FormsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910202150_BusPassDispatches")]
+    partial class BusPassDispatches
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -24,16 +27,20 @@ namespace Myss.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Myss.Api.Data.BusPassDispatchEvent", b =>
+            modelBuilder.Entity("Myss.Api.Data.BusPassDispatch", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("AttemptId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("attempt_id");
+                    b.Property<DateTimeOffset>("AttemptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("attempted_at");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
 
                     b.Property<string>("ErrorCode")
                         .HasMaxLength(64)
@@ -45,41 +52,30 @@ namespace Myss.Api.Migrations
                         .HasColumnType("character varying(1024)")
                         .HasColumnName("error_message");
 
-                    b.Property<DateTimeOffset>("OccurredAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_at");
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("outcome");
 
                     b.Property<string>("ReferenceNumber")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("reference_number");
 
-                    b.Property<string>("RequestId")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("request_id");
-
                     b.Property<Guid>("SubmissionId")
                         .HasColumnType("uuid")
                         .HasColumnName("submission_id");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasColumnName("type");
-
                     b.HasKey("Id");
 
-                    b.HasIndex(new[] { "AttemptId" }, "ix_bus_pass_dispatch_events_attempt_id");
+                    b.HasIndex(new[] { "SubmissionId" }, "ix_bus_pass_dispatches_submission_id");
 
-                    b.HasIndex(new[] { "SubmissionId" }, "ix_bus_pass_dispatch_events_submission_id");
-
-                    b.HasIndex(new[] { "SubmissionId" }, "ux_bus_pass_dispatch_events_accepted")
+                    b.HasIndex(new[] { "SubmissionId" }, "ux_bus_pass_dispatches_accepted")
                         .IsUnique()
-                        .HasFilter("type = 'Accepted'");
+                        .HasFilter("outcome = 'Accepted'");
 
-                    b.ToTable("bus_pass_dispatch_events", "forms");
+                    b.ToTable("bus_pass_dispatches", "forms");
                 });
 
             modelBuilder.Entity("Myss.Api.Data.FormSubmission", b =>
@@ -114,7 +110,7 @@ namespace Myss.Api.Migrations
                     b.ToTable("form_submissions", "forms");
                 });
 
-            modelBuilder.Entity("Myss.Api.Data.BusPassDispatchEvent", b =>
+            modelBuilder.Entity("Myss.Api.Data.BusPassDispatch", b =>
                 {
                     b.HasOne("Myss.Api.Data.FormSubmission", null)
                         .WithMany()
