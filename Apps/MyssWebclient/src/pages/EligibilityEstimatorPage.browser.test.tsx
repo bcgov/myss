@@ -525,8 +525,8 @@ test("changing Q2 to No after an estimate hides the stale result under the warni
   await expect
     .element(screen.getByText("You might not be eligible for assistance"))
     .toBeVisible();
-  // Async, retried — the clear runs in a useEffect one tick after the warning
-  // renders, so a synchronous body check here would race it.
+  // Async, retried — the clear runs in the change handler as the warning
+  // renders, so a synchronous body check here could race the re-render.
   await expect.element(screen.getByText(/\/ month/)).not.toBeInTheDocument();
 });
 

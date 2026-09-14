@@ -203,7 +203,18 @@ export default function EligibilityEstimatorPage() {
     const data = (value?.data ?? formInstanceRef.current?.data) as
       | Record<string, unknown>
       | undefined;
-    if (data) setLiveAnswers({ ...data });
+    if (!data) return;
+    setLiveAnswers({ ...data });
+
+    // If this edit moves the answers into the Q2 = "No" screen-fail state, a
+    // previously shown estimate now contradicts the form — clear it so a stale
+    // result card can't sit under the "might not be eligible" warning. Done in
+    // the change handler (computed from the incoming answers) rather than a
+    // cascading effect on derived state. A plain field edit leaves the result
+    // untouched; only this eligibility-gating change clears it.
+    const statusFails =
+      data.hasEligibleStatus === "false" || data.hasEligibleStatus === false;
+    if (statusFails) clearStaleResult();
   }
 
   // Hide any previously shown estimate so a stale result card can't linger over
@@ -220,15 +231,6 @@ export default function EligibilityEstimatorPage() {
   const showStatusWarning =
     liveAnswers.hasEligibleStatus === "false" ||
     liveAnswers.hasEligibleStatus === false;
-
-  // If the answers move into the Q2 = "No" screen-fail state (the inline "might
-  // not be eligible" warning), a previously shown estimate now contradicts the
-  // form — clear it so a stale result card can't sit under the warning. A plain
-  // field edit still leaves the result untouched; only this eligibility-gating
-  // change clears it.
-  useEffect(() => {
-    if (showStatusWarning) setOutcome((prev) => (prev ? null : prev));
-  }, [showStatusWarning]);
 
   function handleSubmit(submission: { data: Record<string, unknown> }) {
     const answers = submission.data;
