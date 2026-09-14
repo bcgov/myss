@@ -241,8 +241,11 @@ empty — the workflow fails its `Create SR_Prospect_Att` upsert with `SBL-EAI-0
 returned as `WF_ERR_CUSTOM_1` in the out-args. With a non-empty `SRKey` (and
 `ProspectKey`/`AttKey` on the child rows) the same submission succeeds — SR
 `1-11085048654`, row `1-53BR2A6`. The mapper generates the keys from the submission
-moment, unique per submission, so the upsert can only ever create a record, never
-match and update an earlier one.
+moment plus a random suffix, unique per call — or, when the caller sets
+`BusPassApplication.SubmissionKey`, from that, so a retry after a lost answer carries the
+same key and the upsert can recognise the earlier record instead of filing a second SR
+(the recognition itself is what upsert semantics promise; it has not been exercised
+live).
 
 **A failed match reports SUCCESS in the out-args.** MEASURED on that same submission:
 the applicant was the made-up "Myss IntegrationTest", no ICM contact matched — and the

@@ -28,6 +28,23 @@ namespace Icm.Api.Models
     /// </remarks>
     public class BusPassApplication
     {
+        /// <summary>
+        /// Gets or sets a key that identifies this submission to ICM, so that resending
+        /// the same application — after a timeout, say, when the first attempt may have
+        /// been accepted and its answer lost — carries the same key rather than a fresh
+        /// one and the workflow's upsert can recognise it. Null makes the client generate
+        /// a key unique to the call, which is right for a single attempt and wrong for a
+        /// retry. Letters, digits and hyphens; a GUID is a good choice. The client
+        /// prefixes it with <c>MYSS-</c> on the wire.
+        /// </summary>
+        /// <remarks>
+        /// That a repeated key makes the workflow update the earlier service request
+        /// rather than file a second one is what Siebel's upsert semantics say and what
+        /// the SBL-EAI-04397 failure without a key implies; it has not been exercised
+        /// against a live ICM.
+        /// </remarks>
+        public string? SubmissionKey { get; set; }
+
         /// <summary>Gets or sets what the applicant is asking for.</summary>
         public required BusPassRequestType RequestType { get; set; }
 

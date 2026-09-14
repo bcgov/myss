@@ -259,6 +259,28 @@ namespace Icm.Api.Tests.Workflows
             Assert.NotEqual(srKey, Payload(again).SRKey);
         }
 
+        [Fact]
+        public void ACallerSuppliedSubmissionKeyIsUsedVerbatimSoARetryCarriesTheSameKey()
+        {
+            // A retry after a lost answer must not look like a new submission to the
+            // upsert, so the caller's key wins over the generated one — on every level.
+            BusPassApplication application = new()
+            {
+                RequestType = BusPassRequestType.Replacement,
+                SubmissionKey = " 6f1c2d3e-0000-4000-8000-000000000001 ",
+                ResidentialAddress = new BusPassAddress { Line1 = "123 Main St" },
+                Attachments = [new BusPassAttachment { FileName = "proof.pdf", Content = new byte[] { 1 } }],
+            };
+
+            SiebelBusPassPayload first = Payload(BusPassMapper.ToSiebel(application, Now));
+            SiebelBusPassPayload second = Payload(BusPassMapper.ToSiebel(application, Now.AddMinutes(5)));
+
+            Assert.Equal("MYSS-6f1c2d3e-0000-4000-8000-000000000001", first.SRKey);
+            Assert.Equal(first.SRKey, second.SRKey);
+            Assert.Equal($"{first.SRKey}-1", first.ListOfSRProspects!.SRProspects![0].ProspectKey);
+            Assert.Equal($"{first.SRKey}-A1", first.ListOfSRAttachments!.SRAttachments![0].AttKey);
+        }
+
         [Theory]
         [InlineData(BusPassPhoneType.Home, "Home Phone")]
         [InlineData(BusPassPhoneType.Work, "Work Phone")]

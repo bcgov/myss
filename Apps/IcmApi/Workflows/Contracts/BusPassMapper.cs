@@ -171,13 +171,16 @@ namespace Icm.Api.Workflows.Contracts
             // matches on. MEASURED SIT2 2026-09-10: with them absent OR empty, the
             // upsert dies at Create SR_Prospect_Att with SBL-EAI-04397 ("No user key
             // can be used for the Integration Component instance 'Service Request'").
-            // The value is unique per submission so the upsert can only ever create,
-            // never accidentally match and update an earlier record. The timestamp makes
-            // it readable; the random suffix makes it unique even when two submissions
-            // share a millisecond or a caller reuses the same clock reading.
-            string srKey = string.Create(
-                CultureInfo.InvariantCulture,
-                $"MYSS-{utcNow.UtcDateTime:yyyyMMddHHmmssfff}-{RandomNumberGenerator.GetHexString(8, lowercase: true)}");
+            // The caller's key when it gives one — the same application resent after a
+            // lost answer then carries the same key, and the upsert can recognise the
+            // earlier record instead of filing a second SR. Otherwise a value unique to
+            // this call: the timestamp makes it readable, the random suffix keeps two
+            // submissions in the same millisecond apart.
+            string srKey = string.IsNullOrWhiteSpace(application.SubmissionKey)
+                ? string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"MYSS-{utcNow.UtcDateTime:yyyyMMddHHmmssfff}-{RandomNumberGenerator.GetHexString(8, lowercase: true)}")
+                : $"MYSS-{application.SubmissionKey.Trim()}";
 
             return new()
             {
