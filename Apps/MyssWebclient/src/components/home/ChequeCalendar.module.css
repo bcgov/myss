@@ -2,14 +2,9 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    /* Decision-0 fix for the BCDS components (accordion + InlineAlert). Their text
-        is sized in rem via @bcgov/design-tokens (e.g. --typography-bold-body:
-        700 1rem/1.688rem), but the app's Bootstrap sets html{font-size:10px}, so
-        1rem = 10px and every BCDS label/body renders at ~62.5%. The estimator's own
-        text was converted to explicit px (Phase 1); these components were not, so
-        the accordion label + alert text came out smaller than the px-pinned Q1/Q2.
-        Redefine the rem font tokens to their intended px here (scoped to the
-        estimator), so the BCDS components render at design size. */
+    /* BCDS typography uses rem tokens, but Bootstrap sets html{font-size:10px},
+       making 1rem = 10px. Keep the regular body text in this home-page payment
+       section at the intended design size for the Callout and its contents. */
     --typography-regular-body: 400 16px/1.688 "BC Sans";
 }
 
