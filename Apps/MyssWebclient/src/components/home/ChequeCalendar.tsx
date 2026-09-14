@@ -3,7 +3,7 @@ import { Link } from "@bcgov/design-system-react-components";
 
 import styles from "./ChequeCalendar.module.css";
 
-const nextChequeDate = "Wednesday, July 29";
+const nextChequeDate = "July 29";
 const daysFromNow = "17 days from now";
 const chequeScheduleUrl =
     "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/payment-dates";
@@ -17,8 +17,10 @@ export default function ChequeCalendar() {
                         <p className={styles.dateCardHeader}>
                             Next cheque issue date
                         </p>
-                        <b>{nextChequeDate}</b>
-                        <p>{daysFromNow}</p>
+                        <div className={styles.dateCardBody}>
+                            <b>{nextChequeDate}</b>
+                            <p>{daysFromNow}</p>
+                        </div>
                     </div>
                     <div className={styles.information}>
                         <h2>Payment information</h2>

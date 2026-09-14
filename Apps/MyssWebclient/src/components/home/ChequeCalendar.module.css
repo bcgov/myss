@@ -28,6 +28,14 @@
     margin: 0;
 }
 
+.dateCardBody {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+}
+
 .dateCardHeader {
     background-color: var(--surface-color-background-light-blue, #eaf4fb);
     font-weight: 700;
@@ -36,8 +44,8 @@
     width: 100%;
 }
 
-.dateCard > b {
-    font-size: 2rem;
+.dateCardBody > b {
+    font-size: 3rem;
     margin: 2px 0;
 }
 
