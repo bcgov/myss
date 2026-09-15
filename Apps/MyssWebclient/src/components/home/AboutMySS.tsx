@@ -21,9 +21,10 @@ const information = [
         text: "If you are currently in receipt of income or disability assistance, MySS will allow you to securely access your current information online. For example, you can view personal messages from the ministry, submit your monthly report, and upload forms.",
     },
 ];
+
 export default function AboutMySS() {
     return (
-        <section aria-labelledby="about-myss-heading">
+        <section className={styles.aboutSection} aria-labelledby="about-myss-heading">
             <h2 id="about-myss-heading">About MySS</h2>
             <div className={styles.columns}>
                 {information.map((item) => (

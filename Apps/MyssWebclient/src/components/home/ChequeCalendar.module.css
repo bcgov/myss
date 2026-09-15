@@ -2,6 +2,10 @@
     display: flex;
     justify-content: center;
     width: 100%;
+    /* BCDS typography uses rem tokens, but Bootstrap sets html{font-size:10px},
+       making 1rem = 10px. Keep the regular body text in this home-page payment
+       section at the intended design size for the Callout and its contents. */
+    --typography-regular-body: 400 16px/1.688 "BC Sans";
 }
 
 .content {
@@ -28,6 +32,14 @@
     margin: 0;
 }
 
+.dateCardBody {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+}
+
 .dateCardHeader {
     background-color: var(--surface-color-background-light-blue, #eaf4fb);
     font-weight: 700;
@@ -36,8 +48,8 @@
     width: 100%;
 }
 
-.dateCard > b {
-    font-size: 2rem;
+.dateCardBody > b {
+    font-size: 3rem;
     margin: 2px 0;
 }
 

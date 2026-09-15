@@ -32,7 +32,7 @@ function App() {
             <main id="main-content">
                 <Outlet />
             </main>
-            {!hideFooter && <Footer hideAcknowledgement />}
+            {!hideFooter && <Footer />}
         </>
     );
 }

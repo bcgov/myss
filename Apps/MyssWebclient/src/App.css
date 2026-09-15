@@ -26,3 +26,24 @@ main {
         padding: var(--layout-padding-xlarge) var(--layout-padding-medium);
     }
 }
+
+/* Match the footer's inner content width to the home page's 900px sections
+   (BCDS defaults both to 1100px). Selector chain matches BCDS's own rule
+   specificity, since a single-class override loses to it. The home page
+   bands add their own 32px inner padding inside their 900px box, so match
+   that here too or the text sits 32px further out than the other sections. */
+.bcds-footer > .bcds-footer--acknowledgement > .bcds-footer--acknowledgement-text,
+.bcds-footer > .bcds-footer--container > .bcds-footer--container-content {
+    max-width: 900px;
+    padding-left: var(--layout-padding-xlarge);
+    padding-right: var(--layout-padding-xlarge);
+    box-sizing: border-box;
+}
+
+/* Same match for the header (BCDS defaults it to 1100px too). */
+.bcds-header > .bcds-header--container {
+    max-width: 900px;
+    padding-left: var(--layout-padding-xlarge);
+    padding-right: var(--layout-padding-xlarge);
+    box-sizing: border-box;
+}
