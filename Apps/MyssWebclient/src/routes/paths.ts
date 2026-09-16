@@ -11,6 +11,8 @@ export const paths = {
     // Direct-entry route for IDIR administrative capabilities.
     admin: "/admin",
     adminFormManagement: "/admin/form-management",
+    // Editor for one form, opened from the form-management list.
+    adminFormEditor: "/admin/form-management/:formSpecId",
     // Minimal standalone login harness. Deliberately independent of the home
     // page so home can keep changing without disturbing a known-good way to
     // exercise the auth flow end to end.
@@ -20,3 +22,8 @@ export const paths = {
 } as const;
 
 export type AppPath = (typeof paths)[keyof typeof paths];
+
+/** Concrete editor URL for one form, kept beside the `adminFormEditor` pattern. */
+export function adminFormEditorPath(formSpecId: string): string {
+    return `/admin/form-management/${encodeURIComponent(formSpecId)}`;
+}

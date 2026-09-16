@@ -1,0 +1,154 @@
+.grid {
+    border-top: 1px solid var(--surface-color-border-default, #d0d5dd);
+    display: grid;
+    grid-template-columns: 1fr;
+    margin-top: var(--layout-margin-large, 24px);
+}
+
+@media (min-width: 900px) {
+    .grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+}
+
+/* Column headers only make sense in the two-column layout. */
+.headCell {
+    display: none;
+}
+
+@media (min-width: 900px) {
+    .headCell {
+        border-bottom: 2px solid var(--surface-color-border-default, #d0d5dd);
+        display: block;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        padding: var(--layout-padding-small, 8px)
+            var(--layout-padding-medium, 16px);
+        text-transform: uppercase;
+    }
+}
+
+/* Each field and its settings share a grid row, so they line up. The bottom
+   border draws the divider between fields. */
+.previewCell,
+.editCell {
+    border-bottom: 1px solid var(--surface-color-border-default, #d0d5dd);
+    min-width: 0;
+    padding: var(--layout-padding-medium, 16px);
+}
+
+.editCell {
+    background-color: var(--surface-color-background-light, #f8f8f8);
+}
+
+.editControls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-medium, 16px);
+    align-items: end;
+}
+
+.key {
+    background-color: #ffffff;
+    border: 1px solid var(--surface-color-border-default, #d0d5dd);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    padding: 2px 6px;
+}
+
+.labelField {
+    display: flex;
+    flex: 1 1 12rem;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.fieldLabel {
+    color: var(--typography-color-secondary, #474543);
+    font-size: 0.8125rem;
+    font-weight: 700;
+}
+
+.labelField input {
+    border: 1px solid var(--surface-color-border-default, #d0d5dd);
+    border-radius: 4px;
+    font-size: 1rem;
+    padding: 6px 8px;
+}
+
+.requiredField {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+}
+
+.noEdit {
+    color: var(--typography-color-secondary, #767676);
+}
+
+.errorSummary {
+    border: 2px solid var(--typography-color-danger, #ce3e39);
+    border-radius: 4px;
+    margin-top: var(--layout-margin-large, 24px);
+    padding: var(--layout-padding-medium, 16px);
+}
+
+.errorTitle {
+    color: var(--typography-color-danger, #ce3e39);
+    font-size: 1.125rem;
+    margin: 0 0 var(--layout-margin-small, 8px);
+}
+
+.errorList {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.errorLink {
+    background: none;
+    border: none;
+    color: var(--surface-color-primary-button-default, #234075);
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-align: left;
+    text-decoration: underline;
+}
+
+.saveBar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-medium, 16px);
+    margin-top: var(--layout-margin-large, 24px);
+}
+
+.saveBar button {
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 10px 20px;
+}
+
+.saveBar button:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.publishButton {
+    background-color: var(--surface-color-primary-button-default, #234075);
+    border: none;
+    color: #ffffff;
+}
+
+.saveButton {
+    background-color: #ffffff;
+    border: 1px solid var(--surface-color-primary-button-default, #234075);
+    color: var(--surface-color-primary-button-default, #234075);
+}
+
+.saved {
+    color: var(--typography-color-primary, #1a1a1a);
+    font-weight: 600;
+}

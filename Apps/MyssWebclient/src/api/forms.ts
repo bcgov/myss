@@ -151,6 +151,24 @@ export class SpecRejectedError extends Error {
   }
 }
 
+/**
+ * A read that failed, carrying the HTTP status so callers can tell a missing
+ * form (404) apart from a genuine load error (401, 500, a proxy error page).
+ */
+export class FormLoadError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "FormLoadError";
+    this.status = status;
+
+    // Restore the prototype link lost when TypeScript downlevels the class, so
+    // `instanceof FormLoadError` holds regardless of compile target.
+    Object.setPrototypeOf(this, FormLoadError.prototype);
+  }
+}
+
 function isValidationError(value: unknown): value is FormValidationError {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Record<string, unknown>;
@@ -251,7 +269,8 @@ export async function getDraft(formSpecId: string): Promise<FormSpecPayload> {
   const res = await fetch(`${API_URL}/v1/forms/${formSpecId}/draft`, {
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Draft fetch failed (${res.status})`);
+  if (!res.ok)
+    throw new FormLoadError(res.status, `Draft fetch failed (${res.status})`);
   return (await res.json()).payload;
 }
 

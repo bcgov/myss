@@ -15,6 +15,7 @@ import SubmissionView from "@/pages/SubmissionView";
 import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
 import AdminPage from "@/pages/AdminPage";
 import FormManagementPage from "@/pages/FormManagementPage";
+import FormEditorPage from "@/pages/FormEditorPage";
 import RequireAuth from "@/auth/RequireAuth";
 import RequireIdir from "@/auth/RequireIdir";
 import { paths } from "@/routes/paths";
@@ -61,6 +62,14 @@ export const router = createBrowserRouter([
                 element: (
                     <RequireIdir>
                         <FormManagementPage />
+                    </RequireIdir>
+                ),
+            },
+            {
+                path: paths.adminFormEditor,
+                element: (
+                    <RequireIdir>
+                        <FormEditorPage />
                     </RequireIdir>
                 ),
             },
