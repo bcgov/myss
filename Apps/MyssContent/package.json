@@ -34,7 +34,7 @@
         "@types/react-dom": "^18",
         "@vitest/coverage-v8": "4.0.18",
         "typescript": "^5",
-        "vitest": "4.0.18"
+        "vitest": "4.1.11"
     },
     "engines": {
         "node": ">=20.0.0 <=26.x.x",
