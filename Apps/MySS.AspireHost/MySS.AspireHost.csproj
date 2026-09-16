@@ -18,6 +18,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\MyssApi\MyssApi.csproj" />
+        <ProjectReference Include="..\IcmApi.Host\IcmApi.Host.csproj" />
     </ItemGroup>
 
 </Project>

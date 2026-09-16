@@ -1,0 +1,33 @@
+{
+  "//": "The bus pass request as MyssApi serializes BusPassApplicationModel and as IcmApi.Host reads BusPassApplicationRequest. Linked, not copied, into both test projects: MyssApi.Tests asserts its provider produces exactly this document, IcmApi.Host.Tests asserts the host reads every property of it. Every value is synthetic: the SIN is the canonical test number, the addresses are the BC legislature and its mailing box.",
+  "requestType": "AddressUpdate",
+  "applicantType": "Over65",
+  "acknowledgedPassCancellation": false,
+  "acknowledgedEligibilityCriteria": true,
+  "socialInsuranceNumber": "046454286",
+  "busPassAccountNumber": "12345678",
+  "firstName": "Myss",
+  "lastName": "IntegrationTest",
+  "dateOfBirth": "1950-01-01",
+  "phoneNumber": "2505550199",
+  "phoneType": "Home",
+  "leaveMessageAllowed": true,
+  "emailAddress": "myss.integrationtest@example.com",
+  "preferredContactMethod": "Email",
+  "residentialAddress": {
+    "unit": "1",
+    "line1": "501 Belleville St",
+    "line2": "Rear entrance",
+    "city": "Victoria",
+    "province": "BC",
+    "postalCode": "V8V 1X4"
+  },
+  "mailingAddress": {
+    "unit": "2",
+    "line1": "PO Box 9041 Stn Prov Govt",
+    "line2": "Parliament Buildings",
+    "city": "Victoria",
+    "province": "BC",
+    "postalCode": "V8W 9E1"
+  }
+}

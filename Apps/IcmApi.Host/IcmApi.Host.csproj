@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Version>0.1.0</Version>
+        <RootNamespace>Icm.Api.Host</RootNamespace>
+        <AssemblyName>IcmApi.Host</AssemblyName>
+        <Nullable>enable</Nullable>
+        <LangVersion>14.0</LangVersion>
+        <AnalysisMode>Recommended</AnalysisMode>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+        <!--
+          The same user-secret store as IcmApi.Console, on purpose: the Icm:* settings a
+          developer has already set for the console (base URL, realm, client secret) are
+          exactly the ones this host needs, so one `dotnet user-secrets set` serves both.
+        -->
+        <UserSecretsId>21c32ae2-b147-46e6-9895-e20c9996f3cc</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
+        <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The ICM client library: everything Siebel-shaped stays inside it. -->
+        <ProjectReference Include="..\IcmApi\IcmApi.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="IcmApi.Host.Tests" />
+    </ItemGroup>
+
+</Project>
