@@ -2,7 +2,7 @@ import { Form } from "@formio/react";
 import { Link, useParams } from "react-router";
 
 import "@formio/js/dist/formio.form.min.css";
-import "@/widgets/PocForm.css";
+import "@/widgets/FormSpecWidget.css";
 
 import { useSubmission } from "@/hooks/usePocForm";
 

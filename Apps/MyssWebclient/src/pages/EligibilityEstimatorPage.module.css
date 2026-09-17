@@ -85,7 +85,7 @@
 }
 
 /* The heading is focused after submission so AT announces the result; keep a
-   visible focus indicator for keyboard users (matches PocForm.css). Scoped to
+  visible focus indicator for keyboard users (matches FormSpecWidget.css). Scoped to
    :focus-visible so a mouse submit doesn't leave a stray box on the heading. */
 .resultTitle:focus-visible {
   outline: var(--layout-border-width-medium) solid var(--surface-color-border-dark);

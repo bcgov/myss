@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import AttachmentUpload from "@/widgets/AttachmentUpload";
+import AttachmentUploadWidget from "@/widgets/AttachmentUploadWidget";
 
 /**
  * Attachments tech demo: upload a file through the scanned attachment
@@ -17,7 +17,7 @@ export default function AttachmentsTechDemo() {
         Files are virus-scanned before they are stored; only PDF, PNG and JPEG
         up to 5 MB are accepted.
       </p>
-      <AttachmentUpload />
+      <AttachmentUploadWidget />
     </>
   );
 }

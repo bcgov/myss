@@ -1,5 +1,5 @@
 /*
- * Minimal Form.io → BC Gov visual bridge (POC).
+ * Minimal Form.io -> BC Gov visual bridge (POC).
  *
  * Form.io's default templates assume Bootstrap classes (.form-control etc.)
  * that this app does not load. Native inputs still render via user-agent
@@ -9,7 +9,7 @@
  */
 
 /*
- * Error summary for a refused submission. Not Form.io's own error styling —
+ * Error summary for a refused submission. Not Form.io's own error styling -
  * these come from the API after submit, so they render outside the form.
  * Colours are placeholders until the BC Gov tokens land with the wider theming
  * slice; the left bar and border carry the meaning so it does not depend on
@@ -89,8 +89,8 @@
 }
 
 .formio-form .choices.is-disabled .choices__button {
-  /* The per-item remove (×) button. !important is needed to beat the
-   * vendor rule `.choices[data-type*=select-one] … [data-deletable]
+  /* The per-item remove (x) button. !important is needed to beat the
+   * vendor rule `.choices[data-type*=select-one] ... [data-deletable]
    * :not([data-placeholder]) .choices__button`, which is 7 selectors deep. */
   display: none !important;
 }

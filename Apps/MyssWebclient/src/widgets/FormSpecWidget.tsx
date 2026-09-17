@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import "@formio/js/dist/formio.form.min.css";
-import "./PocForm.css";
+import "./FormSpecWidget.css";
 
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
 
