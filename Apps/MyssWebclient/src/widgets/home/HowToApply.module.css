@@ -1,9 +1,0 @@
-.wrapper {
-    /* Decision-0 fix for the BCDS Link (see ChequeCalendar.module.css). Its text
-        is sized in rem via @bcgov/design-tokens (--typography-regular-body:
-        400 1rem/1.688rem), but the app's Bootstrap sets html{font-size:10px}, so
-        1rem = 10px and the link renders at ~62.5% of its intended size.
-        Redefine the rem font token to its intended px here (scoped to this
-        component), so the Link renders at design size. */
-    --typography-regular-body: 400 16px/1.688 "BC Sans";
-}

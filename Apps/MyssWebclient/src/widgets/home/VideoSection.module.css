@@ -1,19 +1,19 @@
 .wrapper {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--layout-margin-medium, 16px);
+    gap: var(--layout-margin-medium);
 }
 
 .videoItem h3 {
-    margin: 0 0 var(--layout-margin-small, 8px);
+    margin: 0 0 var(--layout-margin-small);
 }
 
 .videoFrame {
     position: relative;
     width: 100%;
     padding-top: 56.25%; /* 16:9 aspect ratio */
-    background-color: var(--surface-color-secondary-default, #f2f2f2);
-    border-radius: var(--layout-border-radius-medium, 4px);
+    background-color: var(--surface-color-secondary-default);
+    border-radius: var(--layout-border-radius-medium);
     overflow: hidden;
 }
 
