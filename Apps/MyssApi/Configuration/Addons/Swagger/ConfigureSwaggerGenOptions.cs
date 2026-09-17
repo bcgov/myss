@@ -5,7 +5,7 @@ namespace Myss.Api.Configuration.Addons.Swagger
     using Asp.Versioning.ApiExplorer;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Options;
-    using Microsoft.OpenApi.Models;
+    using Microsoft.OpenApi;
     using Swashbuckle.AspNetCore.SwaggerGen;
 
     /// <inheritdoc/>

@@ -4,15 +4,15 @@ namespace Myss.Api.Configuration.Addons.Swagger
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
-    using Microsoft.OpenApi.Any;
-    using Microsoft.OpenApi.Models;
+    using System.Text.Json.Nodes;
+    using Microsoft.OpenApi;
     using Swashbuckle.AspNetCore.SwaggerGen;
 
     public class SwaggerExcludeModelFilter : IDocumentFilter, ISchemaFilter
     {
         private static HashSet<string> ExcludedKeys = new();
 
-        public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+        public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
         {
             if (context.Type.GetCustomAttribute<SwaggerExcludeAttribute>() != null)
             {
@@ -24,55 +24,74 @@ namespace Myss.Api.Configuration.Addons.Swagger
                 return;
             }
 
-            if (schema.Properties != null)
+            // Microsoft.OpenApi 2 hands filters a read-only interface; only the
+            // concrete schema is mutable (a schema reference is not).
+            if (schema is not OpenApiSchema concreteSchema)
             {
-                var excludedProperties = context
-                    .Type.GetProperties()
-                    .Where(t => t.GetCustomAttribute<SwaggerExcludeAttribute>() != null);
-
-                foreach (var excludedProperty in excludedProperties)
-                {
-                    var propertyToRemove = schema.Properties.Keys.SingleOrDefault(x =>
-                        string.Equals(x, excludedProperty.Name, StringComparison.OrdinalIgnoreCase)
-                    );
-
-                    if (propertyToRemove != null)
-                    {
-                        schema.Properties.Remove(propertyToRemove);
-                    }
-                }
+                return;
             }
 
-            var enumType = context.Type.IsEnum
-                ? context.Type
-                : Nullable.GetUnderlyingType(context.Type);
-
-            if (enumType is { IsEnum: true })
-            {
-                var enums = new List<IOpenApiAny>();
-
-                foreach (var name in Enum.GetNames(enumType))
-                {
-                    var value = enumType.GetMember(name)[0];
-                    if (!value.GetCustomAttributes<SwaggerExcludeAttribute>().Any())
-                    {
-                        enums.Add(new OpenApiString(name));
-                    }
-                }
-
-                schema.Enum = enums;
-            }
+            RemoveExcludedProperties(concreteSchema, context.Type);
+            ListIncludedEnumMembers(concreteSchema, context.Type);
         }
 
         public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
         {
-            foreach (var key in swaggerDoc.Components.Schemas.Keys)
+            IDictionary<string, IOpenApiSchema>? schemas = swaggerDoc.Components?.Schemas;
+            if (schemas is null)
             {
-                if (ExcludedKeys.Any(x => x.EndsWith(key, StringComparison.Ordinal)))
+                return;
+            }
+
+            // Snapshot the matching keys: entries are removed while iterating.
+            List<string> excludedSchemaKeys = schemas
+                .Keys.Where(key => ExcludedKeys.Any(x => x.EndsWith(key, StringComparison.Ordinal)))
+                .ToList();
+
+            foreach (var key in excludedSchemaKeys)
+            {
+                schemas.Remove(key);
+            }
+        }
+
+        private static void RemoveExcludedProperties(OpenApiSchema schema, Type type)
+        {
+            if (schema.Properties == null)
+            {
+                return;
+            }
+
+            var excludedProperties = type.GetProperties()
+                .Where(t => t.GetCustomAttribute<SwaggerExcludeAttribute>() != null);
+
+            foreach (var excludedProperty in excludedProperties)
+            {
+                var propertyToRemove = schema.Properties.Keys.SingleOrDefault(x =>
+                    string.Equals(x, excludedProperty.Name, StringComparison.OrdinalIgnoreCase)
+                );
+
+                if (propertyToRemove != null)
                 {
-                    swaggerDoc.Components.Schemas.Remove(key);
+                    schema.Properties.Remove(propertyToRemove);
                 }
             }
+        }
+
+        private static void ListIncludedEnumMembers(OpenApiSchema schema, Type type)
+        {
+            var enumType = type.IsEnum ? type : Nullable.GetUnderlyingType(type);
+
+            if (enumType is not { IsEnum: true })
+            {
+                return;
+            }
+
+            schema.Enum = Enum.GetNames(enumType)
+                .Where(name =>
+                    !enumType.GetMember(name)[0].GetCustomAttributes<SwaggerExcludeAttribute>().Any()
+                )
+                .Select(name => (JsonNode)JsonValue.Create(name))
+                .ToList();
         }
     }
 }
