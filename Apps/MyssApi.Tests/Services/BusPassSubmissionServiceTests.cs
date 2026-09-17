@@ -113,9 +113,10 @@ namespace Myss.Api.Tests.Services
             using FormsDbContext db = NewDb();
             BusPassSubmissionService service = NewService(db);
 
-            await service.SubmitAsync(Request(NewApplicant()), CancellationToken.None);
+            BusPassSubmissionResultModel result = await service.SubmitAsync(Request(NewApplicant()), CancellationToken.None);
 
             BusPassApplicationModel sent = Assert.Single(_middleware.Submitted);
+            Assert.Equal(result.Response!.SubmissionId.ToString("D"), sent.SubmissionKey);
             Assert.Equal(BusPassRequestType.NewApplication, sent.RequestType);
             Assert.Equal(BusPassApplicantType.Over65, sent.ApplicantType);
             Assert.Equal("046454286", sent.SocialInsuranceNumber);
@@ -156,7 +157,11 @@ namespace Myss.Api.Tests.Services
         public async Task MiddlewareUnavailable_KeepsTheSubmissionAndRecordsTheFailure()
         {
             using FormsDbContext db = NewDb();
-            _middleware.Failure = new IcmApiUnavailableException("The ICM middleware could not be reached.");
+            _middleware.Failure = new IcmApiUnavailableException("The ICM middleware could not be reached.")
+            {
+                Keyword = "ICM.BUSPASS.TIMEOUT",
+                MayHaveReachedIcm = true,
+            };
             BusPassSubmissionService service = NewService(db);
 
             BusPassSubmissionResultModel result = await service.SubmitAsync(Request(NewApplicant()), CancellationToken.None);
@@ -164,6 +169,8 @@ namespace Myss.Api.Tests.Services
             Assert.True(result.IsValid);
             Assert.Equal(BusPassSubmissionOutcome.Failed, result.Response!.Outcome);
             Assert.Equal(BusPassErrorKeywords.IcmUnavailable, result.Response.Keyword);
+            Assert.Equal("ICM.BUSPASS.TIMEOUT", result.Response.ErrorCode);
+            Assert.True(result.Response.MayHaveReachedIcm);
             Assert.Null(result.Response.ReferenceNumber);
 
             Assert.Single(await db.FormSubmissions.ToListAsync());
@@ -172,6 +179,23 @@ namespace Myss.Api.Tests.Services
                 [BusPassDispatchEventType.Started, BusPassDispatchEventType.Failed],
                 events.Select(e => e.Type).ToArray());
             Assert.Equal("The ICM middleware could not be reached.", events[^1].ErrorMessage);
+            Assert.Equal("ICM.BUSPASS.TIMEOUT", events[^1].ErrorCode);
+        }
+
+        [Fact]
+        public async Task AProvablyUndeliveredFailure_SaysARetryIsSafe()
+        {
+            using FormsDbContext db = NewDb();
+            _middleware.Failure = new IcmApiUnavailableException("The ICM middleware could not be reached.")
+            {
+                MayHaveReachedIcm = false,
+            };
+            BusPassSubmissionService service = NewService(db);
+
+            BusPassSubmissionResultModel result = await service.SubmitAsync(Request(NewApplicant()), CancellationToken.None);
+
+            Assert.False(result.Response!.MayHaveReachedIcm);
+            Assert.Null(result.Response.ErrorCode);
         }
 
         [Fact]

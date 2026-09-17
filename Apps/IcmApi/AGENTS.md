@@ -4,6 +4,8 @@ Guidance for AI agents working in this library. The workspace-wide rules in the
 repo root [AGENTS.md](../../AGENTS.md) apply in full. `Apps/IcmApi/README.md` is
 the fuller guide — structure, wiring, and known pitfalls — and
 `Apps/IcmApi/docs/integration/` holds the upstream specs it implements.
+The REST service that hosts this library for MyssApi is `Apps/IcmApi.Host`
+(see its AGENTS.md).
 
 A client library for ICM (Siebel), layered so that Siebel's shape never leaves the
 assembly. Namespaces are `Icm.Api` (Refit interfaces), `Icm.Api.Contracts`,

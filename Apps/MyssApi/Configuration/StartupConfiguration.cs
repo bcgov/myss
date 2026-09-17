@@ -332,6 +332,9 @@ namespace Myss.Api.Configuration
 
             app.UseRouting();
 
+            // After routing, so per-endpoint policies ([EnableRateLimiting]) apply.
+            app.UseRateLimiter();
+
             // Enable health endpoint for readiness probe
             app.UseHealthChecks("/health");
 

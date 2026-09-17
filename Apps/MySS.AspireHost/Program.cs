@@ -219,6 +219,35 @@ IResourceBuilder<JavaScriptAppResource> content = builder
         SecretParameter("strapi-database-password", "Aspire:Parameters:Strapi:DatabasePassword"));
 
 // ---------------------------------------------------------------------------
+// IcmApi.Host — the ICM middleware MySSApi posts bus pass requests to. It
+// joins the stack only when an ICM base URL is configured: the URL is
+// environment-specific, reaching it needs the ministry VPN, and a developer
+// without either should still be able to run the rest. Read from
+// Aspire:Parameters:Icm:BaseUrl, or from the Icm:BaseUrl the ICM console
+// already uses — this app host shares that user-secret store. The host's
+// remaining ICM settings (realm, client id and secret, trusted user) come from
+// the same store, under Icm:*, and MySSApi's own credentials for calling the
+// host from its appsettings.local.json (IcmApi:Auth).
+// ---------------------------------------------------------------------------
+string? icmBaseUrl =
+    builder.Configuration["Aspire:Parameters:Icm:BaseUrl"] ?? builder.Configuration["Icm:BaseUrl"];
+
+IResourceBuilder<ProjectResource>? icmApi = null;
+if (string.IsNullOrWhiteSpace(icmBaseUrl))
+{
+    Console.WriteLine(
+        "IcmApi.Host is not started: no ICM base URL configured (Aspire:Parameters:Icm:BaseUrl or Icm:BaseUrl). "
+        + "MySSApi keeps its development placeholder and bus pass submissions will report the middleware as unavailable.");
+}
+else
+{
+    icmApi = builder
+        .AddProject<Projects.IcmApi_Host>("IcmApi")
+        .WithEnvironment("Icm__BaseUrl", icmBaseUrl)
+        .WithHttpHealthCheck("/health");
+}
+
+// ---------------------------------------------------------------------------
 // MySSApi — waits for the schema to exist. Connection string, Strapi URL and
 // MinIO URL are injected from the resources they describe; the values equal
 // what appsettings.Development.json already holds, so the API behaves the
@@ -250,6 +279,13 @@ IResourceBuilder<ProjectResource> api = builder
     // the API's storage provider writes to the bucket but never creates it.
     .WaitForCompletion(minioInit)
     .WaitForCompletion(migrateAttachments);
+
+// Where MySSApi finds the middleware. Left to appsettings.Development.json
+// (http://localhost:5100) when the host is not part of this run.
+if (icmApi is not null)
+{
+    api.WithEnvironment("IcmApi__BaseUrl", icmApi.GetEndpoint("http"));
+}
 
 // MyssApi's OTLP exporter is config-driven (OpenTelemetry:Endpoint), not
 // env-var-driven, so point it at the dashboard explicitly and its traces and
