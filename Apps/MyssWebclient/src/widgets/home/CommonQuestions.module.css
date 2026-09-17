@@ -1,11 +1,11 @@
 .group {
     background-color: var(--surface-color-background-light-gray);
-    font: var(--typography-regular-large-body);
+    font: var(--typography-regular-body);
 }
 
 .group :global(.bcds-react-aria-Disclosure--Button),
 .group :global(.bcds-react-aria-Disclosure--Panel) {
-    font: var(--typography-regular-large-body);
+    font: var(--typography-regular-body);
 }
 
 .group :global(.bcds-react-aria-Disclosure--Button) {

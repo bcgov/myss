@@ -34,6 +34,7 @@
     flex: 1;
     flex-direction: column;
     justify-content: center;
+    transform: translateY(calc(-1 * var(--layout-margin-xsmall)));
 }
 
 .dateCardHeader {
@@ -45,8 +46,7 @@
 }
 
 .dateCardBody > b {
-    font-size: 3rem;
-    margin: 2px 0;
+    font: var(--typography-bold-h3);
 }
 
 .information {

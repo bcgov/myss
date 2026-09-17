@@ -16,7 +16,7 @@ export default function CommonQuestions() {
                     <Accordion key={question.href} label={question.label}>
                         <Link
                             href={question.href}
-                            size="large"
+                            size="small"
                             target={question.external ? "_blank" : undefined}
                             rel={
                                 question.external
