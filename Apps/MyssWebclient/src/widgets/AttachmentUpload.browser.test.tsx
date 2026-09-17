@@ -3,7 +3,7 @@ import { userEvent } from "@vitest/browser/context";
 import { render } from "vitest-browser-react";
 import { afterEach, expect, test, vi } from "vitest";
 
-import AttachmentUpload from "@/components/AttachmentUpload";
+import AttachmentUpload from "@/widgets/AttachmentUpload";
 
 // Stubs the attachments API: GET serves the current list, POST appends to it
 // (or rejects with a canned ProblemDetails), mirroring the real controller.

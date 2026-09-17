@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router";
 import { render } from "vitest-browser-react";
 import { afterEach, expect, test, vi } from "vitest";
 
-import BusPassForm from "@/components/BusPassForm";
+import BusPassForm from "@/widgets/BusPassForm";
 
 const currentSpecV1 = {
   formSpecId: "bc-bus-pass",

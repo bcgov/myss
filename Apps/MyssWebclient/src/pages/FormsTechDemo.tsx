@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import PocForm from "@/components/PocForm";
+import PocForm from "@/widgets/PocForm";
 import { useSubmissions } from "@/hooks/usePocForm";
 
 const FORM_SPEC_ID = "poc-test-form";

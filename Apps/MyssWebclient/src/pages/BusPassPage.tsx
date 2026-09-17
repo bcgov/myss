@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import BusPassForm from "@/components/BusPassForm";
+import BusPassForm from "@/widgets/BusPassForm";
 import { API_URL } from "@/constants";
 import { useSubmissions } from "@/hooks/usePocForm";
 

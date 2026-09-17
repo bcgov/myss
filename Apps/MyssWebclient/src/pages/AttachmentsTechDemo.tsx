@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import AttachmentUpload from "@/components/AttachmentUpload";
+import AttachmentUpload from "@/widgets/AttachmentUpload";
 
 /**
  * Attachments tech demo: upload a file through the scanned attachment

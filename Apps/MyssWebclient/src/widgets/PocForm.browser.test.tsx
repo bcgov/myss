@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router";
 import { render } from "vitest-browser-react";
 import { afterEach, expect, test, vi } from "vitest";
 
-import PocForm from "@/components/PocForm";
+import PocForm from "@/widgets/PocForm";
 
 // The submission payload should carry the spec version the form was
 // rendered with.
