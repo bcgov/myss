@@ -1,6 +1,10 @@
 import { Form } from "@formio/react";
 import { useEffect, useRef, useState } from "react";
-import { InlineAlert } from "@bcgov/design-system-react-components";
+import {
+  Callout,
+  InlineAlert,
+  SvgExclamationCircleIcon,
+} from "@bcgov/design-system-react-components";
 
 import "@formio/js/dist/formio.form.min.css";
 
@@ -15,15 +19,14 @@ import {
 } from "@/hooks/useEligibility";
 import styles from "./EligibilityEstimatorPage.module.css";
 
-// The public, anonymous Pre-Eligibility Estimator (MYSS-169, Option B). It
-// renders the Form.io spec served by MyssApi, hard-screens on the residency /
-// status pre-check, and computes the estimate CLIENT-SIDE against the fetched
-// rate table (no server calculation, nothing persisted). Result UI follows the
-// 0826 design: an estimate card + prose only — NO itemised breakdown table
-// (Decision A). The spouse section (incl. partnerPwd) is revealed by the seed's
-// own Form.io conditional on married / marriage-like (Decision B).
+// The public, anonymous Pre-Eligibility Estimator. It renders the Form.io spec
+// served by MyssApi, hard-screens on the residency / status pre-check, and computes
+// the estimate CLIENT-SIDE against the fetched rate table (no server calculation,
+// nothing persisted). Result UI follows the 0826 design: an estimate card + prose
+// only, no itemised breakdown table. The spouse section (incl. partnerPwd) is
+// revealed by the seed's own Form.io conditional on married / marriage-like.
 
-// --- Programme content (URLs confirmed; some copy still placeholder — see plan §8) ---
+// --- Programme content (URLs confirmed; some copy still placeholder) ---
 // TODO(content): remaining real copy pending from the programme / content designer.
 const PENDING = {
   // "current income assistance rates" reference → gov.bc.ca IA rate table.
@@ -103,7 +106,7 @@ function YourInformation({
 }) {
   return (
     <div className={styles.yourInfo}>
-      <h3 className={styles.subHeading}>Your information</h3>
+      <h3 className={styles.infoHeading}>Your information</h3>
       <dl className={styles.infoList}>
         <div className={styles.infoRow}>
           <dt>Family size</dt>
@@ -180,8 +183,8 @@ export default function EligibilityEstimatorPage() {
       | undefined;
   }) {
     formInstanceRef.current = instance;
-    // `partnerPwd` cannot be server-`required` (an advanced-conditional required
-    // field fails the FormSpecValidator and would reject singles — Decision B).
+    // `partnerPwd` cannot be server-`required` — an advanced-conditional required
+    // field fails the FormSpecValidator and would reject singles.
     // Mark it required at RUNTIME, with a matching message, so Form.io renders the
     // SAME inline error as the applicant PWD field. It is shown only for couples,
     // so singles — where it stays hidden — are never validated. The couple-check
@@ -215,8 +218,8 @@ export default function EligibilityEstimatorPage() {
 
   // Q2 ("status that allows you to live in Canada") answered "No". The v3 seed
   // pins dataType "string" so this is "false", but accept the boolean form too
-  // in case a spec is served without it. Copy is hardcoded for this increment;
-  // the §5 content pass will source it from estimator-content.
+  // in case a spec is served without it. Copy is hardcoded for now; a later content
+  // pass will source it from estimator-content.
   const showStatusWarning =
     liveAnswers.hasEligibleStatus === "false" ||
     liveAnswers.hasEligibleStatus === false;
@@ -264,12 +267,16 @@ export default function EligibilityEstimatorPage() {
     <div className={styles.page}>
       <h1 className={styles.title}>Estimate your Eligibility for Assistance</h1>
 
-      <aside className={styles.privacyBanner}>
-        <p className={styles.privacyTitle}>Your information is private</p>
-        <p className={styles.privacyBody}>
-          None of the information you share is collected or saved.
-        </p>
-      </aside>
+      {/* The real BCDS Callout, as the design specifies (node 400:2316). The accent bar,
+          surface, radius and type scale all come from the component, so none of it can
+          drift from the design system the way a hand-rolled copy did. */}
+      <div className={styles.privacyCallout}>
+        <Callout
+          variant="lightGrey"
+          title="Your information is private"
+          description="None of the information you share is collected or saved."
+        />
+      </div>
 
       <p className={styles.requiredNote}>*All fields are required.</p>
 
@@ -286,7 +293,7 @@ export default function EligibilityEstimatorPage() {
           {/* Anonymous render of the served spec — not the old hardcoded components. */}
           <Form
             src={spec.data.spec}
-            // MYSS 0903 (screen 08): design is inline-only, so suppress Form.io's
+            // The designed error state is inline-only, so suppress Form.io's
             // aggregated `.alert-danger` summary banner. Per-field errors remain.
             // NOTE: a11y follow-up — move focus to the first invalid field on a
             // blocked submit to replace the summary's jump links.
@@ -398,6 +405,7 @@ export default function EligibilityEstimatorPage() {
                   <span className={styles.perMonth}>/ month</span>
                 </p>
                 <p className={styles.estimateCaveat}>
+                  <SvgExclamationCircleIcon />
                   This is only an estimate. The actual amount may be different.
                 </p>
               </div>
@@ -405,8 +413,7 @@ export default function EligibilityEstimatorPage() {
               <h2 className={styles.subHeading}>How your estimate was calculated</h2>
               <p className={styles.prose}>
                 The estimated amount is based on your household information and the{" "}
-                <RatesLink /> for support and shelter allowance. The estimate is
-                showing the maximum amount you could receive.
+                <RatesLink /> for support and shelter allowance.
               </p>
 
               <YourInformation
@@ -428,6 +435,7 @@ export default function EligibilityEstimatorPage() {
                   <span className={styles.perMonth}>/ month</span>
                 </p>
                 <p className={styles.estimateCaveat}>
+                  <SvgExclamationCircleIcon />
                   This is only an estimate. The actual amount may be different.
                 </p>
               </div>
