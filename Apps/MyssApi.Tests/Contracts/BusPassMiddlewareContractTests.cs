@@ -21,6 +21,7 @@ namespace Myss.Api.Tests.Contracts
         {
             var application = new BusPassApplicationModel
             {
+                SubmissionKey = "6f1c2a3b-0000-4000-8000-000000000001",
                 RequestType = BusPassRequestType.AddressUpdate,
                 ApplicantType = BusPassApplicantType.Over65,
                 AcknowledgedPassCancellation = false,

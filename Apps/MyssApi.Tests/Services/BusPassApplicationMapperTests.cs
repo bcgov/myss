@@ -143,10 +143,21 @@ namespace Myss.Api.Tests.Services
             Assert.Contains("\"preferredContactMethod\":\"Phone\"", json, StringComparison.Ordinal);
         }
 
+        [Fact]
+        public void TheSubmissionId_IsSentAsTheSubmissionKey()
+        {
+            var submissionId = Guid.Parse("6f1c2a3b-0000-4000-8000-000000000001");
+            using JsonDocument doc = JsonDocument.Parse("""{"applicantCategory":"new"}""");
+
+            BusPassApplicationModel request = BusPassApplicationMapper.Build(submissionId, doc.RootElement.Clone());
+
+            Assert.Equal("6f1c2a3b-0000-4000-8000-000000000001", request.SubmissionKey);
+        }
+
         private static BusPassApplicationModel Build(string answersJson)
         {
             using JsonDocument doc = JsonDocument.Parse(answersJson);
-            return BusPassApplicationMapper.Build(doc.RootElement.Clone());
+            return BusPassApplicationMapper.Build(Guid.NewGuid(), doc.RootElement.Clone());
         }
     }
 }

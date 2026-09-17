@@ -18,11 +18,10 @@ Configuration/   Program/Startup bootstrap, JWT bearer + mock gate, the ICM clie
 `POST /v1/bus-pass/applications` with a bearer token. The body is MyssApi's
 `BusPassApplicationModel` as JSON (camelCase, enums by name); the authoritative
 example is [`Shared/contracts/bus-pass-application.sample.json`](../../Shared/contracts/bus-pass-application.sample.json),
-which both `MyssApi.Tests` and `IcmApi.Host.Tests` check against. One field is not
-in MyssApi's model yet: `submissionKey`, the caller's id for the submission. Send
-it, because ICM files a service request on every call, and a resend after an
-ambiguous failure that carries the same key is what lets Siebel's upsert recognise
-it instead of filing a second request.
+which both `MyssApi.Tests` and `IcmApi.Host.Tests` check against. `submissionKey`
+is MyssApi's stored submission id. It matters because ICM files a service request on
+every call: a resend after an ambiguous failure that carries the same key is what
+lets Siebel's upsert recognise it instead of filing a second request.
 
 | Answer | Meaning |
 |---|---|
@@ -79,9 +78,10 @@ credentials are checked on the first submission instead, which answers 503
 `ICM.BUSPASS.NOT_CONFIGURED` until they are set, so a checkout without secrets still
 boots for tests.
 
-`Icm:TimeoutSeconds` (25) is kept below MyssApi's per-attempt timeout on purpose. If
-MyssApi gave up first, ICM could still file the request after MyssApi had recorded
-the attempt as failed.
+`Icm:TimeoutSeconds` (20) plus `Icm:TokenTimeoutSeconds` (5) is kept below MyssApi's
+per-attempt timeout (30) on purpose: on a cold token cache the two calls run back to
+back, and if MyssApi gave up first, ICM could still file the request after MyssApi
+had recorded the attempt as failed.
 
 ## Run
 

@@ -25,6 +25,7 @@ namespace Icm.Api.Host.Tests.TestDoubles
 
         public void Clear()
         {
+            Requests.Clear();
         }
     }
 }

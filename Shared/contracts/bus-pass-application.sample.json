@@ -1,5 +1,6 @@
 {
   "//": "The bus pass request as MyssApi serializes BusPassApplicationModel and as IcmApi.Host reads BusPassApplicationRequest. Linked, not copied, into both test projects: MyssApi.Tests asserts its provider produces exactly this document, IcmApi.Host.Tests asserts the host reads every property of it. Every value is synthetic: the SIN is the canonical test number, the addresses are the BC legislature and its mailing box.",
+  "submissionKey": "6f1c2a3b-0000-4000-8000-000000000001",
   "requestType": "AddressUpdate",
   "applicantType": "Over65",
   "acknowledgedPassCancellation": false,

@@ -63,6 +63,7 @@ namespace Myss.Api.Tests
         {
             _factory = factory;
             _specProvider.VersionResult = FakeFormSpecProvider.Spec("bc-bus-pass", 1, Spec);
+            _specProvider.LatestResult = _specProvider.VersionResult;
         }
 
         [Fact]
@@ -108,10 +109,54 @@ namespace Myss.Api.Tests
             Assert.Equal(BusPassErrorKeywords.IcmUnavailable, problem.GetProperty("keyword").GetString());
             Guid submissionId = problem.GetProperty("submissionId").GetGuid();
 
-            // The submission was kept: it is readable through the forms module.
+            // The submission was kept: staff can read it through the forms module.
             using HttpResponseMessage stored = await client.SendAsync(
-                Authenticated(HttpMethod.Get, $"/v1/forms/submissions/{submissionId}"));
+                Authenticated(HttpMethod.Get, $"/v1/forms/submissions/{submissionId}", persona: "worker"));
             Assert.Equal(HttpStatusCode.OK, stored.StatusCode);
+        }
+
+        [Theory]
+        [InlineData("ICM.BUSPASS.TIMEOUT", true)]
+        [InlineData("ICM.BUSPASS.UNREACHABLE", false)]
+        public async Task MiddlewareDown_SaysWhetherIcmMayHaveTheRequest(string keyword, bool mayHaveReachedIcm)
+        {
+            // A resend after a timeout can file a second service request; after a
+            // connection failure it cannot. The citizen is told which it is.
+            _middleware.Failure = new IcmApiUnavailableException("Upstream trouble.")
+            {
+                Keyword = keyword,
+                MayHaveReachedIcm = mayHaveReachedIcm,
+            };
+            HttpClient client = CreateClient();
+
+            using HttpResponseMessage response = await Submit(client, NewApplicant());
+
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            JsonElement problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+            Assert.Equal(keyword, problem.GetProperty("errorCode").GetString());
+            Assert.Equal(mayHaveReachedIcm, problem.GetProperty("mayHaveReachedIcm").GetBoolean());
+        }
+
+        [Fact]
+        public async Task TooManySubmissionsFromOneAddress_Are429WithTheKeyword()
+        {
+            // Every accepted submission files a service request in ICM, so the
+            // anonymous route is throttled per address (5 per minute by default).
+            HttpClient client = CreateClient();
+
+            for (int i = 0; i < 5; i++)
+            {
+                using HttpResponseMessage allowed = await Submit(client, NewApplicant());
+                Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
+            }
+
+            using HttpResponseMessage rejected = await Submit(client, NewApplicant());
+
+            Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
+            Assert.NotNull(rejected.Headers.RetryAfter);
+            JsonElement problem = JsonDocument.Parse(await rejected.Content.ReadAsStringAsync()).RootElement;
+            Assert.Equal(BusPassErrorKeywords.RateLimited, problem.GetProperty("keyword").GetString());
+            Assert.Equal(5, _middleware.Submitted.Count);
         }
 
         [Fact]
@@ -160,6 +205,55 @@ namespace Myss.Api.Tests
             Assert.Single(_middleware.Submitted);
         }
 
+        [Fact]
+        public async Task ThePdf_IsNotAnonymous()
+        {
+            // The id is unguessable, but the PDF carries a name, SIN, date of
+            // birth and address; an anonymous route keyed by id must not exist.
+            HttpClient client = CreateClient(mockAuth: false);
+
+            using HttpResponseMessage response = await client.GetAsync($"/v1/bus-pass/submissions/{Guid.NewGuid()}/pdf");
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task ThePdf_IsForStaffNotCitizens()
+        {
+            HttpClient client = CreateClient();
+
+            using HttpResponseMessage asCitizen = await client.SendAsync(
+                Authenticated(HttpMethod.Get, $"/v1/bus-pass/submissions/{Guid.NewGuid()}/pdf"));
+            Assert.Equal(HttpStatusCode.Forbidden, asCitizen.StatusCode);
+
+            // A worker with an IDIR identity passes the policy; an unknown id is
+            // then simply not found, which proves the gate without rendering.
+            using HttpResponseMessage asWorker = await client.SendAsync(
+                Authenticated(HttpMethod.Get, $"/v1/bus-pass/submissions/{Guid.NewGuid()}/pdf", persona: "worker"));
+            Assert.Equal(HttpStatusCode.NotFound, asWorker.StatusCode);
+        }
+
+        [Fact]
+        public async Task TheGenericFormsRoutes_DoNotServeTheBusPassFormAnonymously()
+        {
+            // The spec must stay public, since the citizen has no account to sign
+            // in with; listing submissions and storing one through the generic
+            // forms route, which skips the bus pass rules and the ICM hand-off,
+            // must not be.
+            HttpClient client = CreateClient(mockAuth: false);
+
+            using HttpResponseMessage spec = await client.GetAsync("/v1/forms/bc-bus-pass/spec");
+            Assert.Equal(HttpStatusCode.OK, spec.StatusCode);
+
+            using HttpResponseMessage list = await client.GetAsync("/v1/forms/bc-bus-pass/submissions");
+            Assert.Equal(HttpStatusCode.Unauthorized, list.StatusCode);
+
+            using HttpResponseMessage stored = await client.PostAsJsonAsync(
+                "/v1/forms/bc-bus-pass/submissions",
+                new { formSpecVersion = 1, answers = NewApplicant() });
+            Assert.Equal(HttpStatusCode.Unauthorized, stored.StatusCode);
+        }
+
         private static Task<HttpResponseMessage> Submit(HttpClient client, Dictionary<string, object?> answers)
         {
             HttpRequestMessage request = Authenticated(HttpMethod.Post, Route);
@@ -167,10 +261,10 @@ namespace Myss.Api.Tests
             return client.SendAsync(request);
         }
 
-        private static HttpRequestMessage Authenticated(HttpMethod method, string route)
+        private static HttpRequestMessage Authenticated(HttpMethod method, string route, string persona = "alice")
         {
             var request = new HttpRequestMessage(method, route);
-            request.Headers.Add(MockAuthenticationHandler.PersonaHeader, "alice");
+            request.Headers.Add(MockAuthenticationHandler.PersonaHeader, persona);
             return request;
         }
 

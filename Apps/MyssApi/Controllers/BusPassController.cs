@@ -10,25 +10,28 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.RateLimiting;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.Logging;
+    using Myss.Api.Configuration;
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Services;
 
     /// <summary>
     /// BC Bus Pass submission endpoints.
-    /// Public: like <see cref="EligibilityEstimatorController"/>, this does not require the
-    /// caller to be signed in, matching the legacy form the program linked to directly.
-    /// A submission is validated, stored, then handed to ICM through the middleware;
-    /// the response says which of those happened. Non-accepted outcomes carry a
-    /// stable dotted keyword (e.g. <c>BUSPASS.SUBMIT.REJECTED</c>) for the
-    /// frontend to match on.
+    /// Submitting is public: like <see cref="EligibilityEstimatorController"/>, it does not
+    /// require the caller to be signed in, matching the legacy form the program linked to
+    /// directly. A submission is validated, stored, then handed to ICM through the
+    /// middleware; the response says which of those happened. Non-accepted outcomes
+    /// carry a stable dotted keyword (e.g. <c>BUSPASS.SUBMIT.REJECTED</c>) for the
+    /// frontend to match on. The PDF of a stored request is for staff: the citizen has
+    /// no account to hold it against, and an anonymous route keyed by id would hand out
+    /// a name, SIN, date of birth and address to anyone who learned the id.
     /// </summary>
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/bus-pass")]
     [ApiController]
-    [AllowAnonymous]
     public class BusPassController : Controller
     {
         private readonly ILogger<BusPassController> _logger;
@@ -56,15 +59,20 @@ namespace Myss.Api.Controllers
         /// through the middleware. 200 with the outcome (accepted, or rejected by
         /// ICM with a keyword); 422 when validation refused it and nothing was
         /// stored; 503 when it was stored but could not be delivered, with the
-        /// submission id in the problem body so nothing is lost.
+        /// submission id in the problem body so nothing is lost, and
+        /// <c>mayHaveReachedIcm</c> saying whether a resend is safe; 429 with
+        /// <c>BUSPASS.SUBMIT.RATE_LIMITED</c> when one address submits too often.
         /// </summary>
         /// <param name="request">The submission payload: the spec version rendered and the answers.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPost("submissions")]
+        [AllowAnonymous]
+        [EnableRateLimiting(BusPassRateLimit.PolicyName)]
         [Produces("application/json")]
         [EndpointName("SubmitBusPass")]
         [ProducesResponseType(typeof(BaseResponseModel<BusPassSubmissionResponseModel>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ValidationErrorModel>>), StatusCodes.Status422UnprocessableEntity)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
         public async Task<ActionResult<BaseResponseModel<BusPassSubmissionResponseModel>>> Submit(
             [FromBody] FormSubmissionRequestModel request,
@@ -85,13 +93,18 @@ namespace Myss.Api.Controllers
             BusPassSubmissionResponseModel response = result.Response!;
             if (response.Outcome == BusPassSubmissionOutcome.Failed)
             {
+                bool mayHaveReachedIcm = response.MayHaveReachedIcm ?? true;
                 ObjectResult problem = Problem(
                     statusCode: StatusCodes.Status503ServiceUnavailable,
                     title: "The request was saved but could not be sent to the ministry.",
-                    detail: "Try again later. Quote the submission id if you contact the ministry.");
+                    detail: mayHaveReachedIcm
+                        ? "The ministry may already have it. Do not submit it again; quote the submission id if you contact the ministry."
+                        : "Try again later. Quote the submission id if you contact the ministry.");
                 var details = (ProblemDetails)problem.Value!;
                 details.Extensions["keyword"] = response.Keyword;
+                details.Extensions["errorCode"] = response.ErrorCode;
                 details.Extensions["submissionId"] = response.SubmissionId;
+                details.Extensions["mayHaveReachedIcm"] = mayHaveReachedIcm;
                 return problem;
             }
 
@@ -103,14 +116,18 @@ namespace Myss.Api.Controllers
         }
 
         /// <summary>
-        /// Generates the BC Bus Pass request PDF for a stored submission.
+        /// Generates the BC Bus Pass request PDF for a stored submission. Staff only:
+        /// a signed-in worker with an IDIR identity.
         /// </summary>
         /// <param name="id">The submission identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet("submissions/{id:guid}/pdf")]
+        [Authorize(Policy = MyssPolicies.WorkerWithIdir)]
         [EndpointName("GetBusPassSubmissionPdf")]
         [Produces("application/pdf")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetSubmissionPdf(Guid id, CancellationToken cancellationToken)
         {

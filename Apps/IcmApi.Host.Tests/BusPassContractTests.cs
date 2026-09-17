@@ -41,6 +41,7 @@ namespace Icm.Api.Host.Tests
             Assert.NotNull(request);
             BusPassApplication application = BusPassApplicationRequestMapper.ToApplication(request);
 
+            Assert.Equal("6f1c2a3b-0000-4000-8000-000000000001", application.SubmissionKey);
             Assert.Equal(BusPassRequestType.AddressUpdate, application.RequestType);
             Assert.Equal(BusPassApplicantType.Over65, application.ApplicantType);
             Assert.False(application.AcknowledgedPassCancellation);

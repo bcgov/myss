@@ -160,6 +160,13 @@ namespace Myss.Api
             services.AddSingleton<IBusPassSubmissionProvider, IcmApiBusPassSubmissionProvider>();
             services.AddScoped<IBusPassSubmissionService, BusPassSubmissionService>();
 
+            // The submit route is anonymous and every accepted call files a service
+            // request in ICM, so it is throttled per client address (see
+            // BusPassRateLimit; UseRateLimiter is in StartupConfiguration.UseHttp).
+            BusPassRateLimitConfig rateLimit = new();
+            configuration.GetSection("BusPass:SubmitRateLimit").Bind(rateLimit);
+            services.AddRateLimiter(options => BusPassRateLimit.Configure(options, rateLimit));
+
             // CORS services are required by the inline UseCors policy in
             // StartupConfiguration.UseHttp, which is driven by the AllowOrigins config.
             services.AddCors();

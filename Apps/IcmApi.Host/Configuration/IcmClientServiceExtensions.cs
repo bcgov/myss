@@ -62,27 +62,29 @@ namespace Icm.Api.Host.Configuration
             }
 
             logger.LogInformation(
-                "ICM client configured. BaseUrl: {BaseUrl}, TokenUrl: {TokenUrl}, TrustedUserName set: {TrustedUserNameSet}, Timeout: {TimeoutSeconds}s",
+                "ICM client configured. BaseUrl: {BaseUrl}, TokenUrl: {TokenUrl}, TrustedUserName set: {TrustedUserNameSet}, Timeout: {TimeoutSeconds}s, token timeout: {TokenTimeoutSeconds}s",
                 icm.BaseUrl,
                 icm.Auth.ResolveTokenUrl(),
                 !string.IsNullOrWhiteSpace(icm.TrustedUserName),
-                icm.TimeoutSeconds);
+                icm.TimeoutSeconds,
+                icm.Auth.ResolveTokenUrl() is null ? 0 : icm.TokenTimeoutSeconds);
 
             services.TryAddSingleton(TimeProvider.System);
             services.TryAddSingleton<ICorrelationIdAccessor, CorrelationIdAccessor>();
             services.AddTransient<CorrelationIdForwardingHandler>();
 
-            TimeSpan timeout = TimeSpan.FromSeconds(icm.TimeoutSeconds);
-
             services
                 .AddHttpClient(IcmHttpClientName, client =>
                 {
                     client.BaseAddress = icm.BaseUrl;
-                    client.Timeout = timeout;
+                    client.Timeout = TimeSpan.FromSeconds(icm.TimeoutSeconds);
                 })
                 .AddHttpMessageHandler<CorrelationIdForwardingHandler>();
 
-            services.AddHttpClient(TokenHttpClientName, client => client.Timeout = timeout);
+            // Its own, shorter budget: on a cold cache the token call precedes the
+            // ICM call, and the two together must finish inside MyssApi's attempt.
+            services.AddHttpClient(TokenHttpClientName, client =>
+                client.Timeout = TimeSpan.FromSeconds(icm.TokenTimeoutSeconds));
 
             // The token cache is a singleton on purpose (per-request would fetch a
             // token per call). The repository builds one client per token URL and

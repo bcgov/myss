@@ -18,7 +18,12 @@ namespace Myss.Api.Controllers
     /// <summary>
     /// The forms controller: versioned specs and submissions.
     /// Protected by default; <see cref="PubliclyAccessibleFormSpecIds"/> lists the forms
-    /// (currently just the BC Bus Pass request) reachable without signing in.
+    /// whose spec can be read without signing in (currently just the BC Bus Pass
+    /// request, which a citizen fills in without an account). Submissions here are
+    /// never anonymous: the public bus pass form submits through
+    /// <see cref="BusPassController"/>. Listing and reading stored submissions is
+    /// for staff with an IDIR identity: submissions have no owner, so a signed-in
+    /// citizen could otherwise read every other applicant's answers.
     /// </summary>
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/forms")]
@@ -26,7 +31,7 @@ namespace Myss.Api.Controllers
     [Authorize]
     public class FormsController : Controller
     {
-        /// <summary>Form specs that do not require authentication.</summary>
+        /// <summary>Form specs that can be read without authentication.</summary>
         private static readonly HashSet<string> PubliclyAccessibleFormSpecIds = new(
             StringComparer.OrdinalIgnoreCase
         )
@@ -51,8 +56,8 @@ namespace Myss.Api.Controllers
 
         /// <summary>
         /// Rejects anonymous callers for any form spec other than a publicly accessible one.
-        /// [AllowAnonymous] on these actions bypasses [Authorize] entirely, so the check has
-        /// to be made here instead.
+        /// [AllowAnonymous] on the spec action bypasses [Authorize] entirely, so the check
+        /// has to be made here instead.
         /// </summary>
         private ActionResult? RequireAuthUnlessPublicForm(string formSpecId)
         {
@@ -109,7 +114,6 @@ namespace Myss.Api.Controllers
         /// <param name="request">The submission payload.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPost("{formSpecId}/submissions")]
-        [AllowAnonymous]
         [Produces("application/json")]
         [EndpointName("SubmitForm")]
         [ProducesResponseType(
@@ -126,11 +130,6 @@ namespace Myss.Api.Controllers
             CancellationToken cancellationToken
         )
         {
-            if (RequireAuthUnlessPublicForm(formSpecId) is ActionResult unauthorized)
-            {
-                return unauthorized;
-            }
-
             FormSubmissionResultModel result = await _formsService.SubmitAsync(
                 formSpecId,
                 request,
@@ -165,7 +164,7 @@ namespace Myss.Api.Controllers
         /// <param name="formSpecId">The logical form identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet("{formSpecId}/submissions")]
-        [AllowAnonymous]
+        [Authorize(Policy = MyssPolicies.WorkerWithIdir)]
         [Produces("application/json")]
         [EndpointName("ListFormSubmissions")]
         [ProducesResponseType(
@@ -176,11 +175,6 @@ namespace Myss.Api.Controllers
             ActionResult<BaseResponseModel<IReadOnlyList<FormSubmissionSummaryModel>>>
         > ListSubmissions(string formSpecId, CancellationToken cancellationToken)
         {
-            if (RequireAuthUnlessPublicForm(formSpecId) is ActionResult unauthorized)
-            {
-                return unauthorized;
-            }
-
             IReadOnlyList<FormSubmissionSummaryModel> submissions =
                 await _formsService.ListSubmissionsAsync(formSpecId, cancellationToken);
             return new BaseResponseModel<IReadOnlyList<FormSubmissionSummaryModel>>
@@ -196,6 +190,7 @@ namespace Myss.Api.Controllers
         /// <param name="id">The submission identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet("submissions/{id:guid}")]
+        [Authorize(Policy = MyssPolicies.WorkerWithIdir)]
         [Produces("application/json")]
         [EndpointName("GetFormSubmission")]
         [ProducesResponseType(

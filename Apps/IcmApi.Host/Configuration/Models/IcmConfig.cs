@@ -16,11 +16,18 @@ namespace Icm.Api.Host.Configuration.Models
         public Uri? BaseUrl { get; set; }
 
         /// <summary>
-        /// Gets or sets how long to wait for ICM, in seconds. Kept below MyssApi's
-        /// per-attempt timeout on purpose: if MyssApi gave up first, ICM could still
-        /// file the service request after MyssApi had recorded the attempt as failed.
+        /// Gets or sets how long to wait for ICM, in seconds. This plus
+        /// <see cref="TokenTimeoutSeconds"/> is kept below MyssApi's per-attempt
+        /// timeout (30 s) on purpose: if MyssApi gave up first, ICM could still file
+        /// the service request after MyssApi had recorded the attempt as failed.
         /// </summary>
-        public int TimeoutSeconds { get; set; } = 25;
+        public int TimeoutSeconds { get; set; } = 20;
+
+        /// <summary>
+        /// Gets or sets how long to wait for ICM's authorization server, in seconds.
+        /// Short, because a cold token cache adds this to every submission's budget.
+        /// </summary>
+        public int TokenTimeoutSeconds { get; set; } = 5;
 
         /// <summary>
         /// Gets or sets the ICM user every call acts as, sent as

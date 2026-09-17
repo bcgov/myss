@@ -212,16 +212,20 @@ namespace Icm.Api.Host.Configuration
             app.UseSerilogRequestLogging(options => options.GetLevel = RequestLogLevel);
 
             app.UseRouting();
-            app.UseAuthentication();
-            app.UseAuthorization();
 
+            // Before authorization: the header must be on every response, 401s
+            // included, and the OpenAPI document is the published contract, so it
+            // needs no token (the service is reachable only inside the cluster).
             app.Use(async (context, next) =>
             {
                 context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
                 await next();
             });
-
             this.UseSwagger(app);
+
+            app.UseAuthentication();
+            app.UseAuthorization();
+
             UseEndpoints(app);
         }
 

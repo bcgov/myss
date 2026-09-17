@@ -131,7 +131,57 @@ namespace Myss.Api.Tests.Providers
                 () => provider.SubmitAsync(Application(), CancellationToken.None));
 
             Assert.Equal(401, ex.StatusCode);
+            Assert.False(ex.MayHaveReachedIcm);
             Assert.Single(_http.Requests);
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.ServiceUnavailable, "ICM.BUSPASS.NOT_CONFIGURED", false)]
+        [InlineData(HttpStatusCode.ServiceUnavailable, "ICM.BUSPASS.TOKEN_UNAVAILABLE", false)]
+        [InlineData(HttpStatusCode.BadGateway, "ICM.BUSPASS.UNREACHABLE", false)]
+        [InlineData(HttpStatusCode.GatewayTimeout, "ICM.BUSPASS.TIMEOUT", true)]
+        [InlineData(HttpStatusCode.BadGateway, "ICM.BUSPASS.UPSTREAM_ERROR", true)]
+        [InlineData(HttpStatusCode.BadGateway, "ICM.BUSPASS.UNUSABLE_RESPONSE", true)]
+        public async Task TheMiddlewaresKeyword_IsCarriedAndSaysWhetherIcmMayHaveTheRequest(
+            HttpStatusCode status, string keyword, bool mayHaveReachedIcm)
+        {
+            _http.ApplicationStatus = status;
+            _http.ApplicationBody = $$"""{"title":"The request could not be submitted to ICM.","status":{{(int)status}},"detail":"x","keyword":"{{keyword}}"}""";
+            using IcmApiBusPassSubmissionProvider provider = NewProvider();
+
+            IcmApiUnavailableException ex = await Assert.ThrowsAsync<IcmApiUnavailableException>(
+                () => provider.SubmitAsync(Application(), CancellationToken.None));
+
+            Assert.Equal(keyword, ex.Keyword);
+            Assert.Equal(mayHaveReachedIcm, ex.MayHaveReachedIcm);
+        }
+
+        [Fact]
+        public async Task AFailureWithNoKeyword_IsTreatedAsPossiblyDelivered()
+        {
+            // Unclassified means unknown, and unknown must not invite a resend.
+            _http.ApplicationStatus = HttpStatusCode.InternalServerError;
+            _http.ApplicationBody = "<html>proxy error</html>";
+            using IcmApiBusPassSubmissionProvider provider = NewProvider();
+
+            IcmApiUnavailableException ex = await Assert.ThrowsAsync<IcmApiUnavailableException>(
+                () => provider.SubmitAsync(Application(), CancellationToken.None));
+
+            Assert.Null(ex.Keyword);
+            Assert.True(ex.MayHaveReachedIcm);
+        }
+
+        [Fact]
+        public async Task AConnectionFailureToTheMiddleware_ProvesNothingWasDelivered()
+        {
+            _http.ApplicationThrow = new HttpRequestException("Connection refused", null, null);
+            using IcmApiBusPassSubmissionProvider provider = NewProvider();
+
+            IcmApiUnavailableException ex = await Assert.ThrowsAsync<IcmApiUnavailableException>(
+                () => provider.SubmitAsync(Application(), CancellationToken.None));
+
+            Assert.False(ex.MayHaveReachedIcm);
+            Assert.Equal(2, _http.Requests.Count);
         }
 
         [Fact]
@@ -229,6 +279,9 @@ namespace Myss.Api.Tests.Providers
 
             public Exception? Throw { get; set; }
 
+            /// <summary>Thrown for the applications route only, after the token was issued.</summary>
+            public Exception? ApplicationThrow { get; set; }
+
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 string body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
@@ -244,6 +297,11 @@ namespace Myss.Api.Tests.Providers
                 }
 
                 bool isToken = request.RequestUri.AbsoluteUri == TokenEndpoint;
+                if (!isToken && ApplicationThrow is not null)
+                {
+                    throw ApplicationThrow;
+                }
+
                 return new HttpResponseMessage(isToken ? TokenStatus : ApplicationStatus)
                 {
                     Content = new StringContent(isToken ? TokenBody : ApplicationBody, Encoding.UTF8, "application/json"),

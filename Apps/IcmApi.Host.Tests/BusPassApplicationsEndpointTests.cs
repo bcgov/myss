@@ -157,6 +157,41 @@ namespace Icm.Api.Host.Tests
         }
 
         [Fact]
+        public async Task TheOpenApiDocument_NeedsNoToken()
+        {
+            // The published contract, readable by anyone who can reach the service.
+            using HttpClient client = _factory
+                .WithWebHostBuilder(builder =>
+                {
+                    builder.UseIcmSettings();
+                    builder.UseRealAuthSettings("sdpr-my-ss-6498");
+                })
+                .CreateClient();
+
+            using HttpResponseMessage response = await client.GetAsync(new Uri("/swagger/v1/swagger.json", UriKind.Relative));
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Contains("/v1/bus-pass/applications", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task ARejectedRequest_StillCarriesTheSecurityHeader()
+        {
+            using HttpClient client = _factory
+                .WithWebHostBuilder(builder =>
+                {
+                    builder.UseIcmSettings();
+                    builder.UseRealAuthSettings("sdpr-my-ss-6498");
+                })
+                .CreateClient();
+
+            using HttpResponseMessage response = await client.PostAsJsonAsync(Route, NewApplication());
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
+        }
+
+        [Fact]
         public async Task Health_NeedsNoToken()
         {
             using HttpClient client = _factory
@@ -167,7 +202,7 @@ namespace Icm.Api.Host.Tests
                 })
                 .CreateClient();
 
-            using HttpResponseMessage response = await client.GetAsync("/health");
+            using HttpResponseMessage response = await client.GetAsync(new Uri("/health", UriKind.Relative));
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }

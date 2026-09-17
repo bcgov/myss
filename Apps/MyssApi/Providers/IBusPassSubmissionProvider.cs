@@ -66,5 +66,46 @@ namespace Myss.Api.Providers
         /// Gets the HTTP status the middleware answered with, when it answered at all.
         /// </summary>
         public int? StatusCode { get; init; }
+
+        /// <summary>
+        /// Gets the middleware's failure keyword (<c>ICM.BUSPASS.*</c>), when it
+        /// answered with a problem body that carried one.
+        /// </summary>
+        public string? Keyword { get; init; }
+
+        /// <summary>
+        /// Gets a value indicating whether ICM may already hold the request. False
+        /// only when the call provably never reached ICM: the middleware could not
+        /// be connected to, or it said so itself (not configured, no token, ICM
+        /// unreachable). True for a timeout, an upstream error, or anything
+        /// unclassified, because a resend then risks a second service request.
+        /// </summary>
+        public bool MayHaveReachedIcm { get; init; } = true;
+    }
+
+    /// <summary>
+    /// The failure keywords the ICM middleware answers with, as far as this API
+    /// needs to tell them apart. They are the middleware's contract
+    /// (<c>Apps/IcmApi.Host/Contracts/BusPassKeywords.cs</c>); only the three that
+    /// prove the request never reached ICM are matched on here.
+    /// </summary>
+    public static class IcmApiKeywords
+    {
+        /// <summary>The middleware has no ICM credentials.</summary>
+        public const string NotConfigured = "ICM.BUSPASS.NOT_CONFIGURED";
+
+        /// <summary>The middleware could not obtain a token for ICM.</summary>
+        public const string TokenUnavailable = "ICM.BUSPASS.TOKEN_UNAVAILABLE";
+
+        /// <summary>The middleware could not connect to ICM.</summary>
+        public const string Unreachable = "ICM.BUSPASS.UNREACHABLE";
+
+        /// <summary>
+        /// Whether a keyword proves the request never reached ICM.
+        /// </summary>
+        /// <param name="keyword">The middleware's keyword, or null when it sent none.</param>
+        /// <returns>True when ICM cannot have the request.</returns>
+        public static bool ProvesNotDelivered(string? keyword) =>
+            keyword is NotConfigured or TokenUnavailable or Unreachable;
     }
 }

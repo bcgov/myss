@@ -22,7 +22,7 @@ namespace Icm.Api.Host.Contracts
         /// <summary>
         /// Gets or sets the caller's key for this submission, so that a resend after
         /// an ambiguous failure carries the same key and ICM's upsert can recognise
-        /// it. MyssApi should send its submission id. Letters, digits and hyphens.
+        /// it. MyssApi sends its stored submission id. Letters, digits and hyphens.
         /// </summary>
         public string? SubmissionKey { get; set; }
 
