@@ -1,7 +1,7 @@
 namespace Myss.Api.Configuration.Addons.Swagger
 {
     using System.Diagnostics.CodeAnalysis;
-    using Microsoft.OpenApi.Models;
+    using Microsoft.OpenApi;
 
     /// <summary>
     /// Swagger Configuration.
