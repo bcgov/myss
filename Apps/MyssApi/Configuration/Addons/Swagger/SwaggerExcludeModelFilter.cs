@@ -4,15 +4,15 @@ namespace Myss.Api.Configuration.Addons.Swagger
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
-    using Microsoft.OpenApi.Any;
-    using Microsoft.OpenApi.Models;
+    using System.Text.Json.Nodes;
+    using Microsoft.OpenApi;
     using Swashbuckle.AspNetCore.SwaggerGen;
 
     public class SwaggerExcludeModelFilter : IDocumentFilter, ISchemaFilter
     {
         private static HashSet<string> ExcludedKeys = new();
 
-        public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+        public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
         {
             if (context.Type.GetCustomAttribute<SwaggerExcludeAttribute>() != null)
             {
@@ -24,7 +24,14 @@ namespace Myss.Api.Configuration.Addons.Swagger
                 return;
             }
 
-            if (schema.Properties != null)
+            // Microsoft.OpenApi 2 hands filters a read-only interface; only the
+            // concrete schema is mutable (a schema reference is not).
+            if (schema is not OpenApiSchema concreteSchema)
+            {
+                return;
+            }
+
+            if (concreteSchema.Properties != null)
             {
                 var excludedProperties = context
                     .Type.GetProperties()
@@ -32,13 +39,13 @@ namespace Myss.Api.Configuration.Addons.Swagger
 
                 foreach (var excludedProperty in excludedProperties)
                 {
-                    var propertyToRemove = schema.Properties.Keys.SingleOrDefault(x =>
+                    var propertyToRemove = concreteSchema.Properties.Keys.SingleOrDefault(x =>
                         string.Equals(x, excludedProperty.Name, StringComparison.OrdinalIgnoreCase)
                     );
 
                     if (propertyToRemove != null)
                     {
-                        schema.Properties.Remove(propertyToRemove);
+                        concreteSchema.Properties.Remove(propertyToRemove);
                     }
                 }
             }
@@ -49,28 +56,35 @@ namespace Myss.Api.Configuration.Addons.Swagger
 
             if (enumType is { IsEnum: true })
             {
-                var enums = new List<IOpenApiAny>();
+                var enums = new List<JsonNode>();
 
                 foreach (var name in Enum.GetNames(enumType))
                 {
                     var value = enumType.GetMember(name)[0];
                     if (!value.GetCustomAttributes<SwaggerExcludeAttribute>().Any())
                     {
-                        enums.Add(new OpenApiString(name));
+                        enums.Add(JsonValue.Create(name));
                     }
                 }
 
-                schema.Enum = enums;
+                concreteSchema.Enum = enums;
             }
         }
 
         public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
         {
-            foreach (var key in swaggerDoc.Components.Schemas.Keys)
+            IDictionary<string, IOpenApiSchema>? schemas = swaggerDoc.Components?.Schemas;
+            if (schemas is null)
+            {
+                return;
+            }
+
+            // Snapshot the keys: entries are removed while iterating.
+            foreach (var key in schemas.Keys.ToList())
             {
                 if (ExcludedKeys.Any(x => x.EndsWith(key, StringComparison.Ordinal)))
                 {
-                    swaggerDoc.Components.Schemas.Remove(key);
+                    schemas.Remove(key);
                 }
             }
         }
