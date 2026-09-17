@@ -153,13 +153,14 @@ namespace Myss.Api.Tests.Configuration
         private static DocumentFilterContext DocumentContext() =>
             new(Array.Empty<ApiDescription>(), schemaGenerator: null!, new SchemaRepository());
 
+        // The models below are only ever reflected over (typeof), never instantiated.
         [SwaggerExclude]
-        private sealed class HiddenModel
+        private abstract class HiddenModel
         {
             public string? Secret { get; set; }
         }
 
-        private sealed class VisibleModel
+        private abstract class VisibleModel
         {
             public string? Name { get; set; }
 

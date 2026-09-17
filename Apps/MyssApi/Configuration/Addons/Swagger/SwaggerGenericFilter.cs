@@ -11,7 +11,7 @@ namespace Myss.Api.Configuration.Addons.Swagger
 
             // Microsoft.OpenApi 2 hands filters a read-only interface; only the
             // concrete schema is mutable (a schema reference is not).
-            if (type.IsGenericType == false || schema is not OpenApiSchema concreteSchema)
+            if (!type.IsGenericType || schema is not OpenApiSchema concreteSchema)
             {
                 return;
             }
