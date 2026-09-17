@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
-import PocForm from "@/widgets/PocForm";
+import SubmissionErrors from "@/components/SubmissionErrors";
+import FormSpecWidget from "@/widgets/FormSpecWidget";
 import { useSubmissions } from "@/hooks/usePocForm";
 
 const FORM_SPEC_ID = "poc-test-form";
@@ -17,7 +18,11 @@ export default function FormsTechDemo() {
         <Link to="/techdemos">← Tech demos</Link>
       </nav>
       <h1>Forms tech demo</h1>
-      <PocForm />
+      <FormSpecWidget
+        formSpecId={FORM_SPEC_ID}
+        renderSubmissionError={(error) => <SubmissionErrors error={error} />}
+        showSpecHeading
+      />
       <section>
         <h3>Previous submissions</h3>
         {submissions && submissions.length === 0 && <p>None yet.</p>}

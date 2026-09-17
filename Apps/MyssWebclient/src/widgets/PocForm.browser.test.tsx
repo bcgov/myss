@@ -3,7 +3,8 @@ import { MemoryRouter } from "react-router";
 import { render } from "vitest-browser-react";
 import { afterEach, expect, test, vi } from "vitest";
 
-import PocForm from "@/widgets/PocForm";
+import SubmissionErrors from "@/components/SubmissionErrors";
+import FormSpecWidget from "@/widgets/FormSpecWidget";
 
 // The submission payload should carry the spec version the form was
 // rendered with.
@@ -91,7 +92,11 @@ function renderForm() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <PocForm />
+        <FormSpecWidget
+          formSpecId="poc-test-form"
+          renderSubmissionError={(error) => <SubmissionErrors error={error} />}
+          showSpecHeading
+        />
       </MemoryRouter>
     </QueryClientProvider>,
   );
