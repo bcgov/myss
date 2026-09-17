@@ -6,6 +6,22 @@ html {
     font-family: "BC Sans", sans-serif;
     line-height: 1.5;
     font-weight: 400;
+    --layout-padding-hair: 2px;
+    --layout-padding-xsmall: 4px;
+    --layout-padding-small: 8px;
+    --layout-padding-medium: 16px;
+    --layout-padding-large: 24px;
+    --layout-padding-xlarge: 32px;
+    --layout-margin-none: 0;
+    --layout-margin-hair: 2px;
+    --layout-margin-xsmall: 4px;
+    --layout-margin-small: 8px;
+    --layout-margin-medium: 16px;
+    --layout-margin-large: 24px;
+    --layout-margin-xlarge: 32px;
+    --layout-margin-xxlarge: 40px;
+    --layout-margin-xxxlarge: 48px;
+    --layout-margin-huge: 56px;
 }
 
 * {
