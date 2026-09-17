@@ -50,6 +50,7 @@ export default function BusPassPage() {
       <nav aria-label="Breadcrumb">
         <Link to="/">← Home</Link>
       </nav>
+      <h1>BC Bus Pass</h1>
       <FormSpecWidget formSpecId={FORM_SPEC_ID} />
 
       <section>
