@@ -1,20 +1,25 @@
 import { Form } from "@formio/react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import "@formio/js/dist/formio.form.min.css";
-import "./PocForm.css";
+import "./FormSpecWidget.css";
 
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
 
-const FORM_SPEC_ID = "bc-bus-pass";
+interface FormSpecWidgetProps {
+  formSpecId: string;
+  renderSubmissionError?: (error: Error) => ReactNode;
+  showSpecHeading?: boolean;
+}
 
-/**
- * Renders the BC Bus Pass Form.io spec fetched from the MyssApi forms endpoint
- * and posts the answers back with the exact spec version the form was rendered under.
- */
-export default function BusPassForm() {
-  const { data: spec, error, isPending } = useFormSpec(FORM_SPEC_ID);
-  const submit = useSubmitForm(FORM_SPEC_ID);
+export default function FormSpecWidget({
+  formSpecId,
+  renderSubmissionError,
+  showSpecHeading = false,
+}: FormSpecWidgetProps) {
+  const { data: spec, error, isPending } = useFormSpec(formSpecId);
+  const submit = useSubmitForm(formSpecId);
 
   if (isPending) return <p>Loading form…</p>;
   if (error) return <p>Could not load the form: {error.message}</p>;
@@ -42,7 +47,17 @@ export default function BusPassForm() {
 
   return (
     <section>
-      {submit.error && <p>Submission failed: {submit.error.message}</p>}
+      {showSpecHeading && (
+        <h3>
+          {spec.title ?? spec.formSpecId} <small>(spec v{spec.version})</small>
+        </h3>
+      )}
+      {submit.error &&
+        (renderSubmissionError ? (
+          renderSubmissionError(submit.error)
+        ) : (
+          <p>Submission failed: {submit.error.message}</p>
+        ))}
       <Form
         src={spec.spec}
         onSubmit={(submission: { data: Record<string, unknown> }) =>

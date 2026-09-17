@@ -1,7 +1,87 @@
+html {
+    font-size: 16px;
+}
+
 :root {
     font-family: "BC Sans", sans-serif;
-    line-height: 1.5;
     font-weight: 400;
+
+    /* Layout — spacing */
+    --layout-padding-hair: 2px;
+    --layout-padding-xsmall: 4px;
+    --layout-padding-small: 8px;
+    --layout-padding-medium: 16px;
+    --layout-padding-large: 24px;
+    --layout-padding-xlarge: 32px;
+    --layout-margin-none: 0;
+    --layout-margin-hair: 2px;
+    --layout-margin-xsmall: 4px;
+    --layout-margin-small: 8px;
+    --layout-margin-medium: 16px;
+    --layout-margin-large: 24px;
+    --layout-margin-xlarge: 32px;
+    --layout-margin-xxlarge: 40px;
+    --layout-margin-xxxlarge: 48px;
+    --layout-margin-huge: 56px;
+ 
+    /* Typography — line heights */
+    --typography-line-heights-xxxdense: 18px;
+    --typography-line-heights-xxdense: 21.008px;
+    --typography-line-heights-xdense: 27.008px;
+    --typography-line-heights-dense: 30.608px;
+    --typography-line-heights-regular: 34px;
+    --typography-line-heights-sparse: 36px;
+    --typography-line-heights-xsparse: 48px;
+    --typography-line-heights-xxsparse: 54px;
+ 
+    /* Typography — font sizes */
+    --typography-font-size-label: 12px;
+    --typography-font-size-small-body: 14px;
+    --typography-font-size-body: 16px;
+    --typography-font-size-large-body: 18px;
+    --typography-font-size-h5: 20px;
+    --typography-font-size-h4: 24px;
+    --typography-font-size-h3: 28px;
+    --typography-font-size-h2: 32px;
+    --typography-font-size-h1: 36px;
+    --typography-font-size-display: 48px;
+ 
+    /* Typography — composite (font shorthand). The *-display tokens keep the
+       source's AUTO line-height (not valid CSS, but unused here and mirrored
+       verbatim from variables.css). */
+    --typography-regular-label: 400 12px/18px 'BC Sans';
+    --typography-regular-small-body: 400 14px/21.008px 'BC Sans';
+    --typography-regular-body: 400 16px/27.008px 'BC Sans';
+    --typography-regular-large-body: 400 18px/30.608px 'BC Sans';
+    --typography-regular-h6: 400 18px/30.608px 'BC Sans';
+    --typography-regular-h5: 400 20px/34px 'BC Sans';
+    --typography-regular-h4: 400 24px/36px 'BC Sans';
+    --typography-regular-h3: 400 28px/48px 'BC Sans';
+    --typography-regular-h2: 400 32px/54px 'BC Sans';
+    --typography-regular-h1: 400 36px/48px 'BC Sans';
+    --typography-regular-display: 400 48px/AUTO 'BC Sans';
+    --typography-bold-label: 700 12px/18px 'BC Sans';
+    --typography-bold-small-body: 700 14px/21.008px 'BC Sans';
+    --typography-bold-body: 700 16px/27.008px 'BC Sans';
+    --typography-bold-large-body: 700 18px/30.608px 'BC Sans';
+    --typography-bold-h6: 700 18px/30.608px 'BC Sans';
+    --typography-bold-h5: 700 20px/34px 'BC Sans';
+    --typography-bold-h4: 700 24px/36px 'BC Sans';
+    --typography-bold-h3: 700 28px/48px 'BC Sans';
+    --typography-bold-h2: 700 32px/48px 'BC Sans';
+    --typography-bold-h1: 700 36px/54px 'BC Sans';
+    --typography-bold-display: 700 48px/AUTO 'BC Sans';
+    --typography-italic-label: 400 italic 12px/18px 'BC Sans';
+    --typography-italic-small-body: 400 italic 14px/21.008px 'BC Sans';
+    --typography-italic-body: 400 italic 16px/27.008px 'BC Sans';
+    --typography-italic-large-body: 400 italic 18px/30.608px 'BC Sans';
+    --typography-italic-h6: 400 italic 18px/30.608px 'BC Sans';
+    --typography-italic-h5: 400 italic 20px/34px 'BC Sans';
+    --typography-italic-h4: 400 italic 24px/36px 'BC Sans';
+    --typography-italic-h3: 400 italic 28px/54px 'BC Sans';
+    --typography-italic-h2: 400 italic 32px/48px 'BC Sans';
+    --typography-italic-h1: 400 italic 36px/54px 'BC Sans';
+    --typography-italic-display: 400 italic 48px/AUTO 'BC Sans';
 }
 
 * {

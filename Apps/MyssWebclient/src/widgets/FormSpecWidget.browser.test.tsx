@@ -3,13 +3,9 @@ import { MemoryRouter } from "react-router";
 import { render } from "vitest-browser-react";
 import { afterEach, expect, test, vi } from "vitest";
 
-import PocForm from "@/components/PocForm";
+import SubmissionErrors from "@/components/SubmissionErrors";
+import FormSpecWidget from "@/widgets/FormSpecWidget";
 
-// The submission payload should carry the spec version the form was
-// rendered with.
-
-// Uses a distinctive version number so the assertions can tell where the
-// version stamp came from.
 const currentSpecV7 = {
   formSpecId: "poc-test-form",
   version: 7,
@@ -35,7 +31,6 @@ const currentSpecV7 = {
   },
 };
 
-/** A refusal as the API sends it: 422 carrying every reason at once. */
 interface ApiValidationError {
   field: string;
   keyword: string;
@@ -69,7 +64,7 @@ function stubFormApi(options: { rejectWith?: ApiValidationError[] } = {}) {
       return new Response(
         JSON.stringify({
           payload: {
-            id: "99999999-8888-7777-6666-555555555555",
+            id: "99999999-2222-3333-4444-555555555555",
             formSpecId: "poc-test-form",
             formSpecVersion: body.formSpecVersion,
             answers: body.answers,
@@ -86,12 +81,16 @@ function stubFormApi(options: { rejectWith?: ApiValidationError[] } = {}) {
 
 function renderForm() {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <PocForm />
+        <FormSpecWidget
+          formSpecId="poc-test-form"
+          renderSubmissionError={(error) => <SubmissionErrors error={error} />}
+          showSpecHeading
+        />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -120,10 +119,9 @@ test("submits the version it rendered with, and links to the stored submission",
 
   await expect.element(screen.getByText("Submission received")).toBeVisible();
   await expect.element(screen.getByText("poc-test-form v7")).toBeVisible();
-  const viewLink = screen.getByRole("link", { name: "View this submission" });
-  await expect.element(viewLink).toBeVisible();
-
-  // The posted request should carry the fetched spec's version.
+  await expect
+    .element(screen.getByRole("link", { name: "View this submission" }))
+    .toBeVisible();
   expect(posts).toHaveLength(1);
   expect(posts[0].body).toMatchObject({
     formSpecVersion: 7,
@@ -131,12 +129,6 @@ test("submits the version it rendered with, and links to the stored submission",
   });
 });
 
-/**
- * The 422 body is the only place a citizen learns WHY a submission was
- * refused. Asserting on the message rather than the status guards the
- * regression this replaced: the hook used to throw away the response body and
- * the page showed a bare "Submission failed (422)".
- */
 test("shows the reasons the API refused the submission", async () => {
   stubFormApi({
     rejectWith: [
@@ -154,9 +146,6 @@ test("shows the reasons the API refused the submission", async () => {
 
   await expect.element(screen.getByText("There is a problem")).toBeVisible();
   await expect.element(screen.getByText("Enter a first name.")).toBeVisible();
-
-  // The form must stay on screen: a refused submission is a correction, not a
-  // dead end.
   await expect
     .element(screen.getByRole("textbox", { name: "First name" }))
     .toBeVisible();
@@ -176,10 +165,6 @@ test("moves focus to the field an error belongs to", async () => {
 
   await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
   await screen.getByRole("button", { name: "Submit" }).click();
-
-  // Each summary entry is a button rather than a link: it moves focus within
-  // the page, and Form.io's element ids are regenerated per render so there is
-  // no stable fragment to target.
   await screen.getByRole("button", { name: "Enter a first name." }).click();
 
   const input = document.querySelector('[name="data[firstName]"]');

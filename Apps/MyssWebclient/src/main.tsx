@@ -7,7 +7,7 @@ import { client } from "@/api/generated/client.gen";
 import { router } from "@/routes/router";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { API_URL } from "@/constants.ts";
-import { registerBcgovComponents } from "@/formio/bcgovComponents";
+import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
 import "@bcgov/design-tokens/css/variables.css";
 import "@/index.css";
 import "@bcgov/bc-sans/css/BC_Sans.css";

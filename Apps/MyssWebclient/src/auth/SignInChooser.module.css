@@ -1,7 +1,7 @@
 .chooser {
     display: flex;
     flex-direction: column;
-    gap: var(--layout-margin-medium, 16px);
+    gap: var(--layout-margin-medium);
     max-width: 360px;
 }
 
