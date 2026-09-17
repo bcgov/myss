@@ -10,11 +10,12 @@ test("renders the government banner and ministry identity", async () => {
     await expect
         .element(screen.getByRole("img", { name: "Government of BC" }))
         .toBeVisible();
+    await expect.element(screen.getByText("Ministry of")).toBeVisible();
     await expect
-        .element(screen.getByText(/Ministry of Social Development/))
+        .element(screen.getByText("Social Development"))
         .toBeVisible();
     await expect
-        .element(screen.getByText(/and Poverty Reduction/))
+        .element(screen.getByText("and Poverty Reduction"))
         .toBeVisible();
 });
 
