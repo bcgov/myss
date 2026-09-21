@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BUS_PASS_FORM_SPEC_ID,
+  BUS_PASS_FORM_SPEC_TITLE,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   POC_FORM_SPEC_ID,
   POC_FORM_SPEC_TITLE,
+  busPassFormSpecV1,
+  busPassFormSpecV2,
   seededForms,
   seededFormSpecs,
   testFormSpecV1,
@@ -27,8 +31,14 @@ import {
 interface Component {
   readonly key?: unknown;
   readonly type?: unknown;
+  readonly inputMask?: unknown;
   readonly conditional?: { readonly when?: unknown };
   readonly properties?: { readonly myssValidator?: unknown };
+  readonly validate?: {
+    readonly customMessage?: unknown;
+    readonly pattern?: unknown;
+    readonly required?: unknown;
+  };
   readonly components?: unknown;
   readonly columns?: unknown;
 }
@@ -164,10 +174,11 @@ describe("seeded form specs", () => {
 });
 
 describe("seeded forms collection", () => {
-  it("seeds the POC form and the eligibility estimator", () => {
+  it("seeds the POC form, eligibility estimator and bus pass", () => {
     const ids = seededForms.map((form) => form.formSpecId);
     expect(ids).toContain(POC_FORM_SPEC_ID);
     expect(ids).toContain(ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID);
+    expect(ids).toContain(BUS_PASS_FORM_SPEC_ID);
     // Every seeded form id is distinct — the bootstrap hook keys on it.
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -188,6 +199,17 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3]);
   });
 
+  it("seeds the bus pass with v1 and v2", () => {
+    const busPass = seededForms.find(
+      (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
+    );
+    expect(busPass?.title).toBe(BUS_PASS_FORM_SPEC_TITLE);
+    expect(busPass?.versions).toEqual([
+      { version: 1, spec: busPassFormSpecV1 },
+      { version: 2, spec: busPassFormSpecV2 },
+    ]);
+  });
+
   it("gives every seeded form at least one version, each a valid Form.io form", () => {
     for (const form of seededForms) {
       expect(form.versions.length).toBeGreaterThan(0);
@@ -198,5 +220,26 @@ describe("seeded forms collection", () => {
         expect(new Set(keys).size).toBe(keys.length);
       }
     }
+  });
+});
+
+describe("bus pass seed — v2 (server-side SIN validation)", () => {
+  it("preserves v1 and opts the v2 SIN field into the MyssApi validator", () => {
+    const v1Sin = componentByKey(busPassFormSpecV1, "socialInsuranceNumber");
+    const v2Sin = componentByKey(busPassFormSpecV2, "socialInsuranceNumber");
+
+    expect(v1Sin.validate?.pattern).toBe("^[0-9]{9}$");
+    expect(v1Sin.properties?.myssValidator).toBeUndefined();
+
+    expect(v2Sin.type).toBe("textfield");
+    expect(v2Sin.validate?.required).toBe(false);
+    expect(v2Sin.validate?.pattern).toBeUndefined();
+    expect(v2Sin.validate?.customMessage).toBeUndefined();
+    expect(v2Sin.properties?.myssValidator).toBe("sin");
+    expect(v2Sin.inputMask).toBeUndefined();
+  });
+
+  it("otherwise keeps the v1 component structure", () => {
+    expect(keysOf(busPassFormSpecV2)).toEqual(keysOf(busPassFormSpecV1));
   });
 });
