@@ -33,7 +33,7 @@
      Feed the value through the token it already reads rather than out-specifying
      its rule: a custom property inherits, so there is no specificity race with
      BCDS's runtime-injected stylesheet. */
-  --typography-bold-large-body: 700 20px/34px "BC Sans";
+  --typography-bold-large-body: 700 20px/34px "BC Sans", sans-serif;
 }
 
 /* The design's accent bar measures 8px; the component ships 4px. Two compounds against
@@ -315,7 +315,7 @@
       .bcds-react-aria-Disclosure[data-expanded]
       > .bcds-react-aria-Disclosure--Panel
   ) {
-  font: 400 14px/21px "BC Sans";
+  font: 400 14px/21px "BC Sans", sans-serif;
   color: var(--typography-color-secondary, #474543);
 }
 
@@ -361,11 +361,11 @@
    selector out-specifies BCDS's own so it also wins once BCDS injects its
    stylesheet at runtime. */
 .formHost :global(.bcds-react-aria-RadioGroup--label) {
-  font: var(--typography-bold-body, 700 16px/27.008px "BC Sans");
+  font: var(--typography-bold-body, 700 16px/27.008px "BC Sans", sans-serif);
   color: var(--typography-color-secondary, #474543);
 }
 .formHost :global(.bcds-react-aria-Radio) {
-  font: var(--typography-regular-body, 400 16px/27.008px "BC Sans");
+  font: var(--typography-regular-body, 400 16px/27.008px "BC Sans", sans-serif);
   gap: 10px; /* design measures 10px; there is no 10px layout token */
 }
 
