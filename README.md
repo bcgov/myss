@@ -45,7 +45,9 @@ dotnet run --project Apps/MySS.AspireHost
 It starts the compose containers' equivalents (Postgres 17, ClamAV, MinIO with its
 bucket-creation one-shot), applies both EF migration contexts once Postgres is healthy,
 then starts `MySSApi` (http://localhost:5000), `MySSContent` (Strapi,
-http://localhost:1337, run with npm on the host) and `MyssWebClient` (Vite) — with a
+http://localhost:1337, run with npm on the host), `MyssWebClient` (Vite) and, when an
+ICM base URL is configured (`Icm:BaseUrl` in the shared user-secret store), the ICM
+middleware `IcmApi` (http://localhost:5100; see `Apps/IcmApi.Host/README.md`) — with a
 dashboard (URL printed at startup) showing every resource's logs, health and telemetry.
 
 Container data lives in named volumes (`myss_postgres-data`, `myss_clamav-db`,
@@ -96,6 +98,8 @@ compose Postgres.
 ## Run the apps
 
 - API: `cd Apps/MyssApi && dotnet run` → http://localhost:5000
+- ICM middleware: `dotnet run --project Apps/IcmApi.Host` → http://localhost:5100
+  (needs the `Icm:*` user secrets; see `Apps/IcmApi.Host/README.md`)
 - Webclient: `cd Apps/MyssWebclient && npm install && npm run dev` →
   http://localhost:5173 (the forms demo is under `/techdemos/forms`)
 - Strapi admin: http://localhost:1337/admin — the first visit asks you to
@@ -108,6 +112,8 @@ compose Postgres.
   attachment scanning misbehaves; on a first-ever ClamAV start it will say the
   daemon is not answering until the signature download finishes.
 - API: `dotnet test Apps/MyssApi.Tests`
+- ICM client and middleware: `dotnet test Apps/IcmApi.Tests` and
+  `dotnet test Apps/IcmApi.Host.Tests`
 - Webclient: `cd Apps/MyssWebclient && npm run test:unit` and
   `npm run test:browser-headless` — the browser tests need a one-time
   `npx playwright install chromium`

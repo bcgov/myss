@@ -42,4 +42,14 @@
              CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!--
+    The bus pass request sample is the contract between this API's middleware
+    provider and IcmApi.Host. Linked for the same reason as the vectors above.
+  -->
+  <ItemGroup>
+    <Content Include="..\..\Shared\contracts\bus-pass-application.sample.json"
+             Link="bus-pass-application.sample.json"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

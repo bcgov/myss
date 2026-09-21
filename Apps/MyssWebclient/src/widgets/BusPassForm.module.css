@@ -1,0 +1,51 @@
+/*
+ * The outcome of a bus pass submission, shown in place of the form (accepted,
+ * rejected) or above it (saved but not delivered). Border and left bar carry
+ * the meaning alongside colour.
+ */
+.outcome {
+    border: 2px solid var(--support-border-color-success);
+    border-left-width: var(--layout-margin-small);
+    background: var(--support-surface-color-success);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: var(--layout-margin-medium) 0;
+}
+
+.rejected {
+    border-color: var(--support-border-color-danger);
+    background: var(--support-surface-color-danger);
+}
+
+.unavailable {
+    border-color: var(--support-border-color-info);
+    background: var(--support-surface-color-info);
+}
+
+.heading {
+    margin: 0 0 var(--layout-margin-small);
+}
+
+.heading:focus-visible {
+    outline: 2px solid var(--surface-color-border-active);
+    outline-offset: 2px;
+}
+
+.reference {
+    font-weight: var(--typography-font-weights-bold);
+}
+
+.details {
+    margin: var(--layout-margin-small) 0 0;
+}
+
+.details dt {
+    font-weight: var(--typography-font-weights-bold);
+}
+
+.details dd {
+    margin: 0 0 var(--layout-margin-xsmall);
+}
+
+.actions {
+    margin-top: var(--layout-margin-medium);
+}

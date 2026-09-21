@@ -99,13 +99,20 @@ namespace Myss.Api.Providers
             int status = (int)response.StatusCode;
             if (!response.IsSuccessStatusCode)
             {
-                // A 4xx here means the two sides disagree about the contract,
-                // which is a defect to fix rather than a condition to retry; for
-                // the citizen the request is undeliverable either way.
-                _logger.LogError("ICM middleware answered {StatusCode} to a bus pass submission", status);
+                // The middleware's problem body says what failed and, through its
+                // keyword, whether ICM can have the request. A 4xx with no keyword
+                // means the two sides disagree about the contract, which is a defect
+                // to fix rather than a condition to retry.
+                string? keyword = await ReadKeywordAsync(response, cancellationToken);
+                _logger.LogError(
+                    "ICM middleware answered {StatusCode} ({Keyword}) to a bus pass submission",
+                    status,
+                    keyword ?? "no keyword");
                 throw new IcmApiUnavailableException($"The ICM middleware answered {status}.")
                 {
                     StatusCode = status,
+                    Keyword = keyword,
+                    MayHaveReachedIcm = !IcmApiKeywords.ProvesNotDelivered(keyword),
                 };
             }
 
@@ -118,11 +125,14 @@ namespace Myss.Api.Providers
             }
             catch (JsonException ex)
             {
+                // A success status with an unreadable body: ICM answered, so it has
+                // the request; only the outcome is lost.
                 throw new IcmApiUnavailableException(
                     "The ICM middleware returned a body this API could not read.",
                     ex)
                 {
                     StatusCode = status,
+                    MayHaveReachedIcm = true,
                 };
             }
 
@@ -131,6 +141,7 @@ namespace Myss.Api.Providers
                     "The ICM middleware reported success but returned no outcome.")
                 {
                     StatusCode = status,
+                    MayHaveReachedIcm = true,
                 };
         }
 
@@ -149,9 +160,21 @@ namespace Myss.Api.Providers
             {
                 return await client.SendAsync(request, cancellationToken);
             }
+            catch (HttpRequestException ex) when (IsConnectFailure(ex))
+            {
+                // Name resolution or the connection itself failed: nothing was
+                // sent, so nothing can have been filed.
+                throw new IcmApiUnavailableException("The ICM middleware could not be reached.", ex)
+                {
+                    MayHaveReachedIcm = false,
+                };
+            }
             catch (HttpRequestException ex)
             {
-                throw new IcmApiUnavailableException("The ICM middleware could not be reached.", ex);
+                // The request was on the wire when the connection failed (the
+                // response ended early, the body could not be buffered): the
+                // middleware, and ICM, may well have it.
+                throw new IcmApiUnavailableException("The connection to the ICM middleware failed.", ex);
             }
             catch (TimeoutRejectedException ex)
             {
@@ -159,14 +182,52 @@ namespace Myss.Api.Providers
             }
             catch (BrokenCircuitException ex)
             {
+                // The breaker refused the call before it left the process.
                 throw new IcmApiUnavailableException(
                     "The ICM middleware has been failing and calls to it are paused.",
-                    ex);
+                    ex)
+                {
+                    MayHaveReachedIcm = false,
+                };
             }
             catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
                 // HttpClient.Timeout surfaces as a cancellation nobody asked for.
                 throw new IcmApiUnavailableException("The ICM middleware did not answer in time.", ex);
+            }
+        }
+
+        /// <summary>
+        /// Whether the failure happened before any bytes reached the middleware,
+        /// the same three cases <see cref="Configuration.IcmApiResilience"/> treats
+        /// as safe to retry.
+        /// </summary>
+        private static bool IsConnectFailure(HttpRequestException ex) =>
+            ex.HttpRequestError is HttpRequestError.NameResolutionError
+                or HttpRequestError.ConnectionError
+                or HttpRequestError.SecureConnectionError;
+
+        /// <summary>
+        /// Reads the <c>keyword</c> from a problem-details body, tolerating any
+        /// other shape and any failure to read the body at all: the status that
+        /// was answered is the fact to report, and nothing about the body may
+        /// hide it. Cancellation is the one thing let through.
+        /// </summary>
+        private static async Task<string?> ReadKeywordAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using JsonDocument body = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+                return body.RootElement.ValueKind == JsonValueKind.Object
+                    && body.RootElement.TryGetProperty("keyword", out JsonElement keyword)
+                    && keyword.ValueKind == JsonValueKind.String
+                        ? keyword.GetString()
+                        : null;
+            }
+            catch (Exception ex) when (ex is JsonException or IOException or HttpRequestException or InvalidOperationException)
+            {
+                return null;
             }
         }
 
@@ -211,7 +272,9 @@ namespace Myss.Api.Providers
                 {
                     Content = new FormUrlEncodedContent(form),
                 };
-                using HttpResponseMessage response = await SendAsync(client, request, cancellationToken);
+                // Whatever fails here happened before the request was sent: ICM
+                // cannot have it.
+                using HttpResponseMessage response = await SendTokenRequestAsync(client, request, cancellationToken);
                 if (!response.IsSuccessStatusCode)
                 {
                     // invalid_client lands here as a 401: the clearest signal a
@@ -222,6 +285,7 @@ namespace Myss.Api.Providers
                         $"The token endpoint for the ICM middleware answered {status}.")
                     {
                         StatusCode = status,
+                        MayHaveReachedIcm = false,
                     };
                 }
 
@@ -232,6 +296,25 @@ namespace Myss.Api.Providers
             finally
             {
                 _tokenLock.Release();
+            }
+        }
+
+        private static async Task<HttpResponseMessage> SendTokenRequestAsync(
+            HttpClient client,
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await SendAsync(client, request, cancellationToken);
+            }
+            catch (IcmApiUnavailableException ex)
+            {
+                throw new IcmApiUnavailableException(ex.Message, ex.InnerException)
+                {
+                    StatusCode = ex.StatusCode,
+                    MayHaveReachedIcm = false,
+                };
             }
         }
 
@@ -247,7 +330,10 @@ namespace Myss.Api.Providers
                 || tokenElement.GetString() is not { Length: > 0 } token)
             {
                 throw new IcmApiUnavailableException(
-                    "The token endpoint for the ICM middleware did not return an access_token.");
+                    "The token endpoint for the ICM middleware did not return an access_token.")
+                {
+                    MayHaveReachedIcm = false,
+                };
             }
 
             TimeSpan lifetime =
