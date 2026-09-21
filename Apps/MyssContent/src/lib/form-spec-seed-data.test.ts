@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   BUS_PASS_FORM_SPEC_ID,
   BUS_PASS_FORM_SPEC_TITLE,
+  busPassFormSpecV1,
+  busPassFormSpecV2,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   POC_FORM_SPEC_ID,
   POC_FORM_SPEC_TITLE,
-  busPassFormSpecV1,
-  busPassFormSpecV2,
   seededForms,
   seededFormSpecs,
   testFormSpecV1,
@@ -208,6 +208,12 @@ describe("seeded forms collection", () => {
       { version: 1, spec: busPassFormSpecV1 },
       { version: 2, spec: busPassFormSpecV2 },
     ]);
+  });
+
+  it("allows one- or two-digit birth days in bus pass v2", () => {
+    const birthDay = componentByKey(busPassFormSpecV2, "birthDay");
+
+    expect(birthDay.inputMask).toBe("9[9]");
   });
 
   it("gives every seeded form at least one version, each a valid Form.io form", () => {

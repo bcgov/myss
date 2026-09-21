@@ -15,6 +15,9 @@ resharper_entity_framework_model_validation_unlimited_string_length_highlighting
 [*.{yml,yaml}]
 indent_size = 2
 
+[*.{js,jsx,ts,tsx}]
+indent_size = 2
+
 [*.{cs,razor,cshtml}]
 # All Rules are enabled with default severity.
 # Rules with IsEnabledByDefault = false are force-enabled with default severity.
