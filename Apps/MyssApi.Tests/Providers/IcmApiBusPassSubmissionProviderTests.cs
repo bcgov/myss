@@ -1,5 +1,6 @@
 namespace Myss.Api.Tests.Providers
 {
+    using System.IO;
     using System.Net;
     using System.Net.Http;
     using System.Text;
@@ -172,15 +173,38 @@ namespace Myss.Api.Tests.Providers
         }
 
         [Fact]
-        public async Task AConnectionFailureToTheMiddleware_ProvesNothingWasDelivered()
+        public async Task AResponseWhoseBodyFailsToArrive_IsTreatedAsPossiblyDelivered()
         {
-            _http.ApplicationThrow = new HttpRequestException("Connection refused", null, null);
+            // HttpClient buffers the body inside SendAsync, so a connection that
+            // drops mid-body surfaces as an HttpRequestException after the request
+            // was on the wire. That is not a connect failure and must not invite a
+            // resend.
+            _http.ApplicationStatus = HttpStatusCode.BadGateway;
+            _http.ApplicationBodyFails = true;
             using IcmApiBusPassSubmissionProvider provider = NewProvider();
 
             IcmApiUnavailableException ex = await Assert.ThrowsAsync<IcmApiUnavailableException>(
                 () => provider.SubmitAsync(Application(), CancellationToken.None));
 
-            Assert.False(ex.MayHaveReachedIcm);
+            Assert.Null(ex.Keyword);
+            Assert.True(ex.MayHaveReachedIcm);
+        }
+
+        [Theory]
+        [InlineData(HttpRequestError.NameResolutionError, false)]
+        [InlineData(HttpRequestError.ConnectionError, false)]
+        [InlineData(HttpRequestError.SecureConnectionError, false)]
+        [InlineData(HttpRequestError.ResponseEnded, true)]
+        [InlineData(HttpRequestError.Unknown, true)]
+        public async Task OnlyAFailureToConnect_ProvesNothingWasDelivered(HttpRequestError error, bool mayHaveReachedIcm)
+        {
+            _http.ApplicationThrow = new HttpRequestException(error, "transport failure");
+            using IcmApiBusPassSubmissionProvider provider = NewProvider();
+
+            IcmApiUnavailableException ex = await Assert.ThrowsAsync<IcmApiUnavailableException>(
+                () => provider.SubmitAsync(Application(), CancellationToken.None));
+
+            Assert.Equal(mayHaveReachedIcm, ex.MayHaveReachedIcm);
             Assert.Equal(2, _http.Requests.Count);
         }
 
@@ -282,6 +306,9 @@ namespace Myss.Api.Tests.Providers
             /// <summary>Thrown for the applications route only, after the token was issued.</summary>
             public Exception? ApplicationThrow { get; set; }
 
+            /// <summary>Makes the applications route's body fail to read (the connection dropped mid-body).</summary>
+            public bool ApplicationBodyFails { get; set; }
+
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 string body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
@@ -304,8 +331,23 @@ namespace Myss.Api.Tests.Providers
 
                 return new HttpResponseMessage(isToken ? TokenStatus : ApplicationStatus)
                 {
-                    Content = new StringContent(isToken ? TokenBody : ApplicationBody, Encoding.UTF8, "application/json"),
+                    Content = !isToken && ApplicationBodyFails
+                        ? new UnreadableContent()
+                        : new StringContent(isToken ? TokenBody : ApplicationBody, Encoding.UTF8, "application/json"),
                 };
+            }
+        }
+
+        /// <summary>A body whose read fails the way a dropped connection does.</summary>
+        private sealed class UnreadableContent : HttpContent
+        {
+            protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+                throw new IOException("The response ended prematurely.");
+
+            protected override bool TryComputeLength(out long length)
+            {
+                length = 0;
+                return false;
             }
         }
 

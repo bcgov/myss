@@ -165,6 +165,7 @@ namespace Myss.Api
             // BusPassRateLimit; UseRateLimiter is in StartupConfiguration.UseHttp).
             BusPassRateLimitConfig rateLimit = new();
             configuration.GetSection("BusPass:SubmitRateLimit").Bind(rateLimit);
+            BusPassRateLimit.Validate(rateLimit);
             services.AddRateLimiter(options => BusPassRateLimit.Configure(options, rateLimit));
 
             // CORS services are required by the inline UseCors policy in

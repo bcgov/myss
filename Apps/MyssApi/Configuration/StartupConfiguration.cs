@@ -236,6 +236,15 @@ namespace Myss.Api.Configuration
             {
                 Logger.LogDebug("Configuring forwarded headers");
                 IPAddress[] proxyIPs = section.GetSection("KnownProxies").Get<IPAddress[]>() ?? [];
+
+                // Networks as well as single addresses: the OpenShift router pods
+                // have no fixed address, only a pod network, and a header from an
+                // untrusted source is ignored, which would leave the bus pass
+                // rate limit keyed on the router.
+                System.Net.IPNetwork[] proxyNetworks = (section.GetSection("KnownNetworks").Get<string[]>() ?? [])
+                    .Select(System.Net.IPNetwork.Parse)
+                    .ToArray();
+
                 services.Configure<ForwardedHeadersOptions>(options =>
                 {
                     options.ForwardedHeaders = ForwardedHeaders.All;
@@ -246,6 +255,11 @@ namespace Myss.Api.Configuration
                     foreach (IPAddress ip in proxyIPs)
                     {
                         options.KnownProxies.Add(ip);
+                    }
+
+                    foreach (System.Net.IPNetwork network in proxyNetworks)
+                    {
+                        options.KnownIPNetworks.Add(network);
                     }
                 });
             }

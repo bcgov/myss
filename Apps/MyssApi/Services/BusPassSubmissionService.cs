@@ -29,6 +29,15 @@ namespace Myss.Api.Services
     /// submission exists in MySS in every case, and only the reference number
     /// depends on ICM.
     /// </para>
+    /// <para>
+    /// Once the submission is stored, the dispatch no longer listens to the
+    /// request's cancellation. A browser that goes away must not cancel a
+    /// non-idempotent hand-off mid-flight: the call would be abandoned after ICM
+    /// may have filed it, or the log left without its closing row for no real
+    /// reason. The resilience handler's timeouts still bound the call. The
+    /// citizen who disconnected gets no answer either way; MySS and ICM stay
+    /// consistent.
+    /// </para>
     /// </remarks>
     public class BusPassSubmissionService : IBusPassSubmissionService
     {
@@ -93,6 +102,8 @@ namespace Myss.Api.Services
             FormSubmissionResponseModel submission = stored.Submission!;
             BusPassApplicationModel application = BusPassApplicationMapper.Build(submission.Id, submission.Answers);
 
+            // From here on the request token is deliberately not used (see the
+            // class remarks).
             Guid attemptId = Guid.NewGuid();
             string? requestId = _correlationIdAccessor.CorrelationId;
             await AppendAsync(
@@ -100,12 +111,12 @@ namespace Myss.Api.Services
                 attemptId,
                 requestId,
                 BusPassDispatchEventType.Started,
-                cancellationToken: cancellationToken);
+                cancellationToken: CancellationToken.None);
 
             BusPassSubmissionOutcomeModel outcome;
             try
             {
-                outcome = await _submissionProvider.SubmitAsync(application, cancellationToken);
+                outcome = await _submissionProvider.SubmitAsync(application, CancellationToken.None);
             }
             catch (IcmApiUnavailableException ex)
             {

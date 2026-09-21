@@ -1,6 +1,7 @@
 namespace Icm.Api.Host.Controllers
 {
     using System;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using Icm.Api.Host.Contracts;
@@ -82,7 +83,7 @@ namespace Icm.Api.Host.Controllers
             // identifier shows itself.
             _logger.LogInformation(
                 "Bus pass submission {SubmissionKey} ({RequestType}) answered: status {Status}, application {ApplicationNumber}, error code {ErrorCode}, echoed name matches {NameMatches}",
-                application.SubmissionKey ?? "-",
+                ForLog(application.SubmissionKey),
                 application.RequestType,
                 result.Status ?? "-",
                 result.ApplicationNumber ?? "-",
@@ -90,6 +91,22 @@ namespace Icm.Api.Host.Controllers
                 NameMatches(application, result));
 
             return BusPassApplicationResponse.From(result);
+        }
+
+        /// <summary>
+        /// The submission key as it may appear in a log line. Model validation
+        /// already limits it to letters, digits and hyphens; this keeps only those
+        /// regardless, so the value is never able to forge a log entry.
+        /// </summary>
+        private static string ForLog(string? submissionKey)
+        {
+            if (string.IsNullOrEmpty(submissionKey))
+            {
+                return "-";
+            }
+
+            char[] kept = [.. submissionKey.Where(c => char.IsAsciiLetterOrDigit(c) || c == '-').Take(64)];
+            return kept.Length == 0 ? "-" : new string(kept);
         }
 
         private static bool NameMatches(BusPassApplication application, BusPassResult result)

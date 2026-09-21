@@ -22,6 +22,25 @@ namespace Myss.Api.Configuration
         public const string PolicyName = "bus-pass-submit";
 
         /// <summary>
+        /// Checks the limit is usable. The limiter itself would only object when
+        /// the first partition is created, which is the first submission, so a
+        /// bad value would surface as a 500 to a citizen rather than at startup.
+        /// </summary>
+        /// <param name="config">The limit.</param>
+        /// <exception cref="InvalidOperationException">A value is zero or negative.</exception>
+        public static void Validate(BusPassRateLimitConfig config)
+        {
+            ArgumentNullException.ThrowIfNull(config);
+
+            if (config.PermitLimit < 1 || config.WindowSeconds < 1)
+            {
+                throw new InvalidOperationException(
+                    "BusPass:SubmitRateLimit is not usable: PermitLimit and WindowSeconds must both be at least 1 "
+                    + $"(PermitLimit={config.PermitLimit}, WindowSeconds={config.WindowSeconds}).");
+            }
+        }
+
+        /// <summary>
         /// Configures the limiter: the policy, the 429 status, and a problem body
         /// carrying the keyword the frontend matches on.
         /// </summary>
@@ -30,7 +49,7 @@ namespace Myss.Api.Configuration
         public static void Configure(RateLimiterOptions options, BusPassRateLimitConfig config)
         {
             ArgumentNullException.ThrowIfNull(options);
-            ArgumentNullException.ThrowIfNull(config);
+            Validate(config);
 
             TimeSpan window = TimeSpan.FromSeconds(config.WindowSeconds);
 

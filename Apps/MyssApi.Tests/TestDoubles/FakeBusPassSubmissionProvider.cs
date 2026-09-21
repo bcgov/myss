@@ -26,6 +26,12 @@ namespace Myss.Api.Tests.TestDoubles
         /// </summary>
         public Exception? Failure { get; set; }
 
+        /// <summary>Runs when a submission arrives, before the outcome is returned.</summary>
+        public Action? OnSubmit { get; set; }
+
+        /// <summary>The token the last call was made with.</summary>
+        public CancellationToken LastCancellationToken { get; private set; }
+
         /// <summary>
         /// Builds an accepted outcome.
         /// </summary>
@@ -49,6 +55,8 @@ namespace Myss.Api.Tests.TestDoubles
         public Task<BusPassSubmissionOutcomeModel> SubmitAsync(BusPassApplicationModel application, CancellationToken cancellationToken)
         {
             Submitted.Add(application);
+            LastCancellationToken = cancellationToken;
+            OnSubmit?.Invoke();
             if (Failure is not null)
             {
                 throw Failure;

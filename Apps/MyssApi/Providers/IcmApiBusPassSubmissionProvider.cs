@@ -160,13 +160,21 @@ namespace Myss.Api.Providers
             {
                 return await client.SendAsync(request, cancellationToken);
             }
-            catch (HttpRequestException ex)
+            catch (HttpRequestException ex) when (IsConnectFailure(ex))
             {
-                // Nothing was sent, so nothing can have been filed.
+                // Name resolution or the connection itself failed: nothing was
+                // sent, so nothing can have been filed.
                 throw new IcmApiUnavailableException("The ICM middleware could not be reached.", ex)
                 {
                     MayHaveReachedIcm = false,
                 };
+            }
+            catch (HttpRequestException ex)
+            {
+                // The request was on the wire when the connection failed (the
+                // response ended early, the body could not be buffered): the
+                // middleware, and ICM, may well have it.
+                throw new IcmApiUnavailableException("The connection to the ICM middleware failed.", ex);
             }
             catch (TimeoutRejectedException ex)
             {
@@ -190,9 +198,20 @@ namespace Myss.Api.Providers
         }
 
         /// <summary>
+        /// Whether the failure happened before any bytes reached the middleware,
+        /// the same three cases <see cref="Configuration.IcmApiResilience"/> treats
+        /// as safe to retry.
+        /// </summary>
+        private static bool IsConnectFailure(HttpRequestException ex) =>
+            ex.HttpRequestError is HttpRequestError.NameResolutionError
+                or HttpRequestError.ConnectionError
+                or HttpRequestError.SecureConnectionError;
+
+        /// <summary>
         /// Reads the <c>keyword</c> from a problem-details body, tolerating any
-        /// other shape: a body that cannot be read must not hide the status that
-        /// was answered.
+        /// other shape and any failure to read the body at all: the status that
+        /// was answered is the fact to report, and nothing about the body may
+        /// hide it. Cancellation is the one thing let through.
         /// </summary>
         private static async Task<string?> ReadKeywordAsync(HttpResponseMessage response, CancellationToken cancellationToken)
         {
@@ -206,7 +225,7 @@ namespace Myss.Api.Providers
                         ? keyword.GetString()
                         : null;
             }
-            catch (JsonException)
+            catch (Exception ex) when (ex is JsonException or IOException or HttpRequestException or InvalidOperationException)
             {
                 return null;
             }

@@ -71,8 +71,8 @@ dotnet user-secrets set "Icm:TrustedUserName" "…"
 ```
 
 Get the values from another developer or the team's central secrets store. Deployed,
-the same keys are environment variables prefixed `Icm_` (`Icm_Icm__BaseUrl`,
-`Icm_Icm__Auth__ClientSecret`, …). Startup is fail-closed on the non-secret parts:
+the same keys are environment variables, either prefixed `Icm_` (`Icm_Icm__BaseUrl`)
+or unprefixed (`Icm__BaseUrl`), which is the form the tenant repo's manifests use. Startup is fail-closed on the non-secret parts:
 without `Icm:BaseUrl` and a resolvable token endpoint the host does not start. The
 credentials are checked on the first submission instead, which answers 503
 `ICM.BUSPASS.NOT_CONFIGURED` until they are set, so a checkout without secrets still

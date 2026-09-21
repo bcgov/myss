@@ -1,6 +1,7 @@
 namespace Icm.Api.Host.Contracts
 {
     using System;
+    using System.ComponentModel.DataAnnotations;
     using Icm.Api.Models;
 
     /// <summary>
@@ -22,9 +23,15 @@ namespace Icm.Api.Host.Contracts
         /// <summary>
         /// Gets or sets the caller's key for this submission, so that a resend after
         /// an ambiguous failure carries the same key and ICM's upsert can recognise
-        /// it. MyssApi sends its stored submission id. Letters, digits and hyphens.
+        /// it. MyssApi sends its stored submission id. Letters, digits and hyphens
+        /// only, at most 64 of them, enforced: anything else is refused with a 400
+        /// before the library sees it.
         /// </summary>
+        [RegularExpression(SubmissionKeyPattern, ErrorMessage = "submissionKey may contain only letters, digits and hyphens, up to 64 characters.")]
         public string? SubmissionKey { get; set; }
+
+        /// <summary>The shape a submission key must have.</summary>
+        public const string SubmissionKeyPattern = "^[A-Za-z0-9-]{1,64}$";
 
         /// <summary>Gets or sets what the applicant is asking for.</summary>
         public required BusPassRequestType RequestType { get; set; }

@@ -92,6 +92,23 @@ namespace Icm.Api.Host.Tests
             Assert.Empty(_submitter.Submitted);
         }
 
+        [Theory]
+        [InlineData("bad key")]
+        [InlineData("key\nwith-newline")]
+        [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+        public async Task ASubmissionKeyOutsideItsShape_Returns400AndNothingReachesIcm(string key)
+        {
+            using HttpClient client = CreateClient();
+            var body = NewApplication();
+            body["submissionKey"] = key;
+
+            using HttpResponseMessage response = await client.PostAsJsonAsync(Route, body);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Contains("submissionKey", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            Assert.Empty(_submitter.Submitted);
+        }
+
         [Fact]
         public async Task UnknownEnumValue_Returns400()
         {

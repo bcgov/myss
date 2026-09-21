@@ -183,6 +183,26 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task AClientThatDisconnectsAfterStorage_DoesNotCancelTheDispatch()
+        {
+            // Once stored, the hand-off runs to completion whatever the browser
+            // does: the call to the middleware carries no request token, and the
+            // closing row is written even though the request was aborted meanwhile.
+            using FormsDbContext db = NewDb();
+            using var request = new CancellationTokenSource();
+            _middleware.OnSubmit = () => request.Cancel();
+            BusPassSubmissionService service = NewService(db);
+
+            BusPassSubmissionResultModel result = await service.SubmitAsync(Request(NewApplicant()), request.Token);
+
+            Assert.Equal(BusPassSubmissionOutcome.Accepted, result.Response!.Outcome);
+            Assert.False(_middleware.LastCancellationToken.CanBeCanceled);
+            Assert.Equal(
+                [BusPassDispatchEventType.Started, BusPassDispatchEventType.Accepted],
+                (await Events(db)).Select(e => e.Type).ToArray());
+        }
+
+        [Fact]
         public async Task AProvablyUndeliveredFailure_SaysARetryIsSafe()
         {
             using FormsDbContext db = NewDb();
