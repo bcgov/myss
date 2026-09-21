@@ -22,9 +22,9 @@ import styles from "./EligibilityEstimatorPage.module.css";
 // The public, anonymous Pre-Eligibility Estimator. It renders the Form.io spec
 // served by MyssApi, hard-screens on the residency / status pre-check, and computes
 // the estimate CLIENT-SIDE against the fetched rate table (no server calculation,
-// nothing persisted). Result UI follows the 0826 design: an estimate card + prose
-// only, no itemised breakdown table. The spouse section (incl. partnerPwd) is
-// revealed by the seed's own Form.io conditional on married / marriage-like.
+// nothing persisted). The result is an estimate card + prose only, with no
+// itemised breakdown table. The spouse section (incl. partnerPwd) is revealed by
+// the seed's own Form.io conditional on married / marriage-like.
 
 // --- Programme content (URLs confirmed; some copy still placeholder) ---
 // TODO(content): remaining real copy pending from the programme / content designer.
@@ -35,8 +35,8 @@ const PENDING = {
   // "Contact us…" hardship-assistance link (shown on a $0 / ineligible result).
   hardshipUrl:
     "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/access-services",
-  // "residency requirements" link inside the Q2="No" warning (0901 ee-05) →
-  // same citizenship-requirements page as the status-help accordion.
+  // "residency requirements" link inside the "not eligible" warning — the same
+  // citizenship-requirements page as the status-help accordion.
   residenceReqUrl:
     "https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/eligibility/citizenship-requirements",
   // Copy for a residency / status pre-check "No" (no artboard exists for this yet).
@@ -45,6 +45,10 @@ const PENDING = {
   preCheckFailBody:
     "To receive assistance you must live in British Columbia and have a status that allows you to live in Canada.",
 } as const;
+
+// Announced when a submit is blocked and no invalid field could take focus.
+const BLOCKED_SUBMIT_MESSAGE =
+  "There is a problem. Please answer the questions marked with an error, then select Get Estimate again.";
 
 type Outcome =
   | {
@@ -56,7 +60,7 @@ type Outcome =
   | { kind: "incomplete" };
 
 // Card amount keeps cents ($1,060.00); the "Your information" echo is whole
-// dollars ($500), matching the 0826 frames.
+// dollars ($500), matching the design.
 const moneyCents = new Intl.NumberFormat("en-CA", {
   style: "currency",
   currency: "CAD",
@@ -70,9 +74,21 @@ const moneyWhole = new Intl.NumberFormat("en-CA", {
 });
 
 /**
+ * The "might not be eligible" state: either question answered "No". Both are
+ * terminal in the spec — a "No" to the first never reveals the second — so the
+ * warning has to fire off whichever was answered. The seed pins
+ * `dataType: "string"`, but the boolean form is accepted too. Mirrors
+ * `screenPreCheck`, the submit-time gate.
+ */
+function isScreenFail(answers: Record<string, unknown>): boolean {
+  const isNo = (value: unknown) => value === "false" || value === false;
+  return isNo(answers.residesInBc) || isNo(answers.hasEligibleStatus);
+}
+
+/**
  * A friendly "Household type" label for the result echo. Placeholder taxonomy
  * pending the content designer: couple → Married / Marriage-like; a lone adult
- * with dependants → "Single parent" (as the 0826 frame shows), else "Single".
+ * with dependants → "Single parent", else "Single".
  */
 function householdTypeLabel(answers: Record<string, unknown>): string {
   const status = String(answers.relationshipStatus ?? "");
@@ -140,8 +156,22 @@ export default function EligibilityEstimatorPage() {
   // moment Q2 is answered "No" — before submit. Read from the Form.io instance
   // (onChange's payload is (value, flags, modified), not a { data } submission).
   const [liveAnswers, setLiveAnswers] = useState<Record<string, unknown>>({});
+  // Announcement for a submit Form.io blocked. Empty whenever focus could be
+  // moved to the offending field instead — see handleBlockedSubmit.
+  const [blockedMessage, setBlockedMessage] = useState("");
   const formInstanceRef = useRef<{ data?: unknown } | null>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
+  const formHostRef = useRef<HTMLDivElement>(null);
+  const blockedSubmitTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (blockedSubmitTimer.current !== null) {
+        window.clearTimeout(blockedSubmitTimer.current);
+      }
+    },
+    [],
+  );
 
   // Move focus to the result when it appears, so a screen-reader user is told
   // the estimate is ready rather than being left at the submit button.
@@ -149,7 +179,7 @@ export default function EligibilityEstimatorPage() {
     if (outcome) resultHeadingRef.current?.focus();
   }, [outcome]);
 
-  // Design 0901 ee-05: this page reads white edge-to-edge. The app shell paints
+  // This page reads white edge-to-edge. The app shell paints
   // an off-white ground on #root (App.css), which shows through the whole
   // viewport. Override it to white while the estimator is mounted and restore it
   // on leave — scoped to this route only, and nothing inside the estimator's own
@@ -167,8 +197,9 @@ export default function EligibilityEstimatorPage() {
 
   // Form.io fires onChange on every edit. Its first arg may carry `.data`, but
   // the instance's current `.data` is the reliable source; spread into a new
-  // object so React re-renders. (v3 gates the rest of the form + submit on
-  // Q2=Yes, so when Q2=No only Q1/Q2 are visible and the warning sits below.)
+  // object so React re-renders. (The spec gates the rest of the form and the
+  // submit button, so on a "No" only the first questions show and the warning
+  // sits below them.)
   function handleFormReady(instance: {
     data?: unknown;
     getComponent?: (
@@ -206,7 +237,14 @@ export default function EligibilityEstimatorPage() {
     const data = (value?.data ?? formInstanceRef.current?.data) as
       | Record<string, unknown>
       | undefined;
-    if (data) setLiveAnswers({ ...data });
+    if (!data) return;
+    // Any edit supersedes the previous blocked-submit announcement.
+    setBlockedMessage("");
+    setLiveAnswers({ ...data });
+    // An edit into the screen-fail state contradicts any estimate already shown,
+    // so clear it. Done here rather than in an effect on the derived state:
+    // setState inside an effect cascades renders.
+    if (isScreenFail(data)) clearStaleResult();
   }
 
   // Hide any previously shown estimate so a stale result card can't linger over
@@ -216,22 +254,44 @@ export default function EligibilityEstimatorPage() {
     setOutcome((prev) => (prev ? null : prev));
   }
 
-  // Q2 ("status that allows you to live in Canada") answered "No". The v3 seed
-  // pins dataType "string" so this is "false", but accept the boolean form too
-  // in case a spec is served without it. Copy is hardcoded for now; a later content
-  // pass will source it from estimator-content.
-  const showStatusWarning =
-    liveAnswers.hasEligibleStatus === "false" ||
-    liveAnswers.hasEligibleStatus === false;
+  /**
+   * Send focus to the first field Form.io marked invalid. Returns false when
+   * there is nothing to focus, which is the signal to announce instead.
+   */
+  function focusFirstInvalidField(): boolean {
+    const host = formHostRef.current;
+    if (!host) return false;
+    const invalid = host.querySelector<HTMLElement>(
+      '.formio-error-wrapper input, [aria-invalid="true"], [data-invalid]',
+    );
+    if (!invalid) return false;
+    // A radio group is not focusable itself; its first option is.
+    const target = invalid.matches("input, select, textarea, button")
+      ? invalid
+      : (invalid.querySelector<HTMLElement>("input, select, textarea") ??
+        invalid);
+    target.focus();
+    return document.activeElement === target;
+  }
 
-  // If the answers move into the Q2 = "No" screen-fail state (the inline "might
-  // not be eligible" warning), a previously shown estimate now contradicts the
-  // form — clear it so a stale result card can't sit under the warning. A plain
-  // field edit still leaves the result untouched; only this eligibility-gating
-  // change clears it.
-  useEffect(() => {
-    if (showStatusWarning) setOutcome((prev) => (prev ? null : prev));
-  }, [showStatusWarning]);
+  // Form.io emits no form-level event for a blocked submit, only a per-field
+  // componentError, so nothing else can report one. It fires once PER invalid
+  // field, hence the timer: wait for them all before picking a target.
+  function handleBlockedSubmit() {
+    clearStaleResult();
+    if (blockedSubmitTimer.current !== null) return;
+    blockedSubmitTimer.current = window.setTimeout(() => {
+      blockedSubmitTimer.current = null;
+      // A focused field announces its own label and error, so announcing as
+      // well would say the same thing twice. The message is the fallback for
+      // when no field could take focus.
+      setBlockedMessage(focusFirstInvalidField() ? "" : BLOCKED_SUBMIT_MESSAGE);
+    }, 0);
+  }
+
+  // Copy is hardcoded for now; a later content pass will source it from
+  // estimator-content.
+  const showStatusWarning = isScreenFail(liveAnswers);
 
   function handleSubmit(submission: { data: Record<string, unknown> }) {
     const answers = submission.data;
@@ -267,9 +327,9 @@ export default function EligibilityEstimatorPage() {
     <div className={styles.page}>
       <h1 className={styles.title}>Estimate your Eligibility for Assistance</h1>
 
-      {/* The real BCDS Callout, as the design specifies (node 400:2316). The accent bar,
-          surface, radius and type scale all come from the component, so none of it can
-          drift from the design system the way a hand-rolled copy did. */}
+      {/* The real BCDS Callout. Its accent bar, surface, radius and type scale all
+          come from the component, so none of it can drift from the design system the
+          way a hand-rolled copy did. */}
       <div className={styles.privacyCallout}>
         <Callout
           variant="lightGrey"
@@ -289,14 +349,14 @@ export default function EligibilityEstimatorPage() {
       )}
 
       {!loading && !loadError && spec.data && (
-        <div className={styles.formHost}>
+        <div className={styles.formHost} ref={formHostRef}>
           {/* Anonymous render of the served spec — not the old hardcoded components. */}
           <Form
             src={spec.data.spec}
             // The designed error state is inline-only, so suppress Form.io's
-            // aggregated `.alert-danger` summary banner. Per-field errors remain.
-            // NOTE: a11y follow-up — move focus to the first invalid field on a
-            // blocked submit to replace the summary's jump links.
+            // aggregated `.alert-danger` summary banner. Per-field errors
+            // remain, and handleBlockedSubmit replaces the summary's jump links
+            // by moving focus to the first invalid field.
             options={{ noAlerts: true }}
             onSubmit={handleSubmit}
             onChange={handleChange}
@@ -307,16 +367,25 @@ export default function EligibilityEstimatorPage() {
             // leaving a stale estimate over the errored form. Clearing on
             // `componentError` hides it. A VALID submit emits no componentError,
             // so a good estimate is never flickered away.
-            otherEvents={{ "formio.componentError": clearStaleResult }}
+            otherEvents={{ "formio.componentError": handleBlockedSubmit }}
           />
         </div>
       )}
 
-      {/* Inline, progressive "not eligible" warning (0901 ee-02/ee-05). Shows
-          the moment Q2 is answered "No"; the v3 seed keeps the rest of the form
-          hidden in that state, so this sits directly under the visible questions. */}
-      {showStatusWarning && (
-        <div className={styles.statusWarning}>
+      {/* Rendered unconditionally and filled later: a live region that appears
+          in the same commit as its text is announced unreliably. */}
+      <div role="status" className={styles.visuallyHidden}>
+        {blockedMessage}
+      </div>
+
+      {/* Inline "not eligible" warning. Shows as soon as either question is
+          answered "No"; the rest of the form stays hidden in that state, so this
+          sits directly under the visible questions.
+          aria-live on a wrapper that is always mounted, rather than role="alert"
+          on the InlineAlert: the alert sets aria-labelledby, so some screen
+          readers would announce only the title and drop the body. */}
+      <div className={styles.statusWarning} aria-live="polite">
+        {showStatusWarning && (
           <InlineAlert variant="warning">
             {/* This InlineAlert renders its `title` prop only when it has no
                 children; since we need a rich body, we render the title inside
@@ -350,8 +419,8 @@ export default function EligibilityEstimatorPage() {
               </a>
             </p>
           </InlineAlert>
-        </div>
-      )}
+        )}
+      </div>
 
       {outcome?.kind === "incomplete" && (
         <p role="alert" className={styles.error}>

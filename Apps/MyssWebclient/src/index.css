@@ -4,6 +4,19 @@
     font-weight: 400;
 }
 
+/* THE ROOT FONT SIZE 
+   -----------------------------------------------------------------------------
+   `@bcgov/design-tokens` authors every spacing and typography token in rem, so
+   they are all relative to the root font size. The bundled Bootstrap 3 sets
+   `html{font-size:10px}` (public/vendor/bootstrap.css), which made 1rem = 10px
+   and rendered EVERY BCDS component at 62.5% of its intended size — along with
+   the ~29 rem declarations in this app's own CSS, most of which were written
+   against a normal 16px root (`0.875rem` was rendering at 8.75px).
+   Setting the root back to 16px fixes all of it at the source. */
+html:root {
+    font-size: 16px;
+}
+
 * {
     box-sizing: border-box;
 }

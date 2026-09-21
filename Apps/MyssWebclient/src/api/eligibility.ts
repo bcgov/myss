@@ -3,7 +3,7 @@ import type { FormType } from "@formio/react/lib/components/Form";
 import { API_URL } from "@/constants";
 
 // Calls to the public Pre-Eligibility Estimator gateway
-// (/v1/EligibilityEstimator). Option B: the browser computes the estimate, so
+// (/v1/EligibilityEstimator). The browser computes the estimate, so
 // MyssApi only serves the Form.io spec and the rate table — there is no
 // POST /calculate. Both reads are ANONYMOUS by design (the estimator is public
 // and persists nothing): these fetches carry NO auth header intentionally. Do
@@ -11,16 +11,16 @@ import { API_URL } from "@/constants";
 //
 // This module also holds the pure, unit-tested glue between the rendered form
 // and the calculator: mapAnswersToEstimate (Form.io answers -> EligibilityRequest)
-// and screenPreCheck (the residency/status hard gate). The calculation itself
-// lives in @/lib/eligibilityCalculator.
+// and screenPreCheck (the residency/status hard gate — both questions must be
+// "Yes"). The calculation itself lives in @/lib/eligibilityCalculator.
 
 /** Household composition after collapsing the six relationship options. */
 export type HouseholdType = "Single" | "Couple";
 
-/** MYSS-25 income client type (A-E). A separate axis from the asset category. */
+/** Income client type (A-E). A separate axis from the asset category. */
 export type ClientType = "A" | "B" | "C" | "D" | "E";
 
-/** MYSS-25 asset limit category (A-D). A separate axis from the income type. */
+/** Asset limit category (A-D). A separate axis from the income type. */
 export type AssetCategory = "A" | "B" | "C" | "D";
 
 /**
@@ -40,7 +40,7 @@ export interface EligibilityRequest {
   otherAssetValue: number;
 }
 
-/** One family-size row of monthly income limits by client type (MYSS-25). */
+/** One family-size row of monthly income limits by client type. */
 export interface EligibilityRateRow {
   familySize: number;
   a: number;
@@ -70,9 +70,9 @@ export interface EligibilityRates {
 }
 
 /**
- * The estimate. Mirrors the old server response MINUS the dropped
- * Support/Shelter breakdown (0826 removed the itemised table). `monthlyIncome`
- * echoes the TOTAL household income, as the parked C# response did.
+ * The estimate. Mirrors the old server response without the Support/Shelter
+ * breakdown, which the redesign dropped. `monthlyIncome` echoes the total
+ * household income.
  */
 export interface EligibilityResult {
   eligible: boolean;
@@ -141,8 +141,8 @@ function toCount(value: unknown): number {
  * - coerces "true"/"false" -> boolean, blanks/negatives -> 0, dependants -> integer;
  * - sums applicant + spouse into each of the three combined asset fields.
  *
- * Field KEYS here are half of the seed<->frontend contract (see the plan §3);
- * they must match the seeded spec exactly.
+ * These field keys are half of the seed<->frontend contract; they must match
+ * the seeded spec exactly.
  */
 export function mapAnswersToEstimate(
   answers: Record<string, unknown>,
@@ -197,14 +197,12 @@ export function missingRequiredCoupleAnswers(
 }
 
 /**
- * The eligibility hard screen. Passes when Q2 (`hasEligibleStatus`) = "Yes".
+ * The eligibility hard screen. Passes only when BOTH `residesInBc` and
+ * `hasEligibleStatus` are "Yes".
  *
- * MYSS-206: residency (`residesInBc`, Q1) NO LONGER blocks the estimate — a
- * non-resident with a status that allows them to live in Canada (Q1=No, Q2=Yes)
- * proceeds to a full estimate. Only Q2 gates. `residesInBc` is still returned
- * for reference. The v3 seed gates the remaining questions and the submit button
- * on Q2=Yes too, so a failing submission should not normally reach here; this
- * stays as a defensive server-of-truth for the outcome.
+ * The spec already makes a "No" to either question terminal, so this is not
+ * normally reached — it keeps the rule explicit and testable independently of
+ * the seed's conditionals.
  */
 export function screenPreCheck(answers: Record<string, unknown>): PreCheckResult {
   const residesInBc = toBool(answers.residesInBc);
@@ -212,7 +210,7 @@ export function screenPreCheck(answers: Record<string, unknown>): PreCheckResult
   return {
     residesInBc,
     hasEligibleStatus,
-    passed: hasEligibleStatus,
+    passed: residesInBc && hasEligibleStatus,
   };
 }
 
