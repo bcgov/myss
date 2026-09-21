@@ -216,6 +216,13 @@ describe("seeded forms collection", () => {
     expect(birthDay.inputMask).toBe("9[9]");
   });
 
+  it("shows the expected phone number format in bus pass v2", () => {
+    const phoneNumber = componentByKey(busPassFormSpecV2, "phoneNumber");
+
+    expect(phoneNumber.inputMask).toBe("(999) 999-9999");
+    expect(phoneNumber.placeholder).toBe("(999) 999-9999");
+  });
+
   it("gives every seeded form at least one version, each a valid Form.io form", () => {
     for (const form of seededForms) {
       expect(form.versions.length).toBeGreaterThan(0);

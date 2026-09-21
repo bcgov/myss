@@ -27,6 +27,15 @@ const currentSpecV2 = {
         properties: { myssValidator: "sin" },
       },
       {
+        type: "textfield",
+        key: "phoneNumber",
+        label: "Phone number",
+        input: true,
+        validate: { required: true },
+        inputMask: "(999) 999-9999",
+        placeholder: "(999) 999-9999",
+      },
+      {
         type: "button",
         key: "submit",
         action: "submit",
@@ -114,6 +123,9 @@ test("loads the BC Bus Pass spec and submits with the rendered version", async (
     .toBeVisible();
 
   await screen.getByRole("textbox", { name: "Full name" }).fill("Ada Lovelace");
+  const phoneNumber = screen.getByRole("textbox", { name: "Phone number" });
+  await expect.element(phoneNumber).toHaveAttribute("placeholder", "(999) 999-9999");
+  await phoneNumber.fill("(250) 234-5678");
   await screen.getByRole("button", { name: "Submit" }).click();
 
   await expect.element(screen.getByText("Submission received")).toBeVisible();
@@ -121,7 +133,10 @@ test("loads the BC Bus Pass spec and submits with the rendered version", async (
   expect(posts).toHaveLength(1);
   expect(posts[0].body).toMatchObject({
     formSpecVersion: 2,
-    answers: { fullName: "Ada Lovelace" },
+    answers: {
+      fullName: "Ada Lovelace",
+      phoneNumber: "(250) 234-5678",
+    },
   });
 });
 
@@ -146,6 +161,9 @@ test("shows backend errors inline and focuses the first errored field", async ()
   await screen
     .getByRole("textbox", { name: "Social Insurance Number (SIN)" })
     .fill("123456789");
+  await screen
+    .getByRole("textbox", { name: "Phone number" })
+    .fill("(250) 234-5678");
 
   const sinComponent = document.querySelector(
     ".formio-component-socialInsuranceNumber",

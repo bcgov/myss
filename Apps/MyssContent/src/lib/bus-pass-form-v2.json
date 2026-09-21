@@ -311,7 +311,8 @@
                             "validate": {
                                 "required": true
                             },
-                            "inputMask": "(999) 999-9999"
+                            "inputMask": "(999) 999-9999",
+                            "placeholder": "(999) 999-9999"
                         }
                     ]
                 },
