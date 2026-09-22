@@ -2,7 +2,7 @@ import { Button, Header, Footer } from "@bcgov/design-system-react-components";
 import { Outlet, useLocation } from "react-router";
 
 import "./App.css";
-import AnnouncementBanner from "@/components/layout/AnnouncementBanner";
+import AnnouncementBanner from "@/widgets/layout/AnnouncementBanner";
 import { paths } from "@/routes/paths";
 import { useApiAuth } from "@/auth/useApiAuth";
 import { useIdleLogout } from "@/auth/useIdleLogout";
@@ -14,7 +14,7 @@ import { useIdleLogout } from "@/auth/useIdleLogout";
 function App() {
     useApiAuth();
     const { warning: idleWarning, extendSession } = useIdleLogout();
-    // The eligibility estimator (MYSS-169 / 0901 design) has no footer, so hide
+    // The eligibility estimator has no footer, so hide
     // the shared BC Gov footer on that route only — every other page keeps it.
     const { pathname } = useLocation();
     const hideFooter = pathname === paths.eligibilityEstimator;

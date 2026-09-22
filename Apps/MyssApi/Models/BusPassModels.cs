@@ -99,6 +99,14 @@ namespace Myss.Api.Models
     /// </remarks>
     public class BusPassApplicationModel
     {
+        /// <summary>
+        /// Gets or sets this API's key for the submission: the stored submission id.
+        /// ICM files a service request on every call, so a resend after an ambiguous
+        /// failure must carry the same key for Siebel's upsert to recognise it rather
+        /// than file a second request. The middleware forwards it as is.
+        /// </summary>
+        public string? SubmissionKey { get; set; }
+
         /// <summary>Gets or sets what the applicant is asking for.</summary>
         [JsonConverter(typeof(JsonStringEnumConverter<BusPassRequestType>))]
         public required BusPassRequestType RequestType { get; set; }
@@ -219,8 +227,19 @@ namespace Myss.Api.Models
         /// <summary>Gets or sets the stable keyword for a non-accepted outcome, for the client to match on.</summary>
         public string? Keyword { get; set; }
 
-        /// <summary>Gets or sets ICM's error code for a rejected request.</summary>
+        /// <summary>
+        /// Gets or sets ICM's error code for a rejected request, or the middleware's
+        /// failure keyword for a failed delivery.
+        /// </summary>
         public string? ErrorCode { get; set; }
+
+        /// <summary>
+        /// Gets or sets, for a failed delivery, whether ICM may already hold the
+        /// request. When true the citizen must not submit again, since ICM files a
+        /// service request per call; when false a retry is safe. Null for the
+        /// other outcomes.
+        /// </summary>
+        public bool? MayHaveReachedIcm { get; set; }
     }
 
     /// <summary>
@@ -265,6 +284,9 @@ namespace Myss.Api.Models
 
         /// <summary>The request is stored but could not be delivered to ICM.</summary>
         public const string IcmUnavailable = "BUSPASS.SUBMIT.ICM_UNAVAILABLE";
+
+        /// <summary>Too many submissions from one address in the window.</summary>
+        public const string RateLimited = "BUSPASS.SUBMIT.RATE_LIMITED";
 
         /// <summary>Neither a SIN nor a bus pass account number was given.</summary>
         public const string IdentifierRequired = "BUSPASS.IDENTITY.IDENTIFIER_REQUIRED";

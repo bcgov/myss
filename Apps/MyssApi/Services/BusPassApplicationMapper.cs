@@ -16,17 +16,19 @@ namespace Myss.Api.Services
     public static class BusPassApplicationMapper
     {
         /// <summary>
-        /// Builds the middleware request from the answers.
+        /// Builds the middleware request from the stored submission.
         /// </summary>
+        /// <param name="submissionId">The stored submission's id, sent as the submission key.</param>
         /// <param name="answers">The submitted answers, keyed by component key.</param>
         /// <returns>The request to send.</returns>
-        public static BusPassApplicationModel Build(JsonElement answers)
+        public static BusPassApplicationModel Build(Guid submissionId, JsonElement answers)
         {
             bool isNewApplicant = BusPassAnswers.GetString(answers, BusPassAnswers.ApplicantCategory) == "new";
             bool mailingDiffers = BusPassAnswers.GetString(answers, BusPassAnswers.MailingAddressDifferent) == "yes";
 
             return new BusPassApplicationModel
             {
+                SubmissionKey = submissionId.ToString("D"),
                 RequestType = ToRequestType(answers),
                 ApplicantType = isNewApplicant ? ToApplicantType(answers) : null,
                 AcknowledgedEligibilityCriteria = isNewApplicant

@@ -191,12 +191,12 @@ describe("seeded forms collection", () => {
     expect(poc?.versions).toBe(seededFormSpecs);
   });
 
-  it("seeds the eligibility estimator with v1, v2 and v3", () => {
+  it("seeds the eligibility estimator with v1, v2, v3 and v4", () => {
     const estimator = seededForms.find(
       (form) => form.formSpecId === ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     );
     expect(estimator?.title).toBe(ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE);
-    expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3]);
+    expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
   });
 
   it("seeds the bus pass with v1 and v2", () => {

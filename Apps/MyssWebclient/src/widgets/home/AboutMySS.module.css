@@ -1,0 +1,37 @@
+.columns {
+    display: grid;
+    column-gap: var(--layout-margin-xxlarge);
+    row-gap: var(--layout-margin-xlarge);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.icon {
+    align-items: center;
+    background-color: var(--surface-color-background-white);
+    border-radius: 50%;
+    color: var(--theme-blue-60);
+    display: flex;
+    height: 40px;
+    justify-content: center;
+    margin: 10px auto 0;
+    width: 40px;
+}
+
+.icon :global(svg) {
+    height: 24px;
+    width: 24px;
+}
+
+.columns h3 {
+    margin: 0 0 var(--layout-margin-small);
+}
+
+.columns p {
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .columns {
+        grid-template-columns: 1fr;
+    }
+}

@@ -3,11 +3,11 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--layout-margin-large, 24px);
+  gap: var(--layout-margin-large);
   max-width: 960px;
   margin: 0 auto;
   width: 100%;
-  padding-top: var(--layout-padding-medium, 16px);
+  padding-top: var(--layout-padding-medium);
   /* Larger base font than the design-system default so nested text (tables,
      tokens, hints) all scale up to the playground's readable size. */
   font-size: 1.25rem;
@@ -22,12 +22,12 @@
 
 .actions {
   display: flex;
-  gap: var(--layout-margin-medium, 16px);
+  gap: var(--layout-margin-medium);
   flex-wrap: wrap;
 }
 
 .error {
-  color: var(--typography-color-danger, #ce3e39);
+  color: var(--typography-color-danger);
   margin: 0;
   font-size: 1.25rem;
 }
@@ -35,5 +35,5 @@
 .hint {
   margin: 0;
   font-size: 1.25rem;
-  color: var(--typography-color-secondary, #474543);
+  color: var(--typography-color-secondary);
 }

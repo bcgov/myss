@@ -175,17 +175,14 @@ export const testFormSpecV2: Json = {
   ],
 };
 
-// v3 adds a SIN field. The point of this version is the validator marker
-// rather than the field itself: `properties.myssValidator` is how an ordinary
-// Form.io textfield declares that MyssApi's `FormSpecValidator` should run the
-// SIN rule (nine digits, Luhn mod-10) over its answer. Form.io's `properties`
-// is a free-form key-value map it ignores, so a validated field is authored as
-// ordinary content — no custom component, no deployment. Phase 1's `sin`
-// component type will be the second route to the same rule.
+// v3 adds a SIN field, mainly to exercise the validator marker:
+// `properties.myssValidator` is how an ordinary textfield declares that the API
+// should run a domain rule over its answer. Form.io ignores `properties`, so a
+// validated field needs no custom component.
 //
-// The marker spelling is a contract with MyssApi/Services/FormSpecValidator.cs.
-// A typo fails silently: the field renders and the answer goes unvalidated,
-// which is why the test file pins it.
+// The marker spelling is a contract with the API's validator. A typo fails
+// silently — the field renders and the answer goes unvalidated — so the test
+// file pins it.
 export const testFormSpecV3: Json = {
   display: "form",
   components: [
@@ -334,15 +331,27 @@ const partneredConditional: Json = {
 };
 
 // ---------------------------------------------------------------------------
-// v3 conditional-display gates (MYSS-206)
+// Conditional-display gates
 // ---------------------------------------------------------------------------
 //
 // Q2 (hasEligibleStatus) and its help components appear once Q1 (residesInBc)
 // has been ANSWERED — either "true" or "false". This must be an ADVANCED
 // conditional: "has any value" is not expressible with the simple `{ when, eq }`
 // form. As with `partneredConditional`, the `var` MUST be prefixed `data.`.
+//
+// Superseded by `q1YesConditional`, but v3 is published and immutable and
+// still references it, so it cannot be deleted.
 const q1AnsweredConditional: Json = {
   json: { in: [{ var: "data.residesInBc" }, ["true", "false"]] },
+};
+
+// The hard gate: the status question and its help appear only for "Yes", so
+// answering "No" is terminal. A single field/value test, so the simple form is
+// enough and reads clearly in the admin panel.
+const q1YesConditional: Json = {
+  show: true,
+  when: "residesInBc",
+  eq: "true",
 };
 
 // The remaining questions (and the submit button) appear only when Q2 = "Yes".
@@ -485,25 +494,16 @@ export const eligibilityEstimatorSpecV1: Json = {
 };
 
 // ---------------------------------------------------------------------------
-// Estimator spec v2 — 2026-08 redesign (MYSS-169, Step 1 / Group B)
+// Estimator spec v2
 // ---------------------------------------------------------------------------
 //
-// v2 prepends the residency / citizenship PRE-CHECK radios and applies the 0826
-// asset-field label rewrites. LABELS ONLY changed from v1 — every `key` is
-// identical, because the keys are the contract with the frontend mapper
-// (`mapAnswersToEstimate`) and MyssApi's FormSpecValidator. v1 stays seeded for
-// idempotency; v2 becomes the latest published version.
+// Prepends the residency / citizenship pre-check radios and rewrites the
+// asset-field labels. Labels only — every `key` is identical to v1, because the
+// keys are the contract with the frontend mapper and the API's validator.
 //
-// A "No" to either pre-check is a hard eligibility screen the front-end (Group D,
-// Step 7) short-circuits WITHOUT running the calculation — so both are simple
-// (always-shown) required radios, not conditional and not calc inputs.
-//
-// PENDING DESIGNER CONFIRM: the 0826 asset-field labels below come only from the
-// two spouse frames; the two result frames still show the old labels (the four
-// frames are internally inconsistent). They are labels-only, so they can be
-// amended later without touching any key or downstream code. Decisions A (no
-// table) and B (keep partnerPwd) are confirmed. See
-// document/MYSS-169-0826-Seed-Label-Edits.md.
+// A "No" to either pre-check is a hard eligibility screen the front-end
+// short-circuits without running the calculation, so both are always-shown
+// required radios: not conditional, and not calculator inputs.
 export const eligibilityEstimatorSpecV2: Json = {
   display: "form",
   components: [
@@ -577,7 +577,7 @@ export const eligibilityEstimatorSpecV2: Json = {
     },
     {
       // Advanced-conditional, NOT server-required. Kept exactly as v1
-      // (Decision B): reveals on married/marriage-like.
+      // Reveals on married/marriage-like.
       type: "radio",
       key: "partnerPwd",
       label:
@@ -684,32 +684,22 @@ export const eligibilityEstimatorSpecV2: Json = {
 };
 
 // ---------------------------------------------------------------------------
-// Estimator spec v3 — MYSS-206 conditional display + BC Gov components
+// Estimator spec v3
 // ---------------------------------------------------------------------------
 //
-// v3 makes three changes on top of v2 (see doc/MYSS-206-Estimator-Conditional-
-// Display-Plan.md). v2 stays seeded and immutable; v3 becomes the latest served.
+// Three changes on top of v2; v2 stays seeded and immutable.
 //
-//   1. Progressive disclosure. Q2 (hasEligibleStatus) + its help components
-//      reveal once Q1 (residesInBc) is answered (`q1AnsweredConditional`); the
-//      remaining questions and the submit button reveal only when Q2 = "Yes"
-//      (`hasStatusConditional`). Net rule: remaining questions show iff Q2=Yes,
-//      regardless of Q1 — Q1=No + Q2=Yes still proceeds (MYSS-206 requirement).
+//   1. Progressive disclosure. The status question and its help reveal once
+//      residency is answered either way; the remaining questions and the submit
+//      button reveal only when status is "Yes".
+//   2. The help becomes a custom `bcgovAccordion` rather than a Form.io panel.
+//      The type must be registered client-side or the form renders a blank slot.
+//      It carries no answer, so the API treats it as a non-data type.
+//   3. The "not eligible" warning is not in the seed — the page renders it from
+//      live form data, so its copy can move to a content type without a version
+//      bump.
 //
-//   2. BC Gov components (Option 3). The "What does status mean?" accordion is a
-//      custom `bcgovAccordion` component (replacing the v2 Form.io `panel`),
-//      rendered by the client's registered custom component (Apps/MyssWebclient
-//      src/formio/bcgovComponents.tsx) — a seed<->frontend contract: the type
-//      MUST be registered or the form renders a blank slot. MyssApi
-//      FormSpecValidator tolerates it as a NonDataType. (The Q2 info tooltip was
-//      removed — the explanation lives solely in this accordion now.)
-//
-//   3. The Q2="No" warning is NOT in the seed. It renders as a React BC Gov
-//      InlineAlert in EligibilityEstimatorPage, driven by live form data, so its
-//      copy can move to the estimator-content Strapi type (plan §5) without a
-//      form-version bump.
-//
-// Every DATA key is identical to v2 — the mapper contract is unchanged.
+// Every data key is identical to v2, so the mapper contract is unchanged.
 export const eligibilityEstimatorSpecV3: Json = {
   display: "form",
   components: [
@@ -732,8 +722,6 @@ export const eligibilityEstimatorSpecV3: Json = {
       type: "radio",
       key: "hasEligibleStatus",
       label: "Do you have a status that allows you to live in Canada?",
-      // (Q2 info tooltip removed — the explanation lives in the "What does
-      // 'status…' mean?" accordion below instead.)
       input: true,
       values: yesNoValues,
       // See residesInBc: keep the literal "true"/"false" so hasStatusConditional
@@ -750,9 +738,7 @@ export const eligibilityEstimatorSpecV3: Json = {
       input: false,
       accordionLabel:
         'What does "status that allows you to live in Canada" mean?',
-      // Body copy per the 0901 design (eligibility-estimator/0901/0901-ee-04.png).
-      // "residence requirements" link → gov.bc.ca citizenship-requirements page;
-      // this copy moves to the estimator-content Strapi type (§5).
+      // Copy lives here for now; it is destined for the estimator-content type.
       accordionBody: [
         "<p>To be eligible for assistance, your status must meet the citizenship and residency requirements.</p>",
         "<p>This includes:</p>",
@@ -809,9 +795,227 @@ export const eligibilityEstimatorSpecV3: Json = {
       conditional: hasStatusConditional,
     },
     {
-      // Advanced-conditional, NOT server-required (Decision B). Transitively
-      // hidden when Q2="No" (relationshipStatus is then hidden + cleared).
+      // Advanced-conditional, so never server-required. Transitively hidden
+      // when the status question is "No", which hides and clears
+      // relationshipStatus.
       type: "radio",
+      key: "partnerPwd",
+      label:
+        "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      conditional: partneredConditional,
+    },
+    {
+      type: "content",
+      key: "assetsSectionHeading",
+      input: false,
+      html: "<h2>Do you have assets or receive income?</h2>",
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "number",
+      key: "monthlyIncome",
+      label: "Your Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "number",
+      key: "vehicleValueMinusTransportation",
+      label:
+        "What is the value of your primary vehicle minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "number",
+      key: "vehicleValue",
+      label:
+        "What is the value of all your additional vehicles minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "number",
+      key: "assetValue",
+      label:
+        "What is the total value of your assets not listed above (property, investments, cash or savings)?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "content",
+      key: "spouseSectionHeading",
+      input: false,
+      html: "<h2>Does your spouse have assets or receive income?</h2>",
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerMonthlyIncome",
+      label: "Spouse's Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerVehicleValueMinusTransportation",
+      label:
+        "What is the value of your spouse's primary vehicle minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerVehicleValue",
+      label:
+        "What is the value of all your spouse's additional vehicles minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerAssetValue",
+      label:
+        "What is the total value of your spouse's assets not listed above (property, investments, cash or savings)?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Get Estimate",
+      input: true,
+      conditional: hasStatusConditional,
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Estimator spec v4
+// ---------------------------------------------------------------------------
+//
+// Two changes on top of v3; v3 stays seeded and immutable.
+//
+//   1. `residesInBc` becomes a hard gate: `hasEligibleStatus` and `statusHelp`
+//      move to `q1YesConditional`, so answering "No" is terminal and the page
+//      shows the "not eligible" warning instead of revealing the next question.
+//   2. The five radios become `bcgovRadio`, the custom type that mounts the BC
+//      Gov RadioGroup. Like `bcgovAccordion` it must be registered client-side
+//      or the form renders a blank slot, but unlike it this one carries an
+//      answer, so the API validates it as a string field.
+//
+// Every key and option value is unchanged, so the mapper contract holds.
+export const eligibilityEstimatorSpecV4: Json = {
+  display: "form",
+  components: [
+    {
+      type: "bcgovRadio",
+      key: "residesInBc",
+      label: "Do you currently reside in British Columbia?",
+      input: true,
+      values: yesNoValues,
+      // The gates match the literal "true"/"false".
+      dataType: "string",
+      validate: { required: true },
+    },
+    {
+      type: "bcgovRadio",
+      key: "hasEligibleStatus",
+      label: "Do you have a status that allows you to live in Canada?",
+      input: true,
+      values: yesNoValues,
+      dataType: "string",
+      validate: { required: true },
+      conditional: q1YesConditional,
+    },
+    {
+      // Custom BC Gov component — the collapsible help. Non-data; label + body
+      // carried as component props.
+      type: "bcgovAccordion",
+      key: "statusHelp",
+      input: false,
+      accordionLabel:
+        'What does "status that allows you to live in Canada" mean?',
+      // Copy lives here for now; it is destined for the estimator-content type.
+      accordionBody: [
+        "<p>To be eligible for assistance, your status must meet the citizenship and residency requirements.</p>",
+        "<p>This includes:</p>",
+        "<ul>",
+        "<li>Canadian citizens</li>",
+        "<li>Permanent residents</li>",
+        "<li>Protected persons or refugees</li>",
+        "<li>Refugee claimants</li>",
+        "<li>People with a Temporary Resident Permit</li>",
+        "<li>Certain other qualifying statuses</li>",
+        "</ul>",
+        "<p>If you do not have legal status in Canada, talk to a lawyer before you apply for benefits. If you get benefits that you do not qualify for, you may have to pay the money back.</p>",
+        '<p>Learn more about <a href="https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/eligibility/citizenship-requirements" target="_blank" rel="noopener noreferrer">residence requirements for income assistance</a></p>',
+      ].join(""),
+      conditional: q1YesConditional,
+    },
+    {
+      type: "bcgovRadio",
+      key: "relationshipStatus",
+      label: "What is your relationship status?",
+      input: true,
+      values: [
+        { label: "Single and Never Married", value: "single" },
+        { label: "Married", value: "married" },
+        { label: "Marriage-Like Relationship", value: "marriagelike" },
+        { label: "Divorced", value: "divorced" },
+        { label: "Separated", value: "separated" },
+        { label: "Widowed", value: "widowed" },
+      ],
+      validate: { required: true },
+      errors: { required: "Please select your relationship status." },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "number",
+      key: "dependentChildren",
+      label: "How many dependent children under the age of 19 live with you?",
+      description:
+        "The estimate is based on a maximum family size of 7 people. Adding more than 7 family members will not change the estimated benefit amount.",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "bcgovRadio",
+      key: "pwd",
+      label:
+        "Do you plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      validate: { required: true },
+      errors: { required: "Please select an option." },
+      conditional: hasStatusConditional,
+    },
+    {
+      // Advanced-conditional, so never server-required. Transitively hidden
+      // when the status question is "No", which hides and clears
+      // relationshipStatus.
+      type: "bcgovRadio",
       key: "partnerPwd",
       label:
         "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?",
@@ -950,6 +1154,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 1, spec: eligibilityEstimatorSpecV1 },
       { version: 2, spec: eligibilityEstimatorSpecV2 },
       { version: 3, spec: eligibilityEstimatorSpecV3 },
+      { version: 4, spec: eligibilityEstimatorSpecV4 },
     ],
   },
   {

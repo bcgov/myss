@@ -1,0 +1,72 @@
+.wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.content {
+    display: grid;
+    gap: var(--layout-margin-large);
+    grid-template-columns: minmax(140px, 0.7fr) 2fr;
+    width: 100%;
+}
+
+.dateCard {
+    align-items: center;
+    background-color: var(--surface-color-background-white);
+    border: var(--layout-border-width-small) solid var(--surface-color-border-default);
+    border-radius: var(--layout-border-radius-medium);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    max-width: 220px;
+    min-height: 100px;
+    text-align: center;
+}
+
+.dateCard p {
+    margin: 0;
+}
+
+.dateCardBody {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    transform: translateY(calc(-1 * var(--layout-margin-xsmall)));
+}
+
+.dateCardHeader {
+    background-color: var(--surface-color-background-light-blue);
+    font-weight: 700;
+    margin-top: 0;
+    padding: 4px;
+    width: 100%;
+}
+
+.dateCardBody > b {
+    font: var(--typography-bold-h3);
+}
+
+.information {
+    align-self: center;
+}
+
+.information p {
+    margin-top: 0;
+}
+
+.information a {
+    color: var(--typography-color-link);
+}
+
+@media (max-width: 600px) {
+    .content {
+        grid-template-columns: 1fr;
+    }
+
+    .dateCard {
+        max-width: none;
+    }
+}
