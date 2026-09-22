@@ -6,19 +6,21 @@ import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import { registerBcgovComponents } from "@/formio/bcgovComponents";
 
 // End-to-end of the estimator page against a stubbed anonymous API, driving the
-// MYSS-206 v3 spec: progressive disclosure (Q2 reveals once Q1 is answered; the
-// remaining questions reveal only when Q2 = Yes), the inline "not eligible"
-// warning when Q2 = No, and the client-side estimate. The spec + rates fetches
-// are mocked; the calculation + conditional logic are the real code.
+// v4 spec: residency is a hard gate (the status question reveals only for "Yes",
+// so "No" is terminal), the remaining questions reveal only when status is "Yes",
+// the inline "not eligible" warning fires on either "No", plus validation display
+// and the client-side estimate. The spec + rates fetches are mocked; the
+// calculation, conditional logic and custom components are the real code.
 //
 // (Runs in the browser project — `npm run test:browser`. The cloud sandbox
 // can't launch the browser runner, so this is verified on the dev machine.)
 //
-// Form.io names its radio groups data[<key>][<random-per-render suffix>], so we
-// drive controls by ACCESSIBLE ROLE (from the option label), not by DOM name.
-// The Yes/No groups render (and reveal) in spec order — residesInBc(0), then
-// hasEligibleStatus(1) after Q1, then pwd(2) after Q2=Yes, then partnerPwd(3)
-// after Married — so a duplicate "Yes"/"No" is picked by .nth().
+// Radios are driven by their VISIBLE LABEL via `option()` below, not by DOM name
+// (Form.io names groups data[<key>][<random-per-render suffix>]) and not by
+// `role=radio` either — see the note on `option()`. The Yes/No groups render (and
+// reveal) in spec order — residesInBc(0), then hasEligibleStatus(1) after Q1, then
+// pwd(2) after Q2=Yes, then partnerPwd(3) after Married — so a duplicate
+// "Yes"/"No" is picked by index.
 
 const yesNo = [
   { label: "Yes", value: "true" },
@@ -27,22 +29,21 @@ const yesNo = [
 const partneredConditional = {
   json: { in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]] },
 };
-// v3 gates (see form-spec-seed-data.ts).
-const q1AnsweredConditional = {
-  json: { in: [{ var: "data.residesInBc" }, ["true", "false"]] },
-};
+// v4 gates (see form-spec-seed-data.ts). The status question shows only for
+// residesInBc = "true", so answering "No" is terminal.
+const q1YesConditional = { show: true, when: "residesInBc", eq: "true" };
 const hasStatusConditional = { show: true, when: "hasEligibleStatus", eq: "true" };
 
-/** A faithful slice of the v3 estimator spec — real keys + the v3 conditionals. */
+/** A faithful slice of the v4 estimator spec — real keys + the v4 conditionals. */
 const estimatorSpec = {
   formSpecId: "eligibility-estimator",
-  version: 3,
+  version: 4,
   title: "Eligibility Estimator",
   spec: {
     display: "form",
     components: [
       {
-        type: "radio",
+        type: "bcgovRadio",
         key: "residesInBc",
         label: "Do you currently reside in British Columbia?",
         input: true,
@@ -51,7 +52,7 @@ const estimatorSpec = {
         validate: { required: true },
       },
       {
-        type: "radio",
+        type: "bcgovRadio",
         key: "hasEligibleStatus",
         label: "Do you have a status that allows you to live in Canada?",
         // (No Q2 tooltip — removed from the v3 seed; help lives in the accordion.)
@@ -59,7 +60,7 @@ const estimatorSpec = {
         values: yesNo,
         dataType: "string",
         validate: { required: true },
-        conditional: q1AnsweredConditional,
+        conditional: q1YesConditional,
       },
       {
         type: "bcgovAccordion",
@@ -69,10 +70,10 @@ const estimatorSpec = {
           'What does "status that allows you to live in Canada" mean?',
         accordionBody:
           "<p>To be eligible for assistance, your status must meet the citizenship and residency requirements.</p>",
-        conditional: q1AnsweredConditional,
+        conditional: q1YesConditional,
       },
       {
-        type: "radio",
+        type: "bcgovRadio",
         key: "relationshipStatus",
         label: "What is your relationship status?",
         input: true,
@@ -97,7 +98,7 @@ const estimatorSpec = {
         conditional: hasStatusConditional,
       },
       {
-        type: "radio",
+        type: "bcgovRadio",
         key: "pwd",
         label:
           "Do you plan to apply for the Persons with Disabilities (PWD) designation?",
@@ -107,7 +108,7 @@ const estimatorSpec = {
         conditional: hasStatusConditional,
       },
       {
-        type: "radio",
+        type: "bcgovRadio",
         key: "partnerPwd",
         label:
           "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?",
@@ -192,7 +193,7 @@ const estimatorSpecWithRequiredName = {
 let activeSpec: typeof estimatorSpec | typeof estimatorSpecWithRequiredName =
   estimatorSpec;
 
-/** MYSS-25 August-2023 rate table (matches the seed + parked C#). */
+/** August-2023 rate table (matches the seed). */
 const rates = {
   effectiveDate: "2023-08-01",
   incomeRows: [
@@ -237,6 +238,28 @@ function renderPage() {
   );
 }
 
+type Screen = Awaited<ReturnType<typeof renderPage>>;
+
+/**
+ * A radio option, located by its visible label.
+ *
+ * NOT `getByRole("radio")`: these render as the BCDS RadioGroup, which is
+ * react-aria, and its real `<input>` sits inside a visually-hidden span within
+ * the `<label>`. The role query resolves to an element Playwright refuses to
+ * click ("intercepts pointer events"); clicking the label is what a person does
+ * and what react-aria listens for.
+ *
+ * A string is matched EXACTLY (anchored), so "Married" cannot also match
+ * "Single and Never Married".
+ */
+function option(screen: Screen, label: string | RegExp, index = 0) {
+  const matcher =
+    typeof label === "string"
+      ? new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)
+      : label;
+  return screen.getByText(matcher).nth(index);
+}
+
 // The v3 spec references the custom bcgovAccordion type; register it once so
 // Form.io renders it instead of a blank slot (mirrors main.tsx at app start).
 registerBcgovComponents();
@@ -250,7 +273,7 @@ afterEach(() => vi.restoreAllMocks());
 const Q2_LABEL = "Do you have a status that allows you to live in Canada?";
 const RELATIONSHIP_LABEL = "What is your relationship status?";
 
-// --- Progressive disclosure (the MYSS-206 truth table) --------------------
+// --- Progressive disclosure ------------------------------------------------
 
 test("initially shows only Q1 — Q2 and the remaining questions are hidden", async () => {
   const screen = await renderPage();
@@ -258,15 +281,17 @@ test("initially shows only Q1 — Q2 and the remaining questions are hidden", as
   await expect
     .element(screen.getByText("Do you currently reside in British Columbia?"))
     .toBeVisible();
-  // Page chrome from the 0826 design.
+  // Page chrome.
   await expect
     .element(screen.getByText("Your information is private"))
     .toBeVisible();
   await expect.element(screen.getByText("*All fields are required.")).toBeVisible();
 
   // Nothing past Q1 is present yet.
-  expect(document.body.textContent).not.toContain(Q2_LABEL);
-  expect(document.body.textContent).not.toContain(RELATIONSHIP_LABEL);
+  await expect.element(screen.getByText(Q2_LABEL)).not.toBeInTheDocument();
+  await expect
+    .element(screen.getByText(RELATIONSHIP_LABEL))
+    .not.toBeInTheDocument();
 });
 
 test("answering Q1 reveals Q2 (+ the help accordion) but not the remaining questions", async () => {
@@ -275,20 +300,22 @@ test("answering Q1 reveals Q2 (+ the help accordion) but not the remaining quest
     .element(screen.getByText("Do you currently reside in British Columbia?"))
     .toBeVisible();
 
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc
+  await option(screen, /^Yes$/, 0).click(); // residesInBc
 
   await expect.element(screen.getByText(Q2_LABEL)).toBeVisible();
   await expect.element(screen.getByText(/What does .* mean\?/)).toBeVisible();
   // Remaining questions stay hidden until Q2 = Yes.
-  expect(document.body.textContent).not.toContain(RELATIONSHIP_LABEL);
+  await expect
+    .element(screen.getByText(RELATIONSHIP_LABEL))
+    .not.toBeInTheDocument();
 });
 
 test("Q2 = Yes reveals the remaining questions and Get Estimate", async () => {
   const screen = await renderPage();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
   await expect.element(screen.getByText(Q2_LABEL)).toBeVisible();
 
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
 
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
   await expect
@@ -301,18 +328,20 @@ test("Q2 = Yes reveals the remaining questions and Get Estimate", async () => {
 
 test("Q2 = No shows the inline warning and keeps the remaining questions hidden", async () => {
   const screen = await renderPage();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
   await expect.element(screen.getByText(Q2_LABEL)).toBeVisible();
 
-  await screen.getByRole("radio", { name: /^No$/ }).nth(1).click(); // hasEligibleStatus = No
+  await option(screen, /^No$/, 1).click(); // hasEligibleStatus = No
 
   await expect
     .element(screen.getByText("You might not be eligible for assistance"))
     .toBeVisible();
-  expect(document.body.textContent).not.toContain(RELATIONSHIP_LABEL);
+  await expect
+    .element(screen.getByText(RELATIONSHIP_LABEL))
+    .not.toBeInTheDocument();
 
-  // 0901 ee-05: both links in the warning box are clickable, pointing at the
-  // real gov.bc.ca pages (residency requirements + hardship "Contact us").
+  // Both links in the warning box are clickable and point at the real
+  // gov.bc.ca pages (residency requirements + hardship "Contact us").
   const residencyLink = screen.getByRole("link", {
     name: "residency requirements",
   });
@@ -331,17 +360,166 @@ test("Q2 = No shows the inline warning and keeps the remaining questions hidden"
 
 // --- Estimate flows -------------------------------------------------------
 
-test("MYSS-206: Q1 = No but Q2 = Yes proceeds to a full estimate (residency no longer blocks)", async () => {
+test("Q1 = No is terminal — Q2 never reveals and the warning shows", async () => {
   const screen = await renderPage();
-  await screen.getByRole("radio", { name: /^No$/ }).nth(0).click(); // residesInBc = No
 
-  await expect.element(screen.getByText(Q2_LABEL)).toBeVisible();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus = Yes
+  await option(screen, /^No$/, 0).click(); // residesInBc = No
 
-  // Remaining questions reveal — Q1=No does NOT dead-end.
+  await expect
+    .element(screen.getByText("You might not be eligible for assistance"))
+    .toBeVisible();
+  // The hard gate: Q2 is not revealed at all, so there is nothing to answer.
+  await expect.element(screen.getByText(Q2_LABEL)).not.toBeInTheDocument();
+  await expect
+    .element(screen.getByText(RELATIONSHIP_LABEL))
+    .not.toBeInTheDocument();
+});
+
+// --- Announcements ----------------------------------------------------------
+
+test("the not-eligible warning sits in a live region", async () => {
+  const screen = await renderPage();
+
+  await option(screen, /^No$/, 0).click(); // residesInBc = No
+
+  const warning = screen.getByText("You might not be eligible for assistance");
+  await expect.element(warning).toBeVisible();
+  // The wrapper must be mounted before the text appears, or the insertion is
+  // announced unreliably — so assert the region, not just the text.
+  expect(warning.element().closest("[aria-live]")).not.toBeNull();
+});
+
+test("a blocked submit moves focus to the first unanswered question", async () => {
+  const screen = await renderPage();
+
+  await option(screen, /^Yes$/, 0).click(); // Q1 = Yes
+  await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await screen.getByRole("radio", { name: "Single and Never Married" }).click();
-  await screen.getByRole("radio", { name: /^No$/ }).nth(2).click(); // pwd = No
+
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+  await expect.element(screen.getByText(/is required/i).first()).toBeVisible();
+
+  // Focus leaves the submit button and lands inside the form, so the error is
+  // announced rather than the citizen being left where they clicked.
+  await expect
+    .poll(() => document.activeElement?.tagName)
+    .not.toBe("BUTTON");
+  expect(
+    document.querySelector("[class*='formHost']")
+      ?.contains(document.activeElement),
+  ).toBe(true);
+});
+
+// --- Validation display -----------------------------------------------------
+
+test("a newly revealed question carries NO error once the form is dirty", async () => {
+  const screen = await renderPage();
+
+  // The assertion only means something on a dirty form: before the first
+  // submit Form.io passes dirty:false to every component, so the gate in
+  // BcgovRadioComponent is never consulted. Submit first to get there.
+  await option(screen, /^Yes$/, 0).click(); // Q1 = Yes
+  await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
+  await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+  await expect.element(screen.getByText(/is required/i).first()).toBeVisible();
+
+  // Answer everything outstanding, so no error is left on screen.
+  await option(screen, "Single and Never Married").click();
+  await option(screen, /^No$/, 2).click(); // pwd = No
+  await expect
+    .element(screen.getByText(/is required/i).first())
+    .not.toBeInTheDocument();
+
+  // Hide and re-reveal Q2. It comes back empty and required, on a form Form.io
+  // now treats as dirty for the rest of the session.
+  await option(screen, /^No$/, 0).click(); // Q1 = No
+  await expect.element(screen.getByText(Q2_LABEL)).not.toBeInTheDocument();
+  await option(screen, /^Yes$/, 0).click(); // Q1 = Yes
+  await expect.element(screen.getByText(Q2_LABEL)).toBeVisible();
+
+  await expect
+    .element(screen.getByText(/is required/i).first())
+    .not.toBeInTheDocument();
+});
+
+test("re-passing the Q1 gate re-reveals Q2 CLEAN after a blocked submit", async () => {
+  const screen = await renderPage();
+
+  // Reach a blocked submit so real errors are on screen.
+  await option(screen, /^Yes$/, 0).click(); // Q1 = Yes
+  await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
+  await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+  await expect.element(screen.getByText(/is required/i).first()).toBeVisible();
+
+  // Polling assertion, not a synchronous textContent read: Form.io debounces
+  // change propagation, so the hide lands a tick or two after the click.
+  await option(screen, /^No$/, 0).click();
+  await expect.element(screen.getByText(Q2_LABEL)).not.toBeInTheDocument();
+
+  // ...and re-passing the gate must present a fresh Q2, not one still wearing
+  // the error from the earlier attempt.
+  await option(screen, /^Yes$/, 0).click();
+  await expect.element(screen.getByText(Q2_LABEL)).toBeVisible();
+  await expect
+    .element(screen.getByText(/is required/i).first())
+    .not.toBeInTheDocument();
+});
+
+test("re-passing the Q1 gate re-reveals Q2 CLEAN after a SUCCESSFUL estimate", async () => {
+  // The harder case: a *successful* submit leaves Form.io treating the whole
+  // form as dirty for the rest of the session, so an empty required field that
+  // later becomes visible reports an error immediately.
+  const screen = await renderPage();
+
+  await option(screen, /^Yes$/, 0).click(); // Q1 = Yes
+  await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
+  await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
+  await option(screen, "Single and Never Married").click();
+  await option(screen, /^No$/, 2).click(); // pwd = No
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+  await expect
+    .element(screen.getByText("You may be eligible for assistance"))
+    .toBeVisible();
+
+  // Q1 = No — terminal, everything below hides and clears.
+  await option(screen, /^No$/, 0).click();
+  await expect.element(screen.getByText(Q2_LABEL)).not.toBeInTheDocument();
+
+  // Back through the gate: Q2 must be clean.
+  await option(screen, /^Yes$/, 0).click();
+  await expect.element(screen.getByText(Q2_LABEL)).toBeVisible();
+  await expect
+    .element(screen.getByText(/is required/i).first())
+    .not.toBeInTheDocument();
+});
+
+test("errors still appear on a submit attempt after a gate round-trip", async () => {
+  const screen = await renderPage();
+
+  // Guards against over-correcting the two tests above: resetting on clear must
+  // not permanently suppress validation.
+  await option(screen, /^Yes$/, 0).click(); // Q1 = Yes
+  await option(screen, /^No$/, 0).click(); // Q1 = No  (clears)
+  await option(screen, /^Yes$/, 0).click(); // Q1 = Yes (re-reveal)
+  await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
+  await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
+
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+
+  await expect.element(screen.getByText(/is required/i).first()).toBeVisible();
+});
+
+test("Q1 = No, then Yes, then Q2 = Yes reaches a full estimate", async () => {
+  const screen = await renderPage();
+
+  await option(screen, /^No$/, 0).click(); // Q1 = No
+  await option(screen, /^Yes$/, 0).click(); // Q1 = Yes
+  await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
+  await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
+  await option(screen, "Single and Never Married").click();
+  await option(screen, /^No$/, 2).click(); // pwd = No
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 
@@ -353,11 +531,11 @@ test("MYSS-206: Q1 = No but Q2 = Yes proceeds to a full estimate (residency no l
 
 test("reveals the spouse section on Married", async () => {
   const screen = await renderPage();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc = Yes
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus = Yes
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
 
-  await screen.getByRole("radio", { name: /^Married$/ }).click();
+  await option(screen, /^Married$/).click();
 
   await expect.element(screen.getByText(/Spouse's Monthly Income/)).toBeVisible();
   await expect
@@ -374,11 +552,11 @@ test("reveals the spouse section on Married", async () => {
 
 test("computes an eligible estimate in the browser (single, no PWD, no income → $1,060.00)", async () => {
   const screen = await renderPage();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc = Yes
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus = Yes
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await screen.getByRole("radio", { name: "Single and Never Married" }).click();
-  await screen.getByRole("radio", { name: /^No$/ }).nth(2).click(); // pwd = No
+  await option(screen, "Single and Never Married").click();
+  await option(screen, /^No$/, 2).click(); // pwd = No
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 
@@ -393,11 +571,11 @@ test("computes an eligible estimate in the browser (single, no PWD, no income �
 
 test("shows the ineligible ($0) result with the hardship link when income exceeds the limit", async () => {
   const screen = await renderPage();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc = Yes
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus = Yes
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await screen.getByRole("radio", { name: "Single and Never Married" }).click();
-  await screen.getByRole("radio", { name: /^No$/ }).nth(2).click(); // pwd = No
+  await option(screen, "Single and Never Married").click();
+  await option(screen, /^No$/, 2).click(); // pwd = No
   // Single type-B income limit is 1060 → 2000 is over the limit → ineligible.
   await screen.getByLabelText("Your Monthly Income").fill("2000");
 
@@ -418,11 +596,11 @@ test("shows the ineligible ($0) result with the hardship link when income exceed
 
 test("a couple who leaves the spouse-PWD question blank is blocked, not silently scored as 'No'", async () => {
   const screen = await renderPage();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc = Yes
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus = Yes
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await screen.getByRole("radio", { name: /^Married$/ }).click();
-  await screen.getByRole("radio", { name: /^No$/ }).nth(2).click(); // pwd (applicant) = No
+  await option(screen, /^Married$/).click();
+  await option(screen, /^No$/, 2).click(); // pwd (applicant) = No
 
   // Spouse section is revealed. partnerPwd carries no SERVER-side required (that
   // would fail the FormSpecValidator + reject singles), so it is required at
@@ -448,11 +626,11 @@ test("a couple who leaves the spouse-PWD question blank is blocked, not silently
 
 test("the same couple gets an estimate once the spouse-PWD question is answered", async () => {
   const screen = await renderPage();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc = Yes
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus = Yes
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await screen.getByRole("radio", { name: /^Married$/ }).click();
-  await screen.getByRole("radio", { name: /^No$/ }).nth(2).click(); // pwd (applicant) = No
+  await option(screen, /^Married$/).click();
+  await option(screen, /^No$/, 2).click(); // pwd (applicant) = No
 
   await expect
     .element(
@@ -461,7 +639,7 @@ test("the same couple gets an estimate once the spouse-PWD question is answered"
       ),
     )
     .toBeVisible();
-  await screen.getByRole("radio", { name: /^No$/ }).nth(3).click(); // partnerPwd = No
+  await option(screen, /^No$/, 3).click(); // partnerPwd = No
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 
@@ -475,11 +653,11 @@ test("the same couple gets an estimate once the spouse-PWD question is answered"
 
 /** Married + both PWD, no income → family size 2, column e = $2,766.00. */
 async function reachCoupleEstimate(screen: Awaited<ReturnType<typeof renderPage>>) {
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc = Yes
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus = Yes
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await screen.getByRole("radio", { name: /^Married$/ }).click();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(2).click(); // pwd (applicant) = Yes
+  await option(screen, /^Married$/).click();
+  await option(screen, /^Yes$/, 2).click(); // pwd (applicant) = Yes
   await expect
     .element(
       screen.getByText(
@@ -487,7 +665,7 @@ async function reachCoupleEstimate(screen: Awaited<ReturnType<typeof renderPage>
       ),
     )
     .toBeVisible();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(3).click(); // partnerPwd = Yes
+  await option(screen, /^Yes$/, 3).click(); // partnerPwd = Yes
   await screen.getByRole("button", { name: "Get Estimate" }).click();
   await expect.element(screen.getByText(/\$2,766\.00/)).toBeVisible();
 }
@@ -511,16 +689,16 @@ test("editing a field after an estimate leaves the result on screen", async () =
 // screen-fail warning AND must clear the now-contradictory result card.
 test("changing Q2 to No after an estimate hides the stale result under the warning", async () => {
   const screen = await renderPage();
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(0).click(); // residesInBc = Yes
-  await screen.getByRole("radio", { name: /^Yes$/ }).nth(1).click(); // hasEligibleStatus = Yes
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await screen.getByRole("radio", { name: "Single and Never Married" }).click();
-  await screen.getByRole("radio", { name: /^No$/ }).nth(2).click(); // pwd = No
+  await option(screen, "Single and Never Married").click();
+  await option(screen, /^No$/, 2).click(); // pwd = No
   await screen.getByRole("button", { name: "Get Estimate" }).click();
   await expect.element(screen.getByText(/\$1,060\.00/)).toBeVisible();
 
   // Flip Q2 to No → the warning appears and the stale estimate is cleared.
-  await screen.getByRole("radio", { name: /^No$/ }).nth(1).click(); // hasEligibleStatus = No
+  await option(screen, /^No$/, 1).click(); // hasEligibleStatus = No
 
   await expect
     .element(screen.getByText("You might not be eligible for assistance"))

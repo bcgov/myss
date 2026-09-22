@@ -14,7 +14,7 @@ import { useIdleLogout } from "@/auth/useIdleLogout";
 function App() {
     useApiAuth();
     const { warning: idleWarning, extendSession } = useIdleLogout();
-    // The eligibility estimator (MYSS-169 / 0901 design) has no footer, so hide
+    // The eligibility estimator has no footer, so hide
     // the shared BC Gov footer on that route only — every other page keeps it.
     const { pathname } = useLocation();
     const hideFooter = pathname === paths.eligibilityEstimator;
@@ -32,7 +32,7 @@ function App() {
             <main id="main-content">
                 <Outlet />
             </main>
-            {!hideFooter && <Footer hideAcknowledgement />}
+            {!hideFooter && <Footer />}
         </>
     );
 }

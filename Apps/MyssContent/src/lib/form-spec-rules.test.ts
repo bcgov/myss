@@ -17,6 +17,7 @@ import {
 
 import {
   eligibilityEstimatorSpecV3,
+  eligibilityEstimatorSpecV4,
   seededFormSpecs,
   testFormSpecV1,
 } from "./form-spec-seed-data";
@@ -90,11 +91,19 @@ describe("validateFormSpec", () => {
   });
 
   it("passes estimator v3 (custom BC Gov component types + new conditionals)", () => {
-    // MYSS-206: the custom `bcgovAccordion` type uses advanced (json) conditionals,
-    // so there is no simple `conditional.when` target to resolve — v3 must publish
-    // with no violations.
+    // The custom `bcgovAccordion` type uses advanced (json) conditionals, so
+    // there is no simple `conditional.when` target to resolve.
     expect(validateFormSpec(eligibilityEstimatorSpecV3)).toEqual([]);
     expect(validateFormSpec(JSON.stringify(eligibilityEstimatorSpecV3))).toEqual([]);
+  });
+
+  it("passes estimator v4 (the bcgovRadio data type + the Q1 hard gate)", () => {
+    // The walk in `collectComponents` is type-agnostic, so `bcgovRadio` is
+    // validated on its key and conditional like any other component. Unlike v3,
+    // v4's gate is a simple conditional, so it does resolve a `conditional.when`
+    // target — which must name a real field.
+    expect(validateFormSpec(eligibilityEstimatorSpecV4)).toEqual([]);
+    expect(validateFormSpec(JSON.stringify(eligibilityEstimatorSpecV4))).toEqual([]);
   });
 
   it("rejects a missing or empty components array", () => {

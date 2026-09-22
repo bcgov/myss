@@ -25,9 +25,9 @@ namespace Myss.Api.Services
     /// <c>properties</c> is free-form key-value, so this is authored as
     /// ordinary content on an ordinary textfield — no code, no deployment.
     /// A confirmation field adds <c>{ "myssMatches": "contactEmail" }</c>.</description></item>
-    /// <item><description>The component <c>type</c> itself, for the custom
-    /// components Phase 1 will introduce (<c>sin</c>), and for Form.io's own
-    /// <c>email</c> type.</description></item>
+    /// <item><description>The component <c>type</c> itself, for custom
+    /// components such as <c>sin</c>, and for Form.io's own <c>email</c>
+    /// type.</description></item>
     /// </list>
     /// <para>
     /// The marker route exists so this slice can be proved against a form built
@@ -35,14 +35,6 @@ namespace Myss.Api.Services
     /// exists. It stays useful afterwards for one-off patterned fields that do
     /// not justify a component of their own.
     /// </para>
-    /// <para><b>Known gap — conditionally required fields.</b> A field carrying a
-    /// <c>conditional</c> is exempt from the required check, because whether it
-    /// is required depends on answers to other questions, and evaluating
-    /// Form.io's conditional logic server-side is most of option C in §7.2 of
-    /// the assessment. Deliberately out of scope here; it must be addressed
-    /// before a form with conditionally-required sections (Phase 2's
-    /// demonstration form has several) can be trusted. The field is still type-
-    /// and domain-checked when an answer is present.</para>
     /// </remarks>
     public static class FormSpecValidator
     {
@@ -57,9 +49,9 @@ namespace Myss.Api.Services
             "button", "content", "htmlelement", "panel", "columns",
             "fieldset", "well", "table", "tabs",
 
-            // MYSS-206: custom BC Gov display component (the "status" accordion,
-            // rendered client-side by a registered Form.io component). Carries no
-            // citizen answer, so treat it like other non-data content components.
+            // Custom BC Gov display component, rendered client-side by a
+            // registered Form.io component. Carries no citizen answer, so treat it
+            // like the other non-data content components.
             "bcgovAccordion",
         ];
 
@@ -437,8 +429,8 @@ namespace Myss.Api.Services
                 }
             }
 
-            // Fall back to the component type, which is how the Phase 1 custom
-            // components and Form.io's own email type will declare themselves.
+            // Fall back to the component type, which is how custom components
+            // and Form.io's own email type declare themselves.
             validator ??= type switch
             {
                 "sin" => "sin",
@@ -462,7 +454,11 @@ namespace Myss.Api.Services
             {
                 "number" or "currency" => value.ValueKind == JsonValueKind.Number,
                 "checkbox" => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
+                // "bcgovRadio" is a custom client-side component that carries a
+                // citizen answer, so unlike "bcgovAccordion" it is a data field and
+                // is expected as a string, like the built-in "radio" it extends.
                 "textfield" or "textarea" or "email" or "select" or "radio"
+                    or "bcgovRadio"
                     or "phoneNumber" or "day" or "datetime" or "sin" or "phn" or "password"
                     => value.ValueKind == JsonValueKind.String,
                 _ => true,

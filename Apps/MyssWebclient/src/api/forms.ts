@@ -184,8 +184,10 @@ function isValidationError(value: unknown): value is FormValidationError {
  * that is not the shape we expect. A failure to parse must never mask the
  * original failure with a JSON error, so every fault here degrades to an
  * empty list and lets the status speak for itself.
+ *
+ * Exported because the bus pass endpoint answers 422 in the same shape.
  */
-async function readValidationErrors(res: Response): Promise<FormValidationError[]> {
+export async function readValidationErrors(res: Response): Promise<FormValidationError[]> {
   let body: unknown;
   try {
     body = await res.json();

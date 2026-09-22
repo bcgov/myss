@@ -6,10 +6,15 @@ namespace Icm.Api.Workflows.Contracts
     /// The service-request-level payload of a bus pass workflow message.
     /// </summary>
     /// <remarks>
-    /// The SR classification fields (<see cref="SRType"/> and friends) are left unset by
-    /// the mapper: the receiving workflow is the thing that turns a bus pass request into
-    /// a service request, and which values — if any — it expects from the caller is not
-    /// something the OpenAPI document says.
+    /// The SR classification triple — <see cref="SRType"/>, <see cref="SRSubType"/> and
+    /// <see cref="SRSubSubType"/> — is the caller's to send, and must travel as a set:
+    /// MEASURED SIT2 2026-09-14, a submission without it stores an SR with no sub type
+    /// and no prospect Purpose, and <c>SRSubSubType</c> sent without its parents fails
+    /// the upsert (bounded hierarchical picklist, <c>SBL-EAI-04401</c>). <see cref="Memo"/>
+    /// carries <c>New Application</c> for a First Nations new application only — it is
+    /// what lets that request file without a contact match. <see cref="Status"/>,
+    /// <see cref="SvcOff"/>, <see cref="Priority"/>, <see cref="CommMethod"/> and
+    /// <see cref="ClientId"/> stay unset; the workflow fills the first four itself.
     /// </remarks>
     internal class SiebelBusPassPayload
     {

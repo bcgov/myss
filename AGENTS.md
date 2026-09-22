@@ -14,6 +14,7 @@ portal (bcgov). Three deployable apps under `Apps/`, plus ADRs under
 | `Apps/MyssWebclient` | React 19 + Vite + TS | SPA; BC Gov Design System; Form.io renderer |
 | `Apps/MyssContent` | Strapi 5 | Content engine; owns versioned Form.io specs |
 | `Apps/IcmApi` | C# class library + Refit | Typed client for ICM (Siebel); namespace `Icm.Api` |
+| `Apps/IcmApi.Host` | C# / ASP.NET Core .NET 10 | The ICM middleware: hosts IcmApi behind `POST v1/bus-pass/applications` for MyssApi; namespace `Icm.Api.Host` |
 | `Apps/IcmApi.Console` | C# console app | Hand-run functional test against a real ICM |
 
 ## Secrets: do not read them
@@ -97,6 +98,7 @@ Run:
 
 ```bash
 cd Apps/MyssApi && dotnet run                 # http://localhost:5000, Swagger at /swagger
+dotnet run --project Apps/IcmApi.Host        # http://localhost:5100, Swagger at /swagger (needs Icm:* user secrets)
 cd Apps/MyssWebclient && npm run dev          # http://localhost:5173
                                               # Strapi admin: http://localhost:1337/admin
 ```
@@ -107,6 +109,8 @@ Test:
 dotnet test Apps/MyssApi.Tests
 dotnet test Apps/MyssApi.Tests --filter "FullyQualifiedName~FormSpecValidatorTests"
 dotnet test Apps/MyssApi.Tests --filter "DisplayName~rejects"
+dotnet test Apps/IcmApi.Tests
+dotnet test Apps/IcmApi.Host.Tests
 
 cd Apps/MyssWebclient
 npm run test:unit                             # *.unit.test.ts, node env
@@ -117,8 +121,8 @@ npm run lint && npm run format:check
 cd Apps/MyssContent && npm test               # vitest run
 ```
 
-CI (`.github/workflows/tests-dev.yml`, on PRs into `dev`) runs the API tests and both
-webclient suites. `dev` is the main branch.
+CI (`.github/workflows/tests-dev.yml`, on PRs into `dev`) runs the API, ICM client and
+ICM middleware tests and both webclient suites. `dev` is the main branch.
 
 After changing an API contract, regenerate the typed client: with the API running,
 `cd Apps/MyssWebclient && npm run generate:schema` (writes `src/api/generated/`, never
@@ -178,6 +182,15 @@ is `internal`, enforced by `InternalsVisibleTo` + `Contracts/PublishedSurfaceTes
 formats), token caching, the `IcmApi.Console` functional test and its VPN
 requirement: see `Apps/IcmApi/AGENTS.md`; `Apps/IcmApi/README.md` is the fuller
 guide.
+
+### IcmApi.Host
+
+The ICM middleware of handbook Part 4.2, as its own deployable: MyssApi's
+`IcmApiBusPassSubmissionProvider` posts to it, it validates the caller's
+client-credentials token against an `azp` allow-list, and hands the request to the
+library. The request shape is the shared sample in `Shared/contracts/`, linked into
+both test suites. Fail-closed startup, no retries, the `Icm_` env prefix and the
+shared user-secret store: see `Apps/IcmApi.Host/AGENTS.md`.
 
 ### Shared validation vectors
 

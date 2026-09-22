@@ -3,7 +3,7 @@ namespace Myss.Api.Configuration.Addons.Swagger
     using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using Microsoft.AspNetCore.Mvc.ApiExplorer;
-    using Microsoft.OpenApi.Models;
+    using Microsoft.OpenApi;
     using Swashbuckle.AspNetCore.SwaggerGen;
 
     /// <summary>
@@ -25,8 +25,16 @@ namespace Myss.Api.Configuration.Addons.Swagger
         {
             if (operation.Parameters != null)
             {
-                foreach (OpenApiParameter parameter in operation.Parameters)
+                foreach (IOpenApiParameter openApiParameter in operation.Parameters)
                 {
+                    // Microsoft.OpenApi 2 exposes parameters through a read-only
+                    // interface; only the concrete type is mutable. A reference
+                    // to a shared component parameter is left as declared.
+                    if (openApiParameter is not OpenApiParameter parameter)
+                    {
+                        continue;
+                    }
+
                     ApiParameterDescription description =
                         context.ApiDescription.ParameterDescriptions.First(p =>
                             p.Name == parameter.Name

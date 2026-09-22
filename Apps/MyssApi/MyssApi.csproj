@@ -15,33 +15,33 @@
 
     <ItemGroup>
         <!-- ASP.NET Core / API -->
-        <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+        <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
           <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-                <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
+                <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
 
         <!-- Object storage (S3-compatible: MinIO locally, any S3 endpoint deployed) -->
-        <PackageReference Include="AWSSDK.S3" Version="4.0.102.1" />
+        <PackageReference Include="AWSSDK.S3" Version="4.0.103.3" />
 
         <!-- Outbound HTTP resilience (retry, circuit breaker, timeouts) for the ICM middleware client -->
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
 
         <!-- Observability: OpenTelemetry -->
-        <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.14.0" />
-        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0" />
-        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />
-        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0" />
-        <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.14.0" />
-        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0" />
+        <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.18.0" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.18.0" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.18.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.18.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.18.0" />
 
         <!-- Observability: Serilog -->
         <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
-        <PackageReference Include="Serilog.Enrichers.ClientInfo" Version="2.7.0" />
+        <PackageReference Include="Serilog.Enrichers.ClientInfo" Version="2.9.0" />
         <PackageReference Include="Serilog.Enrichers.CorrelationId" Version="3.0.1" />
         <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
         <PackageReference Include="Serilog.Enrichers.Span" Version="3.1.0" />

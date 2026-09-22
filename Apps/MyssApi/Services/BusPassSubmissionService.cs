@@ -29,6 +29,15 @@ namespace Myss.Api.Services
     /// submission exists in MySS in every case, and only the reference number
     /// depends on ICM.
     /// </para>
+    /// <para>
+    /// Once the submission is stored, the dispatch no longer listens to the
+    /// request's cancellation. A browser that goes away must not cancel a
+    /// non-idempotent hand-off mid-flight: the call would be abandoned after ICM
+    /// may have filed it, or the log left without its closing row for no real
+    /// reason. The resilience handler's timeouts still bound the call. The
+    /// citizen who disconnected gets no answer either way; MySS and ICM stay
+    /// consistent.
+    /// </para>
     /// </remarks>
     public class BusPassSubmissionService : IBusPassSubmissionService
     {
@@ -91,8 +100,10 @@ namespace Myss.Api.Services
             }
 
             FormSubmissionResponseModel submission = stored.Submission!;
-            BusPassApplicationModel application = BusPassApplicationMapper.Build(submission.Answers);
+            BusPassApplicationModel application = BusPassApplicationMapper.Build(submission.Id, submission.Answers);
 
+            // From here on the request token is deliberately not used (see the
+            // class remarks).
             Guid attemptId = Guid.NewGuid();
             string? requestId = _correlationIdAccessor.CorrelationId;
             await AppendAsync(
@@ -100,35 +111,45 @@ namespace Myss.Api.Services
                 attemptId,
                 requestId,
                 BusPassDispatchEventType.Started,
-                cancellationToken: cancellationToken);
+                cancellationToken: CancellationToken.None);
 
             BusPassSubmissionOutcomeModel outcome;
             try
             {
-                outcome = await _submissionProvider.SubmitAsync(application, cancellationToken);
+                outcome = await _submissionProvider.SubmitAsync(application, CancellationToken.None);
             }
             catch (IcmApiUnavailableException ex)
             {
                 // Recorded even when the caller has gone away: the row is the
-                // evidence an operator needs to decide whether ICM has this.
+                // evidence an operator needs to decide whether ICM has this. The
+                // middleware's keyword goes in the error code column so a Failed
+                // row says which kind of failure it was.
                 await AppendAsync(
                     submission.Id,
                     attemptId,
                     requestId,
                     BusPassDispatchEventType.Failed,
+                    errorCode: ex.Keyword,
                     errorMessage: ex.Message,
                     cancellationToken: CancellationToken.None);
 
                 _logger.LogError(
                     ex,
-                    "Bus pass submission {SubmissionId} could not be delivered to the ICM middleware (attempt {AttemptId})",
+                    "Bus pass submission {SubmissionId} could not be delivered to the ICM middleware (attempt {AttemptId}, {Keyword}, may have reached ICM: {MayHaveReachedIcm})",
                     submission.Id,
-                    attemptId);
+                    attemptId,
+                    ex.Keyword ?? "no keyword",
+                    ex.MayHaveReachedIcm);
 
-                return BusPassSubmissionResultModel.Completed(
-                    ToResponse(submission, BusPassSubmissionOutcome.Failed, null, null, BusPassErrorKeywords.IcmUnavailable));
+                BusPassSubmissionResponseModel failed = ToResponse(
+                    submission, BusPassSubmissionOutcome.Failed, null, ex.Keyword, BusPassErrorKeywords.IcmUnavailable);
+                failed.MayHaveReachedIcm = ex.MayHaveReachedIcm;
+                return BusPassSubmissionResultModel.Completed(failed);
             }
 
+            // The closing event is written without the request token for the same
+            // reason: ICM has answered, and a caller that disconnected meanwhile
+            // must not leave the reference number unrecorded.
             BusPassDispatchEventType closing = outcome.IsAccepted
                 ? BusPassDispatchEventType.Accepted
                 : BusPassDispatchEventType.Rejected;
@@ -140,7 +161,7 @@ namespace Myss.Api.Services
                 outcome.ApplicationNumber,
                 outcome.ErrorCode,
                 outcome.ErrorMessage,
-                cancellationToken);
+                CancellationToken.None);
 
             // Ids and codes only; the answers and ICM's free text stay out of the log.
             _logger.LogInformation(

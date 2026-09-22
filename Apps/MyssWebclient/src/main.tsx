@@ -14,8 +14,8 @@ import "@bcgov/bc-sans/css/BC_Sans.css";
 
 client.setConfig({ baseUrl: API_URL });
 
-// Register the custom BC Gov Form.io components (bcgovTooltip, bcgovAccordion)
-// before any <Form> renders — the estimator v3 spec references these types.
+// Register the custom BC Gov Form.io components (bcgovAccordion, bcgovRadio)
+// before any <Form> renders — the estimator v4 spec references both types.
 registerBcgovComponents();
 
 const queryClient = new QueryClient();
