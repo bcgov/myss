@@ -5,6 +5,8 @@ import {
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   POC_FORM_SPEC_ID,
   POC_FORM_SPEC_TITLE,
+  REGISTRATION_FORM_SPEC_ID,
+  REGISTRATION_FORM_SPEC_TITLE,
   seededForms,
   seededFormSpecs,
   testFormSpecV1,
@@ -170,6 +172,14 @@ describe("seeded forms collection", () => {
     expect(ids).toContain(ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID);
     // Every seeded form id is distinct — the bootstrap hook keys on it.
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("seeds the registration form with its first version", () => {
+    const registration = seededForms.find(
+      (form) => form.formSpecId === REGISTRATION_FORM_SPEC_ID,
+    );
+    expect(registration?.title).toBe(REGISTRATION_FORM_SPEC_TITLE);
+    expect(registration?.versions.map((v) => v.version)).toEqual([1]);
   });
 
   it("keeps the POC form's versions as the existing seededFormSpecs list", () => {
