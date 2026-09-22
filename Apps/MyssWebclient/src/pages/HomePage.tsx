@@ -1,11 +1,11 @@
-import AccountPanel from "@/components/home/AccountPanel";
-import AboutMySS from "@/components/home/AboutMySS";
-import CommonQuestions from "@/components/home/CommonQuestions";
-import IntroSection from "@/components/home/IntroSection";
-import VideoSection from "@/components/home/VideoSection";
-import HowToApply from "@/components/home/HowToApply";
-import ChequeCalendar from "@/components/home/ChequeCalendar";
-import LinkList from "@/components/home/LinkList";
+import AccountPanel from "@/widgets/home/AccountPanel";
+import AboutMySS from "@/widgets/home/AboutMySS";
+import CommonQuestions from "@/widgets/home/CommonQuestions";
+import IntroSection from "@/widgets/home/IntroSection";
+import VideoSection from "@/widgets/home/VideoSection";
+import HowToApply from "@/widgets/home/HowToApply";
+import ChequeCalendar from "@/widgets/home/ChequeCalendar";
+import LinkList from "@/widgets/home/LinkList";
 import { otherResources } from "@/data/homeLinks";
 import styles from "./HomePage.module.css";
 

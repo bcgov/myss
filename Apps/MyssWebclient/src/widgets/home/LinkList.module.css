@@ -1,0 +1,14 @@
+
+.list {
+    list-style: disc;
+    margin: 0 0 var(--layout-margin-large);
+    padding-left: var(--layout-padding-large);
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.list li::marker {
+    color: var(--typography-color-link);
+}
+

@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { Button } from "@bcgov/design-system-react-components";
 
-import styles from "./AttachmentUpload.module.css";
+import styles from "./AttachmentUploadWidget.module.css";
 import { AttachmentUploadError } from "@/api/attachments";
 import { useAttachments, useUploadAttachment } from "@/hooks/useAttachments";
 
@@ -37,7 +37,7 @@ function formatSize(sizeBytes: number): string {
  * file picker; the chosen file goes straight to the attachments API, and the
  * list refreshes once it's scanned and stored.
  */
-export default function AttachmentUpload() {
+export default function AttachmentUploadWidget() {
   const inputRef = useRef<HTMLInputElement>(null);
   const { data: attachments } = useAttachments();
   const upload = useUploadAttachment();

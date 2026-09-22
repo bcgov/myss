@@ -1,21 +1,25 @@
 import { Form } from "@formio/react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import "@formio/js/dist/formio.form.min.css";
-import "./PocForm.css";
+import "./FormSpecWidget.css";
 
-import SubmissionErrors from "@/components/SubmissionErrors";
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
 
-const FORM_SPEC_ID = "poc-test-form";
+interface FormSpecWidgetProps {
+  formSpecId: string;
+  renderSubmissionError?: (error: Error) => ReactNode;
+  showSpecHeading?: boolean;
+}
 
-/**
- * Renders the Form.io spec fetched through the MyssApi proxy and posts the
- * answers back with the spec version they were rendered under.
- */
-export default function PocForm() {
-  const { data: spec, error, isPending } = useFormSpec(FORM_SPEC_ID);
-  const submit = useSubmitForm(FORM_SPEC_ID);
+export default function FormSpecWidget({
+  formSpecId,
+  renderSubmissionError,
+  showSpecHeading = false,
+}: FormSpecWidgetProps) {
+  const { data: spec, error, isPending } = useFormSpec(formSpecId);
+  const submit = useSubmitForm(formSpecId);
 
   if (isPending) return <p>Loading form…</p>;
   if (error) return <p>Could not load the form: {error.message}</p>;
@@ -43,10 +47,17 @@ export default function PocForm() {
 
   return (
     <section>
-      <h3>
-        {spec.title ?? spec.formSpecId} <small>(spec v{spec.version})</small>
-      </h3>
-      {submit.error && <SubmissionErrors error={submit.error} />}
+      {showSpecHeading && (
+        <h3>
+          {spec.title ?? spec.formSpecId} <small>(spec v{spec.version})</small>
+        </h3>
+      )}
+      {submit.error &&
+        (renderSubmissionError ? (
+          renderSubmissionError(submit.error)
+        ) : (
+          <p>Submission failed: {submit.error.message}</p>
+        ))}
       <Form
         src={spec.spec}
         onSubmit={(submission: { data: Record<string, unknown> }) =>

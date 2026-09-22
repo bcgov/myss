@@ -1,15 +1,15 @@
 .columns {
     display: grid;
-    column-gap: var(--layout-margin-xxlarge, 64px);
-    row-gap: var(--layout-margin-xlarge, 32px);
+    column-gap: var(--layout-margin-xxlarge);
+    row-gap: var(--layout-margin-xlarge);
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .icon {
     align-items: center;
-    background-color: #ffffff;
+    background-color: var(--surface-color-background-white);
     border-radius: 50%;
-    color: var(--theme-blue-60, #1a5a96);
+    color: var(--theme-blue-60);
     display: flex;
     height: 40px;
     justify-content: center;
@@ -23,7 +23,7 @@
 }
 
 .columns h3 {
-    margin: 0 0 var(--layout-margin-small, 8px);
+    margin: 0 0 var(--layout-margin-small);
 }
 
 .columns p {
