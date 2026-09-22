@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { Button } from "@bcgov/design-system-react-components";
 import { useSession } from "@/auth/useSession";
 import { paths } from "@/routes/paths";
+import RegistrationForm from "@/components/RegistrationForm";
 import styles from "./RegistrationPage.module.css";
 
 export default function RegistrationPage() {
@@ -27,6 +28,7 @@ export default function RegistrationPage() {
             ) : isAuthenticated ? (
                 <>
                     <p>Welcome{user?.name ? `, ${user.name}` : ""}.</p>
+                    <RegistrationForm />
                 </>
             ) : (
                 <>

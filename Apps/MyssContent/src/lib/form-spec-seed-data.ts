@@ -34,6 +34,33 @@ export const POC_FORM_SPEC_ID = "poc-test-form";
 /** The human-readable title every seeded version shares. */
 export const POC_FORM_SPEC_TITLE = "POC test form";
 
+/** The logical identifier for the authenticated registration form. */
+export const REGISTRATION_FORM_SPEC_ID = "registration";
+
+/** The human-readable title for the authenticated registration form. */
+export const REGISTRATION_FORM_SPEC_TITLE = "Registration information";
+
+/** The first version of the registration form, authored in Strapi seed data. */
+export const registrationFormSpecV1: Json = {
+  display: "form",
+  components: [
+    {
+      type: "textfield",
+      key: "firstName",
+      label: "First name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Submit",
+      input: true,
+    },
+  ],
+};
+
 // POC test form. v1 is seeded so a fresh database has a working form;
 // later versions are authored through the admin panel as new entries.
 export const testFormSpecV1: Json = {
@@ -1133,6 +1160,11 @@ export interface SeededForm {
  * existing form's `versions`) is the only change needed to seed more content.
  */
 export const seededForms: readonly SeededForm[] = [
+  {
+    formSpecId: REGISTRATION_FORM_SPEC_ID,
+    title: REGISTRATION_FORM_SPEC_TITLE,
+    versions: [{ version: 1, spec: registrationFormSpecV1 }],
+  },
   {
     formSpecId: POC_FORM_SPEC_ID,
     title: POC_FORM_SPEC_TITLE,
