@@ -21,6 +21,48 @@ const currentSpecV7 = {
         validate: { required: true },
       },
       {
+        type: "textfield",
+        key: "lastName",
+        label: "Last name",
+        input: true,
+      },
+      {
+        type: "textfield",
+        key: "nickname",
+        label: "Nickname",
+        input: true,
+      },
+      {
+        type: "button",
+        key: "submit",
+        action: "submit",
+        label: "Submit",
+        input: true,
+      },
+    ],
+  },
+};
+
+const busPassSpecV2 = {
+  formSpecId: "bc-bus-pass",
+  version: 2,
+  title: "BC Bus Pass",
+  spec: {
+    display: "form",
+    components: [
+      {
+        type: "textfield",
+        key: "firstName",
+        label: "First name",
+        input: true,
+      },
+      {
+        type: "textfield",
+        key: "socialInsuranceNumber",
+        label: "Social insurance number",
+        input: true,
+      },
+      {
         type: "button",
         key: "submit",
         action: "submit",
@@ -37,18 +79,26 @@ interface ApiValidationError {
   message: string;
 }
 
-function stubFormApi(options: { rejectWith?: ApiValidationError[] } = {}) {
+function stubFormApi(
+  options: {
+    rejectWith?: ApiValidationError[];
+    formSpecId?: string;
+    spec?: unknown;
+  } = {},
+) {
+  const formSpecId = options.formSpecId ?? "poc-test-form";
+  const spec = options.spec ?? currentSpecV7;
   const posts: Array<{ url: string; body: unknown }> = [];
   vi.spyOn(window, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
-    if (url.endsWith("/v1/forms/poc-test-form/spec")) {
-      return new Response(JSON.stringify({ payload: currentSpecV7 }), {
+    if (url.endsWith(`/v1/forms/${formSpecId}/spec`)) {
+      return new Response(JSON.stringify({ payload: spec }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
     if (
-      url.endsWith("/v1/forms/poc-test-form/submissions") &&
+      url.endsWith(`/v1/forms/${formSpecId}/submissions`) &&
       init?.method === "POST"
     ) {
       const body = JSON.parse(String(init.body));
@@ -79,7 +129,7 @@ function stubFormApi(options: { rejectWith?: ApiValidationError[] } = {}) {
   return posts;
 }
 
-function renderForm() {
+function renderForm(formSpecId = "poc-test-form") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -87,7 +137,7 @@ function renderForm() {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <FormSpecWidget
-          formSpecId="poc-test-form"
+          formSpecId={formSpecId}
           renderSubmissionError={(error) => <SubmissionErrors error={error} />}
           showSpecHeading
         />
@@ -171,4 +221,105 @@ test("moves focus to the field an error belongs to", async () => {
 
   const input = document.querySelector('[name="data[firstName]"]');
   expect(document.activeElement).toBe(input);
+});
+
+test("clears each matching server error when the user edits its field", async () => {
+  stubFormApi({
+    rejectWith: [
+      {
+        field: "firstName",
+        keyword: "FORM.FIELD.REQUIRED",
+        message: "Enter a first name.",
+      },
+      {
+        field: "lastName",
+        keyword: "FORM.FIELD.REQUIRED",
+        message: "Enter a last name.",
+      },
+    ],
+  });
+  const screen = await renderForm();
+
+  await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
+  await screen.getByRole("textbox", { name: "Last name" }).fill("Lovelace");
+  await screen.getByRole("button", { name: "Submit" }).click();
+  await expect.element(screen.getByText("There is a problem")).toBeVisible();
+
+  const formSection = document
+    .querySelector('[name="data[firstName]"]')
+    ?.closest("section");
+  formSection?.dispatchEvent(new Event("input", { bubbles: true }));
+
+  await screen.getByRole("textbox", { name: "Nickname" }).fill("Byron");
+  await screen.getByRole("textbox", { name: "First name" }).fill("Grace");
+  await screen.getByRole("textbox", { name: "Last name" }).fill("Hopper");
+
+  await expect
+    .element(screen.getByRole("textbox", { name: "Nickname" }))
+    .toHaveValue("Byron");
+  await expect
+    .element(screen.getByRole("textbox", { name: "First name" }))
+    .toHaveValue("Grace");
+  await expect
+    .element(screen.getByRole("textbox", { name: "Last name" }))
+    .toHaveValue("Hopper");
+});
+
+test("uses the bus pass SIN validation message for SIN errors", async () => {
+  stubFormApi({
+    formSpecId: "bc-bus-pass",
+    spec: busPassSpecV2,
+    rejectWith: [
+      {
+        field: "socialInsuranceNumber",
+        keyword: "IDA.SIN.INVALID_CHECKSUM",
+        message: "The SIN is invalid.",
+      },
+    ],
+  });
+  const screen = await renderForm("bc-bus-pass");
+
+  await screen
+    .getByRole("textbox", { name: "Social insurance number" })
+    .fill("046454286");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  await expect.element(screen.getByText("SIN must be valid")).toBeVisible();
+});
+
+test("preserves API messages for bus pass errors that are not SIN checksum errors", async () => {
+  stubFormApi({
+    formSpecId: "bc-bus-pass",
+    spec: busPassSpecV2,
+    rejectWith: [
+      {
+        field: "socialInsuranceNumber",
+        keyword: "FORM.FIELD.INVALID",
+        message: "Enter a SIN in the expected format.",
+      },
+      {
+        field: "firstName",
+        keyword: "IDA.SIN.INVALID_CHECKSUM",
+        message: "Enter a first name.",
+      },
+    ],
+  });
+  const screen = await renderForm("bc-bus-pass");
+
+  await screen
+    .getByRole("textbox", { name: "Social insurance number" })
+    .fill("046454286");
+  await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  await expect
+    .element(
+      screen.getByRole("button", {
+        name: "Enter a SIN in the expected format.",
+      }),
+    )
+    .toBeVisible();
+  await expect
+    .element(screen.getByRole("button", { name: "Enter a first name." }))
+    .toBeVisible();
 });
