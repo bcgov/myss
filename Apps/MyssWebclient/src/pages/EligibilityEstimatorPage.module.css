@@ -30,6 +30,8 @@
      its rule: a custom property inherits, so there is no specificity race with
      BCDS's runtime-injected stylesheet. */
   --typography-bold-large-body: 700 20px/34px "BC Sans", sans-serif;
+}
+
 /* Privacy banner: light panel with a BC-blue accent bar. */
 .privacyBanner {
   border-left: var(--layout-border-width-large) solid var(--surface-color-border-default);
@@ -48,6 +50,8 @@
    BCDS's one, so this wins on specificity rather than on source order. */
 .privacyCallout :global(.bcds-Callout) {
   border-left-width: 8px;
+}
+
 .privacyBody {
   margin: 0;
   color: var(--typography-color-secondary);
@@ -356,6 +360,8 @@
 .formHost :global(.formio-component-panel .card-body) {
   padding: 0 16px 14px;
   color: var(--typography-color-secondary);
+}
+
 /* Question gap. Form.io emits Bootstrap 3 form-groups, whose own bottom margin is
    smaller than the design's 24px stack. Set it once for every component in the host
    rather than per-field, so fields added to the seed later inherit the right gap. */
@@ -456,6 +462,8 @@
   line-height: 1;
   cursor: help;
   vertical-align: -0.15em;
+}
+
 /* The radios render as the real BCDS RadioGroup, which sizes its label, options
    and error message from one token. The design wants 16px labels but a 14px error
    message, so lift the two that need it rather than redefining that token. Each
