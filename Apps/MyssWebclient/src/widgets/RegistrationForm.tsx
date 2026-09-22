@@ -2,10 +2,11 @@ import { Form } from "@formio/react";
 import { Link } from "react-router";
 
 import "@formio/js/dist/formio.form.min.css";
-import "./PocForm.css";
+import "./FormSpecWidget.css";
 
 import SubmissionErrors from "@/components/SubmissionErrors";
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
+import styles from "./RegistrationForm.module.css";
 
 const FORM_SPEC_ID = "registration";
 
@@ -29,7 +30,7 @@ export default function RegistrationForm() {
   }
 
   return (
-    <section>
+    <section className={styles.form}>
       <h2>{spec.title ?? "Registration information"}</h2>
       {submit.error && <SubmissionErrors error={submit.error} />}
       <Form
