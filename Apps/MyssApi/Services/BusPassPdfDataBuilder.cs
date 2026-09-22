@@ -31,8 +31,26 @@ namespace Myss.Api.Services
 
             data["dateOfBirth"] = BuildDateOfBirth(answers);
             ApplyMailingAddress(answers, data);
+            ApplyRequestTypeFlags(answers, data);
 
             return data;
+        }
+
+        /// <summary>
+        /// Booleans the template's "Service request" section switches on,
+        /// separate from <see cref="BusPassPdfFieldMap.CodedValueLabels"/>'s
+        /// human-readable <c>applicantCategory</c>/<c>existingClientReason</c>
+        /// text, so the template's Carbone <c>ifEQ</c> markers do not have to
+        /// match display wording that content edits could otherwise silently break.
+        /// </summary>
+        private static void ApplyRequestTypeFlags(JsonElement answers, Dictionary<string, object?> data)
+        {
+            string? applicantCategory = GetString(answers, "applicantCategory");
+            string? existingClientReason = GetString(answers, "existingClientReason");
+
+            data["isNewApplicant"] = applicantCategory == "new";
+            data["isAddressUpdate"] = applicantCategory == "existing" && existingClientReason == "moved";
+            data["isReplacementRequest"] = applicantCategory == "existing" && existingClientReason == "replacement";
         }
 
         private static string BuildDateOfBirth(JsonElement answers)
