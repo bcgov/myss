@@ -169,7 +169,6 @@ export default function FormSpecWidget({
         </h3>
       )}
       {submit.error &&
-        validationErrors.length === 0 &&
         (renderSubmissionError ? (
           renderSubmissionError(submit.error)
         ) : (

@@ -145,7 +145,9 @@ test("shows the reasons the API refused the submission", async () => {
   await screen.getByRole("button", { name: "Submit" }).click();
 
   await expect.element(screen.getByText("There is a problem")).toBeVisible();
-  await expect.element(screen.getByText("Enter a first name.")).toBeVisible();
+  await expect
+    .element(screen.getByRole("button", { name: "Enter a first name." }))
+    .toBeVisible();
   await expect
     .element(screen.getByRole("textbox", { name: "First name" }))
     .toBeVisible();
