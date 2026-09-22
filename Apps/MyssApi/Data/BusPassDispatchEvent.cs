@@ -62,7 +62,10 @@ namespace Myss.Api.Data
         /// <summary>Gets or sets the reference number ICM assigned, when it did.</summary>
         public string? ReferenceNumber { get; set; }
 
-        /// <summary>Gets or sets ICM's error code for a rejection.</summary>
+        /// <summary>
+        /// Gets or sets ICM's error code for a rejection, or the middleware's failure
+        /// keyword (<c>ICM.BUSPASS.*</c>) for a failed delivery, when it sent one.
+        /// </summary>
         public string? ErrorCode { get; set; }
 
         /// <summary>Gets or sets the error text, from ICM or from the transport failure.</summary>

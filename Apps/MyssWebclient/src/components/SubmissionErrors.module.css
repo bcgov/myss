@@ -1,0 +1,41 @@
+/*
+ * Error summary for a refused submission. Not Form.io's own error styling:
+ * these come from the API after submit, so they render outside the form.
+ * The left bar and border carry the meaning so it does not depend on colour
+ * alone.
+ */
+.summary {
+    border: 2px solid var(--support-border-color-danger);
+    border-left-width: var(--layout-margin-small);
+    background: var(--support-surface-color-danger);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: var(--layout-margin-medium) 0;
+}
+
+.heading {
+    margin: 0 0 var(--layout-margin-small);
+}
+
+.heading:focus-visible {
+    outline: 2px solid var(--surface-color-border-active);
+    outline-offset: 2px;
+}
+
+.list {
+    margin: 0;
+    padding-left: var(--layout-padding-large);
+}
+
+/* A button, not a link: it moves focus within the page rather than navigating,
+ * and Form.io's generated element ids are random, so there is no stable
+ * fragment to point an href at. Styled to read as a link. */
+.fieldButton {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--typography-color-danger);
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}

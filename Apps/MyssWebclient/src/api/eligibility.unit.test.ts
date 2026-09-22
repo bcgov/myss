@@ -7,8 +7,8 @@ import {
   type EligibilityRequest,
 } from "@/api/eligibility";
 
-// Pure mapper + pre-check gate (Step 4). No network — the fetches are exercised
-// against the running stack in the browser test (Step 7) and Bruno (Step 9).
+// Pure mapper + pre-check gate. No network — the fetches are exercised against
+// the running stack in the browser test and the Bruno collection.
 
 describe("mapAnswersToEstimate", () => {
   it("collapses the six relationship values to Single/Couple", () => {
@@ -123,23 +123,36 @@ describe("screenPreCheck", () => {
     expect(pre.hasEligibleStatus).toBe(true);
   });
 
-  it("MYSS-206: passes when Q1=No but Q2=Yes (residency no longer blocks)", () => {
+  it("fails when residency is No even though status is Yes", () => {
+    // The spec makes a "No" to residency terminal, so this combination is not
+    // reachable through the UI; the check stays as the defensive gate.
     const pre = screenPreCheck({
       residesInBc: "false",
       hasEligibleStatus: "true",
     });
-    expect(pre.passed).toBe(true);
+    expect(pre.passed).toBe(false);
     expect(pre.residesInBc).toBe(false);
     expect(pre.hasEligibleStatus).toBe(true);
   });
 
-  it("fails only when status (Q2) is No, whatever the residency answer", () => {
+  it("fails when either question is No", () => {
     expect(
       screenPreCheck({ residesInBc: "true", hasEligibleStatus: "false" }).passed,
     ).toBe(false);
     expect(
       screenPreCheck({ residesInBc: "false", hasEligibleStatus: "false" }).passed,
     ).toBe(false);
+    expect(
+      screenPreCheck({ residesInBc: "false", hasEligibleStatus: "true" }).passed,
+    ).toBe(false);
+  });
+
+  it("fails when either question is unanswered", () => {
+    // `toBool` treats anything that is not true/"true" as No, so a missing
+    // answer can never pass the screen.
+    expect(screenPreCheck({ hasEligibleStatus: "true" }).passed).toBe(false);
+    expect(screenPreCheck({ residesInBc: "true" }).passed).toBe(false);
+    expect(screenPreCheck({}).passed).toBe(false);
   });
 
   it("short-circuits before an EligibilityRequest is built when status is No", () => {

@@ -6,6 +6,7 @@ import {
   eligibilityEstimatorSpecV1,
   eligibilityEstimatorSpecV2,
   eligibilityEstimatorSpecV3,
+  eligibilityEstimatorSpecV4,
   seededForms,
   type Json,
 } from "./form-spec-seed-data";
@@ -85,7 +86,7 @@ const MONEY_FIELDS = [
 describe("eligibility estimator seed", () => {
   const spec = eligibilityEstimatorSpecV1;
 
-  it("is registered in seededForms with published v1, v2 and v3", () => {
+  it("is registered in seededForms with published v1, v2, v3 and v4", () => {
     const estimator = seededForms.find(
       (form) => form.formSpecId === ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     );
@@ -95,6 +96,7 @@ describe("eligibility estimator seed", () => {
       { version: 1, spec: eligibilityEstimatorSpecV1 },
       { version: 2, spec: eligibilityEstimatorSpecV2 },
       { version: 3, spec: eligibilityEstimatorSpecV3 },
+      { version: 4, spec: eligibilityEstimatorSpecV4 },
     ]);
   });
 
@@ -185,13 +187,13 @@ describe("eligibility estimator seed", () => {
   });
 });
 
-describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => {
+describe("eligibility estimator seed — v2 (pre-check + relabels)", () => {
   const v1 = eligibilityEstimatorSpecV1;
   const v2 = eligibilityEstimatorSpecV2;
 
   const PRE_CHECK_FIELDS = ["residesInBc", "hasEligibleStatus"] as const;
 
-  /** 0826 label rewrites (keys unchanged) — see MYSS-169-0826-Seed-Label-Edits.md. */
+  /** The redesign's label rewrites; keys are unchanged. */
   const RELABELS: Readonly<Record<string, string>> = {
     vehicleValueMinusTransportation:
       "What is the value of your primary vehicle minus any amount owing?",
@@ -231,7 +233,7 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
     }
   });
 
-  it("preserves every v1 key unchanged and adds the pre-check + 0827 layout keys", () => {
+  it("preserves every v1 key unchanged and adds the pre-check + layout keys", () => {
     const v1Keys = new Set(keysOf(v1));
     const v2Keys = new Set(keysOf(v2));
     for (const key of v1Keys) expect(v2Keys.has(key)).toBe(true);
@@ -247,11 +249,11 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
     );
   });
 
-  it("adds the 0827 layout components (status panel, section headings, helper)", () => {
+  it("adds the layout components (status panel, section headings, helper)", () => {
     const keys = keysOf(v2);
 
     // The status explainer is a collapsible panel directly after the status
-    // question (0827: no longer page chrome above the whole form).
+    // question, rather than page chrome above the whole form.
     const statusHelp = componentByKey(v2, "statusHelp") as {
       type?: unknown;
       collapsible?: unknown;
@@ -274,7 +276,7 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
       in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
     });
 
-    // Dependent-children helper text (0827).
+    // Dependent-children helper text.
     const depChildren = componentByKey(v2, "dependentChildren") as {
       description?: unknown;
     };
@@ -282,13 +284,13 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
     expect(depChildren.description as string).toContain("maximum family size of 7");
   });
 
-  it("applies the 0826 label rewrites (labels only, keys intact)", () => {
+  it("applies the label rewrites (labels only, keys intact)", () => {
     for (const [key, label] of Object.entries(RELABELS)) {
       expect((componentByKey(v2, key) as { label?: unknown }).label).toBe(label);
     }
   });
 
-  it("keeps partnerPwd and the labels 0826 left unchanged", () => {
+  it("keeps partnerPwd and the labels the redesign left alone", () => {
     expect((componentByKey(v2, "partnerPwd") as { label?: unknown }).label).toBe(
       "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?",
     );
@@ -323,7 +325,7 @@ describe("eligibility estimator seed — v2 (pre-check + 0826 relabels)", () => 
   });
 });
 
-describe("eligibility estimator seed — v3 (MYSS-206 conditional display + BC Gov)", () => {
+describe("eligibility estimator seed — v3 (conditional display + BC Gov)", () => {
   const v3 = eligibilityEstimatorSpecV3;
 
   /** Reveal-once-Q1-answered gate (advanced json-logic). */
@@ -363,7 +365,7 @@ describe("eligibility estimator seed — v3 (MYSS-206 conditional display + BC G
 
   it("pins dataType 'string' on the pre-check radios so conditionals match", () => {
     // Load-bearing: without dataType 'string', Form.io coerces "true"/"false"
-    // to booleans and the string-based conditionals never fire (MYSS-206 bug).
+    // to booleans and the string-based conditionals never fire.
     for (const key of ["residesInBc", "hasEligibleStatus"]) {
       expect((componentByKey(v3, key) as { dataType?: unknown }).dataType).toBe(
         "string",
@@ -421,6 +423,124 @@ describe("eligibility estimator seed — v3 (MYSS-206 conditional display + BC G
   it("keeps every money/count input floored at zero", () => {
     for (const key of MONEY_FIELDS) {
       expect(componentByKey(v3, key).validate?.min).toBe(0);
+    }
+  });
+});
+
+describe("eligibility estimator seed — v4 (residency hard gate + BC Gov radios)", () => {
+  const v4 = eligibilityEstimatorSpecV4;
+
+  /** The five questions that render as the real BCDS RadioGroup. */
+  const RADIO_FIELDS = [
+    "residesInBc",
+    "hasEligibleStatus",
+    "relationshipStatus",
+    "pwd",
+    "partnerPwd",
+  ] as const;
+
+  /** v4's Q1 HARD GATE — simple conditional, Q1 = "Yes" only. */
+  const Q1_YES = { show: true, when: "residesInBc", eq: "true" };
+  /** Unchanged from v3. */
+  const HAS_STATUS = { show: true, when: "hasEligibleStatus", eq: "true" };
+  const PARTNERED = {
+    in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
+  };
+  const HAS_STATUS_FIELDS = [
+    "relationshipStatus",
+    "dependentChildren",
+    "pwd",
+    "assetsSectionHeading",
+    "monthlyIncome",
+    "vehicleValueMinusTransportation",
+    "vehicleValue",
+    "assetValue",
+    "submit",
+  ] as const;
+
+  it("has unique component keys", () => {
+    const keys = keysOf(v4);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("renders all five radios as the custom bcgovRadio type", () => {
+    // The type must be registered client-side or Form.io renders a blank slot.
+    for (const key of RADIO_FIELDS) {
+      expect(componentByKey(v4, key).type).toBe("bcgovRadio");
+    }
+  });
+
+  it("pins dataType 'string' on the pre-check radios so conditionals match", () => {
+    // The gates compare against the literal "true".
+    for (const key of ["residesInBc", "hasEligibleStatus"]) {
+      expect((componentByKey(v4, key) as { dataType?: unknown }).dataType).toBe(
+        "string",
+      );
+    }
+  });
+
+  it("keeps residesInBc always shown and required (Q1 is the entry point)", () => {
+    const q1 = componentByKey(v4, "residesInBc");
+    expect(q1.validate?.required).toBe(true);
+    expect(q1.conditional).toBeUndefined();
+  });
+
+  it("HARD-GATES Q2 + the help accordion on Q1 = Yes, not merely on Q1 answered", () => {
+    // v3 revealed the status question for either answer; v4 reveals it only
+    // for "true", making "No" terminal.
+    for (const key of ["hasEligibleStatus", "statusHelp"]) {
+      const field = componentByKey(v4, key);
+      expect(field.conditional).toEqual(Q1_YES);
+      // Explicitly NOT the v3 "answered either way" advanced gate.
+      expect(field.conditional?.json).toBeUndefined();
+    }
+    expect(componentByKey(v4, "hasEligibleStatus").validate?.required).toBe(true);
+  });
+
+  it("keeps the help a BC Gov accordion with no Q2 tooltip", () => {
+    const q2 = componentByKey(v4, "hasEligibleStatus") as { tooltip?: unknown };
+    expect(q2.tooltip).toBeUndefined();
+    expect(componentByKey(v4, "statusHelp").type).toBe("bcgovAccordion");
+  });
+
+  it("leaves the Q2 = Yes gate on every remaining question and the submit button", () => {
+    for (const key of HAS_STATUS_FIELDS) {
+      expect(componentByKey(v4, key).conditional).toEqual(HAS_STATUS);
+    }
+  });
+
+  it("leaves the spouse fields + spouse heading on the advanced partnered gate", () => {
+    for (const key of [...PARTNER_FIELDS, "spouseSectionHeading"]) {
+      const field = componentByKey(v4, key);
+      expect(field.conditional?.when).toBeUndefined();
+      expect(field.conditional?.json).toEqual(PARTNERED);
+      if (key !== "spouseSectionHeading") {
+        expect(field.validate?.required).toBeUndefined();
+      }
+    }
+  });
+
+  it("preserves the exact v3 key set (the mapper contract is unchanged)", () => {
+    const v3Keys = new Set(keysOf(eligibilityEstimatorSpecV3));
+    const v4Keys = new Set(keysOf(v4));
+    for (const key of v3Keys) expect(v4Keys.has(key)).toBe(true);
+    // v4 adds no new data keys — only `type` and two `conditional`s changed.
+    expect([...v4Keys].filter((key) => !v3Keys.has(key))).toEqual([]);
+  });
+
+  it("preserves every option VALUE, so the mapper's true/false strings still land", () => {
+    for (const key of RADIO_FIELDS) {
+      const v3Values = (componentByKey(eligibilityEstimatorSpecV3, key)
+        .values as Array<{ value: string }>).map((option) => option.value);
+      const v4Values = (componentByKey(v4, key)
+        .values as Array<{ value: string }>).map((option) => option.value);
+      expect(v4Values).toEqual(v3Values);
+    }
+  });
+
+  it("keeps every money/count input floored at zero", () => {
+    for (const key of MONEY_FIELDS) {
+      expect(componentByKey(v4, key).validate?.min).toBe(0);
     }
   });
 });
