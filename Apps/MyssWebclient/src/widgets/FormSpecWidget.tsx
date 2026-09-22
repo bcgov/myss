@@ -1,6 +1,13 @@
 import { Form } from "@formio/react";
 import type { Webform } from "@formio/js";
-import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { Link } from "react-router";
 
 import "@formio/js/dist/formio.form.min.css";
@@ -41,7 +48,8 @@ function firstErrorField(
     errors.map((error) => [`data[${error.field}]`, error.field]),
   );
 
-  for (const input of formElement?.querySelectorAll<HTMLElement>("[name]") ?? []) {
+  for (const input of formElement?.querySelectorAll<HTMLElement>("[name]") ??
+    []) {
     const field = fieldsByInputName.get(input.getAttribute("name") ?? "");
     if (field) return field;
   }
@@ -81,7 +89,9 @@ export default function FormSpecWidget({
       !field ||
       !form ||
       !(displayedError instanceof SubmissionRejectedError) ||
-      !displayedError.errors.some((validationError) => validationError.field === field)
+      !displayedError.errors.some(
+        (validationError) => validationError.field === field,
+      )
     ) {
       return;
     }

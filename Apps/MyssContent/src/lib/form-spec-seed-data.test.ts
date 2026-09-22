@@ -32,6 +32,7 @@ interface Component {
   readonly key?: unknown;
   readonly type?: unknown;
   readonly inputMask?: unknown;
+  readonly placeholder?: unknown;
   readonly conditional?: { readonly when?: unknown };
   readonly properties?: { readonly myssValidator?: unknown };
   readonly validate?: {

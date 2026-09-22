@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import FormSpecWidget from "@/widgets/FormSpecWidget";
+import BusPassForm from "@/widgets/BusPassForm";
 import { API_URL } from "@/constants";
 import { useSubmissions } from "@/hooks/usePocForm";
 
@@ -51,7 +51,7 @@ export default function BusPassPage() {
         <Link to="/">← Home</Link>
       </nav>
       <h1>BC Bus Pass</h1>
-      <FormSpecWidget formSpecId={FORM_SPEC_ID} />
+      <BusPassForm />
 
       <section>
         <h3>Previous submissions</h3>
