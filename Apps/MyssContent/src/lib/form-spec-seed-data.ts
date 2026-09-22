@@ -12,7 +12,8 @@
  * scanned at all, so shared pure modules cannot confuse it.
  */
 
-import busPassFormSpec from "./bus-pass-form.json";
+import busPassFormSpecV1Json from "./bus-pass-form.json";
+import busPassFormSpecV2Json from "./bus-pass-form-v2.json";
 
 export type Json =
   | string
@@ -27,6 +28,12 @@ export const BUS_PASS_FORM_SPEC_ID = "bc-bus-pass";
 
 /** The human-readable title for the BC Bus Pass form. */
 export const BUS_PASS_FORM_SPEC_TITLE = "BC Bus Pass";
+
+/** The original BC Bus Pass form spec. Published seed versions are immutable. */
+export const busPassFormSpecV1 = busPassFormSpecV1Json as unknown as Json;
+
+/** The BC Bus Pass form spec using MyssApi's server-side SIN validator. */
+export const busPassFormSpecV2 = busPassFormSpecV2Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -318,7 +325,9 @@ const yesNoValues: Json = [
  * `relationshipStatus` resolves to undefined and the section never reveals.
  */
 const partneredConditional: Json = {
-  json: { in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]] },
+  json: {
+    in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -1151,6 +1160,9 @@ export const seededForms: readonly SeededForm[] = [
   {
     formSpecId: BUS_PASS_FORM_SPEC_ID,
     title: BUS_PASS_FORM_SPEC_TITLE,
-    versions: [{ version: 1, spec: busPassFormSpec as unknown as Json }],
+    versions: [
+      { version: 1, spec: busPassFormSpecV1 },
+      { version: 2, spec: busPassFormSpecV2 },
+    ],
   },
 ];
