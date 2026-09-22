@@ -60,6 +60,9 @@ namespace Myss.Api.Services
         /// <summary>Email: the notification address.</summary>
         public const string Email = "email";
 
+        /// <summary>Email: retyped to confirm <see cref="Email"/>.</summary>
+        public const string EmailVerification = "emailVerification";
+
         /// <summary>Select: "phone" or "email".</summary>
         public const string PreferredCommunication = "preferredCommunication";
 

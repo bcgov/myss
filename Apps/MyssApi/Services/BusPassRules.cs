@@ -118,14 +118,27 @@ namespace Myss.Api.Services
 
         private static void ValidateContact(JsonElement answers, List<ValidationErrorModel> errors)
         {
+            string? email = BusPassAnswers.GetString(answers, BusPassAnswers.Email);
+
             bool prefersEmail = BusPassAnswers.GetString(answers, BusPassAnswers.PreferredCommunication) == "email";
-            if (prefersEmail && BusPassAnswers.GetString(answers, BusPassAnswers.Email) is null)
+            if (prefersEmail && email is null)
             {
                 errors.Add(new ValidationErrorModel
                 {
                     Field = BusPassAnswers.Email,
                     Keyword = BusPassErrorKeywords.EmailRequiredForEmailContact,
                     Message = "An email address is required when email is the preferred means of communication",
+                });
+            }
+
+            if (email is not null
+                && !EmailAddress.ConfirmationMatches(email, BusPassAnswers.GetString(answers, BusPassAnswers.EmailVerification)))
+            {
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = BusPassAnswers.EmailVerification,
+                    Keyword = BusPassErrorKeywords.EmailMismatch,
+                    Message = "The two email addresses do not match",
                 });
             }
         }

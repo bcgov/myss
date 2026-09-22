@@ -280,5 +280,8 @@ namespace Myss.Api.Models
 
         /// <summary>Email was chosen as the contact method but no address was given.</summary>
         public const string EmailRequiredForEmailContact = "BUSPASS.CONTACT.EMAIL_REQUIRED";
+
+        /// <summary>The email and its confirmation field do not match.</summary>
+        public const string EmailMismatch = "BUSPASS.CONTACT.EMAIL_MISMATCH";
     }
 }

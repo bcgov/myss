@@ -376,7 +376,8 @@
             "input": true,
             "label": "Email verification",
             "validate": {
-                "required": false
+                "required": false,
+                "custom": "valid = (!input && !data.email) || input.trim().toLowerCase() === (data.email || '').trim().toLowerCase() || 'The two email addresses do not match.'"
             }
         },
         {
