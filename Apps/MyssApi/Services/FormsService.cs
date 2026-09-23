@@ -224,9 +224,9 @@ namespace Myss.Api.Services
         /// <summary>
         /// Turns a trusted Strapi lifecycle refusal into validation errors the client can
         /// show: one error per recognized keyword, deduplicated, carrying Strapi's own
-        /// message. Unknown keywords are dropped. Only ever called for a refusal that
-        /// <see cref="IsLifecycleRefusal"/> already accepted, so the generic fallback is
-        /// defensive.
+        /// message. Unknown keywords are dropped. It is called only after
+        /// <see cref="IsLifecycleRefusal"/> has confirmed that at least one recognized
+        /// lifecycle keyword is present.
         /// </summary>
         /// <param name="ex">The refusal from the admin provider (already logged by it).</param>
         /// <returns>One validation error per recognized keyword.</returns>
@@ -263,16 +263,6 @@ namespace Myss.Api.Services
             string safeMessage = string.IsNullOrWhiteSpace(message)
                 ? "The content engine refused the change."
                 : message!;
-
-            if (keywords.Count == 0)
-            {
-                return [new ValidationErrorModel
-                {
-                    Field = "spec",
-                    Keyword = FormSpecStructureKeywords.StrapiRefused,
-                    Message = safeMessage,
-                }];
-            }
 
             return keywords
                 .Select(keyword => new ValidationErrorModel
@@ -463,7 +453,7 @@ namespace Myss.Api.Services
                 return true;
             }
 
-            if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset dateTime))
+            if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dateTime))
             {
                 date = DateOnly.FromDateTime(dateTime.DateTime);
                 return true;

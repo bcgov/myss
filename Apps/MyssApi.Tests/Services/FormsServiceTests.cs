@@ -212,6 +212,23 @@ namespace Myss.Api.Tests.Services
                 }
 
         [Fact]
+        public async Task Submit_RegistrationWithPickerDateTime_PersistsTheDatePortion()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10T12:30:00+00:00","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal(new DateOnly(1815, 12, 10), profile.DateOfBirth);
+        }
+
+        [Fact]
         public async Task Submit_RegistrationCreatesAndUpdatesTheProfileForTheAuthenticatedSubject()
         {
             using FormsDbContext db = NewDb();

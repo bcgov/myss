@@ -55,9 +55,9 @@ describe("SignInPage", () => {
         session.isMeLoading = true;
         const screen = await renderSignIn();
 
-        await expect
-            .element(screen.getByRole("status", { name: "Checking your MySS account…" }))
-            .toBeInTheDocument();
+        await expect.element(screen.getByRole("status")).toHaveTextContent(
+            "Checking your MySS account…",
+        );
     });
 
     it("routes an authenticated user based on their profile status", async () => {
