@@ -9,12 +9,18 @@ import SignInChooser from "@/auth/SignInChooser";
 import { paths } from "@/routes/paths";
 
 export default function SignInPage() {
-    const { isAuthenticated } = useSession();
+    const { hasProfile, isAuthenticated, isMeLoading } = useSession();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (isAuthenticated) navigate(paths.dashboard, { replace: true });
-    }, [isAuthenticated, navigate]);
+        if (isAuthenticated && hasProfile !== undefined) {
+            navigate(hasProfile ? paths.dashboard : paths.register, { replace: true });
+        }
+    }, [hasProfile, isAuthenticated, navigate]);
+
+    if (isAuthenticated && isMeLoading) {
+        return <p role="status">Checking your MySS account…</p>;
+    }
 
     return (
         <div style={{ maxWidth: 820, margin: "0 auto", width: "100%" }}>

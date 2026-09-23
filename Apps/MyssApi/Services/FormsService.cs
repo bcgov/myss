@@ -4,6 +4,7 @@ namespace Myss.Api.Services
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+        using System.Globalization;
     using System.Net;
     using System.Reflection;
     using System.Text.Json;
@@ -29,6 +30,7 @@ namespace Myss.Api.Services
         private readonly IPdfProvider _pdfProvider;
         private readonly ITemplateProvider _templateProvider;
         private readonly IFormSpecAdminProvider _formSpecAdminProvider;
+        private readonly ICurrentUserAccessor _currentUserAccessor;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -45,7 +47,8 @@ namespace Myss.Api.Services
             IFormSpecProvider formSpecProvider,
             IPdfProvider pdfProvider,
             ITemplateProvider templateProvider,
-            IFormSpecAdminProvider formSpecAdminProvider)
+            IFormSpecAdminProvider formSpecAdminProvider,
+            ICurrentUserAccessor currentUserAccessor)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -53,6 +56,7 @@ namespace Myss.Api.Services
             _pdfProvider = pdfProvider;
             _templateProvider = templateProvider;
             _formSpecAdminProvider = formSpecAdminProvider;
+            _currentUserAccessor = currentUserAccessor;
         }
 
         /// <inheritdoc/>
@@ -353,6 +357,10 @@ namespace Myss.Api.Services
             };
 
             _dbContext.FormSubmissions.Add(submission);
+            if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
+            {
+                AddOrUpdateProfile(request.Answers);
+            }
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             // Don't log the answers; they may contain PII.
@@ -363,6 +371,69 @@ namespace Myss.Api.Services
                 submission.FormSpecVersion);
 
             return FormSubmissionResultModel.Accepted(ToResponse(submission, spec: null));
+        }
+
+        private void AddOrUpdateProfile(JsonElement answers)
+        {
+            CurrentUser currentUser = _currentUserAccessor.User;
+            if (!currentUser.IsAuthenticated || string.IsNullOrWhiteSpace(currentUser.Subject))
+            {
+                throw new InvalidOperationException("An authenticated identity is required to register a MySS profile.");
+            }
+
+            string firstName = answers.GetProperty("firstName").GetString()!;
+            string lastName = answers.GetProperty("lastName").GetString()!;
+            string dateOfBirth = answers.GetProperty("dateOfBirth").GetString()!;
+            string email = answers.GetProperty("email").GetString()!;
+            string sin = answers.GetProperty("sin").GetString()!;
+
+            if (!TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate))
+            {
+                throw new InvalidOperationException("Registration date of birth was not a valid date.");
+            }
+
+            MyssUserProfile? profile = _dbContext.MyssUserProfiles
+                .SingleOrDefault(p => p.Subject == currentUser.Subject);
+            if (profile is null)
+            {
+                _dbContext.MyssUserProfiles.Add(new MyssUserProfile
+                {
+                    Id = Guid.NewGuid(),
+                    Subject = currentUser.Subject,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    DateOfBirth = parsedDate,
+                    Email = email,
+                    Sin = sin,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                });
+                return;
+            }
+
+            profile.FirstName = firstName;
+            profile.LastName = lastName;
+            profile.DateOfBirth = parsedDate;
+            profile.Email = email;
+            profile.Sin = sin;
+            profile.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        private static bool TryParseRegistrationDate(string value, out DateOnly date)
+        {
+            if (DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+            {
+                return true;
+            }
+
+            if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset dateTime))
+            {
+                date = DateOnly.FromDateTime(dateTime.DateTime);
+                return true;
+            }
+
+            date = default;
+            return false;
         }
 
         /// <inheritdoc/>
