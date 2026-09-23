@@ -1,11 +1,17 @@
 namespace Myss.Api.Tests
 {
+    using System;
     using System.Net;
     using System.Net.Http;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Mvc.Testing;
+    using Microsoft.EntityFrameworkCore;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.DependencyInjection.Extensions;
     using Myss.Api.Configuration;
+    using Myss.Api.Data;
     using Myss.Api.Tests.TestDoubles;
     using Xunit;
 
@@ -29,10 +35,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task UnauthenticatedCallIsRejectedWith401()
         {
-            HttpClient client = this.factory
-                .WithWebHostBuilder(builder => builder.UseMockAuthSettings(
-                    allowMockAuth: "false", environmentName: "test", mockAuth: "false"))
-                .CreateClient();
+            HttpClient client = this.CreateClient(allowMockAuth: false);
 
             HttpResponseMessage response = await client.GetAsync("/v1/auth/me");
 
@@ -91,10 +94,7 @@ namespace Myss.Api.Tests
 
         private async Task<JsonDocument> GetMe(string persona)
         {
-            HttpClient client = this.factory
-                .WithWebHostBuilder(builder => builder.UseMockAuthSettings(
-                    allowMockAuth: "true", environmentName: "test", mockAuth: "true"))
-                .CreateClient();
+            HttpClient client = this.CreateClient(allowMockAuth: true);
 
             var request = new HttpRequestMessage(HttpMethod.Get, "/v1/auth/me");
             request.Headers.Add(MockAuthenticationHandler.PersonaHeader, persona);
@@ -103,6 +103,29 @@ namespace Myss.Api.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             return JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        }
+
+        private HttpClient CreateClient(bool allowMockAuth)
+        {
+            string dbName = Guid.NewGuid().ToString();
+            return this.factory
+                .WithWebHostBuilder(builder =>
+                {
+                    string enabled = allowMockAuth ? "true" : "false";
+                    builder.UseMockAuthSettings(
+                        allowMockAuth: enabled, environmentName: "test", mockAuth: enabled);
+                    builder.ConfigureServices(services =>
+                    {
+                        DbContextOptions<FormsDbContext> options = new DbContextOptionsBuilder<FormsDbContext>()
+                            .UseInMemoryDatabase(dbName)
+                            .Options;
+
+                        services.RemoveAll<DbContextOptions<FormsDbContext>>();
+                        services.RemoveAll<FormsDbContext>();
+                        services.AddScoped<FormsDbContext>(_ => new InMemoryFormsDbContext(options));
+                    });
+                })
+                .CreateClient();
         }
     }
 }
