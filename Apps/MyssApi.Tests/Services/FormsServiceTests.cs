@@ -161,6 +161,56 @@ namespace Myss.Api.Tests.Services
         }
         """;
 
+                private const string RegistrationSpec = """
+                {
+                    "components": [
+                        { "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } },
+                        { "type": "textfield", "key": "lastName", "input": true, "validate": { "required": true } },
+                        { "type": "datetime", "key": "dateOfBirth", "input": true, "validate": { "required": true } },
+                        { "type": "email", "key": "email", "input": true, "validate": { "required": true } },
+                        { "type": "textfield", "key": "sin", "input": true, "properties": { "myssValidator": "sin" }, "validate": { "required": true } }
+                    ]
+                }
+                """;
+
+                [Fact]
+                public async Task Submit_RegistrationWithMalformedDateOfBirth_IsRefused_AndNothingIsPersisted()
+                {
+                        using FormsDbContext db = NewDb();
+                        _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+                        FormsService service = NewService(db);
+
+                        FormSubmissionResultModel result = await service.SubmitAsync(
+                                "registration",
+                                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"not-a-date","email":"ada@example.com","sin":"050082833"}"""),
+                                CancellationToken.None);
+
+                        ValidationErrorModel error = Assert.Single(result.Errors);
+                        Assert.Equal("dateOfBirth", error.Field);
+                        Assert.Equal(ValidationKeywords.RegistrationDateOfBirthInvalid, error.Keyword);
+                        Assert.Empty(await db.FormSubmissions.ToListAsync());
+                        Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+                }
+
+                [Fact]
+                public async Task Submit_RegistrationWithFutureDateOfBirth_IsRefused_AndNothingIsPersisted()
+                {
+                        using FormsDbContext db = NewDb();
+                        _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+                        FormsService service = NewService(db);
+
+                        FormSubmissionResultModel result = await service.SubmitAsync(
+                                "registration",
+                                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"2999-01-01","email":"ada@example.com","sin":"050082833"}"""),
+                                CancellationToken.None);
+
+                        ValidationErrorModel error = Assert.Single(result.Errors);
+                        Assert.Equal("dateOfBirth", error.Field);
+                        Assert.Equal(ValidationKeywords.RegistrationDateOfBirthInFuture, error.Keyword);
+                        Assert.Empty(await db.FormSubmissions.ToListAsync());
+                        Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+                }
+
         private static FormSubmissionRequestModel Request(int version, string answersJson)
         {
             using JsonDocument answers = JsonDocument.Parse(answersJson);

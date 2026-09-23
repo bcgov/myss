@@ -325,6 +325,11 @@ namespace Myss.Api.Services
             IReadOnlyList<ValidationErrorModel> errors =
                 FormSpecValidator.Validate(spec.Spec, request.Answers);
 
+            if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
+            {
+                errors = [.. errors, .. ValidateRegistration(request.Answers)];
+            }
+
             if (domainRules is not null)
             {
                 IReadOnlyList<ValidationErrorModel> domainErrors = domainRules(request.Answers);
@@ -387,10 +392,7 @@ namespace Myss.Api.Services
             string email = answers.GetProperty("email").GetString()!;
             string sin = answers.GetProperty("sin").GetString()!;
 
-            if (!TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate))
-            {
-                throw new InvalidOperationException("Registration date of birth was not a valid date.");
-            }
+            _ = TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate);
 
             MyssUserProfile? profile = _dbContext.MyssUserProfiles
                 .SingleOrDefault(p => p.Subject == currentUser.Subject);
@@ -417,6 +419,41 @@ namespace Myss.Api.Services
             profile.Email = email;
             profile.Sin = sin;
             profile.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        private static IReadOnlyList<ValidationErrorModel> ValidateRegistration(JsonElement answers)
+        {
+            string? dateOfBirth = answers.TryGetProperty("dateOfBirth", out JsonElement value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
+
+            if (!TryParseRegistrationDate(dateOfBirth ?? string.Empty, out DateOnly parsedDate))
+            {
+                return
+                [
+                    new ValidationErrorModel
+                    {
+                        Field = "dateOfBirth",
+                        Keyword = ValidationKeywords.RegistrationDateOfBirthInvalid,
+                        Message = "Enter a valid date of birth.",
+                    },
+                ];
+            }
+
+            if (parsedDate > DateOnly.FromDateTime(DateTime.UtcNow))
+            {
+                return
+                [
+                    new ValidationErrorModel
+                    {
+                        Field = "dateOfBirth",
+                        Keyword = ValidationKeywords.RegistrationDateOfBirthInFuture,
+                        Message = "Date of birth cannot be in the future.",
+                    },
+                ];
+            }
+
+            return [];
         }
 
         private static bool TryParseRegistrationDate(string value, out DateOnly date)
