@@ -211,6 +211,32 @@ namespace Myss.Api.Tests.Services
                         Assert.Empty(await db.MyssUserProfiles.ToListAsync());
                 }
 
+        [Fact]
+        public async Task Submit_RegistrationCreatesAndUpdatesTheProfileForTheAuthenticatedSubject()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel firstResult = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+            FormSubmissionResultModel secondResult = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Augusta","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"augusta@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(firstResult.IsValid);
+            Assert.True(secondResult.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("test-subject", profile.Subject);
+            Assert.Equal("Augusta", profile.FirstName);
+            Assert.Equal("augusta@example.com", profile.Email);
+            Assert.Equal(new DateOnly(1815, 12, 10), profile.DateOfBirth);
+            Assert.Equal(2, await db.FormSubmissions.CountAsync());
+        }
+
         private static FormSubmissionRequestModel Request(int version, string answersJson)
         {
             using JsonDocument answers = JsonDocument.Parse(answersJson);
