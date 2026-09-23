@@ -179,7 +179,8 @@ namespace Myss.Api.Tests.Services
                 _provider,
                 _pdfProvider,
                 _templateProvider,
-                _adminProvider);
+                _adminProvider,
+                new StubCurrentUserAccessor("test-subject"));
         }
 
         private static FormsDbContext NewDb()

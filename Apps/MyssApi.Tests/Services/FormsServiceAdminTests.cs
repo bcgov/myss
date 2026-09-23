@@ -314,7 +314,8 @@ namespace Myss.Api.Tests.Services
             new FakeFormSpecProvider(),
             new UnexpectedPdfProvider(),
             new UnexpectedTemplateProvider(),
-            _admin);
+            _admin,
+            new StubCurrentUserAccessor("test-subject"));
 
         private static JsonElement Spec(string json) => JsonDocument.Parse(json).RootElement.Clone();
 
