@@ -54,6 +54,35 @@ namespace Myss.Api.Tests
                 "11111111-1111-1111-1111-111111111111",
                 payload.GetProperty("bceidGuid").GetString());
             Assert.Equal([MyssRoles.Client], RolesOf(payload));
+            Assert.False(payload.GetProperty("hasProfile").GetBoolean());
+            Assert.Equal(JsonValueKind.Null, payload.GetProperty("profileFirstName").ValueKind);
+        }
+
+        [Fact]
+        public async Task ReturnsProfileStatusAndFirstNameForARegisteredCaller()
+        {
+            using JsonDocument body = await this.GetMe(
+                "alice",
+                db =>
+                {
+                    db.MyssUserProfiles.Add(new MyssUserProfile
+                    {
+                        Id = Guid.NewGuid(),
+                        Subject = "mock-alice",
+                        FirstName = "Ada",
+                        LastName = "Lovelace",
+                        DateOfBirth = new DateOnly(1815, 12, 10),
+                        Email = "ada@example.com",
+                        Sin = "050082833",
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow,
+                    });
+                    db.SaveChanges();
+                });
+            JsonElement payload = body.RootElement.GetProperty("payload");
+
+            Assert.True(payload.GetProperty("hasProfile").GetBoolean());
+            Assert.Equal("Ada", payload.GetProperty("profileFirstName").GetString());
         }
 
         [Fact]
@@ -92,9 +121,11 @@ namespace Myss.Api.Tests
             return values;
         }
 
-        private async Task<JsonDocument> GetMe(string persona)
+        private async Task<JsonDocument> GetMe(
+            string persona,
+            Action<FormsDbContext>? seed = null)
         {
-            HttpClient client = this.CreateClient(allowMockAuth: true);
+            HttpClient client = this.CreateClient(allowMockAuth: true, seed);
 
             var request = new HttpRequestMessage(HttpMethod.Get, "/v1/auth/me");
             request.Headers.Add(MockAuthenticationHandler.PersonaHeader, persona);
@@ -105,7 +136,9 @@ namespace Myss.Api.Tests
             return JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         }
 
-        private HttpClient CreateClient(bool allowMockAuth)
+        private HttpClient CreateClient(
+            bool allowMockAuth,
+            Action<FormsDbContext>? seed = null)
         {
             string dbName = Guid.NewGuid().ToString();
             return this.factory
@@ -119,6 +152,12 @@ namespace Myss.Api.Tests
                         DbContextOptions<FormsDbContext> options = new DbContextOptionsBuilder<FormsDbContext>()
                             .UseInMemoryDatabase(dbName)
                             .Options;
+
+                        if (seed is not null)
+                        {
+                            using var db = new InMemoryFormsDbContext(options);
+                            seed(db);
+                        }
 
                         services.RemoveAll<DbContextOptions<FormsDbContext>>();
                         services.RemoveAll<FormsDbContext>();

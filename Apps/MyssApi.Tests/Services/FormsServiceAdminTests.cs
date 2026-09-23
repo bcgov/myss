@@ -126,6 +126,28 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task Publish_LifecycleRefusal_ReturnsTranslatedErrors()
+        {
+            _admin.Draft = new FormSpecModel
+            {
+                FormSpecId = "estimator",
+                Version = 4,
+                Spec = Spec("""{ "components": [ { "key": "firstName" } ] }"""),
+            };
+            _admin.PublishException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "A published form cannot be changed.", "details": { "keywords": ["FORMSPEC.PUBLISHED.IMMUTABLE"] } } }""");
+
+            FormSpecWriteResultModel<PublishResultModel> result = await NewService().PublishAsync(
+                "estimator", CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("FORMSPEC.PUBLISHED.IMMUTABLE", error.Keyword);
+            Assert.Contains("published form", error.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
         public async Task ListForms_DelegatesToTheProvider()
         {
             _admin.Forms =
@@ -142,6 +164,24 @@ namespace Myss.Api.Tests.Services
 
             Assert.Single(forms);
             Assert.Equal("estimator", forms[0].FormSpecId);
+        }
+
+        [Fact]
+        public async Task GetDraftOrLatestPublished_DelegatesToTheProvider()
+        {
+            _admin.Draft = new FormSpecModel
+            {
+                FormSpecId = "estimator",
+                Version = 4,
+                Title = "Estimator",
+                Spec = Spec("""{ "components": [] }"""),
+            };
+
+            FormSpecModel? draft = await NewService().GetDraftOrLatestPublishedAsync(
+                "estimator", CancellationToken.None);
+
+            Assert.Same(_admin.Draft, draft);
+            Assert.Equal(["estimator"], _admin.GetDraftCalls);
         }
 
         [Fact]
