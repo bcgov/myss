@@ -49,9 +49,9 @@ describe("DashboardPage", () => {
         session.isMeLoading = true;
         const screen = await renderDashboard();
 
-        await expect
-            .element(screen.getByRole("status", { name: "Checking your MySS account…" }))
-            .toBeInTheDocument();
+        await expect.element(screen.getByRole("status")).toHaveTextContent(
+            "Checking your MySS account…",
+        );
     });
 
     it("redirects an authenticated user without a profile to registration", async () => {
