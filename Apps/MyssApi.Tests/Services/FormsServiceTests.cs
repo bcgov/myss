@@ -229,6 +229,24 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task Submit_RegistrationWithoutAuthenticatedIdentity_ThrowsAndPersistsNothing()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db, new AnonymousCurrentUserAccessor());
+
+            InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.SubmitAsync(
+                    "registration",
+                    Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                    CancellationToken.None));
+
+            Assert.Equal("An authenticated identity is required to register a MySS profile.", exception.Message);
+            Assert.Empty(await db.FormSubmissions.ToListAsync());
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Fact]
         public async Task Submit_RegistrationCreatesAndUpdatesTheProfileForTheAuthenticatedSubject()
         {
             using FormsDbContext db = NewDb();
@@ -264,7 +282,9 @@ namespace Myss.Api.Tests.Services
             };
         }
 
-        private FormsService NewService(FormsDbContext db)
+        private FormsService NewService(
+            FormsDbContext db,
+            ICurrentUserAccessor? currentUserAccessor = null)
         {
             return new FormsService(
                 NullLogger<FormsService>.Instance,
@@ -273,8 +293,13 @@ namespace Myss.Api.Tests.Services
                 _pdfProvider,
                 _templateProvider,
                 _adminProvider,
-                new StubCurrentUserAccessor("test-subject"));
+                currentUserAccessor ?? new StubCurrentUserAccessor("test-subject"));
         }
+
+            private sealed class AnonymousCurrentUserAccessor : ICurrentUserAccessor
+            {
+                public CurrentUser User => CurrentUser.Anonymous;
+            }
 
         private static FormsDbContext NewDb()
         {
