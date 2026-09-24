@@ -2,6 +2,7 @@ namespace Myss.Api.Services
 {
     using System.Collections.Generic;
     using System.Text.Json;
+    using Myss.Api.Models;
 
     /// <summary>
     /// Builds the PDF template data object for a BC Bus Pass submission, using
@@ -30,6 +31,7 @@ namespace Myss.Api.Services
             }
 
             data["dateOfBirth"] = BuildDateOfBirth(answers);
+            ApplyRequestTypeLabels(answers, data);
             ApplyMailingAddress(answers, data);
             ApplyRequestTypeFlags(answers, data);
 
@@ -45,12 +47,31 @@ namespace Myss.Api.Services
         /// </summary>
         private static void ApplyRequestTypeFlags(JsonElement answers, Dictionary<string, object?> data)
         {
-            string? applicantCategory = GetString(answers, "applicantCategory");
-            string? existingClientReason = GetString(answers, "existingClientReason");
+            bool hasRequestType = BusPassAnswers.TryGetRequestType(
+                answers,
+                out BusPassRequestType requestType);
 
-            data["isNewApplicant"] = applicantCategory == "new";
-            data["isAddressUpdate"] = applicantCategory == "existing" && existingClientReason == "moved";
-            data["isReplacementRequest"] = applicantCategory == "existing" && existingClientReason == "replacement";
+            data["isNewApplicant"] = hasRequestType && requestType == BusPassRequestType.NewApplication;
+            data["isAddressUpdate"] = hasRequestType && requestType == BusPassRequestType.AddressUpdate;
+            data["isReplacementRequest"] = hasRequestType && requestType == BusPassRequestType.Replacement;
+        }
+
+        private static void ApplyRequestTypeLabels(JsonElement answers, Dictionary<string, object?> data)
+        {
+            if (!BusPassAnswers.TryGetRequestType(answers, out BusPassRequestType requestType))
+            {
+                return;
+            }
+
+            data["applicantCategory"] = requestType == BusPassRequestType.NewApplication
+                ? "New applicant"
+                : "Existing client - address change or replacement pass";
+            data["existingClientReason"] = requestType switch
+            {
+                BusPassRequestType.AddressUpdate => "Moved - address update",
+                BusPassRequestType.Replacement => "Lost or stolen pass - replacement requested",
+                _ => null,
+            };
         }
 
         private static string BuildDateOfBirth(JsonElement answers)

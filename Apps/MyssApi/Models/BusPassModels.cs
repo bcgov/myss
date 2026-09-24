@@ -305,5 +305,8 @@ namespace Myss.Api.Models
 
         /// <summary>The email and its confirmation field do not match.</summary>
         public const string EmailMismatch = "BUSPASS.CONTACT.EMAIL_MISMATCH";
+
+        /// <summary>The service selector contained an unknown value.</summary>
+        public const string RequestTypeInvalid = "BUSPASS.REQUEST.TYPE_INVALID";
     }
 }

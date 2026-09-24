@@ -40,6 +40,16 @@ namespace Myss.Api.Tests.Services
         }
         """;
 
+        private const string NestedRadioSpec = """
+        {
+          "display": "form",
+          "components": [
+            { "type": "bcgovNestedRadio", "key": "serviceRequestType", "input": true, "validate": { "required": true } },
+            { "type": "button", "key": "submit", "action": "submit", "input": true }
+          ]
+        }
+        """;
+
         [Fact]
         public void Validate_AcceptsAWellFormedSubmission()
         {
@@ -250,6 +260,22 @@ namespace Myss.Api.Tests.Services
         public void Validate_AcceptsAStringBcgovRadioAnswer()
         {
             Assert.Empty(Run(CustomComponentSpec, """{"residesInBc":"true"}"""));
+        }
+
+        [Fact]
+        public void Validate_AcceptsAStringNestedRadioAnswer()
+        {
+          Assert.Empty(Run(NestedRadioSpec, """{"serviceRequestType":"addressUpdate"}"""));
+        }
+
+        [Fact]
+        public void Validate_RejectsANonStringNestedRadioAnswer()
+        {
+          ValidationErrorModel error =
+            Assert.Single(Run(NestedRadioSpec, """{"serviceRequestType":true}"""));
+
+          Assert.Equal("serviceRequestType", error.Field);
+          Assert.Equal(ValidationKeywords.FieldWrongType, error.Keyword);
         }
 
         [Fact]

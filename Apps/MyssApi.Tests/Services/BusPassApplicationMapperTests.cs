@@ -39,6 +39,19 @@ namespace Myss.Api.Tests.Services
             Assert.Null(request.AcknowledgedEligibilityCriteria);
         }
 
+        [Theory]
+        [InlineData("addressUpdate", BusPassRequestType.AddressUpdate)]
+        [InlineData("replacement", BusPassRequestType.Replacement)]
+        [InlineData("newApplication", BusPassRequestType.NewApplication)]
+        public void V3ServiceSelection_MapsToTheRequestType(string selection, BusPassRequestType expected)
+        {
+            BusPassApplicationModel request = Build($$"""
+                {"serviceRequestType":"{{selection}}"}
+                """);
+
+            Assert.Equal(expected, request.RequestType);
+        }
+
         [Fact]
         public void IdentifiersAndPhone_AreSentAsDigitsOnly()
         {

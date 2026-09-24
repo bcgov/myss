@@ -23,13 +23,16 @@ namespace Myss.Api.Services
         /// <returns>The request to send.</returns>
         public static BusPassApplicationModel Build(Guid submissionId, JsonElement answers)
         {
-            bool isNewApplicant = BusPassAnswers.GetString(answers, BusPassAnswers.ApplicantCategory) == "new";
+            BusPassRequestType requestType = BusPassAnswers.TryGetRequestType(answers, out BusPassRequestType parsedRequestType)
+                ? parsedRequestType
+                : BusPassRequestType.NewApplication;
+            bool isNewApplicant = requestType == BusPassRequestType.NewApplication;
             bool mailingDiffers = BusPassAnswers.GetString(answers, BusPassAnswers.MailingAddressDifferent) == "yes";
 
             return new BusPassApplicationModel
             {
                 SubmissionKey = submissionId.ToString("D"),
-                RequestType = ToRequestType(answers),
+                RequestType = requestType,
                 ApplicantType = isNewApplicant ? ToApplicantType(answers) : null,
                 AcknowledgedEligibilityCriteria = isNewApplicant
                     ? BusPassAnswers.GetBool(answers, BusPassAnswers.EligibilityAcknowledged)
@@ -70,18 +73,6 @@ namespace Myss.Api.Services
                     }
                     : null,
             };
-        }
-
-        private static BusPassRequestType ToRequestType(JsonElement answers)
-        {
-            if (BusPassAnswers.GetString(answers, BusPassAnswers.ApplicantCategory) != "existing")
-            {
-                return BusPassRequestType.NewApplication;
-            }
-
-            return BusPassAnswers.GetString(answers, BusPassAnswers.ExistingClientReason) == "replacement"
-                ? BusPassRequestType.Replacement
-                : BusPassRequestType.AddressUpdate;
         }
 
         private static BusPassApplicantType? ToApplicantType(JsonElement answers)
