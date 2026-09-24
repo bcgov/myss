@@ -394,8 +394,6 @@ class BcgovRadioComponent extends RadioBase {
                   orientation="vertical"
                   value={value}
                   isRequired={required}
-                  isInvalid={this.errorMessage !== ""}
-                  errorMessage={this.errorMessage}
                   onChange={(next: string) => {
                     this.updateValue(next, { modified: true });
                     this.renderGroup();

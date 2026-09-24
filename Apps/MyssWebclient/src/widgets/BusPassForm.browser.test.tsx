@@ -66,7 +66,10 @@ const currentSpecV3 = {
             value: "newApplication",
           },
         ],
-        validate: { required: true },
+        validate: {
+          required: true,
+          customMessage: "Select the type of service you would like to request",
+        },
       },
       {
         type: "textfield",
@@ -317,6 +320,34 @@ test("switches from an expanded existing-client choice to a new application", as
       screen.getByText("I have moved and would like to update my address."),
     )
     .not.toBeInTheDocument();
+});
+
+test("shows one error when an existing client leaves the nested choice unanswered", async () => {
+  stubApi(accepted, currentSpecV3);
+  const screen = await renderForm();
+
+  await screen
+    .getByText(
+      "I am an existing client and require an address change or replacement bus pass.",
+    )
+    .click();
+  await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  await expect
+    .poll(() => {
+      const errors = document.querySelectorAll(
+        ".bcds-react-aria-RadioGroup--error",
+      );
+      return {
+        count: errors.length,
+        message: errors[0]?.textContent?.trim(),
+      };
+    })
+    .toEqual({
+      count: 1,
+      message: "Select the type of service you would like to request",
+    });
 });
 
 test("a rejection from the ministry shows the keyword text and the error code", async () => {
