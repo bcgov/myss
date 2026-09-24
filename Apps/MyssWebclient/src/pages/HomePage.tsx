@@ -1,5 +1,6 @@
 import AccountPanel from "@/widgets/home/AccountPanel";
 import AboutMySS from "@/widgets/home/AboutMySS";
+import BusPassCallout from "@/widgets/home/BusPassCallout";
 import CommonQuestions from "@/widgets/home/CommonQuestions";
 import IntroSection from "@/widgets/home/IntroSection";
 import VideoSection from "@/widgets/home/VideoSection";
@@ -55,6 +56,8 @@ export default function HomePage() {
                     />
                 </div>
             </section>
+
+            <BusPassCallout />
 
             <section className={styles.aboutSection}>
                 <AboutMySS />
