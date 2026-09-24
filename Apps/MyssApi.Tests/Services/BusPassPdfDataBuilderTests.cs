@@ -76,6 +76,30 @@ namespace Myss.Api.Tests.Services
             Assert.Equal("PO Box 99", data["mailingStreetAddress1"]);
         }
 
+        [Theory]
+        [InlineData("new", null, true, false, false)]
+        [InlineData("existing", "moved", false, true, false)]
+        [InlineData("existing", "replacement", false, false, true)]
+        public void Build_SetsExactlyOneRequestTypeFlag(
+            string applicantCategory,
+            string? existingClientReason,
+            bool isNewApplicant,
+            bool isAddressUpdate,
+            bool isReplacementRequest)
+        {
+            var answers = new Dictionary<string, object?>
+            {
+                ["applicantCategory"] = applicantCategory,
+                ["existingClientReason"] = existingClientReason,
+            };
+            using JsonDocument document = JsonSerializer.SerializeToDocument(answers);
+            Dictionary<string, object?> data = BusPassPdfDataBuilder.Build(document.RootElement);
+
+            Assert.Equal(isNewApplicant, data["isNewApplicant"]);
+            Assert.Equal(isAddressUpdate, data["isAddressUpdate"]);
+            Assert.Equal(isReplacementRequest, data["isReplacementRequest"]);
+        }
+
         private static Dictionary<string, object?> Build(string answersJson)
         {
             using JsonDocument document = JsonDocument.Parse(answersJson);

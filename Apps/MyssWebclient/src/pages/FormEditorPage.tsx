@@ -17,20 +17,20 @@ import "@formio/js/dist/formio.builder.min.css";
 
 import { FormLoadError, SpecRejectedError } from "@/api/forms";
 import type { FormValidationError } from "@/api/forms";
-import { registerBcgovComponents } from "@/formio/bcgovComponents";
-import { builderOptions } from "@/formio/builderOptions";
-import { revealAllComponents } from "@/formio/specPreview";
+import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
+import { builderOptions } from "@/widgets/formio/builderOptions";
+import { revealAllComponents } from "@/widgets/formio/specPreview";
 import {
     flattenComponents,
     listEditableComponents,
     setLabel,
     setRequired,
     type EditableComponent,
-} from "@/formio/specEdit";
+} from "@/widgets/formio/specEdit";
 import {
     findDuplicateKeys,
     findUnknownConditionalTargets,
-} from "@/formio/specRules";
+} from "@/widgets/formio/specRules";
 import { useDraft, usePublishForm, useSaveDraft } from "@/hooks/useForms";
 import { adminFormEditorPath, paths } from "@/routes/paths";
 import RatesPanel from "./RatesPanel";

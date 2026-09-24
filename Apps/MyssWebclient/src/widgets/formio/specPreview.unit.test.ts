@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FormType } from "@formio/react/lib/components/Form";
 
-import { revealAllComponents } from "@/formio/specPreview";
+import { revealAllComponents } from "@/widgets/formio/specPreview";
 
 // The preview transform strips conditional visibility so every component shows.
 // The nested case matters: the estimator spec hides fields inside panels and

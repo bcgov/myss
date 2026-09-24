@@ -13,5 +13,5 @@
 }
 
 .error {
-  color: var(--surface-color-primary-danger-button-default, #ce3e39);
+  color: var(--surface-color-primary-danger-button-default);
 }

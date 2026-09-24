@@ -13,11 +13,11 @@ import {
 } from "@/api/forms";
 import type { FormSpecPayload } from "@/api/forms";
 import { getEstimatorRates } from "@/api/eligibility";
-import { registerBcgovComponents } from "@/formio/bcgovComponents";
+import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
 import {
   ALLOWED_COMPONENT_TYPES,
   builderOptions,
-} from "@/formio/builderOptions";
+} from "@/widgets/formio/builderOptions";
 import { Components } from "@formio/js";
 
 // The editor against a stubbed admin API. Only the calls are mocked — the real

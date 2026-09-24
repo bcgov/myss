@@ -1,5 +1,5 @@
 #root {
-    background-color: rgb(250, 249, 248);
+    background-color: var(--surface-color-background-light-gray);
     color: var(--typography-color-primary);
     display: flex;
     flex-direction: column;

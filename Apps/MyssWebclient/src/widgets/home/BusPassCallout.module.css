@@ -1,0 +1,25 @@
+.band {
+    background-color: var(--surface-color-background-white);
+    box-sizing: border-box;
+    margin-left: calc(50% - 50vw);
+    margin-top: calc(-1 * var(--layout-margin-large));
+    padding: var(--layout-padding-large) 0;
+    width: 100vw;
+}
+
+.column {
+    margin: 0 auto;
+    max-width: 900px;
+    padding: 0 var(--layout-padding-xlarge);
+}
+
+.content {
+    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+}
+
+.content h2 {
+    margin-top: calc(-1 * var(--layout-margin-small));
+}
+

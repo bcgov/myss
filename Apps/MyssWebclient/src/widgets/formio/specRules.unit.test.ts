@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   findDuplicateKeys,
   findUnknownConditionalTargets,
-} from "@/formio/specRules";
+} from "@/widgets/formio/specRules";
 
 // Pure structural checks mirroring MyssContent's form-spec-rules.ts. The nested
 // cases are the ones a naive top-level loop misses — the real estimator spec

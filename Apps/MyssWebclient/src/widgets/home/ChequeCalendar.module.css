@@ -2,24 +2,20 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    /* BCDS typography uses rem tokens, but Bootstrap sets html{font-size:10px},
-       making 1rem = 10px. Keep the regular body text in this home-page payment
-       section at the intended design size for the Callout and its contents. */
-    --typography-regular-body: 400 16px/1.688 "BC Sans";
 }
 
 .content {
     display: grid;
-    gap: var(--layout-margin-large, 24px);
+    gap: var(--layout-margin-large);
     grid-template-columns: minmax(140px, 0.7fr) 2fr;
     width: 100%;
 }
 
 .dateCard {
     align-items: center;
-    background-color: #ffffff;
-    border: 1px solid var(--surface-color-border-default, #d9d9d9);
-    border-radius: var(--layout-border-radius-medium, 4px);
+    background-color: var(--surface-color-background-white);
+    border: var(--layout-border-width-small) solid var(--surface-color-border-default);
+    border-radius: var(--layout-border-radius-medium);
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -38,10 +34,11 @@
     flex: 1;
     flex-direction: column;
     justify-content: center;
+    transform: translateY(calc(-1 * var(--layout-margin-xsmall)));
 }
 
 .dateCardHeader {
-    background-color: var(--surface-color-background-light-blue, #eaf4fb);
+    background-color: var(--surface-color-background-light-blue);
     font-weight: 700;
     margin-top: 0;
     padding: 4px;
@@ -49,8 +46,7 @@
 }
 
 .dateCardBody > b {
-    font-size: 3rem;
-    margin: 2px 0;
+    font: var(--typography-bold-h3);
 }
 
 .information {
@@ -62,7 +58,7 @@
 }
 
 .information a {
-    color: var(--typography-color-link, #255a90);
+    color: var(--typography-color-link);
 }
 
 @media (max-width: 600px) {

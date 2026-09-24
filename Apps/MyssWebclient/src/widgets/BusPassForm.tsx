@@ -3,7 +3,7 @@ import { Form } from "@formio/react";
 import { useEffect, useRef } from "react";
 
 import "@formio/js/dist/formio.form.min.css";
-import "@/components/PocForm.css";
+import "./FormSpecWidget.css";
 import styles from "./BusPassForm.module.css";
 
 import {

@@ -6,7 +6,7 @@ import {
   listEditableComponents,
   setLabel,
   setRequired,
-} from "@/formio/specEdit";
+} from "@/widgets/formio/specEdit";
 
 // The nested cases matter: the estimator spec nests fields inside panels and
 // columns, and the no-mutation guarantee is what lets the live preview update.

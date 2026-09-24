@@ -121,6 +121,28 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public void EmailVerificationNotMatchingEmail_IsRefused()
+        {
+            var answers = NewApplicant();
+            answers["email"] = "ada@example.com";
+            answers["emailVerification"] = "ada@exampel.com";
+
+            ValidationErrorModel error = Assert.Single(Validate(answers));
+            Assert.Equal("emailVerification", error.Field);
+            Assert.Equal(BusPassErrorKeywords.EmailMismatch, error.Keyword);
+        }
+
+        [Fact]
+        public void EmailVerificationMatchingEmail_Passes()
+        {
+            var answers = NewApplicant();
+            answers["email"] = "ada@example.com";
+            answers["emailVerification"] = "Ada@Example.com";
+
+            Assert.Empty(Validate(answers));
+        }
+
+        [Fact]
         public void ExistingClientWithoutAReason_IsRefused()
         {
             // Conditionally required in the spec, which the spec validator
@@ -196,6 +218,7 @@ namespace Myss.Api.Tests.Services
             ["phoneNumber"] = "(250) 555-0199",
             ["phoneType"] = "home",
             ["email"] = "ada@example.com",
+            ["emailVerification"] = "ada@example.com",
             ["preferredCommunication"] = "phone",
             ["streetAddress1"] = "501 Belleville St",
             ["city"] = "Victoria",

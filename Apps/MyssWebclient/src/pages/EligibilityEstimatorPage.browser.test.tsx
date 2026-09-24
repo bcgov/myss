@@ -3,7 +3,7 @@ import { render } from "vitest-browser-react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
-import { registerBcgovComponents } from "@/formio/bcgovComponents";
+import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
 
 // End-to-end of the estimator page against a stubbed anonymous API, driving the
 // v4 spec: residency is a hard gate (the status question reveals only for "Yes",

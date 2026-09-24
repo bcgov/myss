@@ -2,7 +2,7 @@ import { Button, Header, Footer } from "@bcgov/design-system-react-components";
 import { Outlet, useLocation } from "react-router";
 
 import "./App.css";
-import AnnouncementBanner from "@/components/layout/AnnouncementBanner";
+import AnnouncementBanner from "@/widgets/layout/AnnouncementBanner";
 import { paths } from "@/routes/paths";
 import { useApiAuth } from "@/auth/useApiAuth";
 import { useIdleLogout } from "@/auth/useIdleLogout";
