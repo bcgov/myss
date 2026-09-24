@@ -170,6 +170,42 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public void InvalidV3RequestType_IsRefused()
+        {
+            var answers = V3NewApplication();
+            answers["serviceRequestType"] = "unknown";
+
+            ValidationErrorModel error = Assert.Single(Validate(answers));
+
+            Assert.Equal("serviceRequestType", error.Field);
+            Assert.Equal(BusPassErrorKeywords.RequestTypeInvalid, error.Keyword);
+        }
+
+        [Fact]
+        public void V3NewApplicationWithoutEligibilityCategory_IsRefused()
+        {
+            var answers = V3NewApplication();
+            answers.Remove("eligibilityCategory");
+
+            ValidationErrorModel error = Assert.Single(Validate(answers));
+
+            Assert.Equal("eligibilityCategory", error.Field);
+            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
+        }
+
+        [Fact]
+        public void V3NewApplicationWithoutAcknowledgement_IsRefused()
+        {
+            var answers = V3NewApplication();
+            answers.Remove("eligibilityAcknowledged");
+
+            ValidationErrorModel error = Assert.Single(Validate(answers));
+
+            Assert.Equal("eligibilityAcknowledged", error.Field);
+            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
+        }
+
+        [Fact]
         public void DifferentMailingAddressWithMissingParts_ReportsEachPart()
         {
             var answers = NewApplicant();
@@ -226,6 +262,14 @@ namespace Myss.Api.Tests.Services
             ["postalCode"] = "V8V 1X4",
             ["mailingAddressDifferent"] = "no",
         };
+
+        private static Dictionary<string, object?> V3NewApplication()
+        {
+            var answers = NewApplicant();
+            answers.Remove("applicantCategory");
+            answers["serviceRequestType"] = "newApplication";
+            return answers;
+        }
 
         private static Dictionary<string, object?> ExistingClient()
         {

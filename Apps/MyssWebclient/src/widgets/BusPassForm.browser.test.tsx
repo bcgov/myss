@@ -286,6 +286,39 @@ test("renders the nested service choices in order and submits the address update
   });
 });
 
+test("switches from an expanded existing-client choice to a new application", async () => {
+  stubApi(accepted, currentSpecV3);
+  const screen = await renderForm();
+
+  await screen
+    .getByText(
+      "I am an existing client and require an address change or replacement bus pass.",
+    )
+    .click();
+  await expect
+    .element(
+      screen.getByText("I have moved and would like to update my address."),
+    )
+    .toBeVisible();
+
+  await screen
+    .getByText("I am a new applicant and would like to request a bus pass.")
+    .click();
+
+  await expect
+    .element(
+      screen.getByRole("radio", {
+        name: "I am a new applicant and would like to request a bus pass.",
+      }),
+    )
+    .toBeChecked();
+  await expect
+    .element(
+      screen.getByText("I have moved and would like to update my address."),
+    )
+    .not.toBeInTheDocument();
+});
+
 test("a rejection from the ministry shows the keyword text and the error code", async () => {
   stubApi(rejected);
   const screen = await renderForm();

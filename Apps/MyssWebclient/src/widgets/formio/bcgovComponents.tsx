@@ -359,10 +359,11 @@ class BcgovRadioComponent extends RadioBase {
           if (!hasNestedOptions) {
             this.updateValue(next, { modified: true });
           } else if (option?.children?.length) {
-            this.setValue("", { modified: true });
+            this.updateValue("", { modified: true });
             this.selectedParent = next;
           } else {
-            this.setValue(next, { modified: true });
+            this.selectedParent = next;
+            this.updateValue(next, { modified: true });
           }
           this.renderGroup();
         }}
@@ -396,7 +397,7 @@ class BcgovRadioComponent extends RadioBase {
                   isInvalid={this.errorMessage !== ""}
                   errorMessage={this.errorMessage}
                   onChange={(next: string) => {
-                    this.setValue(next, { modified: true });
+                    this.updateValue(next, { modified: true });
                     this.renderGroup();
                   }}
                 >
