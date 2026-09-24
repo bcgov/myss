@@ -11,16 +11,6 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
     const { isAuthenticated, isLoading } = useSession();
     const [signedOutSettled, setSignedOutSettled] = useState(false);
 
-    // Reset the grace period when the auth library starts resolving again.
-    // Done during render (React's "adjust state when an input changes" pattern)
-    // rather than synchronously inside an effect, which would trigger a
-    // cascading render.
-    const [wasLoading, setWasLoading] = useState(isLoading);
-    if (isLoading !== wasLoading) {
-        setWasLoading(isLoading);
-        if (isLoading) setSignedOutSettled(false);
-    }
-
     // Reset the grace period during render when the auth library starts
     // resolving again, rather than in the effect below: setState in an effect
     // body is a cascading render. React re-runs this component immediately with

@@ -1,6 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "vitest-browser-react";
-import { MemoryRouter } from "react-router";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useParams,
+  useSearchParams,
+} from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import FormManagementPage from "./FormManagementPage";
@@ -10,7 +16,8 @@ import type { FormSummary } from "@/api/forms";
 // The forms list against a stubbed admin API. listForms is mocked; the row
 // rendering, version display and editor links are the real component.
 
-vi.mock("@/api/forms", () => ({
+vi.mock("@/api/forms", async (importActual) => ({
+  ...(await importActual<typeof import("@/api/forms")>()),
   listForms: vi.fn(),
   getDraft: vi.fn(),
   saveDraft: vi.fn(),
@@ -35,14 +42,37 @@ const forms: FormSummary[] = [
   },
 ];
 
+// Stands in for the editor so a test can see where the New form action went
+// without pulling the whole editor in.
+function EditorProbe() {
+  const { formSpecId } = useParams();
+  const [searchParams] = useSearchParams();
+  return (
+    <p>
+      Editor opened: {formSpecId} / new=
+      {searchParams.has("new") ? "yes" : "no"} / title=
+      {searchParams.get("title") ?? "none"}
+    </p>
+  );
+}
+
 function renderPage() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        <FormManagementPage />
+      <MemoryRouter initialEntries={["/admin/form-management"]}>
+        <Routes>
+          <Route
+            path="/admin/form-management"
+            element={<FormManagementPage />}
+          />
+          <Route
+            path="/admin/form-management/:formSpecId"
+            element={<EditorProbe />}
+          />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -110,5 +140,61 @@ describe("FormManagementPage", () => {
     const alert = screen.getByRole("alert");
     await expect.element(alert).toBeVisible();
     await expect.element(alert).toHaveTextContent("Could not load forms");
+  });
+
+  it("refuses an invalid form ID with an inline message", async () => {
+    mockListForms.mockResolvedValue(forms);
+
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "New form" }).click();
+    await screen.getByRole("textbox", { name: "Form ID" }).fill("My Form!");
+    await screen.getByRole("button", { name: "Create" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(
+        "Enter a form ID using only lowercase letters, numbers and hyphens.",
+      );
+    // Still on the list; nothing navigated.
+    await expect
+      .element(screen.getByText(/Editor opened/))
+      .not.toBeInTheDocument();
+  });
+
+  it("refuses an ID that already exists", async () => {
+    mockListForms.mockResolvedValue(forms);
+
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "New form" }).click();
+    await screen.getByRole("textbox", { name: "Form ID" }).fill("bus-pass");
+    await screen.getByRole("button", { name: "Create" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent('A form with the ID "bus-pass" already exists.');
+    await expect
+      .element(screen.getByText(/Editor opened/))
+      .not.toBeInTheDocument();
+  });
+
+  it("opens the editor as a new form for a valid ID and title", async () => {
+    mockListForms.mockResolvedValue(forms);
+
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "New form" }).click();
+    await screen.getByRole("textbox", { name: "Form ID" }).fill("test-intake");
+    await screen.getByRole("textbox", { name: "Title" }).fill("Test Intake");
+    await screen.getByRole("button", { name: "Create" }).click();
+
+    await expect
+      .element(
+        screen.getByText(
+          "Editor opened: test-intake / new=yes / title=Test Intake",
+        ),
+      )
+      .toBeVisible();
   });
 });

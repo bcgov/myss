@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getDraft, listForms, publishForm, saveDraft } from "@/api/forms";
+import {
+  FormLoadError,
+  getDraft,
+  listForms,
+  publishForm,
+  saveDraft,
+} from "@/api/forms";
 import type { SaveDraftInput } from "@/api/forms";
 
 // React-query hooks for the IDIR-only admin form editor. Kept short-lived (no
@@ -23,6 +29,11 @@ export function useDraft(formSpecId: string | undefined) {
     queryKey: ["admin-draft", formSpecId],
     queryFn: () => getDraft(formSpecId!),
     enabled: !!formSpecId,
+    // A 404 is a stable answer (the form does not exist), not a transient
+    // fault; retrying it only delays the not-found and new-form paths.
+    retry: (failureCount, error) =>
+      !(error instanceof FormLoadError && error.status === 404) &&
+      failureCount < 3,
   });
 }
 

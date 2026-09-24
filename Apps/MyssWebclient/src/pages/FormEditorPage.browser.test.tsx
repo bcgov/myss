@@ -14,6 +14,11 @@ import {
 import type { FormSpecPayload } from "@/api/forms";
 import { getEstimatorRates } from "@/api/eligibility";
 import { registerBcgovComponents } from "@/formio/bcgovComponents";
+import {
+  ALLOWED_COMPONENT_TYPES,
+  builderOptions,
+} from "@/formio/builderOptions";
+import { Components } from "@formio/js";
 
 // The editor against a stubbed admin API. Only the calls are mocked — the real
 // error classes are kept (the page does `instanceof FormLoadError`) — and the
@@ -72,18 +77,27 @@ const draft: FormSpecPayload = {
         accordionBody: "<p>It means your immigration status.</p>",
         input: false,
       },
+      {
+        type: "button",
+        key: "submit",
+        action: "submit",
+        label: "Submit",
+        input: true,
+      },
     ],
   } as FormSpecPayload["spec"],
 };
 
-function renderPage(formSpecId = "test-form") {
+function renderPage(formSpecId = "test-form", search = "") {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    // useDraft sets its own retry, which overrides `retry: false` here; zero
+    // delay keeps its retries from adding seconds of backoff to the suite.
+    defaultOptions: { queries: { retry: false, retryDelay: 0 } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter
-        initialEntries={[`/admin/form-management/${formSpecId}`]}
+        initialEntries={[`/admin/form-management/${formSpecId}${search}`]}
       >
         <Routes>
           <Route
@@ -149,6 +163,112 @@ describe("FormEditorPage", () => {
     const alert = screen.getByRole("alert");
     await expect.element(alert).toBeVisible();
     await expect.element(alert).toHaveTextContent("could not be found");
+  });
+
+  it("creates a new form: template in the builder, saved as the first draft", async () => {
+    const saved: FormSpecPayload = {
+      formSpecId: "test-intake",
+      version: 1,
+      title: "Test Intake",
+      spec: { display: "form", components: [] } as FormSpecPayload["spec"],
+    };
+    // A 404 with the new-form flag means "not stored yet"; after the save the
+    // refetch finds the stored draft.
+    mockGetDraft
+      .mockRejectedValueOnce(new FormLoadError(404, "Draft fetch failed (404)"))
+      .mockResolvedValue(saved);
+    mockSaveDraft.mockResolvedValue(saved);
+
+    const screen = await renderPage(
+      "test-intake",
+      "?new=1&title=Test+Intake",
+    );
+
+    // The title from the New form action heads the page; no not-found alert.
+    await expect
+      .element(screen.getByRole("heading", { name: "Test Intake" }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("could not be found"))
+      .not.toBeInTheDocument();
+
+    // A new form opens in the builder, on the template's submit button.
+    await expect
+      .element(screen.getByRole("button", { name: "Build form" }))
+      .toHaveAttribute("aria-pressed", "true");
+    await vi.waitFor(() => {
+      expect(
+        document.querySelector('[class~="formio-component-submit"]'),
+      ).not.toBeNull();
+    });
+
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await expect.element(screen.getByText("Draft saved.")).toBeVisible();
+
+    const [id, input] = mockSaveDraft.mock.calls[0];
+    expect(id).toBe("test-intake");
+    expect(input.title).toBe("Test Intake");
+    const components = (input.spec.components ?? []) as Record<
+      string,
+      unknown
+    >[];
+    expect(components.map((c) => c.key)).toEqual(["submit"]);
+    expect(components[0].type).toBe("button");
+  });
+
+  it("treats the new flag on an existing form as normal editing", async () => {
+    // A stale list can let a duplicate ID through the New form action; the
+    // editor must then edit the stored form, and the URL's title must not
+    // rename it.
+    mockGetDraft.mockResolvedValue({ ...draft, title: null });
+    mockSaveDraft.mockResolvedValue({ ...draft, title: null, version: 3 });
+
+    const screen = await renderPage("test-form", "?new=1&title=Sneaky");
+
+    await expect
+      .element(screen.getByRole("heading", { name: "test-form", level: 1 }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("button", { name: "Edit labels" }))
+      .toHaveAttribute("aria-pressed", "true");
+
+    await screen
+      .getByRole("textbox", { name: "Label for fullName" })
+      .fill("Edited label");
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await expect.element(screen.getByText("Draft saved.")).toBeVisible();
+
+    const [, input] = mockSaveDraft.mock.calls[0];
+    expect(input.title).toBeNull();
+  });
+
+  it("warns when a new form's first save lands on an ID that already existed", async () => {
+    const saved: FormSpecPayload = {
+      formSpecId: "test-intake",
+      version: 4,
+      title: "Test Intake",
+      spec: { display: "form", components: [] } as FormSpecPayload["spec"],
+    };
+    mockGetDraft
+      .mockRejectedValueOnce(new FormLoadError(404, "Draft fetch failed (404)"))
+      .mockResolvedValue(saved);
+    mockSaveDraft.mockResolvedValue(saved);
+
+    const screen = await renderPage(
+      "test-intake",
+      "?new=1&title=Test+Intake",
+    );
+
+    await vi.waitFor(() => {
+      expect(
+        document.querySelector('[class~="formio-component-submit"]'),
+      ).not.toBeNull();
+    });
+    await screen.getByRole("button", { name: "Save draft" }).click();
+
+    await expect
+      .element(screen.getByText(/already existed/))
+      .toBeVisible();
   });
 
   it("shows a generic error for other load failures", async () => {
@@ -273,5 +393,294 @@ describe("FormEditorPage", () => {
     await expect
       .element(screen.getByText(/Could not publish this form \(error 502\)/))
       .toBeVisible();
+  });
+});
+
+// The builder. Its palette and its settings dialog are driven by
+// builderOptions, and both depend on the Form.io runtime — which types are
+// registered, and what a component class builds its edit form from — so these
+// checks live here rather than in builderOptions.unit.test.ts.
+
+interface EditFormNode {
+  key?: string;
+  disabled?: boolean;
+  components?: EditFormNode[];
+  columns?: { components?: EditFormNode[] }[];
+}
+
+/** Every node under one tab of an edit form, flattened. */
+function flatten(components: EditFormNode[] = [], out: EditFormNode[] = []) {
+  for (const node of components) {
+    out.push(node);
+    flatten(node.components, out);
+    for (const column of node.columns ?? []) flatten(column.components, out);
+  }
+  return out;
+}
+
+// The settings dialog is a tabbed form. Scope assertions to one tab: a
+// radio's Data tab holds a URL-headers table with its own column keyed "key",
+// which a whole-tree search would mistake for the component's API key.
+function tabNodes(form: { components: EditFormNode[] }, tab: string) {
+  const tabs = form.components.find((node) => node.key === "tabs");
+  return flatten(
+    tabs?.components?.find((node) => node.key === tab)?.components,
+  );
+}
+
+function tabFields(form: { components: EditFormNode[] }, tab: string) {
+  return tabNodes(form, tab)
+    .map((node) => node.key)
+    .filter((key): key is string => Boolean(key));
+}
+
+interface RegisteredComponent {
+  builderInfo?: { schema?: { type?: string } };
+  editForm?: (overrides: unknown) => { components: EditFormNode[] };
+}
+
+function registered(type: string): RegisteredComponent | undefined {
+  return (
+    Components as unknown as { components: Record<string, RegisteredComponent> }
+  ).components[type];
+}
+
+describe("FormEditorPage build mode", () => {
+  it("has a registered component behind every palette entry", () => {
+    // A type the builder cannot resolve is dropped from the palette with no
+    // warning, so the palette would quietly shrink instead of failing.
+    for (const type of ALLOWED_COMPONENT_TYPES) {
+      const component = registered(type);
+      expect(component, `${type} is not registered with Form.io`).toBeDefined();
+      expect(
+        component?.builderInfo?.schema,
+        `${type} exposes no builderInfo.schema`,
+      ).toBeDefined();
+    }
+  });
+
+  it("locks the component key for every type without removing it", () => {
+    // Removing it would break the builder's label-to-key derivation, so the
+    // field stays and is disabled instead.
+    for (const type of ALLOWED_COMPONENT_TYPES) {
+      const component = registered(type);
+      const built = component!.editForm!(
+        structuredClone(builderOptions.editForm[type]),
+      );
+      const keyField = tabNodes(built, "api").find(
+        (node) => node.key === "key",
+      );
+
+      expect(keyField, `${type} has no key field`).toBeDefined();
+      expect(keyField?.disabled, `${type} key field is editable`).toBe(true);
+    }
+  });
+
+  it("removes multiple values from the question types' dialogs", () => {
+    for (const type of ["textfield", "number", "select", "email"]) {
+      const component = registered(type);
+      const withOverride = tabFields(
+        component!.editForm!(structuredClone(builderOptions.editForm[type])),
+        "data",
+      );
+      const withoutOverride = tabFields(component!.editForm!(undefined), "data");
+
+      expect(withoutOverride, `${type} has no multiple field`).toContain(
+        "multiple",
+      );
+      expect(withOverride, `${type} still offers multiple`).not.toContain(
+        "multiple",
+      );
+    }
+  });
+
+  it("does not add a Data tab to the types that have none", () => {
+    for (const type of ["button", "content", "panel"]) {
+      const component = registered(type);
+      const built = component!.editForm!(
+        structuredClone(builderOptions.editForm[type]),
+      );
+      expect(tabFields(built, "data"), `${type} gained a Data tab`).toEqual([]);
+    }
+  });
+
+  it("gives the accordion heading and body fields in place of a label", () => {
+    const accordion = registered("bcgovAccordion");
+    const fields = tabFields(
+      accordion!.editForm!(
+        structuredClone(builderOptions.editForm.bcgovAccordion),
+      ),
+      "display",
+    );
+
+    expect(fields).toContain("accordionLabel");
+    expect(fields).toContain("accordionBody");
+    expect(fields).not.toContain("label");
+  });
+
+  it("offers only the allowed types in the palette", async () => {
+    mockGetDraft.mockResolvedValue(draft);
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+
+    // Read the palette out of the DOM rather than by role: one of the two
+    // groups renders collapsed, so its entries are present but not visible.
+    await vi.waitFor(() => {
+      expect(document.querySelectorAll(".formcomponent").length).toBeGreaterThan(
+        0,
+      );
+    });
+    const offered = [...document.querySelectorAll(".formcomponent")].map(
+      (element) => element.getAttribute("data-key"),
+    );
+
+    expect(offered.slice().sort()).toEqual(
+      ALLOWED_COMPONENT_TYPES.slice().sort(),
+    );
+    for (const stray of ["survey", "signature", "file", "datagrid"]) {
+      expect(offered).not.toContain(stray);
+    }
+  });
+
+  it("makes the palette reachable by keyboard", async () => {
+    // Without keyboardBuilder the entries render with tabindex -1 and a drag is
+    // the only way to add a field.
+    mockGetDraft.mockResolvedValue(draft);
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+
+    const entry = await vi.waitFor(() => {
+      const found = document.querySelector<HTMLElement>(
+        '.formcomponent[data-key="textfield"]',
+      );
+      expect(found).not.toBeNull();
+      return found!;
+    });
+
+    expect(entry.tabIndex).toBe(0);
+    entry.focus();
+    expect(document.activeElement).toBe(entry);
+  });
+
+  it("saves a builder edit without rewriting the rest of the spec", async () => {
+    mockGetDraft.mockResolvedValue(draft);
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+
+    // Deleting is a real builder edit that opens no settings dialog.
+    const remove = await vi.waitFor(() => {
+      const found = document
+        .querySelector('[class~="formio-component-fullName"]')
+        ?.closest(".builder-component")
+        ?.querySelector<HTMLElement>('[ref="removeComponent"]');
+      expect(found, "no remove control on the component").toBeTruthy();
+      return found!;
+    });
+    remove.click();
+
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await expect.element(screen.getByText("Draft saved.")).toBeVisible();
+
+    const [, input] = mockSaveDraft.mock.calls[0];
+    const components = (input.spec.components ?? []) as Record<
+      string,
+      unknown
+    >[];
+    const keys = components.map((c) => c.key);
+
+    // The edit reached the payload...
+    expect(keys).not.toContain("fullName");
+    // ...the untouched components are still there...
+    expect(keys).toContain("conditionalField");
+    expect(keys).toContain("help");
+    expect(keys).toContain("submit");
+    // ...and the spec was not replaced by Form.io's fully-defaulted form, which
+    // carries a freshly generated id on every component.
+    expect(components.some((c) => "id" in c)).toBe(false);
+    // Untouched components keep the settings that carry meaning downstream.
+    const accordion = components.find((c) => c.key === "help");
+    expect(accordion?.accordionBody).toBe(
+      "<p>It means your immigration status.</p>",
+    );
+    expect(accordion?.accordionLabel).toBe("What does status mean?");
+    const conditional = components.find((c) => c.key === "conditionalField");
+    expect(conditional?.conditional).toEqual({
+      json: { "===": [{ var: "data.fullName" }, "reveal"] },
+    });
+  });
+
+  it("drops a property whose value equals Form.io's default", () => {
+    // Characterises a known fidelity loss rather than endorsing it: the
+    // builder's schema omits any property already at its default, so a button
+    // loses action:"submit". Harmless at render — Form.io re-applies the
+    // default — but it means a save rewrites part of an untouched component.
+    // If this assertion starts failing, the loss has been fixed; delete it.
+    const button = registered("button");
+    const defaults = button?.builderInfo?.schema as
+      | { action?: string }
+      | undefined;
+
+    expect(defaults?.action).toBe("submit");
+  });
+
+  it("renders the custom BC Gov components inside the builder", async () => {
+    // Both mount a React root in attach(). The builder attaches and detaches
+    // components as the canvas is rebuilt, which the read-only preview never
+    // does, so exercise them on the builder's own mount path.
+    mockGetDraft.mockResolvedValue({
+      ...draft,
+      spec: {
+        display: "form",
+        components: [
+          {
+            type: "bcgovRadio",
+            key: "hasStatus",
+            label: "Do you have status?",
+            input: true,
+            values: [
+              { label: "Yes", value: "yes" },
+              { label: "No", value: "no" },
+            ],
+          },
+          {
+            type: "bcgovAccordion",
+            key: "help",
+            accordionLabel: "What does status mean?",
+            accordionBody: "<p>It means your immigration status.</p>",
+            input: false,
+          },
+        ],
+      } as FormSpecPayload["spec"],
+    });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+
+    await expect
+      .element(screen.getByText("Do you have status?"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("What does status mean?"))
+      .toBeVisible();
+  });
+
+  it("opens the builder on the edits already made in labels mode", async () => {
+    mockGetDraft.mockResolvedValue(draft);
+
+    const screen = await renderPage();
+    await screen
+      .getByRole("textbox", { name: "Label for fullName" })
+      .fill("Your legal name");
+    await screen.getByRole("button", { name: "Build form" }).click();
+
+    // The labels grid is unmounted, so the builder is the only thing that can
+    // be showing this label. Seeded from the spec as fetched it would read
+    // "Full name", and the builder's first change would undo the edit.
+    await expect.element(screen.getByText("Your legal name")).toBeVisible();
+    await expect.element(screen.getByText("Full name")).not.toBeInTheDocument();
   });
 });

@@ -1,3 +1,34 @@
+.modeBar {
+    display: flex;
+    gap: var(--layout-margin-small, 8px);
+    margin-top: var(--layout-margin-large, 24px);
+}
+
+.modeButton {
+    background-color: var(--surface-color-background-white, #ffffff);
+    border: 1px solid var(--surface-color-border-default, #d0d5dd);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    padding: 8px 16px;
+}
+
+.modeButton[aria-pressed="true"] {
+    background-color: var(--surface-color-primary-button-default, #234075);
+    border-color: var(--surface-color-primary-button-default, #234075);
+    color: var(--typography-color-primary-invert, #ffffff);
+}
+
+/* The builder ships its own layout; this only gives it room and a boundary. */
+.builder {
+    border: 1px solid var(--surface-color-border-default, #d0d5dd);
+    border-radius: 4px;
+    margin-top: var(--layout-margin-medium, 16px);
+    min-height: 24rem;
+    padding: var(--layout-padding-medium, 16px);
+}
+
 .grid {
     border-top: 1px solid var(--surface-color-border-default, #d0d5dd);
     display: grid;
@@ -150,5 +181,10 @@
 
 .saved {
     color: var(--typography-color-primary, #1a1a1a);
+    font-weight: 600;
+}
+
+.warning {
+    color: var(--typography-color-danger, #ce3e39);
     font-weight: 600;
 }

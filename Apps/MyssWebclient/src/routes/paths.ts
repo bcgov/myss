@@ -27,3 +27,15 @@ export type AppPath = (typeof paths)[keyof typeof paths];
 export function adminFormEditorPath(formSpecId: string): string {
     return `/admin/form-management/${encodeURIComponent(formSpecId)}`;
 }
+
+/**
+ * Editor URL for a form that does not exist yet. The editor starts from a
+ * local template and nothing is stored until the first Save draft.
+ */
+export function adminNewFormPath(formSpecId: string, title: string): string {
+    const params = new URLSearchParams({ new: "1" });
+    if (title.trim()) {
+        params.set("title", title.trim());
+    }
+    return `${adminFormEditorPath(formSpecId)}?${params.toString()}`;
+}
