@@ -225,7 +225,7 @@ namespace Myss.Api.Tests.Services
             // to interpret. An unclosed attempt is the evidence that ICM may
             // have the request, and the reason it must never be re-sent blindly.
             using FormsDbContext db = NewDb();
-            _middleware.Failure = new InvalidOperationException("IcmApi:Auth is not configured");
+            _middleware.Failure = new InvalidOperationException("Oidc:ServiceAccount is not configured");
             BusPassSubmissionService service = NewService(db);
 
             await Assert.ThrowsAsync<InvalidOperationException>(

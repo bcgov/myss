@@ -227,7 +227,7 @@ IResourceBuilder<JavaScriptAppResource> content = builder
 // already uses — this app host shares that user-secret store. The host's
 // remaining ICM settings (realm, client id and secret, trusted user) come from
 // the same store, under Icm:*, and MySSApi's own credentials for calling the
-// host from its appsettings.local.json (IcmApi:Auth).
+// host from its appsettings.local.json (Oidc:ServiceAccount).
 // ---------------------------------------------------------------------------
 string? icmBaseUrl =
     builder.Configuration["Aspire:Parameters:Icm:BaseUrl"] ?? builder.Configuration["Icm:BaseUrl"];

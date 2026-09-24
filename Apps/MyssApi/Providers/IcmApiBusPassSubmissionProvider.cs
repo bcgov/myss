@@ -57,7 +57,7 @@ namespace Myss.Api.Providers
 
         private readonly ILogger<IcmApiBusPassSubmissionProvider> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IcmApiAuthConfig _auth;
+        private readonly OidcServiceAccountConfig _auth;
         private readonly TimeProvider _timeProvider;
         private readonly SemaphoreSlim _tokenLock = new(1, 1);
         private CachedToken? _token;
@@ -67,18 +67,27 @@ namespace Myss.Api.Providers
         /// </summary>
         /// <param name="logger">Injected Logger Provider.</param>
         /// <param name="httpClientFactory">Injected client factory; the <see cref="HttpClientName"/> client carries the base address and resilience.</param>
-        /// <param name="config">Injected middleware settings.</param>
+        /// <param name="serviceAccount">Injected credentials this API authenticates with when it calls the middleware.</param>
         /// <param name="timeProvider">Injected clock, for token expiry.</param>
         public IcmApiBusPassSubmissionProvider(
             ILogger<IcmApiBusPassSubmissionProvider> logger,
             IHttpClientFactory httpClientFactory,
-            IOptions<IcmApiConfig> config,
+            IOptions<OidcServiceAccountConfig> serviceAccount,
             TimeProvider timeProvider)
         {
             _logger = logger;
             _httpClientFactory = httpClientFactory;
-            _auth = config.Value.Auth;
+            _auth = serviceAccount.Value;
             _timeProvider = timeProvider;
+
+            if (_auth.LegacyKeysUsed)
+            {
+                _logger.LogWarning(
+                    "The service credentials were read from the deprecated {Legacy} section. Move them to {Current} "
+                    + "(Myss_Oidc__ServiceAccount__ClientId/ClientSecret); the fallback is removed in the next release.",
+                    OidcServiceAccountConfig.LegacySectionName,
+                    OidcServiceAccountConfig.SectionName);
+            }
         }
 
         /// <inheritdoc/>
@@ -251,9 +260,10 @@ namespace Myss.Api.Providers
                 if (!_auth.IsConfigured)
                 {
                     throw new InvalidOperationException(
-                        "IcmApi:Auth is not configured (TokenEndpoint, ClientId and ClientSecret are all required). "
+                        "Oidc:ServiceAccount is not configured (ClientId and ClientSecret are required, and Oidc:Authority "
+                        + "or ServiceAccount:TokenEndpoint for the token endpoint). "
                         + "Locally: set them in appsettings.local.json (see appsettings.local.sample.json). "
-                        + "Deployed: set Myss_IcmApi__Auth__TokenEndpoint/ClientId/ClientSecret from the secret.");
+                        + "Deployed: set Myss_Oidc__ServiceAccount__ClientId/ClientSecret from the secret.");
                 }
 
                 var form = new Dictionary<string, string>
