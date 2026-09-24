@@ -132,6 +132,15 @@ namespace Myss.Api
                     + "Deployed: set Myss_IcmApi__BaseUrl to the in-cluster icm-api Service.");
             }
 
+            // The credentials this API presents when it calls another service as
+            // itself, today the middleware: its own Keycloak client, distinct from
+            // the web client whose citizen tokens it accepts, so they live under
+            // Oidc:ServiceAccount rather than anything middleware-specific. Checked
+            // at the first call, not at startup, so a checkout without secrets still
+            // boots for tests.
+            services.AddOptions<OidcServiceAccountConfig>()
+                .Configure(options => OidcServiceAccountConfig.Bind(configuration, options));
+
             services.TryAddSingleton(TimeProvider.System);
 
             // One correlation id per request, stamped on the dispatch log and
