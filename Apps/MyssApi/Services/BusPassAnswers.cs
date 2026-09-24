@@ -12,7 +12,7 @@ namespace Myss.Api.Services
     /// </summary>
     /// <remarks>
     /// The keys must stay in sync with the <c>bc-bus-pass</c> spec seeded by
-    /// MyssContent (<c>src/lib/bus-pass-form.json</c>).
+    /// MyssContent (<c>src/lib/bus-pass-specs/bus-pass-form.json</c>).
     /// </remarks>
     public static class BusPassAnswers
     {

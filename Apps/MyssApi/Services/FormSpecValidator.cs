@@ -458,7 +458,7 @@ namespace Myss.Api.Services
                 // citizen answer, so unlike "bcgovAccordion" it is a data field and
                 // is expected as a string, like the built-in "radio" it extends.
                 "textfield" or "textarea" or "email" or "select" or "radio"
-                    or "bcgovRadio" or "bcgovNestedRadio"
+                    or "bcgovRadio"
                     or "phoneNumber" or "day" or "datetime" or "sin" or "phn" or "password"
                     => value.ValueKind == JsonValueKind.String,
                 _ => true,

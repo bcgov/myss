@@ -324,9 +324,9 @@ jobs:
           name: mysscontent-coverage
           path: Apps/MyssContent/coverage
 
-      # Seed data is excluded from duplication detection: published form specs
-      # are immutable, so each version is a standalone copy of the previous one
-      # and every version bump would otherwise fail the duplicated-lines gate.
+      # Published form specs and their registry are excluded from duplication
+      # detection: each immutable version must remain a standalone document,
+      # so every version bump would otherwise fail the duplicated-lines gate.
       - name: Analyze MySS Content
         uses: SonarSource/sonarqube-scan-action@v7
         env:
@@ -341,6 +341,6 @@ jobs:
             -Dsonar.tests=Apps/MyssContent/src
             -Dsonar.exclusions=Apps/MyssContent/src/**/*.test.ts,Apps/MyssContent/src/admin/*.example.ts,Apps/MyssContent/src/admin/*.example.tsx
             -Dsonar.test.inclusions=Apps/MyssContent/src/**/*.test.ts
-            -Dsonar.cpd.exclusions=Apps/MyssContent/src/lib/form-spec-seed-data.ts
+            -Dsonar.cpd.exclusions=Apps/MyssContent/src/lib/form-spec-seed-data.ts,Apps/MyssContent/src/lib/bus-pass-specs/**
             -Dsonar.javascript.lcov.reportPaths=Apps/MyssContent/coverage/lcov.info
             -Dsonar.qualitygate.wait=true

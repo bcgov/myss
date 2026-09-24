@@ -167,9 +167,6 @@ const RadioBase = (
 interface RadioOption {
   label?: unknown;
   value?: unknown;
-}
-
-interface NestedRadioOption extends RadioOption {
   childrenLabel?: unknown;
   children?: RadioOption[];
 }
@@ -208,6 +205,8 @@ class BcgovRadioComponent extends RadioBase {
 
   /** Latest Form.io validation message, mirrored into RadioGroup. */
   private errorMessage = "";
+
+  private selectedParent?: string;
 
   /**
    * Whether this field may display a validation message yet. `dirty` alone is
@@ -267,6 +266,11 @@ class BcgovRadioComponent extends RadioBase {
       this.setDirty(false);
       this.errorsUnlocked = false;
     }
+    const selectedValue = this.selectedValue();
+    this.selectedParent =
+      selectedValue === null
+        ? undefined
+        : (this.parentValue(selectedValue) ?? undefined);
     // The group is controlled, so a programmatic change needs a re-render.
     this.renderGroup();
     return changed;
@@ -302,139 +306,38 @@ class BcgovRadioComponent extends RadioBase {
     this.reactRoot?.render(this.buildGroup());
   }
 
-  private buildGroup(): ReactNode {
-    const options: RadioOption[] = Array.isArray(this.component.values)
+  private componentOptions(): RadioOption[] {
+    return Array.isArray(this.component.values)
       ? (this.component.values as RadioOption[])
       : [];
+  }
+
+  private selectedValue(): string | null {
     // null, not "": react-aria reads null as "nothing selected". "null" is here
     // because that is what a cleared field holds — see setValue.
     const raw = this.dataValue;
-    const value =
-      raw === undefined || raw === null || raw === "" || raw === "null"
-        ? null
-        : String(raw);
-
-    // isRequired is deliberately unset: BCDS appends "(required)" to the label.
-    // Form.io still enforces the rule.
-    return (
-      <RadioGroup
-        label={String(this.component.label ?? "")}
-        orientation="vertical"
-        value={value}
-        isInvalid={this.errorMessage !== ""}
-        errorMessage={this.errorMessage}
-        onChange={(next: string) => {
-          this.updateValue(next, { modified: true });
-          this.renderGroup();
-        }}
-      >
-        {options.map((option) => (
-          <Radio key={String(option.value)} value={String(option.value)}>
-            {String(option.label ?? "")}
-          </Radio>
-        ))}
-      </RadioGroup>
-    );
-  }
-}
-
-/**
- * A required parent choice with an inline child choice. Form.io stores only
- * the selected leaf, so the answer remains a normal string for validation and
- * submission while the BCDS controls can preserve the requested visual order.
- */
-class BcgovNestedRadioComponent extends RadioBase {
-  private reactRoot?: Root;
-
-  private selectedParent?: string;
-
-  private errorMessage = "";
-
-  private errorsUnlocked = false;
-
-  static schema(...extend: unknown[]): Record<string, unknown> {
-    return RadioBase.schema({ type: "bcgovNestedRadio" }, ...extend);
-  }
-
-  static get builderInfo() {
-    return {
-      title: "BC Gov Nested Radio",
-      group: "basic",
-      icon: "dot-circle-o",
-      schema: BcgovNestedRadioComponent.schema(),
-    };
-  }
-
-  override render(): string {
-    return renderBareWrapper.call(this, '<div ref="reactRoot"></div>');
-  }
-
-  override attach(element: HTMLElement): Promise<void> {
-    this.loadRefs(element, { reactRoot: "single" });
-    const host = this.refs.reactRoot;
-    if (host) {
-      this.reactRoot = createRoot(host);
-      this.renderGroup();
+    if (raw === undefined || raw === null || raw === "" || raw === "null") {
+      return null;
     }
-    return super.attach(element);
-  }
-
-  override detach(): void {
-    const root = this.reactRoot;
-    this.reactRoot = undefined;
-    if (root) queueMicrotask(() => root.unmount());
-    super.detach();
-  }
-
-  override setValue(value: unknown, flags?: Record<string, unknown>): boolean {
-    const emptying = value === undefined || value === null || value === "";
-    const changed = super.setValue(value, flags);
-    if (emptying) {
-      this.selectedParent = undefined;
-      this.errorMessage = "";
-      this.setDirty(false);
-      this.errorsUnlocked = false;
-    } else {
-      const options: NestedRadioOption[] = Array.isArray(this.component.values)
-        ? (this.component.values as NestedRadioOption[])
-        : [];
-      this.selectedParent =
-        this.parentValue(String(value), options) ?? undefined;
+    if (
+      typeof raw === "string" ||
+      typeof raw === "number" ||
+      typeof raw === "boolean"
+    ) {
+      return String(raw);
     }
-    this.renderGroup();
-    return changed;
-  }
-
-  override setCustomValidity(
-    messages: unknown,
-    dirty?: boolean,
-    external?: boolean,
-  ): unknown {
-    const result = super.setCustomValidity(messages, dirty, external);
-    if (this.root?.submitting) this.errorsUnlocked = true;
-    this.errorMessage =
-      dirty && this.errorsUnlocked ? firstErrorMessage(messages) : "";
-    this.renderGroup();
-    return result;
-  }
-
-  override addMessages(): void {}
-
-  private renderGroup(): void {
-    this.reactRoot?.render(this.buildGroup());
+    return null;
   }
 
   private buildGroup(): ReactNode {
-    const options: NestedRadioOption[] = Array.isArray(this.component.values)
-      ? (this.component.values as NestedRadioOption[])
-      : [];
-    const raw = this.dataValue;
-    const value =
-      raw === undefined || raw === null || raw === "" || raw === "null"
-        ? null
-        : String(raw);
-    const selectedParent =
-      this.selectedParent ?? this.parentValue(value, options);
+    const options = this.componentOptions();
+    const value = this.selectedValue();
+    const hasNestedOptions = options.some(
+      (option) => (option.children?.length ?? 0) > 0,
+    );
+    const selectedParent = hasNestedOptions
+      ? (this.selectedParent ?? this.parentValue(value))
+      : value;
     const validate = this.component.validate;
     const required =
       validate && typeof validate === "object" && "required" in validate
@@ -446,14 +349,16 @@ class BcgovNestedRadioComponent extends RadioBase {
         label={String(this.component.label ?? "")}
         orientation="vertical"
         value={selectedParent}
-        isRequired={required}
+        isRequired={hasNestedOptions ? required : undefined}
         isInvalid={this.errorMessage !== ""}
         errorMessage={this.errorMessage}
         onChange={(next: string) => {
           const option = options.find(
             (candidate) => String(candidate.value) === next,
           );
-          if (option?.children?.length) {
+          if (!hasNestedOptions) {
+            this.updateValue(next, { modified: true });
+          } else if (option?.children?.length) {
             this.setValue("", { modified: true });
             this.selectedParent = next;
           } else {
@@ -465,6 +370,13 @@ class BcgovNestedRadioComponent extends RadioBase {
         {options.map((option) => {
           const optionValue = String(option.value ?? "");
           const children = option.children ?? [];
+          if (!hasNestedOptions) {
+            return (
+              <Radio key={optionValue} value={optionValue}>
+                {String(option.label ?? "")}
+              </Radio>
+            );
+          }
           const isExpanded =
             selectedParent === optionValue && children.length > 0;
 
@@ -507,12 +419,9 @@ class BcgovNestedRadioComponent extends RadioBase {
     );
   }
 
-  private parentValue(
-    value: string | null,
-    options: NestedRadioOption[],
-  ): string | null {
+  private parentValue(value: string | null): string | null {
     if (value === null) return null;
-    const parent = options.find((option) =>
+    const parent = this.componentOptions().find((option) =>
       (option.children ?? []).some((child) => String(child.value) === value),
     );
     return parent ? String(parent.value) : value;
@@ -534,6 +443,5 @@ export function registerBcgovComponents(): void {
   ).setComponent;
   setComponent("bcgovAccordion", BcgovAccordionComponent);
   setComponent("bcgovRadio", BcgovRadioComponent);
-  setComponent("bcgovNestedRadio", BcgovNestedRadioComponent);
   registered = true;
 }

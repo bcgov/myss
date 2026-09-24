@@ -12,9 +12,9 @@
  * scanned at all, so shared pure modules cannot confuse it.
  */
 
-import busPassFormSpecV1Json from "./bus-pass-form.json";
-import busPassFormSpecV2Json from "./bus-pass-form-v2.json";
-import { busPassFormSpecV3 as busPassFormSpecV3Value } from "./bus-pass-form-v3";
+import busPassFormSpecV1Json from "./bus-pass-specs/bus-pass-form.json";
+import busPassFormSpecV2Json from "./bus-pass-specs/bus-pass-form-v2.json";
+import busPassFormSpecV3Json from "./bus-pass-specs/bus-pass-form-v3.json";
 
 export type Json =
   | string
@@ -37,7 +37,7 @@ export const busPassFormSpecV1 = busPassFormSpecV1Json as unknown as Json;
 export const busPassFormSpecV2 = busPassFormSpecV2Json as unknown as Json;
 
 /** The BC Bus Pass form spec with the nested BC Gov service selector. */
-export const busPassFormSpecV3 = busPassFormSpecV3Value as unknown as Json;
+export const busPassFormSpecV3 = busPassFormSpecV3Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";

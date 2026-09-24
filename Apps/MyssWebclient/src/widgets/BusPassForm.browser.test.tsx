@@ -39,7 +39,7 @@ const currentSpecV3 = {
     display: "form",
     components: [
       {
-        type: "bcgovNestedRadio",
+        type: "bcgovRadio",
         key: "serviceRequestType",
         label: "What type of service would you like to request?",
         input: true,

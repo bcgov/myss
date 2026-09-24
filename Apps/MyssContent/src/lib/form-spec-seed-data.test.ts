@@ -226,7 +226,7 @@ describe("seeded forms collection", () => {
       children?: Array<{ label: string; value: string }>;
     }>;
 
-    expect(serviceRequest.type).toBe("bcgovNestedRadio");
+    expect(serviceRequest.type).toBe("bcgovRadio");
     expect(serviceRequest.label).toBe(
       "What type of service would you like to request?",
     );
