@@ -6,6 +6,7 @@ import {
   busPassFormSpecV1,
   busPassFormSpecV2,
   busPassFormSpecV3,
+  busPassFormSpecV4,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   POC_FORM_SPEC_ID,
@@ -31,6 +32,7 @@ import {
 
 interface Component {
   readonly key?: unknown;
+  readonly html?: unknown;
   readonly label?: unknown;
   readonly type?: unknown;
   readonly values?: unknown;
@@ -203,7 +205,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
   });
 
-  it("seeds the bus pass with v1, v2 and v3", () => {
+  it("seeds the bus pass with v1, v2, v3 and v4", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -212,6 +214,7 @@ describe("seeded forms collection", () => {
       { version: 1, spec: busPassFormSpecV1 },
       { version: 2, spec: busPassFormSpecV2 },
       { version: 3, spec: busPassFormSpecV3 },
+      { version: 4, spec: busPassFormSpecV4 },
     ]);
   });
 
@@ -253,6 +256,41 @@ describe("seeded forms collection", () => {
         when: "serviceRequestType",
       });
     }
+  });
+
+  it("shows replacement cost information and requires cancellation acknowledgement in v4", () => {
+    const replacementCostNote = componentByKey(
+      busPassFormSpecV4,
+      "replacementCostNote",
+    );
+    const acknowledgement = componentByKey(
+      busPassFormSpecV4,
+      "acknowledgedPassCancellation",
+    );
+
+    expect(replacementCostNote.type).toBe("content");
+    expect(replacementCostNote.html).toBe(
+      "<p><strong>Note: You will be billed $10 if this is your first replacement pass, $20 if this is your second replacement pass, and $50 for each additional replacement pass during your annual eligibility period.</strong></p>",
+    );
+    expect(replacementCostNote.conditional).toEqual({
+      eq: "replacement",
+      show: true,
+      when: "serviceRequestType",
+    });
+
+    expect(acknowledgement.type).toBe("checkbox");
+    expect(acknowledgement.label).toBe(
+      "I acknowledge that my lost/stolen bus pass will be cancelled before a replacement application is mailed to me. Bus passes cannot be reactivated if found.",
+    );
+    expect(acknowledgement.validate).toEqual({
+      required: true,
+      customMessage: "Acknowledgement is required",
+    });
+    expect(acknowledgement.conditional).toEqual({
+      eq: "replacement",
+      show: true,
+      when: "serviceRequestType",
+    });
   });
 
   it("allows one- or two-digit birth days in bus pass v2", () => {

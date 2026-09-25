@@ -136,9 +136,29 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void ReplacementFeeAcknowledgement_HasNoFieldYetAndIsNotSent()
+        public void LegacyReplacementWithoutAcknowledgement_MapsNull()
         {
             BusPassApplicationModel request = Build("""{"applicantCategory":"existing","existingClientReason":"replacement"}""");
+
+            Assert.Null(request.AcknowledgedPassCancellation);
+        }
+
+        [Fact]
+        public void ReplacementAcknowledgement_IsMappedToTheExistingContractField()
+        {
+            BusPassApplicationModel request = Build("""
+                {"serviceRequestType":"replacement","acknowledgedPassCancellation":true}
+                """);
+
+            Assert.True(request.AcknowledgedPassCancellation);
+        }
+
+        [Fact]
+        public void NonReplacementAcknowledgement_IsNotMapped()
+        {
+            BusPassApplicationModel request = Build("""
+                {"serviceRequestType":"addressUpdate","acknowledgedPassCancellation":true}
+                """);
 
             Assert.Null(request.AcknowledgedPassCancellation);
         }

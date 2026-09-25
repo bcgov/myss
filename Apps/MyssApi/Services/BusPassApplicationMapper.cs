@@ -38,9 +38,9 @@ namespace Myss.Api.Services
                     ? BusPassAnswers.GetBool(answers, BusPassAnswers.EligibilityAcknowledged)
                     : null,
 
-                // The current spec has no replacement-fee acknowledgement, so
-                // there is nothing to carry; the property stays for when it does.
-                AcknowledgedPassCancellation = null,
+                AcknowledgedPassCancellation = requestType == BusPassRequestType.Replacement
+                    ? BusPassAnswers.GetBool(answers, BusPassAnswers.AcknowledgedPassCancellation)
+                    : null,
 
                 SocialInsuranceNumber = BusPassAnswers.Digits(BusPassAnswers.GetString(answers, BusPassAnswers.SocialInsuranceNumber)),
                 BusPassAccountNumber = BusPassAnswers.Digits(BusPassAnswers.GetString(answers, BusPassAnswers.BusPassAccountNumber)),
