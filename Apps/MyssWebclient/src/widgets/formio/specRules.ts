@@ -60,7 +60,7 @@ export function findDuplicateKeys(spec: unknown): string[] {
     seen.add(key);
   }
 
-  return [...duplicates].sort();
+  return [...duplicates].sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -86,5 +86,5 @@ export function findUnknownConditionalTargets(spec: unknown): string[] {
     }
   }
 
-  return [...unknown].sort();
+  return [...unknown].sort((a, b) => a.localeCompare(b));
 }
