@@ -264,22 +264,18 @@ namespace Myss.Api.Tests.Providers
 
         private IcmApiBusPassSubmissionProvider NewProvider(string? clientSecret = "s3cret", string? scope = null)
         {
-            var config = new IcmApiConfig
+            var serviceAccount = new OidcServiceAccountConfig
             {
-                BaseUrl = new Uri(BaseUrl),
-                Auth = new IcmApiAuthConfig
-                {
-                    TokenEndpoint = TokenEndpoint,
-                    ClientId = "myss-api",
-                    ClientSecret = clientSecret,
-                    Scope = scope,
-                },
+                TokenEndpoint = TokenEndpoint,
+                ClientId = "myss-api",
+                ClientSecret = clientSecret,
+                Scope = scope,
             };
 
             return new IcmApiBusPassSubmissionProvider(
                 NullLogger<IcmApiBusPassSubmissionProvider>.Instance,
                 _factory,
-                Options.Create(config),
+                Options.Create(serviceAccount),
                 _clock);
         }
 

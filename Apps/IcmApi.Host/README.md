@@ -48,8 +48,10 @@ Callers present a client-credentials token from the shared standard realm. The
 token's `azp` must be in `Oidc:AllowedClients`; the list is required, and an empty
 one refuses to start. Audience is validated only when `Oidc:Audience` is set,
 because a standard-realm client-credentials token names the requesting client as
-its audience, not this host. `appsettings.json` allows MyssApi's dev client;
-override per environment with `Icm_Oidc__AllowedClients__0`.
+its audience, not this host. `appsettings.json` allows MyssApi's service integration,
+`sdpr-my-ss-api-6645`, the client it authenticates as (`Oidc:ServiceAccount` on its
+side), not the web client citizens sign in with; override per environment with
+`Icm_Oidc__AllowedClients__0`.
 
 For token-less local calls, the three-lock mock gate from MyssApi is here too:
 `AllowMockAuth`, `MockAuth` and a non-production `EnvironmentName`, all explicit

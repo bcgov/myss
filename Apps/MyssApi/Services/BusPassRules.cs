@@ -23,17 +23,24 @@ namespace Myss.Api.Services
         /// <summary>The youngest age the program accepts an applicant at.</summary>
         public const int MinimumAge = 16;
 
+        /// <summary>The first bus pass form version that includes replacement acknowledgement.</summary>
+        public const int ReplacementAcknowledgementVersion = 4;
+
         /// <summary>
         /// Checks the answers against the bus pass rules.
         /// </summary>
         /// <param name="answers">The submitted answers, keyed by component key.</param>
         /// <param name="today">Today's date, for the age rules.</param>
+        /// <param name="requireReplacementAcknowledgement">Whether the rendered form includes the replacement acknowledgement.</param>
         /// <returns>Every failure, in field order; empty when the answers pass.</returns>
-        public static IReadOnlyList<ValidationErrorModel> Validate(JsonElement answers, DateOnly today)
+        public static IReadOnlyList<ValidationErrorModel> Validate(
+            JsonElement answers,
+            DateOnly today,
+            bool requireReplacementAcknowledgement = false)
         {
             var errors = new List<ValidationErrorModel>();
 
-            ValidateRequestType(answers, errors);
+            ValidateRequestType(answers, requireReplacementAcknowledgement, errors);
             ValidateIdentifier(answers, errors);
             ValidateDateOfBirth(answers, today, errors);
             ValidateContact(answers, errors);
@@ -42,16 +49,37 @@ namespace Myss.Api.Services
             return errors;
         }
 
-        private static void ValidateRequestType(JsonElement answers, List<ValidationErrorModel> errors)
+        private static void ValidateRequestType(
+            JsonElement answers,
+            bool requireReplacementAcknowledgement,
+            List<ValidationErrorModel> errors)
         {
-            string? category = BusPassAnswers.GetString(answers, BusPassAnswers.ApplicantCategory);
-
-            if (category == "existing" && BusPassAnswers.GetString(answers, BusPassAnswers.ExistingClientReason) is null)
+            if (!BusPassAnswers.TryGetRequestType(answers, out BusPassRequestType requestType))
             {
-                errors.Add(Required(BusPassAnswers.ExistingClientReason, "A selection is required"));
+                bool hasV3Value = answers.TryGetProperty(BusPassAnswers.ServiceRequestType, out JsonElement serviceType);
+                string? legacyCategory = BusPassAnswers.GetString(answers, BusPassAnswers.ApplicantCategory);
+                if (!hasV3Value
+                    && legacyCategory == "existing"
+                    && BusPassAnswers.GetString(answers, BusPassAnswers.ExistingClientReason) is null)
+                {
+                    errors.Add(Required(BusPassAnswers.ExistingClientReason, "A selection is required"));
+                    return;
+                }
+
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = hasV3Value ? BusPassAnswers.ServiceRequestType : BusPassAnswers.ApplicantCategory,
+                    Keyword = hasV3Value
+                        ? BusPassErrorKeywords.RequestTypeInvalid
+                        : ValidationKeywords.FieldRequired,
+                    Message = hasV3Value
+                        ? "Select a valid service type"
+                        : "A service type is required",
+                });
+                return;
             }
 
-            if (category == "new")
+            if (requestType == BusPassRequestType.NewApplication)
             {
                 if (BusPassAnswers.GetString(answers, BusPassAnswers.EligibilityCategory) is null)
                 {
@@ -62,6 +90,12 @@ namespace Myss.Api.Services
                 {
                     errors.Add(Required(BusPassAnswers.EligibilityAcknowledged, "Acknowledgement is required"));
                 }
+            }
+            else if (requestType == BusPassRequestType.Replacement
+                && requireReplacementAcknowledgement
+                && BusPassAnswers.GetBool(answers, BusPassAnswers.AcknowledgedPassCancellation) != true)
+            {
+                errors.Add(Required(BusPassAnswers.AcknowledgedPassCancellation, "Acknowledgement is required"));
             }
         }
 

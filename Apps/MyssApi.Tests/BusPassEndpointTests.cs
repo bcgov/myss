@@ -53,6 +53,16 @@ namespace Myss.Api.Tests
         }
         """;
 
+        private static string ReplacementV4Spec => Spec
+            .Replace(
+                "{ \"type\": \"radio\", \"key\": \"applicantCategory\", \"input\": true, \"validate\": { \"required\": true } },",
+                "{ \"type\": \"radio\", \"key\": \"serviceRequestType\", \"input\": true, \"validate\": { \"required\": true } },",
+                StringComparison.Ordinal)
+            .Replace(
+                "{ \"type\": \"button\", \"key\": \"submit\", \"action\": \"submit\", \"input\": true }",
+                "{ \"type\": \"checkbox\", \"key\": \"acknowledgedPassCancellation\", \"input\": true, \"validate\": { \"required\": true }, \"conditional\": { \"eq\": \"replacement\", \"show\": true, \"when\": \"serviceRequestType\" } },\n            { \"type\": \"button\", \"key\": \"submit\", \"action\": \"submit\", \"input\": true }",
+                StringComparison.Ordinal);
+
         private readonly WebApplicationFactory<Startup> _factory;
         private readonly FakeFormSpecProvider _specProvider = new();
         private readonly FakeBusPassSubmissionProvider _middleware = new();
@@ -176,6 +186,39 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
+        public async Task V4ReplacementWithoutAcknowledgement_Returns422AndNothingReachesTheMiddleware()
+        {
+            UseReplacementV4Spec();
+            HttpClient client = CreateClient();
+            var answers = V4Replacement();
+
+            using HttpResponseMessage response = await SubmitV4(client, answers);
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            Assert.Contains(
+                (await Payload(response)).EnumerateArray(),
+                e => e.GetProperty("field").GetString() == "acknowledgedPassCancellation");
+            Assert.Empty(_middleware.Submitted);
+        }
+
+        [Fact]
+        public async Task AcknowledgedV4Replacement_IsSentAndAcknowledged()
+        {
+            UseReplacementV4Spec();
+            HttpClient client = CreateClient();
+            var answers = V4Replacement();
+            answers["acknowledgedPassCancellation"] = true;
+
+            using HttpResponseMessage response = await SubmitV4(client, answers);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            JsonElement payload = await Payload(response);
+            Assert.Equal("Accepted", payload.GetProperty("outcome").GetString());
+            Assert.Equal("1-TEST-0001", payload.GetProperty("referenceNumber").GetString());
+            Assert.True(Assert.Single(_middleware.Submitted).AcknowledgedPassCancellation);
+        }
+
+        [Fact]
         public async Task RejectionResponse_DoesNotEchoTheSin()
         {
             HttpClient client = CreateClient();
@@ -261,6 +304,13 @@ namespace Myss.Api.Tests
             return client.SendAsync(request);
         }
 
+        private static Task<HttpResponseMessage> SubmitV4(HttpClient client, Dictionary<string, object?> answers)
+        {
+            HttpRequestMessage request = Authenticated(HttpMethod.Post, Route);
+            request.Content = JsonContent.Create(new { formSpecVersion = 4, answers });
+            return client.SendAsync(request);
+        }
+
         private static HttpRequestMessage Authenticated(HttpMethod method, string route, string persona = "alice")
         {
             var request = new HttpRequestMessage(method, route);
@@ -294,6 +344,22 @@ namespace Myss.Api.Tests
             ["postalCode"] = "V8V 1X4",
             ["mailingAddressDifferent"] = "no",
         };
+
+        private static Dictionary<string, object?> V4Replacement()
+        {
+            var answers = NewApplicant();
+            answers.Remove("applicantCategory");
+            answers["serviceRequestType"] = "replacement";
+            answers.Remove("eligibilityAcknowledged");
+            answers.Remove("eligibilityCategory");
+            return answers;
+        }
+
+        private void UseReplacementV4Spec()
+        {
+            _specProvider.VersionResult = FakeFormSpecProvider.Spec("bc-bus-pass", 4, ReplacementV4Spec);
+            _specProvider.LatestResult = _specProvider.VersionResult;
+        }
 
         private HttpClient CreateClient(bool mockAuth = true)
         {

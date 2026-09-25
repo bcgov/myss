@@ -4,6 +4,7 @@ namespace Myss.Api.Services
     using System.Globalization;
     using System.Linq;
     using System.Text.Json;
+    using Myss.Api.Models;
 
     /// <summary>
     /// The BC Bus Pass form's component keys and the readers the rules and the
@@ -11,7 +12,7 @@ namespace Myss.Api.Services
     /// </summary>
     /// <remarks>
     /// The keys must stay in sync with the <c>bc-bus-pass</c> spec seeded by
-    /// MyssContent (<c>src/lib/bus-pass-form.json</c>).
+    /// MyssContent (<c>src/lib/bus-pass-specs/bus-pass-form.json</c>).
     /// </remarks>
     public static class BusPassAnswers
     {
@@ -21,8 +22,17 @@ namespace Myss.Api.Services
         /// <summary>Radio for existing clients: "moved" or "replacement".</summary>
         public const string ExistingClientReason = "existingClientReason";
 
+        /// <summary>
+        /// The v3 nested service selector: "addressUpdate", "replacement" or
+        /// "newApplication".
+        /// </summary>
+        public const string ServiceRequestType = "serviceRequestType";
+
         /// <summary>Checkbox for new applicants.</summary>
         public const string EligibilityAcknowledged = "eligibilityAcknowledged";
+
+        /// <summary>Checkbox acknowledging cancellation of a lost or stolen pass.</summary>
+        public const string AcknowledgedPassCancellation = "acknowledgedPassCancellation";
 
         /// <summary>Radio for new applicants: "over65", "firstNations" or "neither".</summary>
         public const string EligibilityCategory = "eligibilityCategory";
@@ -197,6 +207,46 @@ namespace Myss.Api.Services
         public static string? NormalizeProvince(string? raw)
         {
             return string.Equals(raw, "British Columbia", StringComparison.OrdinalIgnoreCase) ? "BC" : raw;
+        }
+
+        /// <summary>
+        /// Reads the v3 service selector and falls back to the v1/v2 pair of
+        /// service fields so historical submissions remain interpretable.
+        /// </summary>
+        /// <param name="answers">The submitted or stored answers.</param>
+        /// <param name="requestType">The canonical request type when valid.</param>
+        /// <returns>True when a known request type was supplied.</returns>
+        public static bool TryGetRequestType(JsonElement answers, out BusPassRequestType requestType)
+        {
+            if (answers.TryGetProperty(ServiceRequestType, out JsonElement serviceType))
+            {
+                requestType = serviceType.ValueKind == JsonValueKind.String
+                    ? serviceType.GetString() switch
+                    {
+                        "addressUpdate" => BusPassRequestType.AddressUpdate,
+                        "replacement" => BusPassRequestType.Replacement,
+                        "newApplication" => BusPassRequestType.NewApplication,
+                        _ => default,
+                    }
+                    : default;
+
+                return serviceType.ValueKind == JsonValueKind.String
+                    && serviceType.GetString() is "addressUpdate" or "replacement" or "newApplication";
+            }
+
+            string? category = GetString(answers, ApplicantCategory);
+            requestType = category switch
+            {
+                "new" => BusPassRequestType.NewApplication,
+                "existing" when GetString(answers, ExistingClientReason) == "moved"
+                    => BusPassRequestType.AddressUpdate,
+                "existing" when GetString(answers, ExistingClientReason) == "replacement"
+                    => BusPassRequestType.Replacement,
+                _ => default,
+            };
+
+            return category == "new"
+                || category == "existing" && GetString(answers, ExistingClientReason) is "moved" or "replacement";
         }
 
         private static bool TryGetInt(JsonElement answers, string key, out int value)

@@ -39,6 +39,19 @@ namespace Myss.Api.Tests.Services
             Assert.Null(request.AcknowledgedEligibilityCriteria);
         }
 
+        [Theory]
+        [InlineData("addressUpdate", BusPassRequestType.AddressUpdate)]
+        [InlineData("replacement", BusPassRequestType.Replacement)]
+        [InlineData("newApplication", BusPassRequestType.NewApplication)]
+        public void V3ServiceSelection_MapsToTheRequestType(string selection, BusPassRequestType expected)
+        {
+            BusPassApplicationModel request = Build($$"""
+                {"serviceRequestType":"{{selection}}"}
+                """);
+
+            Assert.Equal(expected, request.RequestType);
+        }
+
         [Fact]
         public void IdentifiersAndPhone_AreSentAsDigitsOnly()
         {
@@ -123,9 +136,29 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void ReplacementFeeAcknowledgement_HasNoFieldYetAndIsNotSent()
+        public void LegacyReplacementWithoutAcknowledgement_MapsNull()
         {
             BusPassApplicationModel request = Build("""{"applicantCategory":"existing","existingClientReason":"replacement"}""");
+
+            Assert.Null(request.AcknowledgedPassCancellation);
+        }
+
+        [Fact]
+        public void ReplacementAcknowledgement_IsMappedToTheExistingContractField()
+        {
+            BusPassApplicationModel request = Build("""
+                {"serviceRequestType":"replacement","acknowledgedPassCancellation":true}
+                """);
+
+            Assert.True(request.AcknowledgedPassCancellation);
+        }
+
+        [Fact]
+        public void NonReplacementAcknowledgement_IsNotMapped()
+        {
+            BusPassApplicationModel request = Build("""
+                {"serviceRequestType":"addressUpdate","acknowledgedPassCancellation":true}
+                """);
 
             Assert.Null(request.AcknowledgedPassCancellation);
         }

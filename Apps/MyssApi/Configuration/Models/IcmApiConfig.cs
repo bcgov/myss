@@ -24,14 +24,11 @@ namespace Myss.Api.Configuration.Models
         public int TimeoutSeconds { get; set; } = 30;
 
         /// <summary>
-        /// Gets or sets the service credentials MyssApi presents to the middleware.
-        /// </summary>
-        public IcmApiAuthConfig Auth { get; set; } = new();
-
-        /// <summary>
         /// Gets a value indicating whether the app can start. Only the non-secret
-        /// base URL is checked at startup; the credentials are validated at the
-        /// first call instead, so a checkout without secrets still boots for tests.
+        /// base URL is checked at startup. The credentials this API presents to the
+        /// middleware are its own service account (<c>Oidc:ServiceAccount</c>) and
+        /// are validated at the first call instead, so a checkout without secrets
+        /// still boots for tests.
         /// </summary>
         public bool IsConfigured => BaseUrl is not null && BaseUrl.IsAbsoluteUri;
     }
