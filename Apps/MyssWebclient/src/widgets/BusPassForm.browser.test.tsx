@@ -89,6 +89,90 @@ const currentSpecV3 = {
   },
 };
 
+const currentSpecV4 = {
+  formSpecId: "bc-bus-pass",
+  version: 4,
+  title: "BC Bus Pass",
+  spec: {
+    display: "form",
+    components: [
+      {
+        type: "bcgovRadio",
+        key: "serviceRequestType",
+        label: "What type of service would you like to request?",
+        input: true,
+        values: [
+          {
+            label:
+              "I am an existing client and require an address change or replacement bus pass.",
+            value: "existing",
+            childrenLabel: "Existing client request",
+            children: [
+              {
+                label: "I have moved and would like to update my address.",
+                value: "addressUpdate",
+              },
+              {
+                label:
+                  "My bus pass has been lost or stolen. Please mail me a replacement pass application.",
+                value: "replacement",
+              },
+            ],
+          },
+          {
+            label: "I am a new applicant and would like to request a bus pass.",
+            value: "newApplication",
+          },
+        ],
+        validate: {
+          required: true,
+          customMessage: "Select the type of service you would like to request",
+        },
+      },
+      {
+        type: "content",
+        key: "replacementCostNote",
+        html: "<p><strong>Note: You will be billed $10 if this is your first replacement pass, $20 if this is your second replacement pass, and $50 for each additional replacement pass during your annual eligibility period.</strong></p>",
+        conditional: {
+          eq: "replacement",
+          show: true,
+          when: "serviceRequestType",
+        },
+      },
+      {
+        type: "checkbox",
+        key: "acknowledgedPassCancellation",
+        input: true,
+        label:
+          "I acknowledge that my lost/stolen bus pass will be cancelled before a replacement application is mailed to me. Bus passes cannot be reactivated if found.",
+        validate: {
+          required: true,
+          customMessage: "Acknowledgement is required",
+        },
+        conditional: {
+          eq: "replacement",
+          show: true,
+          when: "serviceRequestType",
+        },
+      },
+      {
+        type: "textfield",
+        key: "firstName",
+        label: "First name",
+        input: true,
+        validate: { required: true },
+      },
+      {
+        type: "button",
+        key: "submit",
+        action: "submit",
+        label: "Submit",
+        input: true,
+      },
+    ],
+  },
+};
+
 type Answer = { status: number; body: unknown };
 
 const accepted: Answer = {
@@ -162,7 +246,7 @@ const refused: Answer = {
   },
 };
 
-function stubApi(answer: Answer, spec = currentSpecV1) {
+function stubApi(answer: Answer, spec: unknown = currentSpecV1) {
   const posts: Array<{ url: string; body: unknown }> = [];
   vi.spyOn(window, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
@@ -284,6 +368,57 @@ test("renders the nested service choices in order and submits the address update
     formSpecVersion: 3,
     answers: {
       serviceRequestType: "addressUpdate",
+      firstName: "Ada",
+    },
+  });
+});
+
+test("shows replacement cost information, requires acknowledgement, and submits the replacement request", async () => {
+  const posts = stubApi(accepted, currentSpecV4);
+  const screen = await renderForm();
+
+  await expect
+    .element(screen.getByText(/You will be billed \$10/))
+    .not.toBeInTheDocument();
+
+  await screen
+    .getByText(
+      "I am an existing client and require an address change or replacement bus pass.",
+    )
+    .click();
+  await screen
+    .getByText(
+      "My bus pass has been lost or stolen. Please mail me a replacement pass application.",
+    )
+    .click();
+
+  await expect
+    .element(screen.getByText(/You will be billed \$10/))
+    .toBeVisible();
+  const acknowledgement = screen.getByRole("checkbox", {
+    name: /I acknowledge that my lost\/stolen bus pass will be cancelled/,
+  });
+  await expect.element(acknowledgement).toBeVisible();
+
+  await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  await expect
+    .element(screen.getByText("Acknowledgement is required").first())
+    .toBeVisible();
+  expect(posts).toHaveLength(0);
+
+  await acknowledgement.click();
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  await expect
+    .element(screen.getByRole("heading", { name: "Request submitted" }))
+    .toBeVisible();
+  expect(posts[0].body).toMatchObject({
+    formSpecVersion: 4,
+    answers: {
+      serviceRequestType: "replacement",
+      acknowledgedPassCancellation: true,
       firstName: "Ada",
     },
   });

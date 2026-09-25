@@ -23,17 +23,24 @@ namespace Myss.Api.Services
         /// <summary>The youngest age the program accepts an applicant at.</summary>
         public const int MinimumAge = 16;
 
+        /// <summary>The first bus pass form version that includes replacement acknowledgement.</summary>
+        public const int ReplacementAcknowledgementVersion = 4;
+
         /// <summary>
         /// Checks the answers against the bus pass rules.
         /// </summary>
         /// <param name="answers">The submitted answers, keyed by component key.</param>
         /// <param name="today">Today's date, for the age rules.</param>
+        /// <param name="requireReplacementAcknowledgement">Whether the rendered form includes the replacement acknowledgement.</param>
         /// <returns>Every failure, in field order; empty when the answers pass.</returns>
-        public static IReadOnlyList<ValidationErrorModel> Validate(JsonElement answers, DateOnly today)
+        public static IReadOnlyList<ValidationErrorModel> Validate(
+            JsonElement answers,
+            DateOnly today,
+            bool requireReplacementAcknowledgement = false)
         {
             var errors = new List<ValidationErrorModel>();
 
-            ValidateRequestType(answers, errors);
+            ValidateRequestType(answers, requireReplacementAcknowledgement, errors);
             ValidateIdentifier(answers, errors);
             ValidateDateOfBirth(answers, today, errors);
             ValidateContact(answers, errors);
@@ -42,7 +49,10 @@ namespace Myss.Api.Services
             return errors;
         }
 
-        private static void ValidateRequestType(JsonElement answers, List<ValidationErrorModel> errors)
+        private static void ValidateRequestType(
+            JsonElement answers,
+            bool requireReplacementAcknowledgement,
+            List<ValidationErrorModel> errors)
         {
             if (!BusPassAnswers.TryGetRequestType(answers, out BusPassRequestType requestType))
             {
@@ -80,6 +90,12 @@ namespace Myss.Api.Services
                 {
                     errors.Add(Required(BusPassAnswers.EligibilityAcknowledged, "Acknowledgement is required"));
                 }
+            }
+            else if (requestType == BusPassRequestType.Replacement
+                && requireReplacementAcknowledgement
+                && BusPassAnswers.GetBool(answers, BusPassAnswers.AcknowledgedPassCancellation) != true)
+            {
+                errors.Add(Required(BusPassAnswers.AcknowledgedPassCancellation, "Acknowledgement is required"));
             }
         }
 

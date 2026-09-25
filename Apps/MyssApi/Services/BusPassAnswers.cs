@@ -31,6 +31,9 @@ namespace Myss.Api.Services
         /// <summary>Checkbox for new applicants.</summary>
         public const string EligibilityAcknowledged = "eligibilityAcknowledged";
 
+        /// <summary>Checkbox acknowledging cancellation of a lost or stolen pass.</summary>
+        public const string AcknowledgedPassCancellation = "acknowledgedPassCancellation";
+
         /// <summary>Radio for new applicants: "over65", "firstNations" or "neither".</summary>
         public const string EligibilityCategory = "eligibilityCategory";
 

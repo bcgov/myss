@@ -206,6 +206,44 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public void V4ReplacementWithoutAcknowledgement_IsRefused()
+        {
+            ValidationErrorModel error = Assert.Single(
+                Validate(ReplacementAnswers(), requireReplacementAcknowledgement: true));
+
+            Assert.Equal(BusPassAnswers.AcknowledgedPassCancellation, error.Field);
+            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
+        }
+
+        [Fact]
+        public void V4ReplacementWithFalseAcknowledgement_IsRefused()
+        {
+            var answers = ReplacementAnswers();
+            answers[BusPassAnswers.AcknowledgedPassCancellation] = false;
+
+            ValidationErrorModel error = Assert.Single(
+                Validate(answers, requireReplacementAcknowledgement: true));
+
+            Assert.Equal(BusPassAnswers.AcknowledgedPassCancellation, error.Field);
+            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
+        }
+
+        [Fact]
+        public void V4ReplacementWithAcknowledgement_Passes()
+        {
+            var answers = ReplacementAnswers();
+            answers[BusPassAnswers.AcknowledgedPassCancellation] = true;
+
+            Assert.Empty(Validate(answers, requireReplacementAcknowledgement: true));
+        }
+
+        [Fact]
+        public void V3ReplacementWithoutAcknowledgement_RemainsCompatible()
+        {
+            Assert.Empty(Validate(ReplacementAnswers()));
+        }
+
+        [Fact]
         public void DifferentMailingAddressWithMissingParts_ReportsEachPart()
         {
             var answers = NewApplicant();
@@ -234,10 +272,12 @@ namespace Myss.Api.Tests.Services
             Assert.True(errors.Count >= 5, $"expected at least 5 errors, got {errors.Count}");
         }
 
-        private static IReadOnlyList<ValidationErrorModel> Validate(Dictionary<string, object?> answers)
+        private static IReadOnlyList<ValidationErrorModel> Validate(
+            Dictionary<string, object?> answers,
+            bool requireReplacementAcknowledgement = false)
         {
             using JsonDocument doc = JsonSerializer.SerializeToDocument(answers);
-            return BusPassRules.Validate(doc.RootElement.Clone(), Today);
+            return BusPassRules.Validate(doc.RootElement.Clone(), Today, requireReplacementAcknowledgement);
         }
 
         private static Dictionary<string, object?> NewApplicant() => new()
@@ -268,6 +308,17 @@ namespace Myss.Api.Tests.Services
             var answers = NewApplicant();
             answers.Remove("applicantCategory");
             answers["serviceRequestType"] = "newApplication";
+            return answers;
+        }
+
+        // The v3/v4 answer shape is identical; only the acknowledgement
+        // requirement differs, driven by the version flag passed to Validate.
+        private static Dictionary<string, object?> ReplacementAnswers()
+        {
+            var answers = ExistingClient();
+            answers.Remove("applicantCategory");
+            answers.Remove("existingClientReason");
+            answers["serviceRequestType"] = "replacement";
             return answers;
         }
 
