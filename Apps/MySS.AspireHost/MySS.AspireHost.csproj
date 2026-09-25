@@ -8,6 +8,13 @@
         <Nullable>enable</Nullable>
         <IsAspireHost>true</IsAspireHost>
         <UserSecretsId>21c32ae2-b147-46e6-9895-e20c9996f3cc</UserSecretsId>
+
+        <!-- ASPIRE010 asks for the Aspire CLI bundle (AspireUseCliBundle=true). Left off on
+             purpose: without the bundle the SDK references the orchestrator (DCP) and the
+             dashboard as NuGet packages, which is what makes the documented `dotnet run` of
+             this project (README, "One command: Aspire") work on a machine with no Aspire
+             CLI installed. Turning it on would make the CLI a prerequisite for everyone. -->
+        <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

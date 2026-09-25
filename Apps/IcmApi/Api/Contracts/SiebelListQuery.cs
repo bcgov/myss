@@ -3,7 +3,9 @@ namespace Icm.Api.Contracts
     using Refit;
 
     /// <summary>
-    /// The query string of the list GET on <c>data/ServiceRequest/ServiceRequest/</c>.
+    /// The query string of a list GET on a Siebel business component —
+    /// <c>data/ServiceRequest/ServiceRequest/</c> and <c>data/ICMContact/ICMContact/</c>,
+    /// whose documents declare the same twelve parameters.
     /// </summary>
     /// <remarks>
     /// <para>

@@ -142,6 +142,29 @@ namespace Icm.Api.ConsoleApp
                 return await SubmitBusPassAsync(busPass, serviceRequests, settings);
             }
 
+            if (settings.IsContactMode)
+            {
+                IContactService contacts = new ContactService(
+                    new ContactRepository(icmClient, settings.Icm.TrustedUserName),
+                    tokenService,
+                    credentials);
+                return await SearchContactsAsync(contacts, settings);
+            }
+
+            if (settings.IsCaseMode)
+            {
+                ICaseService cases = new CaseService(
+                    new CaseRepository(icmClient, settings.Icm.TrustedUserName),
+                    tokenService,
+                    credentials);
+                return await CaseLookup.RunAsync(cases, settings);
+            }
+
+            if (settings.IsDescribeMode)
+            {
+                return await RawIcmReader.DescribeAsync(icmClient, tokenService, credentials, settings);
+            }
+
             int searchResult = await SearchAsync(serviceRequests, settings);
             if (searchResult != 0 || string.IsNullOrWhiteSpace(settings.Query.ServiceRequestKey))
             {
@@ -199,28 +222,20 @@ namespace Icm.Api.ConsoleApp
             Stopwatch stopwatch = Stopwatch.StartNew();
             try
             {
-                using HttpRequestMessage request = new(HttpMethod.Get, path);
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
-                    "Bearer", await tokenService.GetTokenAsync(credentials));
-                if (!string.IsNullOrWhiteSpace(settings.Icm.TrustedUserName))
-                {
-                    request.Headers.Add("X-ICM-TrustedUserName", settings.Icm.TrustedUserName);
-                }
-
-                using HttpResponseMessage response = await icmClient.SendAsync(request);
-                string body = await response.Content.ReadAsStringAsync();
+                (System.Net.HttpStatusCode status, string body) =
+                    await RawIcmReader.GetAsync(icmClient, tokenService, credentials, settings, path);
                 stopwatch.Stop();
 
-                if (!response.IsSuccessStatusCode)
+                if ((int)status is < 200 or > 299)
                 {
                     return Fail(
                         stopwatch,
-                        $"ICM returned {(int)response.StatusCode} {response.StatusCode}.",
+                        $"ICM returned {(int)status} {status}.",
                         "The child collection name is passed through as written; check it against the record's child links.",
                         responseBody: body);
                 }
 
-                Console.WriteLine($"{(int)response.StatusCode} {response.StatusCode} in {stopwatch.ElapsedMilliseconds} ms.");
+                Console.WriteLine($"{(int)status} {status} in {stopwatch.ElapsedMilliseconds} ms.");
                 Console.WriteLine();
                 Console.WriteLine(PrettyJson(body));
                 return 0;
@@ -243,9 +258,76 @@ namespace Icm.Api.ConsoleApp
             }
         }
 
+        /// <summary>
+        /// Contact mode: search contacts through the library — the hand-run check that the
+        /// search expression, the field list and the mapping hold against a real ICM.
+        /// </summary>
+        private static async Task<int> SearchContactsAsync(IContactService contacts, ConsoleSettings settings)
+        {
+            // Which criteria, never their values: every one of them identifies a person.
+            Console.WriteLine($"Searching contacts on {string.Join(", ", settings.Contact.CriteriaSet)}...");
+            Console.WriteLine();
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            try
+            {
+                ContactPage page = await contacts.SearchAsync(settings.Contact.ToQuery());
+                stopwatch.Stop();
+
+                Console.WriteLine(
+                    $"{page.Items.Count} contact(s) on this page, "
+                    + $"{page.TotalCount?.ToString(CultureInfo.InvariantCulture) ?? "unknown"} in total, "
+                    + $"in {stopwatch.ElapsedMilliseconds} ms.");
+                if (page.Items.Count == 0)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine(
+                        "ICM reports \"no such contact\" and \"not yours to see\" the same way, so this is "
+                        + "either no match or a visibility question — try "
+                        + "--Contact:ViewMode=Organization before assuming the former.");
+                }
+
+                foreach (Contact contact in page.Items)
+                {
+                    Console.WriteLine();
+                    ContactPrinter.Write(contact, settings.Contact.ShowValues);
+                }
+
+                return 0;
+            }
+            catch (ArgumentException exception)
+            {
+                // The library refused the query before sending anything. Its message
+                // names the criterion and never the value.
+                stopwatch.Stop();
+                Console.Error.WriteLine($"The contact search is not usable: {exception.Message}");
+                return 1;
+            }
+            catch (ApiException exception)
+            {
+                stopwatch.Stop();
+                return Fail(
+                    stopwatch,
+                    $"ICM returned {(int)exception.StatusCode} {exception.StatusCode}.",
+                    Explain(exception),
+                    responseBody: exception.Content);
+            }
+            catch (ApiRequestException exception)
+            {
+                stopwatch.Stop();
+                return FailUnreachable(stopwatch, exception, "ICM");
+            }
+            catch (IcmResponseException exception)
+            {
+                stopwatch.Stop();
+                return Fail(
+                    stopwatch, "ICM reported success but the response was not usable.", exception.Message);
+            }
+        }
+
         private static readonly System.Text.Json.JsonSerializerOptions PrettyJsonOptions = new() { WriteIndented = true };
 
-        private static string PrettyJson(string body)
+        internal static string PrettyJson(string body)
         {
             try
             {
@@ -573,7 +655,7 @@ namespace Icm.Api.ConsoleApp
         /// this — a sibling of <see cref="ApiException"/>, not a subclass — with the real
         /// cause underneath.
         /// </summary>
-        private static int FailUnreachable(Stopwatch stopwatch, ApiRequestException exception, string who)
+        internal static int FailUnreachable(Stopwatch stopwatch, ApiRequestException exception, string who)
         {
             bool timedOut = exception.InnerException is TaskCanceledException or TimeoutException;
 
@@ -617,7 +699,13 @@ namespace Icm.Api.ConsoleApp
         {
             Console.WriteLine(settings.IsBusPassMode
                 ? "ICM bus pass submission (transaction INT-316) + read-back"
-                : "ICM Service Request query");
+                : settings.IsContactMode
+                    ? "ICM contact search"
+                    : settings.IsCaseMode
+                        ? "ICM case lookup"
+                        : settings.IsDescribeMode
+                            ? "ICM describe"
+                            : "ICM Service Request query");
             Console.WriteLine(new string('-', 60));
             Console.WriteLine($"  Mode         {settings.Mode}");
             Console.WriteLine($"  ICM          {settings.Icm.BaseUrl}");
@@ -631,16 +719,41 @@ namespace Icm.Api.ConsoleApp
             Console.WriteLine($"  Token URL    {credentials.TokenUrl}");
             Console.WriteLine($"  Client       {credentials.ClientId}");
             Console.WriteLine($"  Scopes       {credentials.GetScopeParameter() ?? "(client default)"}");
-            Console.WriteLine($"  SearchSpec   {settings.Query.SearchSpec ?? "(none - matching everything)"}");
-            Console.WriteLine(
-                $"  Read by key  {settings.Query.ServiceRequestKey ?? "(skipped)"}");
-            Console.WriteLine($"  Fields       {(settings.Query.Fields.Count == 0 ? "(all)" : string.Join(", ", settings.Query.Fields))}");
-            Console.WriteLine($"  ViewMode     {settings.Query.ViewMode ?? "(ICM default: Sales Rep)"}");
-            Console.WriteLine(
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"  Paging       {settings.Query.PageSize} from row {settings.Query.StartRowNum}"));
-            Console.WriteLine($"  Output       {settings.Output}");
+            if (settings.IsContactMode)
+            {
+                // Criteria by name, not value: each identifies a person.
+                Console.WriteLine($"  Criteria     {string.Join(", ", settings.Contact.CriteriaSet)}");
+                Console.WriteLine($"  Name match   {settings.Contact.NameMatch}");
+                Console.WriteLine($"  ViewMode     {settings.Contact.ViewMode ?? "(ICM default: Sales Rep)"}");
+                Console.WriteLine($"  Values       {(settings.Contact.ShowValues ? "shown" : "hidden (--Contact:ShowValues=true to print them)")}");
+            }
+            else if (settings.IsCaseMode)
+            {
+                Console.WriteLine($"  Criteria     {string.Join(", ", settings.Case.CriteriaSet)}");
+                Console.WriteLine($"  ViewMode     {settings.Case.ViewMode ?? "(library default: Manager)"}");
+                Console.WriteLine($"  Contacts     {(settings.Case.IncludeContacts ? "read for each case" : "skipped")}");
+                Console.WriteLine($"  Values       {(settings.Case.ShowValues ? "shown" : "hidden (--Case:ShowValues=true to print them)")}");
+            }
+            else if (settings.IsDescribeMode)
+            {
+                Console.WriteLine($"  Resource     {settings.Describe.Resource}");
+                Console.WriteLine($"  Output file  {settings.Describe.OutputFile ?? "(none - printed)"}");
+            }
+            else
+            {
+                // The query settings, which a bus pass run's read-back uses too.
+                Console.WriteLine($"  SearchSpec   {settings.Query.SearchSpec ?? "(none - matching everything)"}");
+                Console.WriteLine(
+                    $"  Read by key  {settings.Query.ServiceRequestKey ?? "(skipped)"}");
+                Console.WriteLine($"  Fields       {(settings.Query.Fields.Count == 0 ? "(all)" : string.Join(", ", settings.Query.Fields))}");
+                Console.WriteLine($"  ViewMode     {settings.Query.ViewMode ?? "(ICM default: Sales Rep)"}");
+                Console.WriteLine(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"  Paging       {settings.Query.PageSize} from row {settings.Query.StartRowNum}"));
+                Console.WriteLine($"  Output       {settings.Output}");
+            }
+
             Console.WriteLine(new string('-', 60));
             Console.WriteLine();
 
@@ -649,7 +762,7 @@ namespace Icm.Api.ConsoleApp
         }
 
         /// <summary>Turns a status code into the thing most likely to have caused it.</summary>
-        private static string Explain(ApiException exception) => (int)exception.StatusCode switch
+        internal static string Explain(ApiException exception) => (int)exception.StatusCode switch
         {
             401 => "The token was rejected. Check the client id and secret, and that the token URL "
                  + "is the realm ICM trusts.",
@@ -671,7 +784,7 @@ namespace Icm.Api.ConsoleApp
         /// <param name="hint">What to try next. Not a response body — see below.</param>
         /// <param name="responseBody">What ICM actually sent back, when it sent anything.</param>
         /// <returns>The process exit code.</returns>
-        private static int Fail(
+        internal static int Fail(
             Stopwatch stopwatch,
             string headline,
             string? detail,

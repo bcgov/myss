@@ -28,6 +28,17 @@ namespace Icm.Api.Host.Tests.TestDoubles
             return builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(settings));
         }
 
+        /// <summary>
+        /// Removes the ICM base URL whatever lower-priority source supplied it. An
+        /// in-memory override cannot delete a key, only blank it, and the binder reads a
+        /// blank <see cref="Uri"/> as unset — which is what "not configured" is.
+        /// </summary>
+        public static IWebHostBuilder UseNoIcmBaseUrl(this IWebHostBuilder builder)
+        {
+            return builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(new Dictionary<string, string?> { ["Icm:BaseUrl"] = string.Empty }));
+        }
+
         public static IWebHostBuilder UseMockAuthSettings(
             this IWebHostBuilder builder,
             string allowMockAuth,
