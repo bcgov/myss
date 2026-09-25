@@ -21,6 +21,8 @@ suite runs against canned responses, on purpose.
 | Upstream API | Spec | Published as |
 | --- | --- | --- |
 | Service Request (`data/ServiceRequest/ServiceRequest`) | [`docs/integration/SR_OpenApi.json`](docs/integration/SR_OpenApi.json) | `IServiceRequestService` / `IServiceRequestRepository` |
+| Contact (`data/ICMContact/ICMContact`) — search only | [`docs/integration/Contact_OpenApi.json`](docs/integration/Contact_OpenApi.json) | `IContactService` / `IContactRepository` |
+| Case (`data/Cases/Case`, and its `Contact` child) — reads only | [`docs/integration/Case_OpenApi.json`](docs/integration/Case_OpenApi.json) | `ICaseService` / `ICaseRepository` |
 | Bus pass workflow (`workflow/ICM Receive Bus Pass Online Request Wrapper WF`) | [`docs/integration/BusPassWorkflow_OpenApi.json`](docs/integration/BusPassWorkflow_OpenApi.json) | `IBusPassService` / `IBusPassRepository` |
 | OAuth 2.0 token endpoint (client credentials) | RFC 6749 §4.4 | `IOAuthTokenService` |
 
@@ -32,7 +34,15 @@ existing integrations use.
 business component — `SR_OpenApi.json` (SIT1) and `SR_OpenApiSIT2.json` (SIT2) — kept in
 the repository so a change upstream shows up in the same diff as the change here.
 
-**The two are the same document.** 49 shared fields with identical read-only flags, Siebel
+`Contact_OpenApi.json` (SIT1, fetched 2026-09-17) is the contact business component's,
+and `Case_OpenApi.json` (SIT1, fetched 2026-09-24) the case's — the component is
+`Cases/Case`, although ICM's own business-object describe names it `ICM REST HLS Case`,
+a name that then answers `SBL-EAI-50257`. These come from ICM itself — every `data/` resource answers
+`GET …/data/{Resource}/{Resource}/describe` — and `IcmApi.Console --Mode=describe`
+fetches one with the tool's own token and writes it as ICM sent it (see
+[Functional test](#functional-test)).
+
+**The two service request documents are the same document.** 49 shared fields with identical read-only flags, Siebel
 datatypes, lengths and required lists; the only differences are the server URL and
 `CP Outcome`, which SIT1 declares and SIT2 does not. So the environment is not what makes
 the field names disagree with the live endpoint — both documents disagree with it equally,
@@ -166,6 +176,251 @@ public class Example(IServiceRequestService serviceRequests)
 Reach for `IServiceRequestRepository` directly only when the caller already holds a token
 of its own — a request carrying a citizen's token, say, where a client-credentials token
 would be the wrong identity entirely.
+
+## Contact search
+
+`IContactService.SearchAsync` finds ICM contacts by any combination of a fixed set of
+criteria. Everything set on the `ContactQuery` must match — the criteria are joined with
+`AND`:
+
+```csharp
+// The person who just signed in with a BC Services Card.
+ContactPage byCard = await contacts.SearchAsync(
+    new ContactQuery { BcServicesCardDid = did }, ct);
+
+// No card on file: match on what they can tell us.
+ContactPage byDetails = await contacts.SearchAsync(
+    new ContactQuery
+    {
+        LastName  = "smith",                    // names ignore case
+        FirstName = "jo",
+        NameMatch = ContactNameMatch.StartsWith, // Exact (default) | StartsWith | Contains
+        BirthDate = new DateOnly(1950, 1, 31),
+        Sin       = "046454286",                 // nine digits, as ICM stores it
+    },
+    ct);
+
+Contact? contact = byDetails.Items.Count == 1 ? byDetails.Items[0] : null;
+```
+
+| Criterion | ICM field (`searchspec` name) | Compared |
+| --- | --- | --- |
+| `Id`, `PersonId`, `IntegrationId` | `Id`, `Person ID ICM`, `Integration Id` | exactly |
+| `BcServicesCardDid` | `ICM BCSC DID` | exactly |
+| `Sin`, `Phn` | `SIN`, `PHN` | exactly |
+| `FirstName`, `MiddleName`, `LastName` | `First Name`, `Middle Name`, `Last Name` | per `NameMatch`, ignoring case |
+| `BirthDate` | `Birth Date` | exactly (`MM/DD/YYYY` on the wire) |
+| `Email` | `Email Address` | whole value, ignoring case |
+| `CellPhone`, `HomePhone`, `WorkPhone`, `MessagePhone` | `Cellular Phone #`, … | exactly, as stored |
+
+Plus `PageSize`, `StartRowNum`, `ViewMode` and `IncludeTotalCount`, which are not criteria.
+There is no BCeID criterion because the business component has no BCeID field
+(`Contact_OpenApi.json`: 80 fields, `ICM BCSC DID` and nothing comparable). Adding a
+criterion is a property on `ContactQuery` and one line in `ContactMapper.ToSiebel` —
+every field of the component is searchable (MEASURED, below).
+
+**There is no raw `SearchSpec`, deliberately** — unlike `ServiceRequestQuery`. The values
+are interpolated into a Siebel expression that ICM evaluates as written. MEASURED against
+SIT1 on 2026-09-17: a value containing a double quote closes its literal and the
+remainder is read as expression — `x" OR [First Name] LIKE "*` returned other people's
+records. No escape syntax has been measured, so `ContactMapper` builds the expression
+itself and refuses, with an `ArgumentException` before anything is sent:
+
+- a value containing `"`, the Siebel wildcards `*` or `?`, or a control character
+  (partial matching is asked for with `NameMatch`; the library adds the wildcards);
+- a blank value — `[SIN] = ""` is a real search, for everyone with no SIN on file, and
+  the usual cause is a value that went missing upstream. Null is how a criterion is left
+  out;
+- a query with no criterion at all, which would page through every contact in ICM;
+- a `StartsWith`/`Contains` name shorter than two characters.
+
+The exception names the property and never the value. A test walks every string
+property of `ContactQuery` by reflection, so a criterion added later cannot skip the
+check.
+
+**A page, and the caller decides what one means.** Nothing in ICM enforces one contact
+per DID or per SIN, and the component carries a `Potential Duplicate Flag` for a reason.
+When a search is meant to identify a person, anything other than exactly one item means
+it has not — more than one is "cannot tell who this is", never "take the first".
+
+**Twenty fields come back, not eighty.** The contact component serves every program in
+ICM, so it carries ethnicity, religious affiliation, medications, a child's doctor. Every
+search sends `fields=` with exactly what `Contact` models — identifiers (including SIN
+and PHN), name, birth date, gender, email, phones, the deceased and potential-duplicate
+flags, created/updated — so the rest never leaves ICM. SIN and PHN are returned because
+the legacy INT-331 tombstone returned the SIN and identity confirmation needs both; that
+makes a `Contact` something to keep out of logs, and out of any cache not designed to
+hold them. To return another field, add it to
+`SiebelContact`, `Contact`, the mapper and `ContactMapper.RequestedFields`; a test fails
+if the contract and the list drift apart.
+
+**What was measured** (SIT1, 2026-09-17, over the gateway):
+
+- **Every one of the 80 declared fields, and `Id`, is accepted in a `searchspec`**
+  (`[Field] IS NOT NULL` → 200 for all 81), and `=` matches dates and flags in the
+  formats the wire uses (`MM/DD/YYYY`, `Y`/`N`). An ISO date is a `500 SBL-DAT-00359`.
+- **`=` and `LIKE` are case-sensitive; `~=` and `~LIKE` are not.** `[Last Name] = "smith"`
+  misses `Smith`; `~=` finds it. `LIKE "Smi*"` and `LIKE "*mit*"` work as prefix and
+  substring; `*` inside an `=` literal is not a pattern.
+- `AND` works as expected — name + birth date + first name found exactly the one
+  contact, and the same name with a wrong birth date found none.
+- Unlike the service request, the live field names match the document almost
+  everywhere. Two exceptions: ICM sends an `Id` (the row id) the document does not
+  declare, and sends `Primary Email` where the document says `Email Address`.
+- The two vocabularies split the same way as on the service request: `fields` takes the
+  **live** names (`fields=Email Address` → `SBL-EAI-50258`), `searchspec` takes the
+  **business component's** (`[Primary Email]` → `SBL-DAT-00416`).
+- A search matching nothing answers
+  `404 {"ERROR":"There is no data for the requested resource"}`, which the repository
+  turns into an empty page. A `200` with no records throws `IcmResponseException` rather
+  than reading as "not found".
+- A BCSC DID is 44 characters of base64. Its `+` has to reach ICM as `%2B` (a bare `+`
+  in a query string is a space, and the search would 404 for someone who is on file);
+  Refit does that, and `ContactApiTests` pins it.
+- ICM's default `ViewMode` (`Sales Rep`) already sees these contacts — it returned the
+  same records `Organization` did, unlike on service requests. One trusted user, one
+  environment: `ContactQuery.ViewMode` is there for when that does not hold.
+- `childlinks=None` drops the five child-collection links each contact otherwise carries
+  (`ContactEducation`, `ContactLanguages`, `CaregiverTypes`, `ContactMedicalBehavioral`,
+  `LegalAuthority`); `self` and `canonical` still come.
+- `Birth Date` arrives as `MM/DD/YYYY`, `Created`/`Updated` as `MM/DD/YYYY HH:MM:SS` with
+  no offset. The document types the latter `DTYPE_UTCDATETIME`, so they are read as UTC —
+  on the document's word; not yet compared with the Siebel UI.
+- Through the library: DID, person id, SIN + upper-cased last name, lower-cased first +
+  last + birth date, last-name prefix + birth date, and last-name substring + SIN each
+  returned exactly the expected contact; a three-letter last-name prefix alone matched
+  253, paged correctly with `Total-Record-Count`.
+
+**It does not replace INT331.** The legacy MCP's login call (INT-331, "client
+authentication info") was case-centric: BCeID GUID + program type in; the open case, every
+contact on it with their relationship, the case's primary address, office, service region
+and organization out. This search covers the person and nothing else. MEASURED on SIT2,
+2026-09-17, looking for the rest:
+
+- The response carries nothing beyond `items` and `Link`, and no header of interest except
+  `total-record-count`.
+- The contact's child collections are `ContactEducation`, `ContactLanguages`,
+  `ContactMedicalBehavioral` and `LegalAuthority` (plus `CaregiverTypes` on SIT1 only) —
+  child-welfare and health records (describable at
+  `ICMContact/ICMContact/{key}/{child}/describe`). None is a case membership, relationship
+  or address, and MySS should not be reading them. Twenty-two guessed child names (`Case`,
+  `Contact Address`, `Relationship`, `Service Request`, `Household`…) all answer
+  `SBL-EAI-50257`.
+- No field on `ICMContact` or the stock `Contact` holds a BCeID GUID, MIS person id (unless
+  that is what `Integration Id` is — unconfirmed), access-revoked flag, ELMSD/RSD link
+  flags or relationship; `Case`, `ICMCase`, `HLSCase` and `HLS Case` answer "not enabled
+  for access via REST" (`SBL-EAI-50297`).
+- The one bridge that exists: `IServiceRequestService` can search
+  `[Primary Contact Id] = "<contact Id>"`, and an SR carries `Case Local Office`,
+  `Service Office`, `Primary Organization Id`/`Name` and `Assigned To`. That is office and
+  organization *as recorded on a service request* — absent for a contact with no SR, and
+  not the case's — so it is a stopgap at best, not the tombstone.
+
+**Search only.** The document describes the usual six operations, including PUT and
+DELETE on a person's record. `IContactApi` declares the search and nothing else: MySS has
+no business writing contacts, and an operation that is not declared cannot be called by
+mistake.
+
+Wiring is the same shape as the service request's:
+
+```csharp
+services.AddHttpClient<IContactRepository, ContactRepository>(client =>
+    client.BaseAddress = new Uri("https://icmsit1.api.gov.bc.ca/gov/v1.0"));
+
+services.AddScoped<IContactService>(provider => new ContactService(
+    provider.GetRequiredService<IContactRepository>(),
+    provider.GetRequiredService<IOAuthTokenService>(),
+    credentials));
+```
+
+(As written that repository sends no `X-ICM-TrustedUserName`; pass the configured name to
+the `ContactRepository` constructor the way the console app does.)
+
+## Case lookup
+
+`ICaseService` is the other half of what the legacy INT-331 login call returned: the
+person's case — program, status, office, region, organization, file number — and every
+person on it with their relationship to it.
+
+```csharp
+// From a contact the contact search identified…
+CasePage cases = await caseService.SearchAsync(
+    new CaseQuery { KeyPlayerContactId = contact.Id, Status = "Open" }, ct);
+
+// …or by the number a citizen has in hand.
+CasePage byNumber = await caseService.SearchAsync(new CaseQuery { CaseNumber = "1-11077140770" }, ct);
+
+Case? theCase = cases.Items.Count == 1 ? cases.Items[0] : null;
+Case? again = await caseService.GetAsync(theCase!.Id!, options: null, ct);         // by row id
+IReadOnlyList<CaseContact> people = await caseService.GetContactsAsync(theCase.Id!, null, ct);
+CaseContact? keyPlayer = people.SingleOrDefault(p => p.Relationship == "Key player");
+```
+
+| Criterion | ICM field (`searchspec` name) | What it is |
+| --- | --- | --- |
+| `Id` | `Id` | the case's row id, the `case_key` |
+| `CaseNumber` | `Case Num` | the number ICM's screens show, e.g. `1-11077140770` |
+| `KeyPlayerContactId` | `Key Player Id` | a `Contact.Id` |
+| `KeyPlayerPersonId` | `Key Player Contact Row Num` | a `Contact.PersonId` — the field's name is misleading |
+| `KeyPlayerIntegrationId` | `Key Player Integration Id` | a `Contact.IntegrationId` |
+| `Status`, `Type` | `Status`, `Type` | ICM's own vocabulary, e.g. `Open`, `Employment and Assistance` |
+
+All matched exactly and ANDed, values vetted exactly as the contact search's are (shared
+`SiebelSearchValue`), at least one required. Plus `PageSize`, `StartRowNum`, `ViewMode`
+and `IncludeTotalCount`.
+
+**`ViewMode` defaults to `Manager`, not to ICM's default.** MEASURED on SIT2 on
+2026-09-24: the reference case is a `404` under `Sales Rep` (ICM's default),
+`Organization` (what service requests need) and `Personal`, and visible under `Manager`,
+`Group`, `Sub-Organization` and `Catalog`. A SIT1 case was visible under `Organization`
+as well, so the modes are not consistent across cases; `Manager` saw both. Null or blank
+on `CaseQuery.ViewMode` / `CaseReadOptions.ViewMode` means `Manager`.
+
+**The contact-to-case link is the key player.** A case names the contact whose file it
+is three ways, and each finds it alone (MEASURED, same day): row id, person id,
+integration id. A person on a case in any other relationship cannot be found from the
+case side — the child collection that records relationships accepts no `searchspec`
+(`[Relationship]` → `SBL-DAT-00416`), a child-field search on the parent is rejected
+(`[Contact.Id]` → `SBL-DAT-00416`), and `ICMContact` carries no case field or child. So
+"no case as key player" is not "no case".
+
+**The case's `Contact` child is where the BCeID is.** `GetContactsAsync` reads
+`data/Cases/Case/{key}/Contact/` — a different business component from `ICMContact`,
+with no describe document (`Cases/Contact/describe` → `SBL-EAI-50257`) and reachable
+only under a case. Its rows carry the contact's row id (the same `Id` the contact search
+returns — verified by reading one back from `ICMContact`), `Relationship`, `Primary`,
+the person's names, birth date, SIN, PHN, person ids, phone, an address, citizenship and
+Indigenous status flags — and `BCeID User Name`, the only place a BCeID has been found
+in ICM's REST surface. The component also carries child-welfare fields, which are not
+asked for.
+
+**Field names are the live ones, as on the service request.** `SiebelCase` follows what
+ICM sends (`Id`, `Assigned To`, `Created Date`, `Created By Id`…), and the document's
+`Created`, `Sales Rep`, `ICM Created By` and `ICM Updated By` are rejected in a `fields`
+list (`SBL-EAI-50258`), so they are not asked for. Every name in `CaseMapper.RequestedFields`
+and `RequestedContactFields` was accepted on 2026-09-24, and a test ties each list to its
+wire contract. Not asked for on purpose: the case's CSA-status, DIN and place-of-birth
+fields, and the child's maltreatment and AGT fields.
+
+**Reads only.** The document describes the usual six operations; `ICaseApi` declares the
+search, the read by key and the child read, nothing else.
+
+**Reference records** (test data): SIT2 case `1-5371KIQ` / `1-11077140770` (Open,
+Employment and Assistance, key player contact `1-532MU4J`, Winnona Peircee, DOB
+1950-01-01, BCeID `winnona-afa-test`); SIT1 case `1-4OCEDUV` (Closed, Employment Program
+of BC, key player `1-4OCDTDT`).
+
+Wiring is the same shape as the contact's:
+
+```csharp
+services.AddHttpClient<ICaseRepository, CaseRepository>(client =>
+    client.BaseAddress = new Uri("https://icmsit2.api.gov.bc.ca/gov/v1.0"));
+
+services.AddScoped<ICaseService>(provider => new CaseService(
+    provider.GetRequiredService<ICaseRepository>(),
+    provider.GetRequiredService<IOAuthTokenService>(),
+    credentials));
+```
 
 ## The bus pass integration (INT-316)
 
@@ -420,7 +675,24 @@ record in the target ICM**: it submits the synthetic application in the committe
 `BusPass` settings section as transaction INT-316 through the bus pass workflow, prints the out-args (unmodelled
 fields included), then searches recent Bus Pass SRs for the returned `ApplicationNumber`
 and reads the created record back — the hand-run integration test for the workflow
-client. The default mode remains the read-only query. Everything in `IcmApi.Tests` runs against canned responses —
+client. Two more modes are read-only. `--Mode=contact` searches contacts through
+`IContactService` with whatever criteria are given — `--Contact:LastName=…
+--Contact:BirthDate=1950-01-31 --Contact:NameMatch=StartsWith`, `--Contact:Sin=…`,
+`--Contact:BcServicesCardDid='…'` and so on; by default it prints each row id and *which*
+fields came back filled rather than their values (every contact field is personal
+information — `--Contact:ShowValues=true` prints them), and it echoes which criteria were
+set but never their values. `--Mode=case` looks a case up through `ICaseService` —
+`--Case:Id=1-5371KIQ` reads it by row id; `--Case:CaseNumber=…`, `--Case:ContactId=…`
+(a contact's `Id`), `--Case:PersonId=…`, `--Case:IntegrationId=…`, `--Case:Status=…`
+and `--Case:Type=…` search, ANDed — and prints each case found in full, then the people
+on it with their relationship (`--Case:IncludeContacts=false` skips that;
+`--Case:ShowValues=false` reduces values to presence — SIT is test data, so they print
+by default).
+`--Mode=describe --Describe:Resource=ICMContact/ICMContact
+--Describe:OutputFile=…` fetches a business component's OpenAPI document from ICM's
+`describe` endpoint, which is how the files under `docs/integration/` are refreshed. Add
+`--Icm:BaseUrl=https://icmsit1.api.gov.bc.ca/gov/v1.0` to point any mode at another
+environment for one run. The default mode remains the read-only query. Everything in `IcmApi.Tests` runs against canned responses —
 deliberately, so the suite is fast and needs no credentials — which leaves exactly one
 class of question open: whether the assumptions this client is built on hold upstream.
 This is how you find out.
@@ -505,6 +777,17 @@ things worth watching in the output:
 - No DI extension method (`AddIcmServiceRequestApi`) — that needs
   `Refit.HttpClientFactory`, and the registration shape will be clearer once `MyssApi`
   actually consumes this. The wiring above works in the meantime.
+- Lookup by **BCeID**: the only BCeID field found is on a case's `Contact` child (see
+  [Case lookup](#case-lookup)), which cannot be searched — so a BCeID can be *confirmed*
+  once the case is known, but not used to *find* it. Needs an ICM-side answer.
+- The case lookup is measured against one SIT2 case and one SIT1 case, one trusted user.
+  The view-mode inconsistency between them (`Organization` saw the SIT1 case and not the
+  SIT2 one) is unexplained; `Manager` saw both.
+- The contact search is measured against **SIT1**, one trusted user. On SIT2 only a
+  first + last name search has been run (2026-09-17 — it returned the same three records
+  as SIT1, so the two share a data refresh), and SIT2's describe has not been fetched or
+  compared. PHN and phone criteria are built the same way as the measured ones, but no
+  sample record carried a value to match against, so their stored formats are unseen.
 - Only a simple query has been run against a live ICM. The date format and the `ViewMode`
   defaults are the two things to confirm first against SIT — run `IcmApi.Console` above,
   which exists for exactly that.

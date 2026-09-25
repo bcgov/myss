@@ -14,9 +14,9 @@ assembly. Namespaces are `Icm.Api` (Refit interfaces), `Icm.Api.Contracts`,
 `Icm.Api.Api` reads worse than it informs.
 
 ```
-Services/            IServiceRequestService, IBusPassService, IOAuthTokenService  ← inject these
-Repositories/        IServiceRequestRepository, IBusPassRepository, IOAuthTokenRepository
-Api/                 IServiceRequestApi, IOAuthTokenApi (Refit)       ┐
+Services/            IServiceRequestService, IContactService, ICaseService, IBusPassService, IOAuthTokenService  ← inject these
+Repositories/        IServiceRequestRepository, IContactRepository, ICaseRepository, IBusPassRepository, IOAuthTokenRepository
+Api/                 IServiceRequestApi, IContactApi, ICaseApi, IOAuthTokenApi (Refit)  ┐
 Api/Contracts/       Siebel* and Token* wire models, the mapper       │ internal
 Workflows/           IBusPassWorkflowApi (Refit)                      │
 Workflows/Contracts/ SiebelBusPass* wire envelope, BusPassMapper      ┘
@@ -43,6 +43,58 @@ and a business rejection still answers `Status: "SUCCESS"` with an `ApplicationN
 — the rejection is visible only in the filed SR (sub type `Error - Web`, reason in
 `Memo`), so submit-and-read-back is the only real verification.
 `IcmApi.Console --Mode=buspass` is that test (it creates a record in the target ICM).
+
+## Contact search
+
+`IContactService.SearchAsync(ContactQuery)` searches `data/ICMContact/ICMContact`
+(`docs/integration/Contact_OpenApi.json`, fetched from SIT1's `describe` endpoint with
+`IcmApi.Console --Mode=describe`). The criteria — ids, BCSC DID, SIN, PHN, names, birth
+date, email, phones — are ANDed. Things that must survive a change, all MEASURED on SIT1
+2026-09-17 and detailed in the README's "Contact search":
+
+- **There is no raw `SearchSpec` on `ContactQuery`, and `ContactMapper.Vet` is a security
+  control, not tidiness.** Values go into a `searchspec`; a double quote in one rewrites
+  the search and returned other people's records. Never add a raw-expression property,
+  never build a contact searchspec anywhere but `ContactMapper.ToSiebel`, and never
+  loosen what `Vet` refuses without measuring an escape syntax. Blank values and
+  criterion-less queries are refused for the same family of reasons.
+- **Names and email use `~=` / `~LIKE`** because `=` and `LIKE` are case-sensitive.
+  Wildcards come only from `ContactNameMatch`; a caller's `*` is refused.
+- **No BCeID**: the component has no such field. Do not add a criterion that cannot be
+  mapped.
+- **The returned field list is fixed and minimal on purpose** — 20 of 80, none of the
+  health or child-welfare fields. It does include SIN and PHN, so never log a `Contact`
+  whole. `fields` takes
+  live names (`Primary Email`), `searchspec` the document's (`Email Address`); a test ties
+  `RequestedFields` to `SiebelContact`.
+- **It returns a page.** For an identifying search, anything but exactly one item means
+  "not identified" — never take the first.
+- **Search only**: no contact write is declared, deliberately.
+- A contact is all personal information. The console's `contact` mode prints criteria
+  *names* and field *presence* unless `--Contact:ShowValues=true`; keep real DIDs, SINs
+  and names out of committed settings, test data (use the synthetic values already in
+  the tests) and transcripts.
+
+## Case lookup
+
+`ICaseService` reads `data/Cases/Case` (`docs/integration/Case_OpenApi.json`) and the
+case's `Contact` child collection (no document exists for it). Things that must survive
+a change, all MEASURED on SIT2 on 2026-09-24 and detailed in the README's "Case lookup":
+
+- **`CaseQuery` has no raw `SearchSpec`**, for the contact search's reasons; values go
+  through the shared `SiebelSearchValue.Vet`. Add a criterion as a property plus one line
+  in `CaseMapper.ToSiebel`, never as an expression.
+- **`ViewMode` defaults to `Manager`** (`CaseMapper.DefaultViewMode`), because ICM's
+  default, and `Organization`, hide cases. Do not "simplify" it back to null.
+- **The contact-to-case link is the key player**, three ways (`Key Player Id` = contact
+  row id, `Key Player Contact Row Num` = person id, `Key Player Integration Id`). Nothing
+  else on a case is searchable by contact, and the `Contact` child accepts no search.
+- **Field lists are fixed and live-named.** `Created`, `Sales Rep`, `ICM Created By` and
+  `ICM Updated By` are rejected in a `fields` list; the child-welfare fields on both
+  components are deliberately not asked for. Tests tie each list to its wire contract.
+- **The `Contact` child holds the BCeID** (`BCeID User Name`) and the SIN/PHN — a
+  `CaseContact` is all personal information.
+- **Reads only**: no case write is declared.
 
 ## The published surface is enforced
 
@@ -121,7 +173,9 @@ cached.
 `IcmApi.Console` reads `appsettings.json` (committed, placeholders) then the user-secret
 store (`dotnet user-secrets set "Icm:Auth:ClientSecret" "…"` — keyed by the csproj's
 `UserSecretsId`) then `Icm_` environment variables then the command line, gets a token,
-runs one search against a real ICM and dumps the result. The token endpoint is composed
+runs one search against a real ICM and dumps the result (`--Mode=query`, the default;
+`buspass` submits and reads back, `contact` searches contacts, `case` reads a case and
+the people on it, `describe` saves a resource's OpenAPI document). The token endpoint is composed
 from `Icm:Auth:BaseUrl` + `Icm:Auth:Realm` (both non-secret, both committed) so the realm
 is a visible setting rather than a path segment inside a pasted URL; an optional
 `Icm:Auth:TokenUrl` overrides both. Nothing in the unit suite touches the network, so

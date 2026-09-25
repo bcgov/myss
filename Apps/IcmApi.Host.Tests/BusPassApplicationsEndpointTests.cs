@@ -243,6 +243,12 @@ namespace Icm.Api.Host.Tests
             WebApplicationFactory<Startup> factory = _factory.WithWebHostBuilder(builder =>
             {
                 builder.UseMockAuthSettings("true", "local", "true");
+
+                // Blanked explicitly rather than left unset: the factory boots the host as
+                // Development, which loads the user-secret store this project shares with
+                // IcmApi.Console — and on a developer machine that store holds a real
+                // Icm:BaseUrl. Without this the test passes on CI and fails locally.
+                builder.UseNoIcmBaseUrl();
             });
 
             InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());

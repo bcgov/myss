@@ -33,6 +33,8 @@
              second Include of the same file can fail evaluation (NETSDK1022). -->
         <None Update="README.md" />
         <None Update="docs\integration\SR_OpenApi.json" />
+        <None Update="docs\integration\Contact_OpenApi.json" />
+        <None Update="docs\integration\Case_OpenApi.json" />
         <None Update="docs\integration\BusPassWorkflow_OpenApi.json" />
     </ItemGroup>
 

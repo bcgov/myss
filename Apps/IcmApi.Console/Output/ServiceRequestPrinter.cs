@@ -126,7 +126,7 @@ namespace Icm.Api.ConsoleApp.Output
         }
 
         /// <summary>Formats a value the way its type deserves, invariantly.</summary>
-        private static string Format(object? value) => value switch
+        internal static string Format(object? value) => value switch
         {
             null => "-",
             bool flag => flag ? "true" : "false",
@@ -138,7 +138,7 @@ namespace Icm.Api.ConsoleApp.Output
             _ => value.ToString() ?? "-",
         };
 
-        private static void WriteWarning(string message)
+        internal static void WriteWarning(string message)
         {
             ConsoleColor previous = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Yellow;
