@@ -27,6 +27,21 @@ namespace Myss.Api.Tests.Services
             Assert.Equal("Cell", data["phoneType"]);
         }
 
+        [Theory]
+        [InlineData("addressUpdate", "Existing client - address change or replacement pass", "Moved - address update")]
+        [InlineData("replacement", "Existing client - address change or replacement pass", "Lost or stolen pass - replacement requested")]
+        [InlineData("newApplication", "New applicant", null)]
+        public void Build_ResolvesV3ServiceSelectionToRequestLabels(
+            string selection,
+            string expectedCategory,
+            string? expectedReason)
+        {
+            var data = Build($$"""{"serviceRequestType":"{{selection}}"}""");
+
+            Assert.Equal(expectedCategory, data["applicantCategory"]);
+            Assert.Equal(expectedReason, data["existingClientReason"]);
+        }
+
         [Fact]
         public void Build_FallsBackToTheRawCodeWhenUnmapped()
         {

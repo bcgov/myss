@@ -49,3 +49,39 @@
 .actions {
     margin-top: var(--layout-margin-medium);
 }
+
+/* The service selector follows the BC Gov nested-choice pattern: the parent
+ * option stays in the main flow and its child choices are indented beneath it. */
+.formHost :global([data-myss-nested-option]) {
+    margin-bottom: var(--layout-margin-small);
+}
+
+.formHost :global([data-myss-nested-option] > .bcds-react-aria-Radio),
+.formHost :global([data-myss-nested-option-child] > .bcds-react-aria-Radio) {
+    box-sizing: border-box;
+    border: var(--layout-border-width-small) solid transparent;
+    border-radius: var(--layout-border-radius-medium);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+}
+
+.formHost
+    :global([data-myss-nested-option] > .bcds-react-aria-Radio[data-selected]),
+.formHost
+    :global(
+        [data-myss-nested-option-child] > .bcds-react-aria-Radio[data-selected]
+    ) {
+    border-color: var(--surface-color-border-default);
+    background: var(--surface-color-background-light-gray);
+}
+
+.formHost :global([data-myss-nested-option] > .bcds-react-aria-Radio) {
+    margin-bottom: var(--layout-margin-small);
+}
+
+.formHost :global([data-myss-nested-option] .bcds-react-aria-RadioGroup) {
+    margin-left: var(--layout-margin-medium);
+}
+
+.formHost :global([data-myss-nested-option-child]) {
+    margin-bottom: var(--layout-margin-small);
+}

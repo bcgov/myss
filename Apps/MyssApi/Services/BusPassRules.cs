@@ -44,14 +44,32 @@ namespace Myss.Api.Services
 
         private static void ValidateRequestType(JsonElement answers, List<ValidationErrorModel> errors)
         {
-            string? category = BusPassAnswers.GetString(answers, BusPassAnswers.ApplicantCategory);
-
-            if (category == "existing" && BusPassAnswers.GetString(answers, BusPassAnswers.ExistingClientReason) is null)
+            if (!BusPassAnswers.TryGetRequestType(answers, out BusPassRequestType requestType))
             {
-                errors.Add(Required(BusPassAnswers.ExistingClientReason, "A selection is required"));
+                bool hasV3Value = answers.TryGetProperty(BusPassAnswers.ServiceRequestType, out JsonElement serviceType);
+                string? legacyCategory = BusPassAnswers.GetString(answers, BusPassAnswers.ApplicantCategory);
+                if (!hasV3Value
+                    && legacyCategory == "existing"
+                    && BusPassAnswers.GetString(answers, BusPassAnswers.ExistingClientReason) is null)
+                {
+                    errors.Add(Required(BusPassAnswers.ExistingClientReason, "A selection is required"));
+                    return;
+                }
+
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = hasV3Value ? BusPassAnswers.ServiceRequestType : BusPassAnswers.ApplicantCategory,
+                    Keyword = hasV3Value
+                        ? BusPassErrorKeywords.RequestTypeInvalid
+                        : ValidationKeywords.FieldRequired,
+                    Message = hasV3Value
+                        ? "Select a valid service type"
+                        : "A service type is required",
+                });
+                return;
             }
 
-            if (category == "new")
+            if (requestType == BusPassRequestType.NewApplication)
             {
                 if (BusPassAnswers.GetString(answers, BusPassAnswers.EligibilityCategory) is null)
                 {

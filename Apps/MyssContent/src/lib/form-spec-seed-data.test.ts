@@ -5,6 +5,7 @@ import {
   BUS_PASS_FORM_SPEC_TITLE,
   busPassFormSpecV1,
   busPassFormSpecV2,
+  busPassFormSpecV3,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   POC_FORM_SPEC_ID,
@@ -30,7 +31,9 @@ import {
 
 interface Component {
   readonly key?: unknown;
+  readonly label?: unknown;
   readonly type?: unknown;
+  readonly values?: unknown;
   readonly inputMask?: unknown;
   readonly placeholder?: unknown;
   readonly conditional?: { readonly when?: unknown };
@@ -200,7 +203,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
   });
 
-  it("seeds the bus pass with v1 and v2", () => {
+  it("seeds the bus pass with v1, v2 and v3", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -208,7 +211,48 @@ describe("seeded forms collection", () => {
     expect(busPass?.versions).toEqual([
       { version: 1, spec: busPassFormSpecV1 },
       { version: 2, spec: busPassFormSpecV2 },
+      { version: 3, spec: busPassFormSpecV3 },
     ]);
+  });
+
+  it("orders the bus pass v3 service choices as existing details then new", () => {
+    const serviceRequest = componentByKey(
+      busPassFormSpecV3,
+      "serviceRequestType",
+    );
+    const values = serviceRequest.values as Array<{
+      label: string;
+      value: string;
+      children?: Array<{ label: string; value: string }>;
+    }>;
+
+    expect(serviceRequest.type).toBe("bcgovRadio");
+    expect(serviceRequest.label).toBe(
+      "What type of service would you like to request?",
+    );
+    expect(serviceRequest.validate?.required).toBe(true);
+    expect(values.map(({ value }) => value)).toEqual([
+      "existing",
+      "newApplication",
+    ]);
+    expect(values[0].children?.map(({ value }) => value)).toEqual([
+      "addressUpdate",
+      "replacement",
+    ]);
+  });
+
+  it("keys bus pass v3 new-applicant fields from the canonical service value", () => {
+    for (const key of [
+      "newApplicantEligibilityInfo",
+      "eligibilityAcknowledged",
+      "eligibilityCategory",
+    ]) {
+      expect(componentByKey(busPassFormSpecV3, key).conditional).toEqual({
+        eq: "newApplication",
+        show: true,
+        when: "serviceRequestType",
+      });
+    }
   });
 
   it("allows one- or two-digit birth days in bus pass v2", () => {
