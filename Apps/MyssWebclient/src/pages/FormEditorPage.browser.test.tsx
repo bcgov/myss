@@ -524,8 +524,8 @@ describe("FormEditorPage build mode", () => {
     const screen = await renderPage();
     await screen.getByRole("button", { name: "Build form" }).click();
 
-    // Read the palette out of the DOM rather than by role: one of the two
-    // groups renders collapsed, so its entries are present but not visible.
+    // Read the palette out of the DOM rather than by role: two of the three
+    // groups render collapsed, so their entries are present but not visible.
     await vi.waitFor(() => {
       expect(document.querySelectorAll(".formcomponent").length).toBeGreaterThan(
         0,
@@ -545,7 +545,8 @@ describe("FormEditorPage build mode", () => {
 
   it("makes the palette reachable by keyboard", async () => {
     // Without keyboardBuilder the entries render with tabindex -1 and a drag is
-    // the only way to add a field.
+    // the only way to add a field. The entry comes from the group that opens
+    // on load: a collapsed group is display: none and cannot take focus.
     mockGetDraft.mockResolvedValue(draft);
 
     const screen = await renderPage();
@@ -553,7 +554,7 @@ describe("FormEditorPage build mode", () => {
 
     const entry = await vi.waitFor(() => {
       const found = document.querySelector<HTMLElement>(
-        '.formcomponent[data-key="textfield"]',
+        '.formcomponent[data-key="radio"]',
       );
       expect(found).not.toBeNull();
       return found!;

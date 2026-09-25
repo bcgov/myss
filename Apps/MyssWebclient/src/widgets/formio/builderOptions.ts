@@ -1,21 +1,18 @@
 // Configuration for the Form.io builder: which component types a designer may
 // add, and what the component settings dialog exposes.
 
+/** Question types that pick from a fixed set of answers. */
+const CHOICE_TYPES = ["bcgovRadio", "radio", "select", "checkbox"] as const;
+
+/** Question types that take a typed answer. */
+const TEXT_TYPES = ["textfield", "textarea", "number", "email"] as const;
+
 /**
  * Question types a designer may add. Each is registered with Form.io and
  * type-checked by the API's spec validator, so an answer it collects is still
  * validated server-side on submit.
  */
-const QUESTION_TYPES = [
-  "bcgovRadio",
-  "radio",
-  "select",
-  "checkbox",
-  "textfield",
-  "textarea",
-  "number",
-  "email",
-] as const;
+const QUESTION_TYPES = [...CHOICE_TYPES, ...TEXT_TYPES] as const;
 
 /**
  * Display, action and grouping types, which carry no answer. `button` is here
@@ -106,15 +103,24 @@ export const builderOptions = {
     premium: false,
     // Appended from a Formio project when one resolves, outside the flags above.
     resource: false,
-    questions: {
-      title: "Questions",
+    // Only one group can be open on load; the builder closes the rest.
+    choices: {
+      title: "Choices",
       weight: 0,
       default: true,
-      components: palette(QUESTION_TYPES),
+      components: palette(CHOICE_TYPES),
+    },
+    // An explicit false renders aria-expanded="false"; left out, it is empty.
+    text: {
+      title: "Text entry",
+      weight: 5,
+      default: false,
+      components: palette(TEXT_TYPES),
     },
     content: {
       title: "Content and layout",
       weight: 10,
+      default: false,
       components: palette(CONTENT_TYPES),
     },
   },

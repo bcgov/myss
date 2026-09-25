@@ -29,6 +29,68 @@
     padding: var(--layout-padding-medium, 16px);
 }
 
+/* The palette markup uses Bootstrap 5 classes (btn-outline-primary, d-grid,
+   mt-0) that the site's Bootstrap 3 stylesheet does not define, so the palette
+   is styled here. */
+.builder :global(.formcomponents .builder-sidebar_search) {
+    font-size: 0.875rem;
+}
+
+.builder :global(.formcomponents .form-builder-group-header h5) {
+    margin: 0;
+}
+
+.builder :global(.formcomponents .builder-group-button) {
+    border: 0;
+    color: var(--surface-color-primary-button-default, #234075);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 8px 0 4px;
+    text-align: left;
+    width: 100%;
+}
+
+.builder :global(.formcomponents .builder-group-button:focus-visible) {
+    outline: 2px solid var(--surface-color-border-active, #2e5dd7);
+    outline-offset: 2px;
+}
+
+/* Side padding leaves room for the entries' focus outline: the scrolling
+   sidebar clips anything drawn past its edges. */
+.builder :global(.formcomponents [ref="sidebar-container"]) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 4px 8px;
+}
+
+/* The drag library moves a copy of the entry onto <body> while it is dragged,
+   outside .builder, hence the unscoped .gu-mirror selector. */
+.builder :global(.formcomponents .formcomponent),
+:global(.gu-mirror.formcomponent) {
+    background-color: var(--surface-color-primary-button-default, #234075);
+    border: 1px solid var(--surface-color-primary-button-default, #234075);
+    border-radius: 4px;
+    color: var(--typography-color-primary-invert, #ffffff);
+    cursor: grab;
+    display: block;
+    font-size: 0.875rem;
+    line-height: 1.2;
+    margin: 0;
+    padding: 6px 10px;
+    text-align: left;
+    width: 100%;
+}
+
+.builder :global(.formcomponents .formcomponent:hover) {
+    background-color: var(--surface-color-primary-button-hover, #1e5189);
+}
+
+.builder :global(.formcomponents .formcomponent:focus-visible) {
+    outline: 2px solid var(--surface-color-border-active, #2e5dd7);
+    outline-offset: 2px;
+}
+
 .grid {
     border-top: 1px solid var(--surface-color-border-default, #d0d5dd);
     display: grid;

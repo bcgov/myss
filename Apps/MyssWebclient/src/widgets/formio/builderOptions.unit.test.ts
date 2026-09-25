@@ -34,11 +34,11 @@ describe("builderOptions", () => {
     ]);
   });
 
-  it("offers exactly the allowed types across its two groups", () => {
-    const offered = [
-      ...Object.keys(builderOptions.builder.questions.components),
-      ...Object.keys(builderOptions.builder.content.components),
-    ];
+  it("offers exactly the allowed types across its three groups", () => {
+    const { choices, text, content } = builderOptions.builder;
+    const offered = [choices, text, content].flatMap((group) =>
+      Object.keys(group.components),
+    );
 
     expect(offered.slice().sort()).toEqual(
       ALLOWED_COMPONENT_TYPES.slice().sort(),
