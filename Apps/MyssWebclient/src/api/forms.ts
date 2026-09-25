@@ -21,19 +21,13 @@ export interface FormSpecPayload {
   spec: FormType;
 }
 
-/**
- * One version of a form and whether it is published or a draft only. Mirrors
- * `FormVersionSummaryModel` in MyssApi/Models/FormModels.cs.
- */
+/** One version of a form and whether it is published or a draft only. */
 export interface FormVersionSummary {
   version: number;
   isPublished: boolean;
 }
 
-/**
- * One logical form and its versions, for the admin editor's forms list.
- * Mirrors `FormSummaryModel` in MyssApi/Models/FormModels.cs.
- */
+/** One logical form and its versions, for the admin editor's forms list. */
 export interface FormSummary {
   formSpecId: string;
   title?: string | null;
@@ -46,10 +40,7 @@ export interface SaveDraftInput {
   title?: string | null;
 }
 
-/**
- * The result of publishing a form: the version number that went live.
- * Mirrors `PublishResultModel` in MyssApi/Models/FormModels.cs.
- */
+/** The result of publishing a form: the version number that went live. */
 export interface PublishResult {
   version: number;
 }
@@ -71,8 +62,7 @@ export interface FormSubmissionSummary {
 }
 
 /**
- * One field-scoped refusal from the API. Mirrors `ValidationErrorModel` in
- * MyssApi/Models/FormValidationModels.cs.
+ * One field-scoped refusal from the API.
  *
  * `keyword` is the stable half of the contract (`IDA.SIN.INVALID_CHECKSUM` and
  * friends) and `message` the human half. Key UI decisions off the keyword, not
