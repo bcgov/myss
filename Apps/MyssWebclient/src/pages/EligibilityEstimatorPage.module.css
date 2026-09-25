@@ -1,5 +1,5 @@
 /* Pre-Eligibility Estimator page. The form itself is rendered by Form.io; these
-   styles cover the page chrome (privacy banner, required note, status accordion)
+   styles cover the page chrome (privacy callout, required note, status accordion)
    and the result panel — an estimate card + prose only, no itemised breakdown
    table. */
 
@@ -14,8 +14,12 @@
 }
 
 .title {
-  font: var(--typography-bold-h1);
-  margin: 0 0 var(--layout-margin-large);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  /* The design puts the main column on a 16px gap, so the title sits 16px above
+     the callout. */
+  margin: 0 0 var(--layout-margin-medium);
   color: var(--typography-color-primary);
 }
 
@@ -24,7 +28,7 @@
    20px/16px title and body, and the side padding that used to be tuned by hand here are
    now the component's business. */
 .privacyCallout {
-  margin-bottom: var(--layout-margin-medium, 16px);
+  margin-bottom: var(--layout-margin-medium);
   /* The design draws the callout title at 20/34 where the component uses 18px.
      Feed the value through the token it already reads rather than out-specifying
      its rule: a custom property inherits, so there is no specificity race with
@@ -32,29 +36,10 @@
   --typography-bold-large-body: 700 20px/34px "BC Sans", sans-serif;
 }
 
-/* Privacy banner: light panel with a BC-blue accent bar. */
-.privacyBanner {
-  border-left: var(--layout-border-width-large) solid var(--surface-color-border-default);
-  border-radius: var(--layout-border-radius-medium);
-  background: var(--surface-color-background-light-gray);
-  padding: var(--layout-padding-medium) var(--layout-padding-large);
-  margin-bottom: var(--layout-margin-medium);
-}
-
-.privacyTitle {
-  font-weight: 700;
-  margin: 0 0 4px;
-}
-
 /* The design's accent bar measures 8px; the component ships 4px. Two compounds against
    BCDS's one, so this wins on specificity rather than on source order. */
 .privacyCallout :global(.bcds-Callout) {
   border-left-width: 8px;
-}
-
-.privacyBody {
-  margin: 0;
-  color: var(--typography-color-secondary);
 }
 
 /* Regular/body 16px in literal black, per the design. */
@@ -117,7 +102,7 @@
 
 /* ---- Result panel ---- */
 .result {
-  margin-top: var(--layout-margin-xxlarge, 40px);
+  margin-top: var(--layout-margin-xxlarge);
   /* The design draws the whole result panel in literal black, not the #2d2d2d
      typography token — headings, prose, the card and the rows alike. The amount
      and the inline links keep link-blue via their own rules. */
@@ -137,13 +122,16 @@
 }
 
 .resultTitle {
-  font: var(--typography-bold-h2);
+  /* bold/H2 — 32px on a 54px line. Unset, it inherited the theme's tight heading
+     leading (35.2px). */
+  font-size: 32px;
+  font-weight: 700;
   line-height: 54px;
   margin: 0 0 var(--layout-margin-medium);
 }
 
 /* The heading is focused after submission so AT announces the result; keep a
-  visible focus indicator for keyboard users (matches FormSpecWidget.css). Scoped to
+   visible focus indicator for keyboard users (matches FormSpecWidget.css). Scoped to
    :focus-visible so a mouse submit doesn't leave a stray box on the heading. */
 .resultTitle:focus-visible {
   outline: var(--layout-border-width-medium) solid var(--surface-color-border-dark);
@@ -153,13 +141,16 @@
 .estimateCard {
   border: var(--layout-border-width-small) solid var(--surface-color-border-medium);
   border-radius: var(--layout-border-radius-large);
-  padding: var(--layout-padding-xlarge);
-  text-align: center;
+  padding: 30px 55px;
+  /* Left-aligned, not centred: the design centres the block inside the card, not
+     the text within it. */
   margin-bottom: var(--layout-margin-large);
 }
 
 .estimateHeading {
-  font: var(--typography-bold-h3);
+  /* bold/H3 — 28px on a 42px line. */
+  font-size: 28px;
+  font-weight: 700;
   line-height: 42px;
   margin: 0 0 var(--layout-margin-small);
 }
@@ -175,15 +166,16 @@
 
 .estimateAmount {
   /* Bold 32 on a 42px line, in link-blue. */
+  font-size: 32px;
+  font-weight: 700;
   line-height: 42px;
-  font: var(--typography-bold-h2);
   color: var(--typography-color-link);
   margin: 0 0 var(--layout-margin-small);
 }
 
 .perMonth {
-  font: var(--typography-regular-large-body);
-  color: var(--typography-color-primary);
+  font-size: 18px;
+  font-weight: 400;
   line-height: 30.608px;
   /* Explicit black: this span sits inside .estimateAmount, so leaving it to inherit picks
      up the amount's link-blue. Only the figure itself is blue in the design. */
@@ -198,28 +190,6 @@
   align-items: center;
   gap: 4px;
   margin: 0;
-  color: var(--typography-color-secondary);
-  font: var(--typography-regular-large-body);
-}
-
-/* Leading exclamation-circle before the caveat (design 09). Drawn in pure CSS —
-   no icon font — mirroring the tooltip (ⓘ) and error (!) icons. Inherits the
-   caveat's colour via currentColor. */
-.estimateCaveat::before {
-  content: "!";
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 1.15em;
-  height: 1.15em;
-  margin-right: 8px;
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
-  font-weight: 700;
-  font-size: 0.8em;
-  line-height: 1;
-  vertical-align: 0.02em;
   font-size: 18px;
   line-height: 30.608px;
 }
@@ -230,14 +200,15 @@
      against the colour property and ignores an inherited `fill`. The design puts the icon
      at icons/color/primary while the sentence beside it is black, so it cannot simply
      ride on the caveat's own colour. */
-  color: var(--icons-color-primary, #2d2d2d);
+  color: var(--icons-color-primary);
 }
 
 .subHeading {
-  font: var(--typography-bold-h3);
-  margin: var(--layout-margin-large) 0 var(--layout-margin-small);
   /* bold/H3 — 28px on a 42px line, matching the card heading. */
+  font-size: 28px;
+  font-weight: 700;
   line-height: 42px;
+  margin: var(--layout-margin-large) 0 var(--layout-margin-small);
 }
 
 /* "Your information" is 24px — one step below the 28px section headings, so it
@@ -246,13 +217,13 @@
   font-size: 24px;
   font-weight: 700;
   line-height: 1.5;
-  margin: var(--layout-margin-large, 24px) 0 var(--layout-margin-small, 8px);
+  margin: var(--layout-margin-large) 0 var(--layout-margin-small);
 }
 
 .prose {
   margin: 0 0 var(--layout-margin-medium);
-  font: var(--typography-regular-large-body);
   /* regular/largeBody — 18px on a 30.608px line, i.e. 1.7, not 1.6. */
+  font-size: 18px;
   line-height: 1.7;
 }
 
@@ -276,11 +247,11 @@
 
 .infoList {
   margin: 0;
-  /* Design 0901 ee-10: the "Your information" rows read at the same size as the
-     "How your estimate was calculated" body prose (.prose). Without this they
-     inherit the smaller app base and look undersized. */
+  /* The "Your information" rows read at the same size as the body prose (.prose) —
+     regular/largeBody 18px on a 30.608px line. Without this they inherit the smaller
+     app base and look undersized. */
+  font-size: 18px;
   line-height: 1.7;
-  font: var(--typography-regular-large-body);
 }
 
 .infoRow {
@@ -314,59 +285,11 @@
    under the estimator form host so nothing leaks to other pages.
    --------------------------------------------------------------------------- */
 
-/* Status explainer: Form.io renders the collapsible panel as a Bootstrap .card,
-   but the bundled Bootstrap 3 has no .card styles and its collapse chevron uses
-   an icon font this app doesn't load. So we draw the bordered box and a chevron
-   (pure CSS, no icon font) here. */
-.formHost :global(.formio-component-panel .card) {
-  max-width: 560px;
-  border: var(--layout-border-width-small) solid var(--surface-color-border-medium);
-  border-radius: var(--layout-border-radius-medium);
-  margin-bottom: var(--layout-margin-large);
-  background: var(--surface-color-background-white);
-}
-.formHost :global(.formio-component-panel .card-header) {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
-  padding: 14px 16px;
-  cursor: pointer;
-  font-weight: 700;
-  color: var(--typography-color-primary);
-}
-.formHost :global(.formio-component-panel .card-title) {
-  margin: 0;
-  font-weight: 700;
-}
-.formHost :global(.formio-component-panel .formio-collapse-icon) {
-  display: none;
-}
-.formHost :global(.formio-component-panel .card-header)::after {
-  content: "";
-  flex: none;
-  width: 10px;
-  height: 10px;
-  margin-right: 4px;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: rotate(45deg);
-  transition: transform 0.15s ease;
-}
-.formHost :global(.formio-component-panel .card-header[aria-expanded="true"])::after {
-  transform: rotate(225deg);
-}
-.formHost :global(.formio-component-panel .card-body) {
-  padding: 0 16px 14px;
-  color: var(--typography-color-secondary);
-}
-
 /* Question gap. Form.io emits Bootstrap 3 form-groups, whose own bottom margin is
    smaller than the design's 24px stack. Set it once for every component in the host
    rather than per-field, so fields added to the seed later inherit the right gap. */
 .formHost :global(.formio-component) {
-  margin-bottom: var(--layout-margin-large, 24px);
+  margin-bottom: var(--layout-margin-large);
 }
 
 /* Form.io wraps the whole form in a .formio-component of its own; without this it
@@ -393,15 +316,7 @@
       > .bcds-react-aria-Disclosure--Panel
   ) {
   font: 400 14px/21px "BC Sans", sans-serif;
-  color: var(--typography-color-secondary, #474543);
-}
-
-/* v3 accordion (bcgovAccordion, key "statusHelp") — Form.io gives the custom
-   component no bottom spacing, so it crowds the next question. The design's
-   question stack is gap 24px (0901 ee-04 §Content/Setup), which the v2 panel
-   above carried via its own margin; restore the same 24px below the v3 accordion. */
-.formHost :global(.formio-component-statusHelp) {
-  margin-bottom: var(--layout-margin-large);
+  color: var(--typography-color-secondary);
 }
 
 /* Money fields carry a "$" prefix (every number field except the dependent-
@@ -440,41 +355,17 @@
   content: none !important;
 }
 
-/* Tooltip trigger: Form.io emits <i class="bi bi-question-circle" ref="tooltip">
-   next to the label, but this app loads no Bootstrap-Icons font, so the glyph
-   is blank. Draw an outline info circle (ⓘ) in pure CSS — matching the 0827
-   design and the no-icon-font approach already used for the panel chevron. The
-   drawn "i" replaces the (absent) bi glyph; Form.io's hover tooltip is
-   unaffected. */
-.formHost :global([ref="tooltip"]) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 1.05em;
-  height: 1.05em;
-  margin-left: 6px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  color: var(--typography-color-secondary);
-  font-size: 0.92em;
-  font-style: normal;
-  line-height: 1;
-  cursor: help;
-  vertical-align: -0.15em;
-}
-
 /* The radios render as the real BCDS RadioGroup, which sizes its label, options
    and error message from one token. The design wants 16px labels but a 14px error
    message, so lift the two that need it rather than redefining that token. Each
    selector out-specifies BCDS's own so it also wins once BCDS injects its
    stylesheet at runtime. */
 .formHost :global(.bcds-react-aria-RadioGroup--label) {
-  font: var(--typography-bold-body, 700 16px/27.008px "BC Sans", sans-serif);
-  color: var(--typography-color-secondary, #474543);
+  font: var(--typography-bold-body);
+  color: var(--typography-color-secondary);
 }
 .formHost :global(.bcds-react-aria-Radio) {
-  font: var(--typography-regular-body, 400 16px/27.008px "BC Sans", sans-serif);
+  font: var(--typography-regular-body);
   gap: 10px; /* design measures 10px; there is no 10px layout token */
 }
 
@@ -500,7 +391,7 @@
   /* The theme's `h2 { color: #494949 }` and `h1,h2,h3 { padding-top: 20px }` both leak
      in; the design has these at typography primary with no extra top padding, since the
      24px question stack already supplies the spacing. */
-  color: var(--typography-color-primary, #2d2d2d);
+  color: var(--typography-color-primary);
   padding-top: 0;
 }
 /* The line-height is as much the point as the size: unset, this falls back to
@@ -512,23 +403,14 @@
   line-height: 27.008px;
   font-weight: 700;
 }
-.formHost :global(.radio label),
-.formHost :global(.form-check-label) {
-  font-size: 16px; /* option label — Yes / No, design 16 */
-}
 
-/* MYSS-206 (§4.1): CTA spacing — separate "Get Estimate" from the last field,
-   which the design shows with clear breathing room. */
-.formHost :global(.formio-component-submit) {
-  margin-top: var(--layout-margin-large);
-}
-
-/* Submit button colour/size to match design; use the primary button token. */
+/* Submit button colour/size to match the design; myss-theme .btn-primary is
+   #1a5a96. The label is regular weight, not bold. The blanket question gap above
+   supplies its top margin. */
 .formHost :global(.formio-component-submit .btn-primary) {
   background-color: var(--surface-color-primary-button-default);
   border-color: var(--surface-color-primary-button-default);
-  background-color: var(--surface-color-primary-button-default);
-  font: var(--typography-bold-body);
+  font-size: 16px;
   line-height: 27.008px;
   font-weight: 400;
 }
@@ -576,9 +458,6 @@
 .statusWarning:empty {
   margin-top: 0;
 }
-.statusWarning:empty {
-  margin-top: 0;
-}
 
 /* The BCDS InlineAlert only styles direct children with class .title / .description.
    Our warning body is plain <p>, so it would inherit the app base size and read
@@ -613,7 +492,7 @@
    The design's border is border/base #d8d8d8, measured off the rendered TextField node
    400:2471. It comes from the BCDS TextField component, not a per-field override. */
 .formHost :global(.form-control) {
-  border-color: var(--surface-color-border-medium);
+  border-color: var(--surface-color-border-default);
 }
 
 /* Field helper text is regular/smallBody 14/21 #474543; unset it inherits the theme base,
@@ -625,14 +504,14 @@
   line-height: 21px;
 }
 .formHost :global(.form-text:not(.error)) {
-  color: var(--typography-color-secondary, #474543);
+  color: var(--typography-color-secondary);
 }
 
 /* -----------------------------------------------------------------------------
    Validation error state. Form.io's stock CSS
    gives a pink fill (.formio-error-wrapper) + an aggregated banner; the banner
-   is disabled via <Form options={{ noAlerts:true }}>. Here we replace the pink
-   group with a 2px danger border + drawn icon and colour the message red. All
+   is disabled via <Form options={{ noAlerts:true }}>. Here we drop the pink
+   fill, keep the controls neutral and colour the message red. All
    scoped to .formHost. NOTE: the message text sits in a parent/child pair
    (.formio-errors.invalid-feedback > .form-text.error); we COLOUR both rather
    than hide, to avoid removing the only message — confirm in DevTools whether it
@@ -644,22 +523,23 @@
 .formHost :global(.formio-error-wrapper) {
   background-color: transparent;
   color: inherit;
-  border: var(--layout-border-width-medium) solid var(--typography-color-danger);
-  border-radius: var(--layout-border-radius-medium);
-  padding: var(--layout-padding-small);
+  /* Form.io ships `padding: 1em` here. With the pink fill and border gone it
+     encloses nothing and just indents an invalid question, shifting the group
+     right while its neighbours stay put. */
+  padding: 0;
 }
 
 /* The design keeps the controls themselves neutral when a group is invalid — only
    the message and its icon are red. Re-assert BCDS's valid-state values rather
    than hard-coding a hex. */
 .formHost :global(.bcds-react-aria-Radio[data-invalid])::before {
-  border-color: var(--surface-color-border-medium, #898785);
+  border-color: var(--surface-color-border-medium);
 }
 .formHost :global(.bcds-react-aria-Radio[data-selected][data-invalid])::before {
-  border-color: var(--surface-color-primary-default, #013366);
+  border-color: var(--surface-color-primary-default);
 }
 .formHost :global(.bcds-react-aria-Radio[data-selected][data-invalid]) {
-  color: var(--typography-color-secondary, #474543);
+  color: var(--typography-color-secondary);
 }
 /* Still needed for the number fields, whose `min: 0` errors Form.io renders
    itself. The radios draw their own message and icon. */

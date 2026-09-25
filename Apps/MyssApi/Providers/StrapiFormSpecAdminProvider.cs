@@ -182,10 +182,12 @@ namespace Myss.Api.Providers
 
             // The version was assigned at save time; the lifecycle validates the
             // sequence and immutability when the document flips to published.
+            // Strapi's REST PUT requires a data envelope even to only change
+            // status; an empty one publishes the draft without touching fields.
             JsonElement published = await WriteAsync(
                 HttpMethod.Put,
                 $"{FormSpecsPath}/{Uri.EscapeDataString(draft.DocumentId)}?status=published",
-                data: null,
+                data: "{\"data\":{}}",
                 cancellationToken);
 
             // A real publish echoes the published entity; an empty object is not

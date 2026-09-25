@@ -140,6 +140,10 @@ namespace Myss.Api.Tests.Providers
             Assert.Equal(HttpMethod.Put, put.Method);
             Assert.Contains("/api/form-specs/d4", put.RequestUri!.AbsolutePath);
             Assert.Contains("status=published", put.RequestUri!.Query);
+            // Strapi's REST PUT rejects a bodyless publish with 400 "Missing data
+            // payload", so the request must carry a data envelope.
+            JsonElement body = JsonDocument.Parse(_http.Bodies[^1]!).RootElement;
+            Assert.True(body.TryGetProperty("data", out _));
         }
 
         [Fact]
