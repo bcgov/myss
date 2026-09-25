@@ -72,6 +72,7 @@ namespace Myss.Api
             services.AddHttpClient<IPdfProvider, CdogsPdfProvider>();
             services.AddSingleton<ITemplateProvider, EmbeddedTemplateProvider>();
             services.AddScoped<IFormsService, FormsService>();
+            services.AddScoped<IUserProfileService, UserProfileService>();
 
             // Eligibility Estimator (Option B): the browser computes the estimate;
             // MyssApi serves the Form.io spec and the rate table anonymously (see

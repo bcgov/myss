@@ -1,0 +1,3 @@
+.form :global(.formio-component-checkbox) {
+  margin-left: var(--layout-padding-large);
+}

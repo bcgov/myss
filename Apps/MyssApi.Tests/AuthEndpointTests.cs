@@ -1,11 +1,17 @@
 namespace Myss.Api.Tests
 {
+    using System;
     using System.Net;
     using System.Net.Http;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Mvc.Testing;
+    using Microsoft.EntityFrameworkCore;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.DependencyInjection.Extensions;
     using Myss.Api.Configuration;
+    using Myss.Api.Data;
     using Myss.Api.Tests.TestDoubles;
     using Xunit;
 
@@ -29,10 +35,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task UnauthenticatedCallIsRejectedWith401()
         {
-            HttpClient client = this.factory
-                .WithWebHostBuilder(builder => builder.UseMockAuthSettings(
-                    allowMockAuth: "false", environmentName: "test", mockAuth: "false"))
-                .CreateClient();
+            HttpClient client = this.CreateClient(allowMockAuth: false);
 
             HttpResponseMessage response = await client.GetAsync("/v1/auth/me");
 
@@ -51,6 +54,35 @@ namespace Myss.Api.Tests
                 "11111111-1111-1111-1111-111111111111",
                 payload.GetProperty("bceidGuid").GetString());
             Assert.Equal([MyssRoles.Client], RolesOf(payload));
+            Assert.False(payload.GetProperty("hasProfile").GetBoolean());
+            Assert.Equal(JsonValueKind.Null, payload.GetProperty("profileFirstName").ValueKind);
+        }
+
+        [Fact]
+        public async Task ReturnsProfileStatusAndFirstNameForARegisteredCaller()
+        {
+            using JsonDocument body = await this.GetMe(
+                "alice",
+                db =>
+                {
+                    db.MyssUserProfiles.Add(new MyssUserProfile
+                    {
+                        Id = Guid.NewGuid(),
+                        Subject = "mock-alice",
+                        FirstName = "Ada",
+                        LastName = "Lovelace",
+                        DateOfBirth = new DateOnly(1815, 12, 10),
+                        Email = "ada@example.com",
+                        Sin = "050082833",
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow,
+                    });
+                    db.SaveChanges();
+                });
+            JsonElement payload = body.RootElement.GetProperty("payload");
+
+            Assert.True(payload.GetProperty("hasProfile").GetBoolean());
+            Assert.Equal("Ada", payload.GetProperty("profileFirstName").GetString());
         }
 
         [Fact]
@@ -89,12 +121,11 @@ namespace Myss.Api.Tests
             return values;
         }
 
-        private async Task<JsonDocument> GetMe(string persona)
+        private async Task<JsonDocument> GetMe(
+            string persona,
+            Action<FormsDbContext>? seed = null)
         {
-            HttpClient client = this.factory
-                .WithWebHostBuilder(builder => builder.UseMockAuthSettings(
-                    allowMockAuth: "true", environmentName: "test", mockAuth: "true"))
-                .CreateClient();
+            HttpClient client = this.CreateClient(allowMockAuth: true, seed);
 
             var request = new HttpRequestMessage(HttpMethod.Get, "/v1/auth/me");
             request.Headers.Add(MockAuthenticationHandler.PersonaHeader, persona);
@@ -103,6 +134,37 @@ namespace Myss.Api.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             return JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        }
+
+        private HttpClient CreateClient(
+            bool allowMockAuth,
+            Action<FormsDbContext>? seed = null)
+        {
+            string dbName = Guid.NewGuid().ToString();
+            return this.factory
+                .WithWebHostBuilder(builder =>
+                {
+                    string enabled = allowMockAuth ? "true" : "false";
+                    builder.UseMockAuthSettings(
+                        allowMockAuth: enabled, environmentName: "test", mockAuth: enabled);
+                    builder.ConfigureServices(services =>
+                    {
+                        DbContextOptions<FormsDbContext> options = new DbContextOptionsBuilder<FormsDbContext>()
+                            .UseInMemoryDatabase(dbName)
+                            .Options;
+
+                        if (seed is not null)
+                        {
+                            using var db = new InMemoryFormsDbContext(options);
+                            seed(db);
+                        }
+
+                        services.RemoveAll<DbContextOptions<FormsDbContext>>();
+                        services.RemoveAll<FormsDbContext>();
+                        services.AddScoped<FormsDbContext>(_ => new InMemoryFormsDbContext(options));
+                    });
+                })
+                .CreateClient();
         }
     }
 }

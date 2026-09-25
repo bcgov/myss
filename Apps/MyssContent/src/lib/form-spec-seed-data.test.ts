@@ -11,6 +11,10 @@ import {
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   POC_FORM_SPEC_ID,
   POC_FORM_SPEC_TITLE,
+  REGISTRATION_FORM_SPEC_ID,
+  REGISTRATION_FORM_SPEC_TITLE,
+  registrationFormSpecV2,
+  registrationFormSpecV3,
   seededForms,
   seededFormSpecs,
   testFormSpecV1,
@@ -187,6 +191,35 @@ describe("seeded forms collection", () => {
     expect(ids).toContain(BUS_PASS_FORM_SPEC_ID);
     // Every seeded form id is distinct — the bootstrap hook keys on it.
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("seeds the registration form with all three versions", () => {
+    const registration = seededForms.find(
+      (form) => form.formSpecId === REGISTRATION_FORM_SPEC_ID,
+    );
+    expect(registration?.title).toBe(REGISTRATION_FORM_SPEC_TITLE);
+    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3]);
+    expect(registration?.versions[1]?.spec).toBe(registrationFormSpecV2);
+    expect(registration?.versions[2]?.spec).toBe(registrationFormSpecV3);
+  });
+
+  it("requires registration consent", () => {
+    const consent = componentByKey(registrationFormSpecV3, "consent");
+
+    expect(consent.type).toBe("checkbox");
+    expect(consent.label).toContain("https://myselfserve.gov.bc.ca/terms");
+    expect(consent.label).toContain(
+      "https://www2.gov.bc.ca/gov/content/home/privacy",
+    );
+  });
+
+  it("marks registration SIN and email fields for validation", () => {
+    const sin = componentByKey(registrationFormSpecV2, "sin");
+    const email = componentByKey(registrationFormSpecV2, "email");
+
+    expect(sin.type).toBe("textfield");
+    expect(sin.properties?.myssValidator).toBe("sin");
+    expect(email.type).toBe("email");
   });
 
   it("keeps the POC form's versions as the existing seededFormSpecs list", () => {

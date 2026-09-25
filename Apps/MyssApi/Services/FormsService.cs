@@ -4,6 +4,7 @@ namespace Myss.Api.Services
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+        using System.Globalization;
     using System.Net;
     using System.Reflection;
     using System.Text.Json;
@@ -29,6 +30,7 @@ namespace Myss.Api.Services
         private readonly IPdfProvider _pdfProvider;
         private readonly ITemplateProvider _templateProvider;
         private readonly IFormSpecAdminProvider _formSpecAdminProvider;
+        private readonly ICurrentUserAccessor _currentUserAccessor;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -45,7 +47,8 @@ namespace Myss.Api.Services
             IFormSpecProvider formSpecProvider,
             IPdfProvider pdfProvider,
             ITemplateProvider templateProvider,
-            IFormSpecAdminProvider formSpecAdminProvider)
+            IFormSpecAdminProvider formSpecAdminProvider,
+            ICurrentUserAccessor currentUserAccessor)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -53,6 +56,7 @@ namespace Myss.Api.Services
             _pdfProvider = pdfProvider;
             _templateProvider = templateProvider;
             _formSpecAdminProvider = formSpecAdminProvider;
+            _currentUserAccessor = currentUserAccessor;
         }
 
         /// <inheritdoc/>
@@ -220,9 +224,9 @@ namespace Myss.Api.Services
         /// <summary>
         /// Turns a trusted Strapi lifecycle refusal into validation errors the client can
         /// show: one error per recognized keyword, deduplicated, carrying Strapi's own
-        /// message. Unknown keywords are dropped. Only ever called for a refusal that
-        /// <see cref="IsLifecycleRefusal"/> already accepted, so the generic fallback is
-        /// defensive.
+        /// message. Unknown keywords are dropped. It is called only after
+        /// <see cref="IsLifecycleRefusal"/> has confirmed that at least one recognized
+        /// lifecycle keyword is present.
         /// </summary>
         /// <param name="ex">The refusal from the admin provider (already logged by it).</param>
         /// <returns>One validation error per recognized keyword.</returns>
@@ -259,16 +263,6 @@ namespace Myss.Api.Services
             string safeMessage = string.IsNullOrWhiteSpace(message)
                 ? "The content engine refused the change."
                 : message!;
-
-            if (keywords.Count == 0)
-            {
-                return [new ValidationErrorModel
-                {
-                    Field = "spec",
-                    Keyword = FormSpecStructureKeywords.StrapiRefused,
-                    Message = safeMessage,
-                }];
-            }
 
             return keywords
                 .Select(keyword => new ValidationErrorModel
@@ -321,6 +315,11 @@ namespace Myss.Api.Services
             IReadOnlyList<ValidationErrorModel> errors =
                 FormSpecValidator.Validate(spec.Spec, request.Answers);
 
+            if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
+            {
+                errors = [.. errors, .. ValidateRegistration(request.Answers)];
+            }
+
             if (domainRules is not null)
             {
                 IReadOnlyList<ValidationErrorModel> domainErrors = domainRules(request.Answers);
@@ -353,6 +352,10 @@ namespace Myss.Api.Services
             };
 
             _dbContext.FormSubmissions.Add(submission);
+            if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
+            {
+                AddOrUpdateProfile(request.Answers);
+            }
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             // Don't log the answers; they may contain PII.
@@ -363,6 +366,101 @@ namespace Myss.Api.Services
                 submission.FormSpecVersion);
 
             return FormSubmissionResultModel.Accepted(ToResponse(submission, spec: null));
+        }
+
+        private void AddOrUpdateProfile(JsonElement answers)
+        {
+            CurrentUser currentUser = _currentUserAccessor.User;
+            if (!currentUser.IsAuthenticated || string.IsNullOrWhiteSpace(currentUser.Subject))
+            {
+                throw new InvalidOperationException("An authenticated identity is required to register a MySS profile.");
+            }
+
+            string firstName = answers.GetProperty("firstName").GetString()!;
+            string lastName = answers.GetProperty("lastName").GetString()!;
+            string dateOfBirth = answers.GetProperty("dateOfBirth").GetString()!;
+            string email = answers.GetProperty("email").GetString()!;
+            string sin = answers.GetProperty("sin").GetString()!;
+
+            _ = TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate);
+
+            MyssUserProfile? profile = _dbContext.MyssUserProfiles
+                .SingleOrDefault(p => p.Subject == currentUser.Subject);
+            if (profile is null)
+            {
+                _dbContext.MyssUserProfiles.Add(new MyssUserProfile
+                {
+                    Id = Guid.NewGuid(),
+                    Subject = currentUser.Subject,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    DateOfBirth = parsedDate,
+                    Email = email,
+                    Sin = sin,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                });
+                return;
+            }
+
+            profile.FirstName = firstName;
+            profile.LastName = lastName;
+            profile.DateOfBirth = parsedDate;
+            profile.Email = email;
+            profile.Sin = sin;
+            profile.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        private static IReadOnlyList<ValidationErrorModel> ValidateRegistration(JsonElement answers)
+        {
+            string? dateOfBirth = answers.TryGetProperty("dateOfBirth", out JsonElement value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
+
+            if (!TryParseRegistrationDate(dateOfBirth ?? string.Empty, out DateOnly parsedDate))
+            {
+                return
+                [
+                    new ValidationErrorModel
+                    {
+                        Field = "dateOfBirth",
+                        Keyword = ValidationKeywords.RegistrationDateOfBirthInvalid,
+                        Message = "Enter a valid date of birth.",
+                    },
+                ];
+            }
+
+            if (parsedDate > DateOnly.FromDateTime(DateTime.UtcNow))
+            {
+                return
+                [
+                    new ValidationErrorModel
+                    {
+                        Field = "dateOfBirth",
+                        Keyword = ValidationKeywords.RegistrationDateOfBirthInFuture,
+                        Message = "Date of birth cannot be in the future.",
+                    },
+                ];
+            }
+
+            return [];
+        }
+
+        private static bool TryParseRegistrationDate(string value, out DateOnly date)
+        {
+            if (DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+            {
+                return true;
+            }
+
+            if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dateTime))
+            {
+                date = DateOnly.FromDateTime(dateTime.DateTime);
+                return true;
+            }
+
+            date = default;
+            return false;
         }
 
         /// <inheritdoc/>
