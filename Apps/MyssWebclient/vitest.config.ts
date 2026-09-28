@@ -27,6 +27,8 @@ export default defineConfig({
             {
                 plugins: [react()],
                 resolve: { alias },
+                // Pre-bundle deps Vite would otherwise discover mid-run and reload the browser for.
+                optimizeDeps: { include: ["react-router/dom"] },
                 test: {
                     name: "browser",
                     include: ["**/*.browser.{test,spec}.tsx"],

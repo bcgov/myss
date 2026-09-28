@@ -1,0 +1,65 @@
+.panel {
+    border-top: 1px solid var(--surface-color-border-default, #d0d5dd);
+    margin-top: var(--layout-margin-large, 24px);
+    padding-top: var(--layout-margin-large, 24px);
+}
+
+.heading {
+    font-size: 1.375rem;
+    margin: 0 0 var(--layout-margin-small, 8px);
+}
+
+.effective {
+    color: var(--typography-color-secondary, #474543);
+    font-size: 0.875rem;
+    margin: 0 0 var(--layout-margin-medium, 16px);
+}
+
+.tableTitle {
+    font-size: 1.125rem;
+    margin: var(--layout-margin-large, 24px) 0 var(--layout-margin-small, 8px);
+}
+
+.caption {
+    color: var(--typography-color-secondary, #474543);
+    font-size: 0.8125rem;
+    margin: 0 0 var(--layout-margin-small, 8px);
+}
+
+/* Tables can be wider than the panel on a narrow screen. */
+.tableWrap {
+    overflow-x: auto;
+}
+
+.table {
+    border-collapse: collapse;
+    min-width: 100%;
+}
+
+.table th,
+.table td {
+    border: 1px solid var(--surface-color-border-default, #d0d5dd);
+    padding: var(--layout-padding-small, 8px) var(--layout-padding-medium, 12px);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.table thead th {
+    background-color: var(--surface-color-primary-button-default, #234075);
+    color: #ffffff;
+    text-align: right;
+}
+
+.table thead th:first-child,
+.table tbody th {
+    text-align: left;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: var(--surface-color-background-light, #f2f2f2);
+}
+
+.error {
+    color: var(--typography-color-danger, #ce3e39);
+    font-weight: 600;
+}
