@@ -129,9 +129,9 @@ IResourceBuilder<ContainerResource> minioInit = builder
     .WaitFor(minio);
 
 // ---------------------------------------------------------------------------
-// EF migrations — README.md's manual `dotnet tool restore` + two
-// `dotnet ef database update` runs, chained so each step's output is its own
-// dashboard resource. The API waits for the last one.
+// EF migrations — README.md's manual `dotnet tool restore` + four
+// `dotnet ef database update` runs (one per schema), chained so each step's
+// output is its own dashboard resource. The API waits for the last one.
 // ---------------------------------------------------------------------------
 IResourceBuilder<ExecutableResource> toolRestore = builder
     .AddExecutable("ef-tool-restore", "dotnet", apiDirectory, "tool", "restore");
@@ -156,6 +156,22 @@ IResourceBuilder<ExecutableResource> migrateAttachments = builder
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithReference(formsDb)
     .WaitForCompletion(migrateForms);
+
+IResourceBuilder<ExecutableResource> migratePlatform = builder
+    .AddExecutable(
+        "migrate-platform", "dotnet", apiDirectory,
+        "ef", "database", "update", "--context", "PlatformDbContext")
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithReference(formsDb)
+    .WaitForCompletion(migrateAttachments);
+
+IResourceBuilder<ExecutableResource> migrateIntake = builder
+    .AddExecutable(
+        "migrate-intake", "dotnet", apiDirectory,
+        "ef", "database", "update", "--context", "IntakeDbContext")
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithReference(formsDb)
+    .WaitForCompletion(migratePlatform);
 
 // ---------------------------------------------------------------------------
 // MySSContent — Strapi, run on the host with npm (compose runs the same code
@@ -278,7 +294,7 @@ IResourceBuilder<ProjectResource> api = builder
     // Until the bucket one-shot has finished, an attachment upload would fail:
     // the API's storage provider writes to the bucket but never creates it.
     .WaitForCompletion(minioInit)
-    .WaitForCompletion(migrateAttachments);
+    .WaitForCompletion(migrateIntake);
 
 // Where MySSApi finds the middleware. Left to appsettings.Development.json
 // (http://localhost:5100) when the host is not part of this run.

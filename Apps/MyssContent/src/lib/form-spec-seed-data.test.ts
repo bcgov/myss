@@ -9,6 +9,9 @@ import {
   busPassFormSpecV4,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
+  INCOME_ASSISTANCE_FORM_SPEC_ID,
+  INCOME_ASSISTANCE_FORM_SPEC_TITLE,
+  incomeAssistanceFormSpecV1,
   POC_FORM_SPEC_ID,
   POC_FORM_SPEC_TITLE,
   REGISTRATION_FORM_SPEC_ID,
@@ -184,9 +187,10 @@ describe("seeded form specs", () => {
 });
 
 describe("seeded forms collection", () => {
-  it("seeds the POC form, eligibility estimator and bus pass", () => {
+  it("seeds the POC form, income assistance, eligibility estimator and bus pass", () => {
     const ids = seededForms.map((form) => form.formSpecId);
     expect(ids).toContain(POC_FORM_SPEC_ID);
+    expect(ids).toContain(INCOME_ASSISTANCE_FORM_SPEC_ID);
     expect(ids).toContain(ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID);
     expect(ids).toContain(BUS_PASS_FORM_SPEC_ID);
     // Every seeded form id is distinct — the bootstrap hook keys on it.
@@ -228,6 +232,45 @@ describe("seeded forms collection", () => {
     );
     expect(poc?.title).toBe(POC_FORM_SPEC_TITLE);
     expect(poc?.versions).toBe(seededFormSpecs);
+  });
+
+  it("seeds the income assistance application with v1 only", () => {
+    const incomeAssistance = seededForms.find(
+      (form) => form.formSpecId === INCOME_ASSISTANCE_FORM_SPEC_ID,
+    );
+    expect(INCOME_ASSISTANCE_FORM_SPEC_ID).toBe("income-assistance-poc");
+    expect(incomeAssistance?.title).toBe(INCOME_ASSISTANCE_FORM_SPEC_TITLE);
+    expect(incomeAssistance?.versions).toEqual([
+      { version: 1, spec: incomeAssistanceFormSpecV1 },
+    ]);
+  });
+
+  /**
+   * The keys and the required flags are a contract with MyssApi's intake
+   * module and the webclient's application form: submit must fail with
+   * FORM.FIELD.REQUIRED on firstName/lastName and nothing else, and a draft
+   * save must be allowed with either missing.
+   */
+  it("asks income assistance applicants for first, middle and last name", () => {
+    expect(keysOf(incomeAssistanceFormSpecV1)).toEqual([
+      "firstName",
+      "middleName",
+      "lastName",
+      "submit",
+    ]);
+    expect(
+      componentByKey(incomeAssistanceFormSpecV1, "firstName").validate
+        ?.required,
+    ).toBe(true);
+    expect(
+      componentByKey(incomeAssistanceFormSpecV1, "middleName").validate,
+    ).toBeUndefined();
+    expect(
+      componentByKey(incomeAssistanceFormSpecV1, "lastName").validate?.required,
+    ).toBe(true);
+    expect(componentByKey(incomeAssistanceFormSpecV1, "submit").type).toBe(
+      "button",
+    );
   });
 
   it("seeds the eligibility estimator with v1, v2, v3 and v4", () => {

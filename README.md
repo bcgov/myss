@@ -43,7 +43,7 @@ dotnet run --project Apps/MySS.AspireHost
 ```
 
 It starts the compose containers' equivalents (Postgres 17, ClamAV, MinIO with its
-bucket-creation one-shot), applies both EF migration contexts once Postgres is healthy,
+bucket-creation one-shot), applies the four EF migration contexts once Postgres is healthy,
 then starts `MySSApi` (http://localhost:5000), `MySSContent` (Strapi,
 http://localhost:1337, run with npm on the host), `MyssWebClient` (Vite) and, when an
 ICM base URL is configured (`Icm:BaseUrl` in the shared user-secret store), the ICM
@@ -82,14 +82,17 @@ initialize themselves on the first start:
 - Strapi applies its own schema migrations and seeds the POC form specs at
   boot.
 
-The forms and attachments schemas in `myss` are **not** automatic. Apply the
-EF migrations once (and again after pulling new migrations):
+The forms, attachments, platform and intake schemas in `myss` are **not**
+automatic. Apply the EF migrations once (and again after pulling new
+migrations):
 
 ```bash
 cd Apps/MyssApi
 dotnet tool restore
 dotnet ef database update --context FormsDbContext
 dotnet ef database update --context AttachmentsDbContext
+dotnet ef database update --context PlatformDbContext
+dotnet ef database update --context IntakeDbContext
 ```
 
 The connection string in `appsettings.Development.json` already points at the

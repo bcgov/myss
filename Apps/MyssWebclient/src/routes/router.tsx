@@ -16,6 +16,7 @@ import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
 import AdminPage from "@/pages/AdminPage";
 import FormManagementPage from "@/pages/FormManagementPage";
 import FormEditorPage from "@/pages/FormEditorPage";
+import ApplicationPage from "@/pages/ApplicationPage";
 import RequireAuth from "@/auth/RequireAuth";
 import RequireIdir from "@/auth/RequireIdir";
 import { paths } from "@/routes/paths";
@@ -29,92 +30,100 @@ import { paths } from "@/routes/paths";
 //   PROTECTED - the Forms / Strapi tech-demo pages, wrapped in <RequireAuth>
 //               so they only render once the user has authenticated.
 export const router = createBrowserRouter([
-    {
-        path: paths.home,
-        element: <App />,
-        children: [
-            // ---- Public ----
-            { index: true, element: <HomePage /> },
-            { path: paths.register, element: <RegistrationPage /> },
-            {
-                path: paths.eligibilityEstimator,
-                element: <EligibilityEstimatorPage />,
-            },
-            {
-                path: paths.busPass,
-                element: <BusPassPage />,
-            },
-            { path: paths.signIn, element: <SignInPage /> },
-            { path: paths.authCallback, element: <AuthCallbackPage /> },
-            { path: paths.simpleLogin, element: <SimpleLoginPage /> },
+  {
+    path: paths.home,
+    element: <App />,
+    children: [
+      // ---- Public ----
+      { index: true, element: <HomePage /> },
+      { path: paths.register, element: <RegistrationPage /> },
+      {
+        path: paths.eligibilityEstimator,
+        element: <EligibilityEstimatorPage />,
+      },
+      {
+        path: paths.busPass,
+        element: <BusPassPage />,
+      },
+      { path: paths.signIn, element: <SignInPage /> },
+      { path: paths.authCallback, element: <AuthCallbackPage /> },
+      { path: paths.simpleLogin, element: <SimpleLoginPage /> },
 
-            // ---- Administration: direct URL entry for authenticated IDIR users ----
-            {
-                path: paths.admin,
-                element: (
-                    <RequireIdir>
-                        <AdminPage />
-                    </RequireIdir>
-                ),
-            },
-            {
-                path: paths.adminFormManagement,
-                element: (
-                    <RequireIdir>
-                        <FormManagementPage />
-                    </RequireIdir>
-                ),
-            },
-            {
-                path: paths.adminFormEditor,
-                element: (
-                    <RequireIdir>
-                        <FormEditorPage />
-                    </RequireIdir>
-                ),
-            },
+      // ---- Administration: direct URL entry for authenticated IDIR users ----
+      {
+        path: paths.admin,
+        element: (
+          <RequireIdir>
+            <AdminPage />
+          </RequireIdir>
+        ),
+      },
+      {
+        path: paths.adminFormManagement,
+        element: (
+          <RequireIdir>
+            <FormManagementPage />
+          </RequireIdir>
+        ),
+      },
+      {
+        path: paths.adminFormEditor,
+        element: (
+          <RequireIdir>
+            <FormEditorPage />
+          </RequireIdir>
+        ),
+      },
 
-            // ---- Protected (Forms / Strapi): only after login/auth ----
-            {
-                path: paths.dashboard,
-                element: (
-                    <RequireAuth>
-                        <DashboardPage />
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "techdemos",
-                element: (
-                    <RequireAuth>
-                        <TechDemos />
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "techdemos/forms",
-                element: (
-                    <RequireAuth>
-                        <FormsTechDemo />
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "techdemos/forms/submissions/:id",
-                element: (
-                    <RequireAuth>
-                        <SubmissionView />
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "techdemos/attachments",
-                element: (
-                    <RequireAuth>
-                        <AttachmentsTechDemo />
-                    </RequireAuth>
-                ),
-            },
-        ],
-    },
+      // ---- Protected (Forms / Strapi): only after login/auth ----
+      {
+        path: paths.dashboard,
+        element: (
+          <RequireAuth>
+            <DashboardPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: paths.application,
+        element: (
+          <RequireAuth>
+            <ApplicationPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "techdemos",
+        element: (
+          <RequireAuth>
+            <TechDemos />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "techdemos/forms",
+        element: (
+          <RequireAuth>
+            <FormsTechDemo />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "techdemos/forms/submissions/:id",
+        element: (
+          <RequireAuth>
+            <SubmissionView />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "techdemos/attachments",
+        element: (
+          <RequireAuth>
+            <AttachmentsTechDemo />
+          </RequireAuth>
+        ),
+      },
+    ],
+  },
 ]);

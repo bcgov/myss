@@ -12,6 +12,8 @@ namespace Myss.Api
     using Myss.Api.Configuration;
     using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
+    using Myss.Api.Intake;
+    using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Services;
 
@@ -112,6 +114,27 @@ namespace Myss.Api
 
             services.AddSingleton<IFileStorageProvider, S3FileStorageProvider>();
             services.AddScoped<IAttachmentsService, AttachmentsService>();
+
+            // The platform package: the shared event log every event-sourced
+            // domain appends to (ADR-0001). Its own schema and history table,
+            // on the same database; domains reach it only through IEventStore.
+            services.AddDbContext<PlatformDbContext>(options =>
+                options.UseNpgsql(
+                    configuration.GetConnectionString("PlatformDb")
+                        ?? configuration.GetConnectionString("FormsDb"),
+                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "platform")));
+            services.AddScoped<IEventStore, EventStore>();
+
+            // Application Intake, applicant slice: the citizen's own Income
+            // Assistance applications. The intake schema holds the working
+            // copy; state is a fold over the platform log. Protected behind the
+            // Client policy (see IntakeApplicationsController).
+            services.AddDbContext<IntakeDbContext>(options =>
+                options.UseNpgsql(
+                    configuration.GetConnectionString("IntakeDb")
+                        ?? configuration.GetConnectionString("FormsDb"),
+                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "intake")));
+            services.AddScoped<IIntakeService, IntakeService>();
 
             // Bus pass hand-off to ICM. MyssApi never calls Siebel: everything
             // ICM-bound goes to the IcmApi middleware over REST, which owns the

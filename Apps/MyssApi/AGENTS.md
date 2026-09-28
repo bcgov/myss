@@ -52,14 +52,17 @@ clamd's `StreamMaxLength`.
 
 ## EF migrations
 
-Two DbContexts, both required, applied manually (see the root AGENTS.md for the
-stack-bootstrap commands). Adding a migration:
+Four DbContexts, one per schema, all required, applied manually (see the root
+AGENTS.md for the stack-bootstrap commands). Each has its own history table in its
+schema and its own migrations folder. Adding a migration:
 
 ```bash
 cd Apps/MyssApi
 dotnet tool restore    # dotnet-ef, pinned in .config/dotnet-tools.json
 dotnet ef migrations add <Name> --context FormsDbContext
 dotnet ef migrations add <Name> --context AttachmentsDbContext --output-dir Migrations/Attachments
+dotnet ef migrations add <Name> --context PlatformDbContext --output-dir Migrations/Platform
+dotnet ef migrations add <Name> --context IntakeDbContext --output-dir Migrations/Intake
 ```
 
 The EF model is the source of truth for schema (ADR-0003); migrations are reviewed in
