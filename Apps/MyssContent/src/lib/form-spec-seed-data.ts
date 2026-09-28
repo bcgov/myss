@@ -49,6 +49,147 @@ export const POC_FORM_SPEC_ID = "poc-test-form";
 /** The human-readable title every seeded version shares. */
 export const POC_FORM_SPEC_TITLE = "POC test form";
 
+/** The logical identifier for the authenticated registration form. */
+export const REGISTRATION_FORM_SPEC_ID = "registration";
+
+/** The human-readable title for the authenticated registration form. */
+export const REGISTRATION_FORM_SPEC_TITLE = "Registration information";
+
+/** The first version of the registration form, authored in Strapi seed data. */
+export const registrationFormSpecV1: Json = {
+  display: "form",
+  components: [
+    {
+      type: "textfield",
+      key: "firstName",
+      label: "First name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Submit",
+      input: true,
+    },
+  ],
+};
+
+/** Registration v2 adds the remaining identity details collected at signup. */
+export const registrationFormSpecV2: Json = {
+  display: "form",
+  components: [
+    {
+      type: "textfield",
+      key: "firstName",
+      label: "First name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "lastName",
+      label: "Last name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "datetime",
+      key: "dateOfBirth",
+      label: "Date of birth",
+      input: true,
+      format: "yyyy-MM-dd",
+      enableDate: true,
+      enableTime: false,
+      validate: { required: true },
+    },
+    {
+      type: "email",
+      key: "email",
+      label: "Email",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "sin",
+      label: "Social insurance number",
+      input: true,
+      validate: { required: true },
+      properties: { myssValidator: "sin" },
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Submit",
+      input: true,
+    },
+  ],
+};
+
+/** Registration v3 adds the required terms and privacy consent. */
+export const registrationFormSpecV3: Json = {
+  display: "form",
+  components: [
+    {
+      type: "textfield",
+      key: "firstName",
+      label: "First name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "lastName",
+      label: "Last name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "datetime",
+      key: "dateOfBirth",
+      label: "Date of birth",
+      input: true,
+      format: "yyyy-MM-dd",
+      enableDate: true,
+      enableTime: false,
+      validate: { required: true },
+    },
+    {
+      type: "email",
+      key: "email",
+      label: "Email",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "sin",
+      label: "Social insurance number",
+      input: true,
+      validate: { required: true },
+      properties: { myssValidator: "sin" },
+    },
+    {
+      type: "checkbox",
+      key: "consent",
+      label:
+        'I agree to the <a href="https://myselfserve.gov.bc.ca/terms" target="_blank" rel="noopener noreferrer">Terms of Use</a> and <a href="https://www2.gov.bc.ca/gov/content/home/privacy" target="_blank" rel="noopener noreferrer">Privacy Statement</a>.',
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Submit",
+      input: true,
+    },
+  ],
+};
+
 // POC test form. v1 is seeded so a fresh database has a working form;
 // later versions are authored through the admin panel as new entries.
 export const testFormSpecV1: Json = {
@@ -1150,6 +1291,15 @@ export interface SeededForm {
  * existing form's `versions`) is the only change needed to seed more content.
  */
 export const seededForms: readonly SeededForm[] = [
+  {
+    formSpecId: REGISTRATION_FORM_SPEC_ID,
+    title: REGISTRATION_FORM_SPEC_TITLE,
+    versions: [
+      { version: 1, spec: registrationFormSpecV1 },
+      { version: 2, spec: registrationFormSpecV2 },
+      { version: 3, spec: registrationFormSpecV3 },
+    ],
+  },
   {
     formSpecId: POC_FORM_SPEC_ID,
     title: POC_FORM_SPEC_TITLE,

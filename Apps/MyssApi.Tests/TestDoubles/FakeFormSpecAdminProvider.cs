@@ -19,6 +19,9 @@ namespace Myss.Api.Tests.TestDoubles
         /// <summary>Gets the formSpecIds passed to <see cref="PublishAsync"/>.</summary>
         public List<string> PublishCalls { get; } = [];
 
+        /// <summary>Gets the formSpecIds passed to <see cref="GetDraftOrLatestPublishedAsync"/>.</summary>
+        public List<string> GetDraftCalls { get; } = [];
+
         /// <summary>Gets or sets the forms returned by <see cref="ListFormsAsync"/>.</summary>
         public IReadOnlyList<FormSummaryModel> Forms { get; set; } = [];
 
@@ -42,8 +45,11 @@ namespace Myss.Api.Tests.TestDoubles
             Task.FromResult(Forms);
 
         /// <inheritdoc/>
-        public Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken) =>
-            Task.FromResult(Draft);
+        public Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken)
+        {
+            GetDraftCalls.Add(formSpecId);
+            return Task.FromResult(Draft);
+        }
 
         /// <inheritdoc/>
         public Task<FormSpecModel> SaveDraftAsync(string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken)

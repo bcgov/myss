@@ -24,6 +24,12 @@ namespace Myss.Api.Models
         /// <summary>Gets the caller's roles, flattened by <see cref="Configuration.KeycloakClaims"/>.</summary>
         public IReadOnlyList<string> Roles { get; init; } = [];
 
+        /// <summary>Gets a value indicating whether the caller has completed MySS registration.</summary>
+        public bool HasProfile { get; init; }
+
+        /// <summary>Gets the caller's first name as stored in their MySS profile.</summary>
+        public string? ProfileFirstName { get; init; }
+
         /// <summary>Gets the Basic BCeID user GUID, when the caller signed in with BCeID.</summary>
         public string? BceidGuid { get; init; }
 

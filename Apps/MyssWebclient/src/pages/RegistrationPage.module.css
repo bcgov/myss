@@ -6,3 +6,15 @@
     max-width: 900px;
     width: 100%;
 }
+
+.heading {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-medium, 16px);
+}
