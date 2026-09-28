@@ -24,6 +24,13 @@ namespace Icm.Api.Contracts
         public const string DefaultViewMode = "Manager";
 
         /// <summary>
+        /// The rows a case's contact read asks for per page: the most the document allows
+        /// (<c>PageSize</c> is 1 to 100). The child read wants every person on the case,
+        /// not a page of them, so the repository follows <c>lastpage</c> from here.
+        /// </summary>
+        public const int ContactPageSize = 100;
+
+        /// <summary>
         /// The fields a case read asks ICM for, by their <b>live</b> names — exactly what
         /// <see cref="SiebelCase"/> declares. Adding a property there without adding its
         /// name here yields a property that is null for ever; <c>CaseMapperTests</c> holds
@@ -167,6 +174,25 @@ namespace Icm.Api.Contracts
             };
         }
 
+        /// <summary>
+        /// Refuses a query <see cref="ToSiebel"/> would refuse, with the same exceptions,
+        /// and nothing else.
+        /// </summary>
+        /// <param name="query">The search.</param>
+        /// <remarks>
+        /// For <see cref="Services.CaseService"/> to run before it acquires a token, so a
+        /// caller's mistake costs no round trip to the authorization server. It is
+        /// <see cref="ToSiebel"/> itself rather than a copy of its rules, so the two cannot
+        /// drift; the repository still builds — and so re-vets — the real query, as
+        /// defence in depth.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="query"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// No criterion is set, or one is blank or carries a character that could change
+        /// the meaning of the expression.
+        /// </exception>
+        public static void Validate(CaseQuery query) => _ = ToSiebel(query);
+
         /// <summary>Converts the options of a single-case read to the wire query.</summary>
         /// <param name="options">The options, or null for the defaults.</param>
         /// <returns>The wire query.</returns>
@@ -180,21 +206,33 @@ namespace Icm.Api.Contracts
 
         /// <summary>Converts the options of a case's contact read to the wire query.</summary>
         /// <param name="options">The options, or null for the defaults.</param>
+        /// <param name="startRowNum">
+        /// The zero-based row the page starts at: 0 for the first page, then the number of
+        /// rows read so far for each continuation.
+        /// </param>
         /// <returns>The wire query.</returns>
         /// <remarks>
-        /// A child collection read is a list GET on the child, so it takes the list query.
-        /// Nothing to search on: the case in the path is the whole criterion, and the
-        /// child accepts no <c>searchspec</c> anyway (MEASURED 2026-09-24:
-        /// <c>[Relationship]</c> is <c>SBL-DAT-00416</c>).
+        /// A child collection read is a list GET on the child, so it takes the list query
+        /// and is paged like one — <see cref="ContactPageSize"/> rows at a time, the caller
+        /// following <c>lastpage</c>. Nothing to search on: the case in the path is the
+        /// whole criterion, and the child accepts no <c>searchspec</c> anyway (MEASURED
+        /// 2026-09-24: <c>[Relationship]</c> is <c>SBL-DAT-00416</c>).
         /// </remarks>
-        public static SiebelListQuery ToContactsSiebel(CaseReadOptions? options) =>
-            new()
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="startRowNum"/> is negative.</exception>
+        public static SiebelListQuery ToContactsSiebel(CaseReadOptions? options, int startRowNum = 0)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(startRowNum);
+
+            return new SiebelListQuery
             {
                 UniformResponse = SiebelFlag.Yes,
                 Fields = string.Join(',', RequestedContactFields),
                 ChildLinks = "None",
+                PageSize = ContactPageSize,
+                StartRowNum = startRowNum,
                 ViewMode = ResolveViewMode(options?.ViewMode),
             };
+        }
 
         /// <summary>Converts a page of wire records to the published page.</summary>
         /// <param name="siebel">The list response, or null when ICM sent no body.</param>

@@ -139,8 +139,8 @@ namespace Icm.Api.Tests.Repositories
         public async Task GetContactsAsync_MapsTheRows()
         {
             // The live shape, MEASURED 2026-09-24, including the lastpage flag the child
-            // collection adds and nothing models.
-            (CaseRepository repository, _) = Create(
+            // collection adds — "true" here, so this is the one and only page.
+            (CaseRepository repository, RecordingHttpMessageHandler handler) = Create(
                 responseJson: """
                     {
                       "lastpage": "true",
@@ -160,6 +160,77 @@ namespace Icm.Api.Tests.Repositories
             Assert.Equal("winnona-afa-test", people[0].BceidUserName);
             Assert.False(people[1].IsPrimary);
             Assert.Empty(people[0].AdditionalFields);
+            Assert.Single(handler.Requests);
+        }
+
+        [Fact]
+        public async Task GetContactsAsync_FollowsThePagesUntilIcmSaysLast()
+        {
+            // A case with more people than a page: the read continues from the row after
+            // the last one seen, and the caller gets everyone, in ICM's order.
+            (CaseRepository repository, RecordingHttpMessageHandler handler) = Create();
+            handler.NextResponses.Enqueue((HttpStatusCode.OK, """
+                { "lastpage": "false", "items": [ { "Id": "1-A" }, { "Id": "1-B" } ] }
+                """));
+            handler.NextResponses.Enqueue((HttpStatusCode.OK, """
+                { "lastpage": "false", "items": [ { "Id": "1-C" }, { "Id": "1-D" } ] }
+                """));
+            handler.NextResponses.Enqueue((HttpStatusCode.OK, """
+                { "lastpage": "true", "items": [ { "Id": "1-E" } ] }
+                """));
+
+            IReadOnlyList<CaseContact> people = await repository.GetContactsAsync("t", "1-5371KIQ");
+
+            Assert.Equal(["1-A", "1-B", "1-C", "1-D", "1-E"], people.Select(person => person.Id));
+            Assert.Equal(
+                ["StartRowNum=0", "StartRowNum=2", "StartRowNum=4"],
+                handler.Requests.Select(request => Parameter(request, "StartRowNum")));
+            Assert.All(handler.Requests, request => Assert.Equal("PageSize=100", Parameter(request, "PageSize")));
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.NoContent, null)]
+        [InlineData(HttpStatusCode.NotFound, """{"ERROR":"There is no data for the requested resource"}""")]
+        [InlineData(HttpStatusCode.OK, """{ "lastpage": "false", "items": [] }""")]
+        public async Task GetContactsAsync_StopsWhenTheRowsRunOutBeforeIcmSaysLast(
+            HttpStatusCode statusCode, string? responseJson)
+        {
+            // ICM's "no data" past the end, or an empty page, both mean the rows already
+            // read are all of them — not a failure, and not a reason to keep asking.
+            (CaseRepository repository, RecordingHttpMessageHandler handler) = Create();
+            handler.NextResponses.Enqueue((HttpStatusCode.OK, """
+                { "lastpage": "false", "items": [ { "Id": "1-A" } ] }
+                """));
+            handler.NextResponses.Enqueue((statusCode, responseJson));
+
+            IReadOnlyList<CaseContact> people = await repository.GetContactsAsync("t", "1-5371KIQ");
+
+            Assert.Equal("1-A", Assert.Single(people).Id);
+            Assert.Equal(2, handler.Requests.Count);
+        }
+
+        [Fact]
+        public async Task GetContactsAsync_GivesUpOnAnIcmThatNeverSaysLast()
+        {
+            // The same page for ever — what an ICM that ignored StartRowNum would do — is
+            // an exception, not a loop, and not a silently repeating list.
+            (CaseRepository repository, RecordingHttpMessageHandler handler) = Create(
+                responseJson: """{ "lastpage": "false", "items": [ { "Id": "1-A" } ] }""");
+
+            await Assert.ThrowsAsync<IcmResponseException>(() => repository.GetContactsAsync("t", "1-5371KIQ"));
+
+            Assert.Equal(CaseRepository.MaxContactPages, handler.Requests.Count);
+        }
+
+        [Fact]
+        public async Task GetContactsAsync_ThrowsWhenAContinuationPageClaimsSuccessWithoutRows()
+        {
+            (CaseRepository repository, RecordingHttpMessageHandler handler) = Create(responseJson: "{}");
+            handler.NextResponses.Enqueue((HttpStatusCode.OK, """
+                { "lastpage": "false", "items": [ { "Id": "1-A" } ] }
+                """));
+
+            await Assert.ThrowsAsync<IcmResponseException>(() => repository.GetContactsAsync("t", "1-5371KIQ"));
         }
 
         [Theory]
@@ -167,9 +238,10 @@ namespace Icm.Api.Tests.Repositories
         [InlineData(HttpStatusCode.NotFound)]
         public async Task GetContactsAsync_TurnsNothingIntoAnEmptyList(HttpStatusCode statusCode)
         {
-            (CaseRepository repository, _) = Create(statusCode, null);
+            (CaseRepository repository, RecordingHttpMessageHandler handler) = Create(statusCode, null);
 
             Assert.Empty(await repository.GetContactsAsync("t", "1-5371KIQ"));
+            Assert.Single(handler.Requests);
         }
 
         [Fact]
@@ -186,6 +258,12 @@ namespace Icm.Api.Tests.Repositories
 
             Assert.Null(handler.Request);
         }
+
+        private static string? Parameter(HttpRequestMessage request, string name) =>
+            Uri.UnescapeDataString(request.RequestUri!.Query)
+                .TrimStart('?')
+                .Split('&')
+                .SingleOrDefault(part => part.StartsWith(name + "=", StringComparison.Ordinal));
 
         [Fact]
         public async Task SearchAsync_SendsTheTokenTheTrustedUserAndTheSearch()

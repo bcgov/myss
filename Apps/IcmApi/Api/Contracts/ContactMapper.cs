@@ -43,6 +43,25 @@ namespace Icm.Api.Contracts
             "Updated",
         ];
 
+        /// <summary>
+        /// Refuses a query <see cref="ToSiebel"/> would refuse, with the same exceptions,
+        /// and nothing else.
+        /// </summary>
+        /// <param name="query">The search.</param>
+        /// <remarks>
+        /// For <see cref="Services.ContactService"/> to run before it acquires a token, so
+        /// a caller's mistake costs no round trip to the authorization server. It is
+        /// <see cref="ToSiebel"/> itself rather than a copy of its rules, so the two cannot
+        /// drift; the repository still builds — and so re-vets — the real query, as
+        /// defence in depth.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="query"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// No criterion is set, or one is blank or carries a character that could change
+        /// the meaning of the expression.
+        /// </exception>
+        public static void Validate(ContactQuery query) => _ = ToSiebel(query);
+
         /// <summary>Converts a published contact search to the wire query.</summary>
         /// <param name="query">The search.</param>
         /// <returns>The wire query.</returns>

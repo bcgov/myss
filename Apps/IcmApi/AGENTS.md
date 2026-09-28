@@ -94,6 +94,12 @@ a change, all MEASURED on SIT2 on 2026-09-24 and detailed in the README's "Case 
   components are deliberately not asked for. Tests tie each list to its wire contract.
 - **The `Contact` child holds the BCeID** (`BCeID User Name`) and the SIN/PHN — a
   `CaseContact` is all personal information.
+- **`GetContactsAsync` follows ICM's pages.** The child is a list GET; the repository
+  reads 100 rows at a time and continues until `lastpage` is `"true"`, the rows run out,
+  or `CaseRepository.MaxContactPages`. Only the one-page case is MEASURED.
+- **Validation runs before the token.** `CaseService`/`ContactService` call
+  `CaseMapper.Validate`/`ContactMapper.Validate` (which *are* `ToSiebel`) before
+  acquiring a token, and the repository vets again when it builds the query. Keep both.
 - **Reads only**: no case write is declared.
 
 ## The published surface is enforced

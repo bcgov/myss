@@ -105,6 +105,33 @@ namespace Icm.Api.Tests.Contracts
         }
 
         [Fact]
+        public void ToContactsSiebel_AsksForAFullPageFromTheRowItIsGiven()
+        {
+            // The child read wants everyone on the case, so it pages by the document's
+            // maximum and the repository carries the row count from page to page.
+            SiebelListQuery first = CaseMapper.ToContactsSiebel(null);
+            SiebelListQuery next = CaseMapper.ToContactsSiebel(null, startRowNum: 200);
+
+            Assert.Equal(100, first.PageSize);
+            Assert.Equal(0, first.StartRowNum);
+            Assert.Equal(200, next.StartRowNum);
+            Assert.Null(first.SearchSpec);
+            Assert.Throws<ArgumentOutOfRangeException>(() => CaseMapper.ToContactsSiebel(null, startRowNum: -1));
+        }
+
+        [Fact]
+        public void Validate_RefusesExactlyWhatToSiebelRefuses()
+        {
+            // The service's preflight, so it must be the same judgement: null, no
+            // criterion, blank, unsafe — and a sound query passes without a murmur.
+            Assert.Throws<ArgumentNullException>(() => CaseMapper.Validate(null!));
+            Assert.Throws<ArgumentException>(() => CaseMapper.Validate(new CaseQuery()));
+            Assert.Throws<ArgumentException>(() => CaseMapper.Validate(new CaseQuery { CaseNumber = " " }));
+            Assert.Throws<ArgumentException>(() => CaseMapper.Validate(new CaseQuery { Status = "Open\" OR [Type] LIKE \"*" }));
+            CaseMapper.Validate(new CaseQuery { CaseNumber = "1-11077140770" });
+        }
+
+        [Fact]
         public void TheRequestedFieldsAreExactlyTheOnesTheWireContractsDeclare()
         {
             // A property without its name in the list is null for ever; a name without a

@@ -49,14 +49,24 @@ namespace Icm.Api.Tests.Services
         [Fact]
         public async Task ARefusedArgumentCostsNoTokenRequest()
         {
+            // Everything the mapper refuses — not only null — is refused before the token
+            // is asked for, so a caller's mistake never reaches the authorization server,
+            // let alone ICM.
             FakeTokenRepository endpoint = new();
             using OAuthTokenService tokenService = new(endpoint);
-            CaseService service = new(new RecordingCaseRepository(), tokenService, Credentials);
+            RecordingCaseRepository repository = new();
+            CaseService service = new(repository, tokenService, Credentials);
 
             await Assert.ThrowsAsync<ArgumentNullException>(() => service.SearchAsync(null!));
+            await Assert.ThrowsAsync<ArgumentException>(() => service.SearchAsync(new CaseQuery()));
+            await Assert.ThrowsAsync<ArgumentException>(() => service.SearchAsync(new CaseQuery { CaseNumber = " " }));
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => service.SearchAsync(new CaseQuery { CaseNumber = "x\" OR [Status] LIKE \"*" }));
             await Assert.ThrowsAsync<ArgumentException>(() => service.GetAsync(" "));
             await Assert.ThrowsAsync<ArgumentException>(() => service.GetContactsAsync(string.Empty));
+
             Assert.Equal(0, endpoint.CallCount);
+            Assert.Empty(repository.Calls);
         }
 
         [Fact]

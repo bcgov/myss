@@ -3,7 +3,7 @@
 A .NET client library for **ICM** (the ministry's Siebel CRM), used by the rest of MySS
 to read and write Siebel records without knowing anything about Siebel.
 
-Built on [Refit](https://github.com/reactiveui/refit) 15.2.0. Targets `net10.0`, no other
+Built on [Refit](https://github.com/reactiveui/refit) 16.1.0. Targets `net10.0`, no other
 dependencies.
 
 ## Prerequisites
@@ -394,6 +394,16 @@ Indigenous status flags — and `BCeID User Name`, the only place a BCeID has be
 in ICM's REST surface. The component also carries child-welfare fields, which are not
 asked for.
 
+**`GetContactsAsync` returns everyone, not a page.** The child read is a list GET, so
+ICM pages it like any other; the repository asks for 100 rows at a time (the document's
+maximum) and follows the child's `lastpage` flag, continuing from `StartRowNum` = rows
+read so far, until ICM says `"lastpage": "true"`, answers `404`/`204` past the end, or
+sends an empty page. An ICM that never says "last" (one that ignored `StartRowNum`)
+becomes an `IcmResponseException` after 50 pages rather than a loop. MEASURED
+2026-09-24: a two-row case answers `"lastpage": "true"` on its only page; a case with
+more people than a page has not been seen, so the continuation is by the document's
+paging contract.
+
 **Field names are the live ones, as on the service request.** `SiebelCase` follows what
 ICM sends (`Id`, `Assigned To`, `Created Date`, `Created By Id`…), and the document's
 `Created`, `Sales Rep`, `ICM Created By` and `ICM Updated By` are rejected in a `fields`
@@ -782,7 +792,9 @@ things worth watching in the output:
   once the case is known, but not used to *find* it. Needs an ICM-side answer.
 - The case lookup is measured against one SIT2 case and one SIT1 case, one trusted user.
   The view-mode inconsistency between them (`Organization` saw the SIT1 case and not the
-  SIT2 one) is unexplained; `Manager` saw both.
+  SIT2 one) is unexplained; `Manager` saw both. Neither case has more people on it than
+  a page, so the contact child's continuation (`lastpage: "false"`, then `StartRowNum`)
+  is implemented from the document and unit-tested, not measured.
 - The contact search is measured against **SIT1**, one trusted user. On SIT2 only a
   first + last name search has been run (2026-09-17 — it returned the same three records
   as SIT1, so the two share a data refresh), and SIT2's describe has not been fetched or

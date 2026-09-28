@@ -20,6 +20,13 @@ namespace Icm.Api.Repositories
     /// </remarks>
     public class CaseRepository : ICaseRepository
     {
+        /// <summary>
+        /// The most pages a case's contact read will follow before deciding ICM is not
+        /// going to say "last". No case has this many people on it; the cap turns an ICM
+        /// that ignores <c>StartRowNum</c> into an exception rather than a loop.
+        /// </summary>
+        internal const int MaxContactPages = 50;
+
         private readonly ICaseApi _api;
         private readonly string? _trustedUserName;
 
@@ -108,6 +115,16 @@ namespace Icm.Api.Repositories
         }
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// The child read is a list GET, so ICM pages it, and the promise here is every
+        /// person on the case rather than the first page of them. Pages are read
+        /// <see cref="CaseMapper.ContactPageSize"/> rows at a time until ICM's
+        /// <c>lastpage</c> says so. What is MEASURED (2026-09-24) is a two-row case
+        /// answering <c>"lastpage": "true"</c> on its only page; a case with more rows than
+        /// a page has not been seen, so the continuation is by the document's
+        /// <c>StartRowNum</c> contract, guarded against ICM never saying "last" by
+        /// stopping on an empty page and by <see cref="MaxContactPages"/>.
+        /// </remarks>
         public async Task<IReadOnlyList<CaseContact>> GetContactsAsync(
             string bearerToken,
             string caseKey,
@@ -116,22 +133,43 @@ namespace Icm.Api.Repositories
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(caseKey);
 
-            using IApiResponse<SiebelCaseContactListResponse> response = await _api
-                .GetContactsAsync(
-                    bearerToken, _trustedUserName, caseKey, CaseMapper.ToContactsSiebel(options), cancellationToken)
-                .ConfigureAwait(false);
-
-            if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound)
+            List<CaseContact> people = [];
+            for (int page = 0; page < MaxContactPages; page++)
             {
-                return [];
+                using IApiResponse<SiebelCaseContactListResponse> response = await _api
+                    .GetContactsAsync(
+                        bearerToken,
+                        _trustedUserName,
+                        caseKey,
+                        CaseMapper.ToContactsSiebel(options, startRowNum: people.Count),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                // On the first page this is "no such case" or "nobody the caller can see";
+                // on a later one it is ICM's way of saying the rows ran out before it said
+                // "last" — either way, what has been read is the whole answer.
+                if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound)
+                {
+                    return people;
+                }
+
+                await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
+
+                if (response.Content is not { Items: not null } body)
+                {
+                    throw new IcmResponseException(
+                        "ICM answered the case contact read with success but returned no rows.");
+                }
+
+                people.AddRange(CaseMapper.ToModel(body));
+                if (body.IsLastPage || body.Items.Count == 0)
+                {
+                    return people;
+                }
             }
 
-            await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
-
-            return response.Content is { Items: not null } body
-                ? CaseMapper.ToModel(body)
-                : throw new IcmResponseException(
-                    "ICM answered the case contact read with success but returned no rows.");
+            throw new IcmResponseException(
+                $"ICM kept answering the case contact read without a last page after {MaxContactPages} pages.");
         }
 
         /// <summary>

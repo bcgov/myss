@@ -39,7 +39,10 @@ namespace Icm.Api.Services
         /// <param name="caseKey">The Siebel row id of the case.</param>
         /// <param name="options">Visibility, or null for the defaults.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The people on the case; empty when there are none the caller can see.</returns>
+        /// <returns>
+        /// Every person on the case — ICM's pages are followed, not just the first returned
+        /// — and empty when there are none the caller can see.
+        /// </returns>
         Task<IReadOnlyList<CaseContact>> GetContactsAsync(
             string caseKey,
             CaseReadOptions? options = null,

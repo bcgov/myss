@@ -50,9 +50,14 @@ namespace Icm.Api.Repositories
         /// <param name="caseKey">The Siebel row id of the case.</param>
         /// <param name="options">Visibility, or null for the defaults.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The people on the case; empty when there are none the caller can see, which includes "no such case".</returns>
+        /// <returns>
+        /// Every person on the case — ICM's pages are followed, not just the first returned
+        /// — and empty when there are none the caller can see, which includes "no such case".
+        /// </returns>
         /// <exception cref="Refit.ApiException">ICM answered with a failure status.</exception>
-        /// <exception cref="IcmResponseException">ICM reported success without a usable body.</exception>
+        /// <exception cref="IcmResponseException">
+        /// ICM reported success without a usable body, or never reported a last page.
+        /// </exception>
         Task<IReadOnlyList<CaseContact>> GetContactsAsync(
             string bearerToken,
             string caseKey,

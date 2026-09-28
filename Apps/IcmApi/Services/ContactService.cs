@@ -3,6 +3,7 @@ namespace Icm.Api.Services
     using System;
     using System.Threading;
     using System.Threading.Tasks;
+    using Icm.Api.Contracts;
     using Icm.Api.Models;
     using Icm.Api.Repositories;
 
@@ -47,9 +48,10 @@ namespace Icm.Api.Services
             ContactQuery query,
             CancellationToken cancellationToken = default)
         {
-            // Before the token, so a caller's mistake does not cost a round trip to the
-            // authorization server.
-            ArgumentNullException.ThrowIfNull(query);
+            // The whole of the mapper's vetting — null, no criterion, blank, unsafe —
+            // before the token, so a caller's mistake does not cost a round trip to the
+            // authorization server. The repository vets again when it builds the query.
+            ContactMapper.Validate(query);
 
             return await _repository.SearchAsync(
                 await _tokenService.GetTokenAsync(_credentials, cancellationToken).ConfigureAwait(false),

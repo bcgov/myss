@@ -174,6 +174,18 @@ namespace Icm.Api.Tests.Contracts
         }
 
         [Fact]
+        public void Validate_RefusesExactlyWhatToSiebelRefuses()
+        {
+            // The service's preflight, so it must be the same judgement: null, no
+            // criterion, blank, unsafe — and a sound query passes without a murmur.
+            Assert.Throws<ArgumentNullException>(() => ContactMapper.Validate(null!));
+            Assert.Throws<ArgumentException>(() => ContactMapper.Validate(new ContactQuery()));
+            Assert.Throws<ArgumentException>(() => ContactMapper.Validate(new ContactQuery { Sin = " " }));
+            Assert.Throws<ArgumentException>(() => ContactMapper.Validate(new ContactQuery { Sin = "046454286\"" }));
+            ContactMapper.Validate(new ContactQuery { Sin = "046454286", LastName = "IntegrationTest" });
+        }
+
+        [Fact]
         public void TheRefusalDoesNotRepeatTheValue()
         {
             ArgumentException exception = Assert.Throws<ArgumentException>(

@@ -25,10 +25,18 @@ namespace Icm.Api.Contracts
     /// <summary>
     /// The body of a successful read of a case's <c>Contact</c> child collection. Not in
     /// any describe document; the shape is the list shape, MEASURED on 2026-09-24, plus a
-    /// <c>lastpage</c> flag that is not modelled.
+    /// <c>lastpage</c> flag the parent list does not send.
     /// </summary>
     internal class SiebelCaseContactListResponse
     {
+        /// <summary>
+        /// Gets or sets <c>lastpage</c>: Siebel's word on whether this page is the last one.
+        /// Arrives as the string <c>"true"</c> (MEASURED 2026-09-24 on a two-row case), so
+        /// it is kept as text; <see cref="IsLastPage"/> reads it.
+        /// </summary>
+        [JsonPropertyName("lastpage")]
+        public string? LastPage { get; set; }
+
         /// <summary>Gets or sets the people on the case.</summary>
         [JsonPropertyName("items")]
         public IList<SiebelCaseContact>? Items { get; set; }
@@ -36,5 +44,13 @@ namespace Icm.Api.Contracts
         /// <summary>Gets or sets the paging links for the result set.</summary>
         [JsonPropertyName("Link")]
         public IList<SiebelLink>? Link { get; set; }
+
+        /// <summary>
+        /// Gets a value indicating whether Siebel said this page is the last one. Only an
+        /// explicit <c>"true"</c> counts: a missing flag means there may be more, and the
+        /// repository keeps reading until Siebel says otherwise or runs out of rows.
+        /// </summary>
+        [JsonIgnore]
+        public bool IsLastPage => bool.TryParse(LastPage, out bool last) && last;
     }
 }
