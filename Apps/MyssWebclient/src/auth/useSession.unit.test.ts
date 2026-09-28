@@ -72,6 +72,7 @@ describe("buildSession", () => {
         isAuthenticated: true,
         subject: "u1",
         roles: ["CLIENT"],
+        hasProfile: true,
       });
       expect(s.user?.roles).toEqual(["CLIENT"]);
     });
@@ -81,6 +82,7 @@ describe("buildSession", () => {
         isAuthenticated: true,
         subject: "u1",
         roles: [],
+        hasProfile: false,
       });
       expect(s.user?.roles).toEqual([]);
     });

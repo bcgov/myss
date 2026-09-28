@@ -23,6 +23,11 @@ namespace Myss.Api.Data
         public DbSet<FormSubmission> FormSubmissions => Set<FormSubmission>();
 
         /// <summary>
+        /// Gets the MySS user profiles set.
+        /// </summary>
+        public DbSet<MyssUserProfile> MyssUserProfiles => Set<MyssUserProfile>();
+
+        /// <summary>
         /// Gets the bus pass dispatch event log.
         /// </summary>
         public DbSet<BusPassDispatchEvent> BusPassDispatchEvents => Set<BusPassDispatchEvent>();
@@ -41,6 +46,20 @@ namespace Myss.Api.Data
             submission.Property(s => s.Answers).HasColumnName("answers").HasColumnType("jsonb");
             submission.Property(s => s.SubmittedAt).HasColumnName("submitted_at");
             submission.HasIndex(s => new { s.FormSpecId, s.FormSpecVersion });
+
+            var profile = modelBuilder.Entity<MyssUserProfile>();
+            profile.ToTable("myss_user_profiles");
+            profile.HasKey(p => p.Id);
+            profile.Property(p => p.Id).HasColumnName("id");
+            profile.Property(p => p.Subject).HasColumnName("subject").HasMaxLength(255).IsRequired();
+            profile.Property(p => p.FirstName).HasColumnName("first_name").HasMaxLength(200).IsRequired();
+            profile.Property(p => p.LastName).HasColumnName("last_name").HasMaxLength(200).IsRequired();
+            profile.Property(p => p.DateOfBirth).HasColumnName("date_of_birth").IsRequired();
+            profile.Property(p => p.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
+            profile.Property(p => p.Sin).HasColumnName("sin").HasMaxLength(20).IsRequired();
+            profile.Property(p => p.CreatedAt).HasColumnName("created_at");
+            profile.Property(p => p.UpdatedAt).HasColumnName("updated_at");
+            profile.HasIndex(p => p.Subject).IsUnique();
 
             var dispatchEvent = modelBuilder.Entity<BusPassDispatchEvent>();
             dispatchEvent.ToTable("bus_pass_dispatch_events");

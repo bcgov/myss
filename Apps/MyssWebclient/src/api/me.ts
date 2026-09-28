@@ -14,6 +14,8 @@ export interface MePayload {
   isAuthenticated: boolean;
   subject: string;
   roles: string[];
+  hasProfile: boolean;
+  profileFirstName?: string | null;
   bceidGuid?: string | null;
   idirUsername?: string | null;
 }

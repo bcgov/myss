@@ -42,5 +42,11 @@ namespace Myss.Api.Domain
 
         /// <summary>A confirmation field does not match the address it confirms.</summary>
         public const string EmailMismatch = "IDA.EMAIL.MISMATCH";
+
+        /// <summary>A registration date of birth is not a valid date.</summary>
+        public const string RegistrationDateOfBirthInvalid = "REGISTRATION.DOB.INVALID";
+
+        /// <summary>A registration date of birth must not be in the future.</summary>
+        public const string RegistrationDateOfBirthInFuture = "REGISTRATION.DOB.FUTURE";
     }
 }

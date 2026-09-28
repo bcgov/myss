@@ -1,6 +1,8 @@
 namespace Myss.Api.Controllers
 {
     using System;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Asp.Versioning;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
@@ -23,14 +25,19 @@ namespace Myss.Api.Controllers
     public class AuthController : Controller
     {
         private readonly ICurrentUserAccessor currentUser;
+        private readonly IUserProfileService userProfileService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AuthController"/> class.
         /// </summary>
         /// <param name="currentUser">The injected caller accessor.</param>
-        public AuthController(ICurrentUserAccessor currentUser)
+        /// <param name="userProfileService">The registration-profile lookup service.</param>
+        public AuthController(
+            ICurrentUserAccessor currentUser,
+            IUserProfileService userProfileService)
         {
             this.currentUser = currentUser;
+            this.userProfileService = userProfileService;
         }
 
         /// <summary>
@@ -43,11 +50,16 @@ namespace Myss.Api.Controllers
         [EndpointName("GetMe")]
         [ProducesResponseType(typeof(BaseResponseModel<CurrentUser>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public ActionResult<BaseResponseModel<CurrentUser>> GetMe()
+        public async Task<ActionResult<BaseResponseModel<CurrentUser>>> GetMe(CancellationToken cancellationToken)
         {
+            CurrentUser user = this.currentUser.User;
+            bool hasProfile = await this.userProfileService.HasProfileAsync(user.Subject, cancellationToken);
+            string? profileFirstName = hasProfile
+                ? await this.userProfileService.GetFirstNameAsync(user.Subject, cancellationToken)
+                : null;
             return new BaseResponseModel<CurrentUser>
             {
-                Payload = this.currentUser.User,
+                Payload = user with { HasProfile = hasProfile, ProfileFirstName = profileFirstName },
                 DatetimeRequested = DateTime.Now,
             };
         }
