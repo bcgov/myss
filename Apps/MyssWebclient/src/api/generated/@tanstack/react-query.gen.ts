@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createApplication, getApplication, getBusPassSubmissionPdf, getEstimatorRates, getEstimatorSpec, getFormDraft, getFormSpec, getFormSubmission, getMe, getPlaceholder, listApplications, listAttachments, listForms, listFormSubmissions, type Options, publishForm, saveApplicationAnswers, saveFormDraft, submitApplication, submitBusPass, submitForm, uploadAttachment } from '../sdk.gen';
-import type { CreateApplicationData, CreateApplicationError, CreateApplicationResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfError, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormDraftData, GetFormDraftError, GetFormDraftResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetFormSubmissionData, GetFormSubmissionError, GetFormSubmissionResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, ListFormsData, ListFormsResponse, ListFormSubmissionsData, ListFormSubmissionsResponse, PublishFormData, PublishFormError, PublishFormResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SaveFormDraftData, SaveFormDraftError, SaveFormDraftResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
+import { acceptApplication, createApplication, denyApplication, getApplication, getBusPassSubmissionPdf, getEstimatorRates, getEstimatorSpec, getFormDraft, getFormSpec, getFormSubmission, getMe, getPlaceholder, getReviewApplication, listApplications, listAttachments, listForms, listFormSubmissions, listReviewApplications, type Options, publishForm, saveApplicationAnswers, saveFormDraft, startApplicationReview, submitApplication, submitBusPass, submitForm, uploadAttachment } from '../sdk.gen';
+import type { AcceptApplicationData, AcceptApplicationError, AcceptApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, DenyApplicationData, DenyApplicationError, DenyApplicationResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfError, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormDraftData, GetFormDraftError, GetFormDraftResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetFormSubmissionData, GetFormSubmissionError, GetFormSubmissionResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetReviewApplicationData, GetReviewApplicationError, GetReviewApplicationResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, ListFormsData, ListFormsResponse, ListFormSubmissionsData, ListFormSubmissionsResponse, ListReviewApplicationsData, ListReviewApplicationsResponse, PublishFormData, PublishFormError, PublishFormResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SaveFormDraftData, SaveFormDraftError, SaveFormDraftResponse, StartApplicationReviewData, StartApplicationReviewError, StartApplicationReviewResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -413,6 +413,94 @@ export const submitApplicationMutation = (options?: Partial<Options<SubmitApplic
     const mutationOptions: UseMutationOptions<SubmitApplicationResponse, SubmitApplicationError, Options<SubmitApplicationData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await submitApplication({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const listReviewApplicationsQueryKey = (options?: Options<ListReviewApplicationsData>) => createQueryKey('listReviewApplications', options);
+
+/**
+ * Lists every submitted application, newest submission first.
+ */
+export const listReviewApplicationsOptions = (options?: Options<ListReviewApplicationsData>) => queryOptions<ListReviewApplicationsResponse, DefaultError, ListReviewApplicationsResponse, ReturnType<typeof listReviewApplicationsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listReviewApplications({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listReviewApplicationsQueryKey(options)
+});
+
+export const getReviewApplicationQueryKey = (options: Options<GetReviewApplicationData>) => createQueryKey('getReviewApplication', options);
+
+/**
+ * Returns a submitted application with the archived spec that renders it
+ * and the actions available right now.
+ */
+export const getReviewApplicationOptions = (options: Options<GetReviewApplicationData>) => queryOptions<GetReviewApplicationResponse, GetReviewApplicationError, GetReviewApplicationResponse, ReturnType<typeof getReviewApplicationQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getReviewApplication({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getReviewApplicationQueryKey(options)
+});
+
+/**
+ * Marks the application Under Review.
+ */
+export const startApplicationReviewMutation = (options?: Partial<Options<StartApplicationReviewData>>): UseMutationOptions<StartApplicationReviewResponse, StartApplicationReviewError, Options<StartApplicationReviewData>> => {
+    const mutationOptions: UseMutationOptions<StartApplicationReviewResponse, StartApplicationReviewError, Options<StartApplicationReviewData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await startApplicationReview({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Accepts the application.
+ */
+export const acceptApplicationMutation = (options?: Partial<Options<AcceptApplicationData>>): UseMutationOptions<AcceptApplicationResponse, AcceptApplicationError, Options<AcceptApplicationData>> => {
+    const mutationOptions: UseMutationOptions<AcceptApplicationResponse, AcceptApplicationError, Options<AcceptApplicationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await acceptApplication({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Denies the application.
+ */
+export const denyApplicationMutation = (options?: Partial<Options<DenyApplicationData>>): UseMutationOptions<DenyApplicationResponse, DenyApplicationError, Options<DenyApplicationData>> => {
+    const mutationOptions: UseMutationOptions<DenyApplicationResponse, DenyApplicationError, Options<DenyApplicationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await denyApplication({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

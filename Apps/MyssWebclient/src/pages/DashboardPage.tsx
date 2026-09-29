@@ -2,6 +2,7 @@ import { Button } from "@bcgov/design-system-react-components";
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 
+import { WORKER_ROLE } from "@/auth/RequireWorker";
 import { useSession } from "@/auth/useSession";
 import { useCreateApplication } from "@/hooks/useIntake";
 import { applicationPath, paths } from "@/routes/paths";
@@ -14,16 +15,25 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const create = useCreateApplication();
   const name = user?.name ?? user?.email ?? "there";
+  // Roles come from /auth/me, so this is only known once that has answered.
+  const isWorker =
+    !isMeLoading &&
+    Boolean(user?.idirUsername) &&
+    (user?.roles ?? []).includes(WORKER_ROLE);
 
+  // A Ministry worker has no citizen profile: their landing is the worker
+  // operations view, decided before the registration check below can fire.
   // A citizen without a registered profile is sent to registration. The API
   // refuses to create an application for them too; this is the courtesy.
   useEffect(() => {
-    if (!isMeLoading && hasProfile === false) {
+    if (isWorker) {
+      navigate(paths.workerApplications, { replace: true });
+    } else if (!isMeLoading && hasProfile === false) {
       navigate(paths.register, { replace: true });
     }
-  }, [hasProfile, isMeLoading, navigate]);
+  }, [hasProfile, isMeLoading, isWorker, navigate]);
 
-  if (isMeLoading || hasProfile === undefined) {
+  if (isMeLoading || isWorker || hasProfile === undefined) {
     return <p role="status">Checking your MySS account…</p>;
   }
 

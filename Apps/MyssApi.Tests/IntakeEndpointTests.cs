@@ -14,6 +14,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Api.Tests.TestSupport;
 
     /// <summary>
     /// The applicant slice of Application Intake over real HTTP: ownership,
@@ -51,13 +52,14 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task ARegisteredCitizen_CanStartADraft()
         {
-            using Host host = NewHost(registered: ["alice"]);
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
 
             using HttpResponseMessage response = await host.Send("alice", HttpMethod.Post, Route);
 
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             JsonElement app = await Payload(response);
             Assert.Equal(ApplicationStatusCodes.Draft, app.GetProperty("status").GetString());
+            Assert.Equal(ApplicationReference.From(app.GetProperty("id").GetGuid()), app.GetProperty("referenceNumber").GetString());
             Assert.Equal(1, app.GetProperty("version").GetInt32());
             Assert.Equal(2, app.GetProperty("formSpecVersion").GetInt32());
             Assert.Equal(JsonValueKind.Null, app.GetProperty("submittedAt").ValueKind);
@@ -66,7 +68,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task ACitizenWithoutAProfile_CannotStartAnApplication()
         {
-            using Host host = NewHost(registered: []);
+            using IntakeTestHost host = NewHost(registered: []);
 
             using HttpResponseMessage response = await host.Send("bob", HttpMethod.Post, Route);
 
@@ -80,7 +82,7 @@ namespace Myss.Api.Tests
         {
             // The legacy attachment bug, encoded for applications: the owner is
             // part of the lookup, so someone else's id does not exist.
-            using Host host = NewHost(registered: ["alice", "bob"]);
+            using IntakeTestHost host = NewHost(registered: ["alice", "bob"]);
             Guid id = await host.Create("alice");
 
             using HttpResponseMessage get = await host.Send("bob", HttpMethod.Get, $"{Route}/{id}");
@@ -95,7 +97,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task ADraftSaveMayBeIncomplete_ButASubmitMayNot()
         {
-            using Host host = NewHost(registered: ["alice"]);
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
             Guid id = await host.Create("alice");
 
             using HttpResponseMessage save = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Ada" }));
@@ -111,7 +113,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task ADraftSave_StillRefusesWhatTheFormCouldNotHaveProduced()
         {
-            using Host host = NewHost(registered: ["alice"]);
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
             Guid id = await host.Create("alice");
 
             using HttpResponseMessage save = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Ada", isAdmin = true }));
@@ -123,7 +125,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task AStaleRowVersion_CannotSave()
         {
-            using Host host = NewHost(registered: ["alice"]);
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
             Guid id = await host.Create("alice");
             using HttpResponseMessage first = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Ada" }));
             Assert.Equal(HttpStatusCode.OK, first.StatusCode);
@@ -140,7 +142,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task Submit_AppendsOneEventAndMakesTheApplicationReadOnly()
         {
-            using Host host = NewHost(registered: ["alice"]);
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
             Guid id = await host.Create("alice");
 
             using HttpResponseMessage submit = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, new { firstName = "Ada", lastName = "Lovelace" }));
@@ -161,7 +163,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task AfterSubmit_ReadsServeWhatWasSubmittedEvenIfTheRowChanged()
         {
-            using Host host = NewHost(registered: ["alice"]);
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
             Guid id = await host.Create("alice");
             using HttpResponseMessage submit = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, new { firstName = "Ada", lastName = "Lovelace" }));
             Assert.Equal(HttpStatusCode.OK, submit.StatusCode);
@@ -179,7 +181,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task TheList_ShowsOnlyTheCallersApplicationsWithTheirStatus()
         {
-            using Host host = NewHost(registered: ["alice", "bob"]);
+            using IntakeTestHost host = NewHost(registered: ["alice", "bob"]);
             Guid submitted = await host.Create("alice");
             Guid draft = await host.Create("alice");
             await host.Create("bob");
@@ -200,7 +202,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task AWorker_IsForbiddenOnTheApplicantRoutes()
         {
-            using Host host = NewHost(registered: []);
+            using IntakeTestHost host = NewHost(registered: []);
 
             using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, Route);
             using HttpResponseMessage create = await host.Send("worker", HttpMethod.Post, Route);
@@ -212,7 +214,7 @@ namespace Myss.Api.Tests
         [Fact]
         public async Task AnAnonymousCaller_IsUnauthorized()
         {
-            using Host host = NewHost(registered: [], mockAuth: false);
+            using IntakeTestHost host = NewHost(registered: [], mockAuth: false);
 
             using HttpResponseMessage response = await host.Send(persona: null, HttpMethod.Get, Route);
 
@@ -254,137 +256,9 @@ namespace Myss.Api.Tests
             return null;
         }
 
-        private Host NewHost(IReadOnlyList<string> registered, bool mockAuth = true)
+        private IntakeTestHost NewHost(IReadOnlyList<string> registered, bool mockAuth = true)
         {
-            return new Host(_factory, _provider, registered, mockAuth);
-        }
-
-        /// <summary>
-        /// One in-memory host per test: the three contexts the slice touches
-        /// (forms for the profile, platform for the log, intake for the row)
-        /// on the InMemory provider, the fake spec provider, and the mock
-        /// personas. Every persona in <c>registered</c> gets a profile row.
-        /// </summary>
-        private sealed class Host : IDisposable
-        {
-            private readonly WebApplicationFactory<Startup> _factory;
-            private readonly HttpClient _client;
-
-            public Host(
-                WebApplicationFactory<Startup> factory,
-                FakeFormSpecProvider provider,
-                IReadOnlyList<string> registered,
-                bool mockAuth)
-            {
-                string dbName = Guid.NewGuid().ToString();
-                ServiceProvider efProvider = new ServiceCollection()
-                    .AddEntityFrameworkInMemoryDatabase()
-                    .BuildServiceProvider();
-                DbContextOptions<FormsDbContext> forms = new DbContextOptionsBuilder<FormsDbContext>()
-                    .UseInMemoryDatabase(dbName + "-forms")
-                    .UseInternalServiceProvider(efProvider)
-                    .Options;
-                DbContextOptions<PlatformDbContext> platform = new DbContextOptionsBuilder<PlatformDbContext>()
-                    .UseInMemoryDatabase(dbName + "-platform")
-                    .UseInternalServiceProvider(efProvider)
-                    .Options;
-                DbContextOptions<IntakeDbContext> intake = new DbContextOptionsBuilder<IntakeDbContext>()
-                    .UseInMemoryDatabase(dbName + "-intake")
-                    .UseInternalServiceProvider(efProvider)
-                    .Options;
-
-                using (var db = new InMemoryFormsDbContext(forms))
-                {
-                    foreach (string persona in registered)
-                    {
-                        db.MyssUserProfiles.Add(new MyssUserProfile
-                        {
-                            Id = Guid.NewGuid(),
-                            Subject = MockAuthenticationHandler.Personas[persona].Subject,
-                            FirstName = persona,
-                            LastName = "Tester",
-                            DateOfBirth = new DateOnly(1990, 1, 1),
-                            Email = $"{persona}@example.com",
-                            Sin = "050082833",
-                            CreatedAt = DateTimeOffset.UtcNow,
-                            UpdatedAt = DateTimeOffset.UtcNow,
-                        });
-                    }
-
-                    db.SaveChanges();
-                }
-
-                _factory = factory.WithWebHostBuilder(builder =>
-                {
-                    string enabled = mockAuth ? "true" : "false";
-                    builder.UseMockAuthSettings(allowMockAuth: enabled, environmentName: "test", mockAuth: enabled);
-                    builder.ConfigureServices(services =>
-                    {
-                        services.RemoveAll<DbContextOptions<FormsDbContext>>();
-                        services.RemoveAll<FormsDbContext>();
-                        services.AddScoped<FormsDbContext>(_ => new InMemoryFormsDbContext(forms));
-
-                        services.RemoveAll<DbContextOptions<PlatformDbContext>>();
-                        services.RemoveAll<PlatformDbContext>();
-                        services.AddScoped<PlatformDbContext>(_ => new InMemoryPlatformDbContext(platform));
-
-                        services.RemoveAll<DbContextOptions<IntakeDbContext>>();
-                        services.RemoveAll<IntakeDbContext>();
-                        services.AddScoped<IntakeDbContext>(_ => new InMemoryIntakeDbContext(intake));
-
-                        services.RemoveAll<IFormSpecProvider>();
-                        services.AddSingleton<IFormSpecProvider>(provider);
-                    });
-                });
-                _client = _factory.CreateClient();
-            }
-
-            public Task<HttpResponseMessage> Send(string? persona, HttpMethod method, string url, HttpContent? content = null)
-            {
-                var request = new HttpRequestMessage(method, url) { Content = content };
-                if (persona is not null)
-                {
-                    request.Headers.Add(MockAuthenticationHandler.PersonaHeader, persona);
-                }
-
-                return _client.SendAsync(request);
-            }
-
-            public async Task<Guid> Create(string persona)
-            {
-                using HttpResponseMessage response = await Send(persona, HttpMethod.Post, Route);
-                Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-                return (await Payload(response)).GetProperty("id").GetGuid();
-            }
-
-            public async Task<int> CountEvents(Guid streamId)
-            {
-                using IServiceScope scope = _factory.Services.CreateScope();
-                return await scope.ServiceProvider.GetRequiredService<PlatformDbContext>()
-                    .Events.CountAsync(e => e.StreamId == streamId);
-            }
-
-            public async Task<int> CountApplications()
-            {
-                using IServiceScope scope = _factory.Services.CreateScope();
-                return await scope.ServiceProvider.GetRequiredService<IntakeDbContext>().Applications.CountAsync();
-            }
-
-            public async Task OverwriteRow(Guid id, string answersJson)
-            {
-                using IServiceScope scope = _factory.Services.CreateScope();
-                IntakeDbContext db = scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
-                ApplicationAnswers row = await db.Applications.SingleAsync(a => a.Id == id);
-                row.Answers = JsonDocument.Parse(answersJson);
-                row.Version++;
-                await db.SaveChangesAsync();
-            }
-
-            public void Dispose()
-            {
-                _client.Dispose();
-                _factory.Dispose();
-            }
+            return new IntakeTestHost(_factory, _provider, registered, mockAuth);
         }
     }
 }

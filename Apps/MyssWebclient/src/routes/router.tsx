@@ -17,8 +17,11 @@ import AdminPage from "@/pages/AdminPage";
 import FormManagementPage from "@/pages/FormManagementPage";
 import FormEditorPage from "@/pages/FormEditorPage";
 import ApplicationPage from "@/pages/ApplicationPage";
+import WorkerApplicationsPage from "@/pages/WorkerApplicationsPage";
+import WorkerApplicationPage from "@/pages/WorkerApplicationPage";
 import RequireAuth from "@/auth/RequireAuth";
 import RequireIdir from "@/auth/RequireIdir";
+import RequireWorker from "@/auth/RequireWorker";
 import { paths } from "@/routes/paths";
 
 // App is the shared layout (header/footer + app-wide auth concerns). Child
@@ -72,6 +75,24 @@ export const router = createBrowserRouter([
           <RequireIdir>
             <FormEditorPage />
           </RequireIdir>
+        ),
+      },
+
+      // ---- Worker operations: IDIR sign-in with the WORKER role ----
+      {
+        path: paths.workerApplications,
+        element: (
+          <RequireWorker>
+            <WorkerApplicationsPage />
+          </RequireWorker>
+        ),
+      },
+      {
+        path: paths.workerApplication,
+        element: (
+          <RequireWorker>
+            <WorkerApplicationPage />
+          </RequireWorker>
         ),
       },
 

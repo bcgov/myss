@@ -22,6 +22,10 @@ export const paths = {
   // One Income Assistance application: editable while a draft, read-only
   // once submitted. Started from the dashboard's "My applications".
   application: "/applications/:id",
+  // Worker operations view (MYSS-226): the submitted applications a Ministry
+  // worker reviews, and one of them opened for a decision.
+  workerApplications: "/worker/applications",
+  workerApplication: "/worker/applications/:id",
 } as const;
 
 export type AppPath = (typeof paths)[keyof typeof paths];
@@ -46,4 +50,9 @@ export function adminNewFormPath(formSpecId: string, title: string): string {
 /** Concrete URL for one application, kept beside the `application` pattern. */
 export function applicationPath(id: string): string {
   return `/applications/${encodeURIComponent(id)}`;
+}
+
+/** Concrete worker URL for one application, beside `workerApplication`. */
+export function workerApplicationPath(id: string): string {
+  return `/worker/applications/${encodeURIComponent(id)}`;
 }

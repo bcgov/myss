@@ -16,6 +16,12 @@ namespace Myss.Api.Intake
         public required Guid Id { get; set; }
 
         /// <summary>
+        /// Gets or sets the request number shown to the applicant and to
+        /// workers (<see cref="ApplicationReference"/>).
+        /// </summary>
+        public required string ReferenceNumber { get; set; }
+
+        /// <summary>
         /// Gets or sets the status code (<see cref="ApplicationStatusCodes"/>).
         /// </summary>
         public required string Status { get; set; }
@@ -208,6 +214,160 @@ namespace Myss.Api.Intake
         public static IntakeResultModel SpecUnavailable()
         {
             return new(IntakeOutcome.SpecUnavailable);
+        }
+    }
+
+    /// <summary>
+    /// An application as a worker's list shows it.
+    /// </summary>
+    public class ReviewApplicationSummaryModel
+    {
+        /// <summary>
+        /// Gets or sets the application identifier.
+        /// </summary>
+        public required Guid Id { get; set; }
+
+        /// <summary>
+        /// Gets or sets the request number, the same one the applicant was shown.
+        /// </summary>
+        public required string ReferenceNumber { get; set; }
+
+        /// <summary>
+        /// Gets or sets the status code (<see cref="ApplicationStatusCodes"/>).
+        /// </summary>
+        public required string Status { get; set; }
+
+        /// <summary>
+        /// Gets or sets when the application was submitted.
+        /// </summary>
+        public required DateTimeOffset SubmittedAt { get; set; }
+
+        /// <summary>
+        /// Gets or sets the stream version a worker must send back with an
+        /// action. Worker actions are events, so this is the event log's
+        /// version, not the applicant's row version.
+        /// </summary>
+        public required int StreamVersion { get; set; }
+    }
+
+    /// <summary>
+    /// An application as a worker reads it: the summary plus what the applicant
+    /// submitted, the spec that renders it, and the actions open right now.
+    /// </summary>
+    public class ReviewApplicationModel : ReviewApplicationSummaryModel
+    {
+        /// <summary>
+        /// Gets or sets the submitted answers, from the Submitted event.
+        /// </summary>
+        public required JsonElement Answers { get; set; }
+
+        /// <summary>
+        /// Gets or sets the logical form identifier.
+        /// </summary>
+        public required string FormSpecId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the pinned spec version.
+        /// </summary>
+        public required int FormSpecVersion { get; set; }
+
+        /// <summary>
+        /// Gets or sets the archived spec at the pinned version. Null when the
+        /// content engine no longer has it, and on action responses.
+        /// </summary>
+        public FormSpecModel? Spec { get; set; }
+
+        /// <summary>
+        /// Gets or sets the worker actions available in the current state
+        /// (<see cref="WorkerActions"/>). The buttons render from this list.
+        /// </summary>
+        public required IReadOnlyList<string> AvailableActions { get; set; }
+    }
+
+    /// <summary>
+    /// The body of a worker action: the stream version the worker last saw.
+    /// </summary>
+    public class ReviewActionRequestModel
+    {
+        /// <summary>
+        /// Gets or sets the stream version the worker last saw.
+        /// </summary>
+        public required int StreamVersion { get; set; }
+    }
+
+    /// <summary>
+    /// How a review operation ended.
+    /// </summary>
+    public enum ReviewOutcome
+    {
+        /// <summary>The operation succeeded; <see cref="ReviewResultModel.Application"/> is set.</summary>
+        Ok,
+
+        /// <summary>No submitted application with that id exists.</summary>
+        NotFound,
+
+        /// <summary>The action is not available in the application's current state.</summary>
+        NotAllowed,
+
+        /// <summary>The worker's stream version is behind; another action landed first.</summary>
+        StaleVersion,
+    }
+
+    /// <summary>
+    /// The result of a review operation, one shape for every outcome.
+    /// </summary>
+    public sealed class ReviewResultModel
+    {
+        private ReviewResultModel(ReviewOutcome outcome)
+        {
+            Outcome = outcome;
+        }
+
+        /// <summary>
+        /// Gets the outcome.
+        /// </summary>
+        public ReviewOutcome Outcome { get; }
+
+        /// <summary>
+        /// Gets the application, on success.
+        /// </summary>
+        public ReviewApplicationModel? Application { get; private init; }
+
+        /// <summary>
+        /// Gets the stream version the server holds, on a refusal, so the
+        /// worker's view can reload.
+        /// </summary>
+        public int? CurrentVersion { get; private init; }
+
+        /// <summary>Builds a success result.</summary>
+        /// <param name="application">The application.</param>
+        /// <returns>The result.</returns>
+        public static ReviewResultModel Ok(ReviewApplicationModel application)
+        {
+            return new(ReviewOutcome.Ok) { Application = application };
+        }
+
+        /// <summary>Builds a not-found result.</summary>
+        /// <returns>The result.</returns>
+        public static ReviewResultModel NotFound()
+        {
+            return new(ReviewOutcome.NotFound);
+        }
+
+        /// <summary>Builds a not-allowed result.</summary>
+        /// <param name="currentVersion">The stream version the server holds.</param>
+        /// <returns>The result.</returns>
+        public static ReviewResultModel NotAllowed(int currentVersion)
+        {
+            return new(ReviewOutcome.NotAllowed) { CurrentVersion = currentVersion };
+        }
+
+        /// <summary>Builds a stale-version result.</summary>
+        /// <param name="currentVersion">The stream version the server holds, when known.</param>
+        /// <returns>The result.</returns>
+        public static ReviewResultModel StaleVersion(int? currentVersion)
+        {
+            return new(ReviewOutcome.StaleVersion) { CurrentVersion = currentVersion };
         }
     }
 }

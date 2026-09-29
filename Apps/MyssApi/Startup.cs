@@ -135,6 +135,7 @@ namespace Myss.Api
                         ?? configuration.GetConnectionString("FormsDb"),
                     npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "intake")));
             services.AddScoped<IIntakeService, IntakeService>();
+            services.AddScoped<IReviewService, ReviewService>();
 
             // Bus pass hand-off to ICM. MyssApi never calls Siebel: everything
             // ICM-bound goes to the IcmApi middleware over REST, which owns the

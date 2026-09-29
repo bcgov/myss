@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormDraftData, GetFormDraftErrors, GetFormDraftResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormsData, ListFormsErrors, ListFormsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, PublishFormData, PublishFormErrors, PublishFormResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SaveFormDraftData, SaveFormDraftErrors, SaveFormDraftResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
+import type { AcceptApplicationData, AcceptApplicationErrors, AcceptApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, DenyApplicationData, DenyApplicationErrors, DenyApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormDraftData, GetFormDraftErrors, GetFormDraftResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetReviewApplicationData, GetReviewApplicationErrors, GetReviewApplicationResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormsData, ListFormsErrors, ListFormsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, ListReviewApplicationsData, ListReviewApplicationsResponses, PublishFormData, PublishFormErrors, PublishFormResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SaveFormDraftData, SaveFormDraftErrors, SaveFormDraftResponses, StartApplicationReviewData, StartApplicationReviewErrors, StartApplicationReviewResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -173,6 +173,53 @@ export const saveApplicationAnswers = <ThrowOnError extends boolean = false>(opt
  */
 export const submitApplication = <ThrowOnError extends boolean = false>(options: Options<SubmitApplicationData, ThrowOnError>) => (options.client ?? client).post<SubmitApplicationResponses, SubmitApplicationErrors, ThrowOnError>({
     url: '/v1/intake/applications/{id}/submit',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Lists every submitted application, newest submission first.
+ */
+export const listReviewApplications = <ThrowOnError extends boolean = false>(options?: Options<ListReviewApplicationsData, ThrowOnError>) => (options?.client ?? client).get<ListReviewApplicationsResponses, unknown, ThrowOnError>({ url: '/v1/intake/review/applications', ...options });
+
+/**
+ * Returns a submitted application with the archived spec that renders it
+ * and the actions available right now.
+ */
+export const getReviewApplication = <ThrowOnError extends boolean = false>(options: Options<GetReviewApplicationData, ThrowOnError>) => (options.client ?? client).get<GetReviewApplicationResponses, GetReviewApplicationErrors, ThrowOnError>({ url: '/v1/intake/review/applications/{id}', ...options });
+
+/**
+ * Marks the application Under Review.
+ */
+export const startApplicationReview = <ThrowOnError extends boolean = false>(options: Options<StartApplicationReviewData, ThrowOnError>) => (options.client ?? client).post<StartApplicationReviewResponses, StartApplicationReviewErrors, ThrowOnError>({
+    url: '/v1/intake/review/applications/{id}/review',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Accepts the application.
+ */
+export const acceptApplication = <ThrowOnError extends boolean = false>(options: Options<AcceptApplicationData, ThrowOnError>) => (options.client ?? client).post<AcceptApplicationResponses, AcceptApplicationErrors, ThrowOnError>({
+    url: '/v1/intake/review/applications/{id}/accept',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Denies the application.
+ */
+export const denyApplication = <ThrowOnError extends boolean = false>(options: Options<DenyApplicationData, ThrowOnError>) => (options.client ?? client).post<DenyApplicationResponses, DenyApplicationErrors, ThrowOnError>({
+    url: '/v1/intake/review/applications/{id}/deny',
     ...options,
     headers: {
         'Content-Type': 'application/json',

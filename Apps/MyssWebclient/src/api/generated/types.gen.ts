@@ -71,6 +71,11 @@ export type MyssApiIntakeApplicationSummaryModel = {
      */
     id: string;
     /**
+     * Gets or sets the request number shown to the applicant and to
+     * workers (Myss.Api.Intake.ApplicationReference).
+     */
+    referenceNumber: string | null;
+    /**
      * Gets or sets the status code (Myss.Api.Intake.ApplicationStatusCodes).
      */
     status: string | null;
@@ -100,6 +105,71 @@ export type MyssApiIntakeApplicationSummaryModel = {
      * Gets or sets when the application was submitted, if it was.
      */
     submittedAt?: string | null;
+};
+
+/**
+ * The body of a worker action: the stream version the worker last saw.
+ */
+export type MyssApiIntakeReviewActionRequestModel = {
+    /**
+     * Gets or sets the stream version the worker last saw.
+     */
+    streamVersion: number;
+};
+
+/**
+ * An application as a worker reads it: the summary plus what the applicant
+ * submitted, the spec that renders it, and the actions open right now.
+ */
+export type MyssApiIntakeReviewApplicationModel = MyssApiIntakeReviewApplicationSummaryModel & {
+    /**
+     * Gets or sets the submitted answers, from the Submitted event.
+     */
+    answers: unknown;
+    /**
+     * Gets or sets the logical form identifier.
+     */
+    formSpecId: string | null;
+    /**
+     * Gets or sets the pinned spec version.
+     */
+    formSpecVersion: number;
+    spec?: MyssApiModelsFormSpecModel;
+    /**
+     * IReadOnlyList<String>
+     *
+     * Gets or sets the worker actions available in the current state
+     * (Myss.Api.Intake.WorkerActions). The buttons render from this list.
+     */
+    availableActions: Array<string> | null;
+};
+
+/**
+ * An application as a worker's list shows it.
+ */
+export type MyssApiIntakeReviewApplicationSummaryModel = {
+    /**
+     * Gets or sets the application identifier.
+     */
+    id: string;
+    /**
+     * Gets or sets the request number, the same one the applicant was shown.
+     */
+    referenceNumber: string | null;
+    /**
+     * Gets or sets the status code (Myss.Api.Intake.ApplicationStatusCodes).
+     */
+    status: string | null;
+    /**
+     * Gets or sets when the application was submitted.
+     */
+    submittedAt: string;
+    /**
+     * Gets or sets the stream version a worker must send back with an
+     * action. Worker actions are events, so this is the event log's
+     * version, not the applicant's row version.
+     */
+    streamVersion: number;
 };
 
 /**
@@ -144,6 +214,19 @@ export type MyssApiModelsAttachmentResponseModel = {
  */
 export type MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel = {
     payload: MyssApiIntakeApplicationModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<ReviewApplicationModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel = {
+    payload: MyssApiIntakeReviewApplicationModel;
     /**
      * Gets or sets the payload information.
      */
@@ -266,6 +349,24 @@ export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListM
      * Gets or sets the payload information.
      */
     payload: Array<MyssApiIntakeApplicationSummaryModel | MyssApiIntakeApplicationModel> | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyList`1>
+ *
+ * Represents the result of a request.
+ */
+export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeReviewApplicationSummaryModel = {
+    /**
+     * IReadOnlyList<ReviewApplicationSummaryModel>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: Array<MyssApiIntakeReviewApplicationSummaryModel | MyssApiIntakeReviewApplicationModel> | null;
     /**
      * Gets or sets the payload information.
      */
@@ -1295,3 +1396,160 @@ export type SubmitApplicationResponses = {
 };
 
 export type SubmitApplicationResponse = SubmitApplicationResponses[keyof SubmitApplicationResponses];
+
+export type ListReviewApplicationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/intake/review/applications';
+};
+
+export type ListReviewApplicationsResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeReviewApplicationSummaryModel;
+};
+
+export type ListReviewApplicationsResponse = ListReviewApplicationsResponses[keyof ListReviewApplicationsResponses];
+
+export type GetReviewApplicationData = {
+    body?: never;
+    path: {
+        /**
+         * The application identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/review/applications/{id}';
+};
+
+export type GetReviewApplicationErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type GetReviewApplicationError = GetReviewApplicationErrors[keyof GetReviewApplicationErrors];
+
+export type GetReviewApplicationResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
+};
+
+export type GetReviewApplicationResponse = GetReviewApplicationResponses[keyof GetReviewApplicationResponses];
+
+export type StartApplicationReviewData = {
+    /**
+     * The stream version last seen.
+     */
+    body?: MyssApiIntakeReviewActionRequestModel;
+    path: {
+        /**
+         * The application identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/review/applications/{id}/review';
+};
+
+export type StartApplicationReviewErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type StartApplicationReviewError = StartApplicationReviewErrors[keyof StartApplicationReviewErrors];
+
+export type StartApplicationReviewResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
+};
+
+export type StartApplicationReviewResponse = StartApplicationReviewResponses[keyof StartApplicationReviewResponses];
+
+export type AcceptApplicationData = {
+    /**
+     * The stream version last seen.
+     */
+    body?: MyssApiIntakeReviewActionRequestModel;
+    path: {
+        /**
+         * The application identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/review/applications/{id}/accept';
+};
+
+export type AcceptApplicationErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type AcceptApplicationError = AcceptApplicationErrors[keyof AcceptApplicationErrors];
+
+export type AcceptApplicationResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
+};
+
+export type AcceptApplicationResponse = AcceptApplicationResponses[keyof AcceptApplicationResponses];
+
+export type DenyApplicationData = {
+    /**
+     * The stream version last seen.
+     */
+    body?: MyssApiIntakeReviewActionRequestModel;
+    path: {
+        /**
+         * The application identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/review/applications/{id}/deny';
+};
+
+export type DenyApplicationErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type DenyApplicationError = DenyApplicationErrors[keyof DenyApplicationErrors];
+
+export type DenyApplicationResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
+};
+
+export type DenyApplicationResponse = DenyApplicationResponses[keyof DenyApplicationResponses];

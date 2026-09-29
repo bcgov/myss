@@ -30,7 +30,7 @@ export default function ApplicationsList() {
     <table className={styles.table}>
       <thead>
         <tr>
-          <th scope="col">Application</th>
+          <th scope="col">Request number</th>
           <th scope="col">Status</th>
           <th scope="col">Started</th>
           <th scope="col">Submitted on</th>
@@ -43,7 +43,7 @@ export default function ApplicationsList() {
         {applications.map((application) => (
           <tr key={application.id}>
             <td>
-              <code>{application.id.slice(0, 8)}…</code>
+              <code>{application.referenceNumber}</code>
             </td>
             <td>
               <StatusPill status={application.status} />
@@ -55,7 +55,7 @@ export default function ApplicationsList() {
                 {application.status === "DRAFT" ? "Continue" : "View"}
                 <span className={styles.visuallyHidden}>
                   {" "}
-                  application {application.id.slice(0, 8)}
+                  application {application.referenceNumber}
                 </span>
               </Link>
             </td>

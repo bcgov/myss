@@ -17,6 +17,7 @@ import styles from "./ApplicationForm.module.css";
 
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
 import SubmissionErrors from "@/components/SubmissionErrors";
+import ReadOnlySpecForm from "@/widgets/ReadOnlySpecForm";
 import {
   ApplicationRequestError,
   INTAKE_KEYWORDS,
@@ -56,26 +57,6 @@ function formFieldName(target: EventTarget) {
 }
 
 /**
- * The spec without its buttons, for the read-only render: a submitted
- * application must expose no submit control, and Form.io only disables one.
- */
-function withoutButtons(spec: FormType): FormType {
-  type Node = { type?: string; components?: Node[] };
-  const strip = (components: Node[]): Node[] =>
-    components
-      .filter((component) => component.type !== "button")
-      .map((component) =>
-        Array.isArray(component.components)
-          ? { ...component, components: strip(component.components) }
-          : component,
-      );
-  return {
-    ...spec,
-    components: strip(spec.components as Node[]) as FormType["components"],
-  };
-}
-
-/**
  * Moves focus to the acknowledgement heading when it appears, so a
  * screen-reader user is told the outcome rather than being left at the
  * submit button.
@@ -88,8 +69,6 @@ function useFocusOnMount(enabled: boolean) {
   return headingRef;
 }
 
-const READ_ONLY_OPTIONS = { readOnly: true, noAlerts: true };
-
 /** A submitted application: the acknowledgement plus the read-only form. */
 function SubmittedView({
   application,
@@ -101,11 +80,6 @@ function SubmittedView({
   announce: boolean;
 }) {
   const headingRef = useFocusOnMount(announce);
-  const readOnlySpec = useMemo(() => withoutButtons(spec), [spec]);
-  const submission = useMemo(
-    () => ({ data: application.answers }),
-    [application.answers],
-  );
   const submittedAt = application.submittedAt
     ? new Date(application.submittedAt).toLocaleString()
     : undefined;
@@ -119,20 +93,16 @@ function SubmittedView({
         <p>
           Your Income Assistance application has been received
           {submittedAt ? ` on ${submittedAt}` : ""}. It can no longer be
-          changed. Keep the application ID below for your records.
+          changed. Keep the request number below for your records.
         </p>
         <dl className={styles.details}>
-          <dt>Application ID</dt>
+          <dt>Request number</dt>
           <dd>
-            <code>{application.id}</code>
+            <code>{application.referenceNumber}</code>
           </dd>
         </dl>
       </section>
-      <Form
-        src={readOnlySpec}
-        submission={submission}
-        options={READ_ONLY_OPTIONS}
-      />
+      <ReadOnlySpecForm spec={spec} answers={application.answers} />
     </>
   );
 }

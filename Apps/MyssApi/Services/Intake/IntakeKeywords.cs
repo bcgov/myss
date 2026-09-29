@@ -14,5 +14,8 @@ namespace Myss.Api.Intake
 
         /// <summary>The application is not in a state that allows the change.</summary>
         public const string NotEditable = "INTAKE.APPLICATION.NOT_EDITABLE";
+
+        /// <summary>The worker action is not available in the application's current state.</summary>
+        public const string ReviewNotAllowed = "INTAKE.REVIEW.NOT_ALLOWED";
     }
 }

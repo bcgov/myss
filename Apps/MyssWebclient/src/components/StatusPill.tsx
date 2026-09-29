@@ -12,13 +12,19 @@ import { TagGroup, TagList } from "@bcgov/design-system-react-components";
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Draft",
   SUBMITTED: "Submitted",
+  UNDER_REVIEW: "Under Review",
+  ACCEPTED: "Accepted",
+  DENIED: "Denied",
 };
 
-type TagColor = "gray" | "green" | "blue";
+type TagColor = "gray" | "green" | "blue" | "yellow" | "red";
 
 const STATUS_COLORS: Record<string, TagColor> = {
   DRAFT: "gray",
-  SUBMITTED: "green",
+  SUBMITTED: "blue",
+  UNDER_REVIEW: "yellow",
+  ACCEPTED: "green",
+  DENIED: "red",
 };
 
 /** The display text for a status code; the code itself when none is mapped. */

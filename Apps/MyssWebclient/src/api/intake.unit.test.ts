@@ -23,6 +23,7 @@ const ID = "11111111-2222-3333-4444-555555555555";
 
 const draft: ApplicationPayload = {
   id: ID,
+  referenceNumber: "IA-11111111",
   status: "DRAFT",
   version: 1,
   formSpecId: "income-assistance-poc",
