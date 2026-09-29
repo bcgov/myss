@@ -1,0 +1,1799 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "SblDtCasesCase",
+    "description" : "OpenAPI specification for SiebelData - API : data/Cases/Case",
+    "contact" : {
+      "email" : "sample@sample.com"
+    },
+    "version" : "1.0"
+  },
+  "externalDocs" : {
+    "description" : "OpenAPI",
+    "url" : "https://openapis.org"
+  },
+  "servers" : [ {
+    "url" : "https://sit1-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  }, {
+    "url" : "http://sit1-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  } ],
+  "tags" : [ {
+    "name" : "data/Cases/Case/"
+  }, {
+    "name" : "data/Cases/Case/{case_key}/"
+  } ],
+  "paths" : {
+    "/data/Cases/Case/" : {
+      "get" : {
+        "tags" : [ "data/Cases/Case/" ],
+        "operationId" : "data_Cases_Case__get",
+        "parameters" : [ {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "uniformresponse",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y" ]
+          }
+        }, {
+          "name" : "searchspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sortspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "PageSize",
+          "in" : "query",
+          "schema" : {
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "StartRowNum",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "default" : 0
+          }
+        }, {
+          "name" : "pagination",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y", "N" ]
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "recordcountneeded",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "ExecutionMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "BiDirectional"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_get_all_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_get_all_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/Cases/Case/" ],
+        "operationId" : "data_Cases_Case__put",
+        "parameters" : [ {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Cases_Case_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Cases_Case_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      },
+      "post" : {
+        "tags" : [ "data/Cases/Case/" ],
+        "operationId" : "data_Cases_Case__post",
+        "parameters" : [ {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Cases_Case_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Cases_Case_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      }
+    },
+    "/data/Cases/Case/{case_key}/" : {
+      "get" : {
+        "tags" : [ "data/Cases/Case/{case_key}/" ],
+        "operationId" : "data_Cases_Case_{case_key}__get",
+        "parameters" : [ {
+          "name" : "case_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_get_one_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_get_one_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/Cases/Case/{case_key}/" ],
+        "operationId" : "data_Cases_Case_{case_key}__put",
+        "parameters" : [ {
+          "name" : "case_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Cases_Case_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Cases_Case_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      },
+      "delete" : {
+        "tags" : [ "data/Cases/Case/{case_key}/" ],
+        "operationId" : "data_Cases_Case_{case_key}__delete",
+        "parameters" : [ {
+          "name" : "case_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_del_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Cases_Case_del_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "data_Cases_Case_" : {
+        "required" : [ "Assigned To Id", "Case Num", "Created", "Created By", "Name", "Sales Rep", "Status", "Type", "Updated", "Updated By" ],
+        "type" : "object",
+        "properties" : {
+          "Sales Rep" : {
+            "title" : "Sales Rep",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Assigned To Id" : {
+            "title" : "Assigned To Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICM Created By" : {
+            "title" : "ICM Created By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Last Updated Date" : {
+            "title" : "Last Updated Date",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATETIME"
+          },
+          "Middle Name" : {
+            "title" : "Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "MyFS Flag" : {
+            "title" : "MyFS Flag",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Organization" : {
+            "title" : "Organization",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Subject Contact First Name" : {
+            "title" : "Subject Contact First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Subject Contact Last Name" : {
+            "title" : "Subject Contact Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Updated By" : {
+            "title" : "ICM Updated By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created" : {
+            "title" : "Created",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By" : {
+            "title" : "Created By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Updated" : {
+            "title" : "Updated",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Updated By" : {
+            "title" : "Updated By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Case Num" : {
+            "title" : "Case Num",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Caseload" : {
+            "title" : "Caseload",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "3",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Close Reason" : {
+            "title" : "Close Reason",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Closed Date" : {
+            "title" : "Closed Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">= [Reopened Date] AND >= [Created Date] AND <= Today()",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Early Open Reason" : {
+            "title" : "Early Open Reason",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Integration State" : {
+            "title" : "Integration State",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Legacy File Number" : {
+            "title" : "Legacy File Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "15",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Name" : {
+            "title" : "Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Office Name" : {
+            "title" : "Office Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Region Name" : {
+            "title" : "Region Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Renew Review Date" : {
+            "title" : "Renew Review Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Reopened Date" : {
+            "title" : "Reopened Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Restricted Flag" : {
+            "title" : "Restricted Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Status" : {
+            "title" : "Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Type" : {
+            "title" : "Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Work Queue" : {
+            "title" : "Work Queue",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player AKA First Name" : {
+            "title" : "Key Player AKA First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player AKA Last Name" : {
+            "title" : "Key Player AKA Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Birth City" : {
+            "title" : "Key Player Birth City",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Birth Date" : {
+            "title" : "Key Player Birth Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Key Player Birth Province" : {
+            "title" : "Key Player Birth Province",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Contact Row Num" : {
+            "title" : "Key Player Contact Row Num",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Created Date" : {
+            "title" : "Key Player Created Date",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Key Player Integration Id" : {
+            "title" : "Key Player Integration Id",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Last Updated Date" : {
+            "title" : "Key Player Last Updated Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Key Player M/F" : {
+            "title" : "Key Player M/F",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Place of Birth" : {
+            "title" : "Key Player Place of Birth",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Age" : {
+            "title" : "Key Player Age",
+            "type" : "string",
+            "x-siebel-precision" : "16",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "16",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_INTEGER"
+          },
+          "Key Player CSA Status" : {
+            "title" : "Key Player CSA Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player CSA Status Effective Date" : {
+            "title" : "Key Player CSA Status Effective Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Key Player CSA Sent Date" : {
+            "title" : "Key Player CSA Sent Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Key Player DIN" : {
+            "title" : "Key Player DIN",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "9",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Id" : {
+            "title" : "Key Player Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Admn First Name" : {
+            "title" : "Admn First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Updated Date" : {
+            "title" : "Key Player Updated Date",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Admn Last Name" : {
+            "title" : "Admn Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Deceased Flag" : {
+            "title" : "Key Player Deceased Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Key Player Deceased Date" : {
+            "title" : "Key Player Deceased Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          }
+        }
+      },
+      "data_Cases_Case_get_one_response" : {
+        "type" : "object",
+        "properties" : {
+          "Sales Rep" : {
+            "title" : "Sales Rep",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Assigned To Id" : {
+            "title" : "Assigned To Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICM Created By" : {
+            "title" : "ICM Created By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Last Updated Date" : {
+            "title" : "Last Updated Date",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATETIME"
+          },
+          "Middle Name" : {
+            "title" : "Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "MyFS Flag" : {
+            "title" : "MyFS Flag",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Organization" : {
+            "title" : "Organization",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Subject Contact First Name" : {
+            "title" : "Subject Contact First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Subject Contact Last Name" : {
+            "title" : "Subject Contact Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Updated By" : {
+            "title" : "ICM Updated By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created" : {
+            "title" : "Created",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By" : {
+            "title" : "Created By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Updated" : {
+            "title" : "Updated",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Updated By" : {
+            "title" : "Updated By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Case Num" : {
+            "title" : "Case Num",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Caseload" : {
+            "title" : "Caseload",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "3",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Close Reason" : {
+            "title" : "Close Reason",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Closed Date" : {
+            "title" : "Closed Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">= [Reopened Date] AND >= [Created Date] AND <= Today()",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Early Open Reason" : {
+            "title" : "Early Open Reason",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Integration State" : {
+            "title" : "Integration State",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Legacy File Number" : {
+            "title" : "Legacy File Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "15",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Name" : {
+            "title" : "Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Office Name" : {
+            "title" : "Office Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Region Name" : {
+            "title" : "Region Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Renew Review Date" : {
+            "title" : "Renew Review Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Reopened Date" : {
+            "title" : "Reopened Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Restricted Flag" : {
+            "title" : "Restricted Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Status" : {
+            "title" : "Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Type" : {
+            "title" : "Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Work Queue" : {
+            "title" : "Work Queue",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player AKA First Name" : {
+            "title" : "Key Player AKA First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player AKA Last Name" : {
+            "title" : "Key Player AKA Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Birth City" : {
+            "title" : "Key Player Birth City",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Birth Date" : {
+            "title" : "Key Player Birth Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Key Player Birth Province" : {
+            "title" : "Key Player Birth Province",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Contact Row Num" : {
+            "title" : "Key Player Contact Row Num",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Created Date" : {
+            "title" : "Key Player Created Date",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Key Player Integration Id" : {
+            "title" : "Key Player Integration Id",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Last Updated Date" : {
+            "title" : "Key Player Last Updated Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Key Player M/F" : {
+            "title" : "Key Player M/F",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Place of Birth" : {
+            "title" : "Key Player Place of Birth",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Age" : {
+            "title" : "Key Player Age",
+            "type" : "string",
+            "x-siebel-precision" : "16",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "16",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_INTEGER"
+          },
+          "Key Player CSA Status" : {
+            "title" : "Key Player CSA Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player CSA Status Effective Date" : {
+            "title" : "Key Player CSA Status Effective Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Key Player CSA Sent Date" : {
+            "title" : "Key Player CSA Sent Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Key Player DIN" : {
+            "title" : "Key Player DIN",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "9",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Id" : {
+            "title" : "Key Player Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Admn First Name" : {
+            "title" : "Admn First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Updated Date" : {
+            "title" : "Key Player Updated Date",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Admn Last Name" : {
+            "title" : "Admn Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Key Player Deceased Flag" : {
+            "title" : "Key Player Deceased Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Key Player Deceased Date" : {
+            "title" : "Key Player Deceased Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_Cases_Case_put_post_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "Sales Rep" : {
+                "title" : "Sales Rep",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Assigned To Id" : {
+                "title" : "Assigned To Id",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "ICM Created By" : {
+                "title" : "ICM Created By",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Last Updated Date" : {
+                "title" : "Last Updated Date",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_DATETIME"
+              },
+              "Middle Name" : {
+                "title" : "Middle Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "MyFS Flag" : {
+                "title" : "MyFS Flag",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "255",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Organization" : {
+                "title" : "Organization",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Subject Contact First Name" : {
+                "title" : "Subject Contact First Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Subject Contact Last Name" : {
+                "title" : "Subject Contact Last Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "ICM Updated By" : {
+                "title" : "ICM Updated By",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Id" : {
+                "type" : "object"
+              },
+              "Created" : {
+                "title" : "Created",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Created By" : {
+                "title" : "Created By",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Updated" : {
+                "title" : "Updated",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Updated By" : {
+                "title" : "Updated By",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Case Num" : {
+                "title" : "Case Num",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Caseload" : {
+                "title" : "Caseload",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "3",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Close Reason" : {
+                "title" : "Close Reason",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Closed Date" : {
+                "title" : "Closed Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-validation" : ">= [Reopened Date] AND >= [Created Date] AND <= Today()",
+                "x-siebel-datatype" : "DTYPE_DATE"
+              },
+              "Early Open Reason" : {
+                "title" : "Early Open Reason",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Integration State" : {
+                "title" : "Integration State",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Legacy File Number" : {
+                "title" : "Legacy File Number",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "15",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Name" : {
+                "title" : "Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Office Name" : {
+                "title" : "Office Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Region Name" : {
+                "title" : "Region Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Renew Review Date" : {
+                "title" : "Renew Review Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_DATE"
+              },
+              "Reopened Date" : {
+                "title" : "Reopened Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_DATE"
+              },
+              "Restricted Flag" : {
+                "title" : "Restricted Flag",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Status" : {
+                "title" : "Status",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Type" : {
+                "title" : "Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Work Queue" : {
+                "title" : "Work Queue",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player AKA First Name" : {
+                "title" : "Key Player AKA First Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player AKA Last Name" : {
+                "title" : "Key Player AKA Last Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Birth City" : {
+                "title" : "Key Player Birth City",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Birth Date" : {
+                "title" : "Key Player Birth Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_DATE"
+              },
+              "Key Player Birth Province" : {
+                "title" : "Key Player Birth Province",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Contact Row Num" : {
+                "title" : "Key Player Contact Row Num",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Created Date" : {
+                "title" : "Key Player Created Date",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Key Player Integration Id" : {
+                "title" : "Key Player Integration Id",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Last Updated Date" : {
+                "title" : "Key Player Last Updated Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Key Player M/F" : {
+                "title" : "Key Player M/F",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Place of Birth" : {
+                "title" : "Key Player Place of Birth",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Age" : {
+                "title" : "Key Player Age",
+                "type" : "string",
+                "x-siebel-precision" : "16",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "16",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_INTEGER"
+              },
+              "Key Player CSA Status" : {
+                "title" : "Key Player CSA Status",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player CSA Status Effective Date" : {
+                "title" : "Key Player CSA Status Effective Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Key Player CSA Sent Date" : {
+                "title" : "Key Player CSA Sent Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Key Player DIN" : {
+                "title" : "Key Player DIN",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "9",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Id" : {
+                "title" : "Key Player Id",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Admn First Name" : {
+                "title" : "Admn First Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Updated Date" : {
+                "title" : "Key Player Updated Date",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Admn Last Name" : {
+                "title" : "Admn Last Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Key Player Deceased Flag" : {
+                "title" : "Key Player Deceased Flag",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Key Player Deceased Date" : {
+                "title" : "Key Player Deceased Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_DATE"
+              },
+              "Link" : {
+                "type" : "object",
+                "properties" : {
+                  "rel" : {
+                    "title" : "rel",
+                    "type" : "string"
+                  },
+                  "href" : {
+                    "title" : "href",
+                    "type" : "string"
+                  },
+                  "name" : {
+                    "title" : "name",
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_Cases_Case_get_all_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/data_Cases_Case_get_one_response"
+            }
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_Cases_Case_del_response" : {
+        "type" : "object"
+      }
+    },
+    "securitySchemes" : {
+      "basicAuth" : {
+        "type" : "http",
+        "scheme" : "basic"
+      },
+      "oAuth2.0" : {
+        "type" : "oauth2",
+        "flows" : {
+          "implicit" : {
+            "authorizationUrl" : "http://openAPI.io/",
+            "scopes" : {
+              "write:" : "modify",
+              "read:" : "read only"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-original-swagger-version" : "3.0"
+}

@@ -11,7 +11,11 @@ namespace Icm.Api.ConsoleApp.Configuration
         /// <summary>
         /// Gets or sets what to run: <c>query</c> (the Service Request search this tool
         /// started as) or <c>buspass</c> (submit a bus pass request through the workflow,
-        /// then read the created service request back — a hand-run integration test).
+        /// then read the created service request back — a hand-run integration test),
+        /// <c>contact</c> (search contacts by id, name, SIN, PHN, birth date…), <c>case</c>
+        /// (look a case up by row id, case number or key player and dump it with the people
+        /// on it), or <c>describe</c> (fetch a resource's OpenAPI document from ICM's
+        /// <c>…/describe</c> endpoint and save it).
         /// </summary>
         public string Mode { get; set; } = "query";
 
@@ -19,8 +23,29 @@ namespace Icm.Api.ConsoleApp.Configuration
         public bool IsBusPassMode =>
             string.Equals(Mode, "buspass", StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>Gets a value indicating whether this run searches contacts.</summary>
+        public bool IsContactMode =>
+            string.Equals(Mode, "contact", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Gets a value indicating whether this run looks up a case.</summary>
+        public bool IsCaseMode =>
+            string.Equals(Mode, "case", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Gets a value indicating whether this run fetches a describe document.</summary>
+        public bool IsDescribeMode =>
+            string.Equals(Mode, "describe", StringComparison.OrdinalIgnoreCase);
+
         /// <summary>Gets or sets the search to run.</summary>
         public QuerySettings Query { get; set; } = new();
+
+        /// <summary>Gets or sets the contact search for <c>contact</c> mode.</summary>
+        public ContactSettings Contact { get; set; } = new();
+
+        /// <summary>Gets or sets the case lookup for <c>case</c> mode.</summary>
+        public CaseSettings Case { get; set; } = new();
+
+        /// <summary>Gets or sets what to fetch in <c>describe</c> mode.</summary>
+        public DescribeSettings Describe { get; set; } = new();
 
         /// <summary>Gets or sets the bus pass submission for <c>buspass</c> mode.</summary>
         public BusPassSettings BusPass { get; set; } = new();
@@ -75,9 +100,13 @@ namespace Icm.Api.ConsoleApp.Configuration
                 found.Add($"Query:StartRowNum cannot be negative (it is {Query.StartRowNum}).");
             }
 
-            if (!string.Equals(Mode, "query", StringComparison.OrdinalIgnoreCase) && !IsBusPassMode)
+            if (!string.Equals(Mode, "query", StringComparison.OrdinalIgnoreCase)
+                && !IsBusPassMode
+                && !IsContactMode
+                && !IsCaseMode
+                && !IsDescribeMode)
             {
-                found.Add($"Mode must be 'query' or 'buspass' (it is '{Mode}').");
+                found.Add($"Mode must be 'query', 'buspass', 'contact', 'case' or 'describe' (it is '{Mode}').");
             }
 
             // A typo here would otherwise be silently treated as `full` — for a
@@ -93,6 +122,21 @@ namespace Icm.Api.ConsoleApp.Configuration
             if (IsBusPassMode)
             {
                 BusPass.Validate(found);
+            }
+
+            if (IsContactMode)
+            {
+                Contact.Validate(found);
+            }
+
+            if (IsCaseMode)
+            {
+                Case.Validate(found);
+            }
+
+            if (IsDescribeMode)
+            {
+                Require(found, "Describe:Resource", Describe.Resource);
             }
 
             problems = found.Count == 0 ? null : found;
@@ -226,6 +270,289 @@ namespace Icm.Api.ConsoleApp.Configuration
 
         /// <summary>Gets or sets the scopes to request. Empty asks for none.</summary>
         public IList<string> Scopes { get; } = [];
+    }
+
+    /// <summary>The contact search to run. Mirrors <see cref="Icm.Api.Models.ContactQuery"/>.</summary>
+    /// <remarks>
+    /// Every criterion identifies a person, so none has a committed value: pass them on
+    /// the command line (<c>--Contact:LastName=… --Contact:BirthDate=1950-01-31</c>) or keep
+    /// them in the user-secret store.
+    /// </remarks>
+    public class ContactSettings
+    {
+        /// <summary>Gets or sets the ICM row id to match.</summary>
+        public string? Id { get; set; }
+
+        /// <summary>Gets or sets the person number to match.</summary>
+        public string? PersonId { get; set; }
+
+        /// <summary>Gets or sets the integration id to match.</summary>
+        public string? IntegrationId { get; set; }
+
+        /// <summary>Gets or sets the BC Services Card DID to match. Quote it: base64 may contain <c>+ / =</c>.</summary>
+        public string? BcServicesCardDid { get; set; }
+
+        /// <summary>Gets or sets the SIN to match: nine digits, no spaces.</summary>
+        public string? Sin { get; set; }
+
+        /// <summary>Gets or sets the PHN to match.</summary>
+        public string? Phn { get; set; }
+
+        /// <summary>Gets or sets the first name to match.</summary>
+        public string? FirstName { get; set; }
+
+        /// <summary>Gets or sets the middle name to match.</summary>
+        public string? MiddleName { get; set; }
+
+        /// <summary>Gets or sets the last name to match.</summary>
+        public string? LastName { get; set; }
+
+        /// <summary>Gets or sets how names are compared: <c>Exact</c>, <c>StartsWith</c> or <c>Contains</c>.</summary>
+        public string NameMatch { get; set; } = "Exact";
+
+        /// <summary>Gets or sets the birth date to match, as <c>yyyy-MM-dd</c>.</summary>
+        public DateOnly? BirthDate { get; set; }
+
+        /// <summary>Gets or sets the email to match.</summary>
+        public string? Email { get; set; }
+
+        /// <summary>Gets or sets the cell phone to match.</summary>
+        public string? CellPhone { get; set; }
+
+        /// <summary>Gets or sets the home phone to match.</summary>
+        public string? HomePhone { get; set; }
+
+        /// <summary>Gets or sets the work phone to match.</summary>
+        public string? WorkPhone { get; set; }
+
+        /// <summary>Gets or sets the message phone to match.</summary>
+        public string? MessagePhone { get; set; }
+
+        /// <summary>Gets or sets the records per page.</summary>
+        public int PageSize { get; set; } = 5;
+
+        /// <summary>Gets or sets the zero-based index of the first record to return.</summary>
+        public int StartRowNum { get; set; }
+
+        /// <summary>Gets or sets the Siebel visibility mode, or null for ICM's default.</summary>
+        public string? ViewMode { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to print the contacts' values. Off by
+        /// default: the run then reports which fields came back filled, which answers
+        /// "did the search and the mapping work" without putting people's names, birth
+        /// dates and phone numbers in terminal scrollback.
+        /// </summary>
+        public bool ShowValues { get; set; }
+
+        /// <summary>Gets the names of the criteria that are set — names only, for the run header.</summary>
+        public IReadOnlyList<string> CriteriaSet =>
+        [
+            .. new (string Name, bool IsSet)[]
+            {
+                (nameof(Id), Id is not null),
+                (nameof(PersonId), PersonId is not null),
+                (nameof(IntegrationId), IntegrationId is not null),
+                (nameof(BcServicesCardDid), BcServicesCardDid is not null),
+                (nameof(Sin), Sin is not null),
+                (nameof(Phn), Phn is not null),
+                (nameof(FirstName), FirstName is not null),
+                (nameof(MiddleName), MiddleName is not null),
+                (nameof(LastName), LastName is not null),
+                (nameof(BirthDate), BirthDate is not null),
+                (nameof(Email), Email is not null),
+                (nameof(CellPhone), CellPhone is not null),
+                (nameof(HomePhone), HomePhone is not null),
+                (nameof(WorkPhone), WorkPhone is not null),
+                (nameof(MessagePhone), MessagePhone is not null),
+            }.Where(criterion => criterion.IsSet).Select(criterion => criterion.Name),
+        ];
+
+        /// <summary>Adds what is wrong with these settings to <paramref name="problems"/>.</summary>
+        /// <param name="problems">The list to add to.</param>
+        public void Validate(IList<string> problems)
+        {
+            ArgumentNullException.ThrowIfNull(problems);
+
+            if (CriteriaSet.Count == 0)
+            {
+                problems.Add(
+                    "Contact mode needs at least one criterion, e.g. --Contact:LastName=… "
+                    + "--Contact:BirthDate=1950-01-31, or --Contact:BcServicesCardDid='…'.");
+            }
+
+            if (!Enum.TryParse<Models.ContactNameMatch>(NameMatch, ignoreCase: true, out _))
+            {
+                problems.Add(
+                    $"Contact:NameMatch '{NameMatch}' is not one of "
+                    + $"{string.Join(", ", Enum.GetNames<Models.ContactNameMatch>())}.");
+            }
+
+            if (PageSize is < 1 or > 100)
+            {
+                problems.Add($"Contact:PageSize must be between 1 and 100 (it is {PageSize}).");
+            }
+
+            if (StartRowNum < 0)
+            {
+                problems.Add($"Contact:StartRowNum cannot be negative (it is {StartRowNum}).");
+            }
+        }
+
+        /// <summary>Converts these settings into the query the library takes.</summary>
+        /// <returns>The query.</returns>
+        public Models.ContactQuery ToQuery() =>
+            new()
+            {
+                Id = Id,
+                PersonId = PersonId,
+                IntegrationId = IntegrationId,
+                BcServicesCardDid = BcServicesCardDid,
+                Sin = Sin,
+                Phn = Phn,
+                FirstName = FirstName,
+                MiddleName = MiddleName,
+                LastName = LastName,
+                NameMatch = Enum.Parse<Models.ContactNameMatch>(NameMatch, ignoreCase: true),
+                BirthDate = BirthDate,
+                Email = Email,
+                CellPhone = CellPhone,
+                HomePhone = HomePhone,
+                WorkPhone = WorkPhone,
+                MessagePhone = MessagePhone,
+                PageSize = PageSize,
+                StartRowNum = StartRowNum,
+                ViewMode = string.IsNullOrWhiteSpace(ViewMode) ? null : ViewMode,
+                IncludeTotalCount = true,
+            };
+    }
+
+    /// <summary>The case lookup to run. Mirrors <see cref="Icm.Api.Models.CaseQuery"/>.</summary>
+    /// <remarks>
+    /// With <see cref="Id"/> set the case is read by key; otherwise the other criteria are
+    /// searched, ANDed. Either way each case found is printed with the people on it.
+    /// </remarks>
+    public class CaseSettings
+    {
+        /// <summary>Gets or sets the case's ICM row id to read directly (the <c>case_key</c>).</summary>
+        public string? Id { get; set; }
+
+        /// <summary>Gets or sets the case number to search for (<c>Case Num</c>), e.g. <c>1-11077140770</c>.</summary>
+        public string? CaseNumber { get; set; }
+
+        /// <summary>Gets or sets the key player's contact row id to search for — the <c>Id</c> a contact search prints.</summary>
+        public string? ContactId { get; set; }
+
+        /// <summary>Gets or sets the key player's person number to search for — the <c>PersonId</c> a contact search prints.</summary>
+        public string? PersonId { get; set; }
+
+        /// <summary>Gets or sets the key player's integration id to search for.</summary>
+        public string? IntegrationId { get; set; }
+
+        /// <summary>Gets or sets the status to search for, e.g. <c>Open</c>.</summary>
+        public string? Status { get; set; }
+
+        /// <summary>Gets or sets the program to search for, e.g. <c>Employment and Assistance</c>.</summary>
+        public string? Type { get; set; }
+
+        /// <summary>Gets or sets the records per page.</summary>
+        public int PageSize { get; set; } = 5;
+
+        /// <summary>Gets or sets the zero-based index of the first record to return.</summary>
+        public int StartRowNum { get; set; }
+
+        /// <summary>
+        /// Gets or sets the Siebel visibility mode. Null or blank is the library's default,
+        /// <c>Manager</c> — MEASURED the one that sees cases; <c>Organization</c> does not.
+        /// </summary>
+        public string? ViewMode { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether to read each case's contacts too.</summary>
+        public bool IncludeContacts { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to print the values. On by default: SIT1
+        /// and SIT2 hold test data. Set false against anything else to print presence only.
+        /// </summary>
+        public bool ShowValues { get; set; } = true;
+
+        /// <summary>Gets the names of the criteria that are set, for the run header.</summary>
+        public IReadOnlyList<string> CriteriaSet =>
+        [
+            .. new (string Name, bool IsSet)[]
+            {
+                (nameof(Id), Id is not null),
+                (nameof(CaseNumber), CaseNumber is not null),
+                (nameof(ContactId), ContactId is not null),
+                (nameof(PersonId), PersonId is not null),
+                (nameof(IntegrationId), IntegrationId is not null),
+                (nameof(Status), Status is not null),
+                (nameof(Type), Type is not null),
+            }.Where(criterion => criterion.IsSet).Select(criterion => criterion.Name),
+        ];
+
+        /// <summary>Adds what is wrong with these settings to <paramref name="problems"/>.</summary>
+        /// <param name="problems">The list to add to.</param>
+        public void Validate(IList<string> problems)
+        {
+            ArgumentNullException.ThrowIfNull(problems);
+
+            if (CriteriaSet.Count == 0)
+            {
+                problems.Add(
+                    "Case mode needs a row id or a criterion, e.g. --Case:Id=1-5371KIQ, "
+                    + "--Case:CaseNumber=1-11077140770 or --Case:ContactId=1-532MU4J.");
+            }
+
+            if (PageSize is < 1 or > 100)
+            {
+                problems.Add($"Case:PageSize must be between 1 and 100 (it is {PageSize}).");
+            }
+
+            if (StartRowNum < 0)
+            {
+                problems.Add($"Case:StartRowNum cannot be negative (it is {StartRowNum}).");
+            }
+        }
+
+        /// <summary>Converts these settings into the search the library takes.</summary>
+        /// <returns>The query.</returns>
+        public Models.CaseQuery ToQuery() =>
+            new()
+            {
+                Id = Id,
+                CaseNumber = CaseNumber,
+                KeyPlayerContactId = ContactId,
+                KeyPlayerPersonId = PersonId,
+                KeyPlayerIntegrationId = IntegrationId,
+                Status = Status,
+                Type = Type,
+                PageSize = PageSize,
+                StartRowNum = StartRowNum,
+                ViewMode = ViewMode,
+                IncludeTotalCount = true,
+            };
+
+        /// <summary>Converts these settings into the options a read by key takes.</summary>
+        /// <returns>The read options.</returns>
+        public Models.CaseReadOptions ToReadOptions() => new() { ViewMode = ViewMode };
+    }
+
+    /// <summary>What <c>describe</c> mode fetches, and where it puts it.</summary>
+    public class DescribeSettings
+    {
+        /// <summary>
+        /// Gets or sets the resource to describe, as the two path segments after
+        /// <c>data/</c> — <c>ServiceRequest/ServiceRequest</c>, <c>ICMContact/ICMContact</c>.
+        /// </summary>
+        public string? Resource { get; set; }
+
+        /// <summary>
+        /// Gets or sets the file to write the document to, or null to print it. A file is
+        /// the point of the mode — <c>docs/integration/</c> keeps these documents — and it
+        /// also keeps a large document out of the terminal.
+        /// </summary>
+        public string? OutputFile { get; set; }
     }
 
     /// <summary>The search to run. Mirrors <see cref="Icm.Api.Models.ServiceRequestQuery"/>.</summary>

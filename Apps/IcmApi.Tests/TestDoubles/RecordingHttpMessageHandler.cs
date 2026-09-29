@@ -20,8 +20,18 @@ namespace Icm.Api.Tests.TestDoubles
             _responseJson = responseJson;
         }
 
-        /// <summary>Gets the request that was sent.</summary>
+        /// <summary>Gets the request that was sent — the last one, when there were several.</summary>
         public HttpRequestMessage? Request { get; private set; }
+
+        /// <summary>Gets every request that was sent, in order.</summary>
+        public List<HttpRequestMessage> Requests { get; } = [];
+
+        /// <summary>
+        /// Gets the responses to send instead of the canned one, in order, for a call that
+        /// makes several requests (a paged read). Once this runs dry the canned response
+        /// answers again.
+        /// </summary>
+        public Queue<(HttpStatusCode StatusCode, string? ResponseJson)> NextResponses { get; } = new();
 
         /// <summary>Gets the body that was sent, or null when there was none.</summary>
         public string? RequestBody { get; private set; }
@@ -34,17 +44,22 @@ namespace Icm.Api.Tests.TestDoubles
             CancellationToken cancellationToken)
         {
             Request = request;
+            Requests.Add(request);
             if (request.Content is not null)
             {
                 RequestBody = await request.Content.ReadAsStringAsync(cancellationToken);
             }
 
+            (HttpStatusCode statusCode, string? responseJson) = NextResponses.Count > 0
+                ? NextResponses.Dequeue()
+                : (_statusCode, _responseJson);
+
             // Refit reads the response's RequestMessage when it builds an ApiException,
             // which HttpClient sets for real handlers but a hand-rolled one must do itself.
-            HttpResponseMessage response = new(_statusCode) { RequestMessage = request };
-            if (_responseJson is not null)
+            HttpResponseMessage response = new(statusCode) { RequestMessage = request };
+            if (responseJson is not null)
             {
-                response.Content = new StringContent(_responseJson, Encoding.UTF8, "application/json");
+                response.Content = new StringContent(responseJson, Encoding.UTF8, "application/json");
             }
 
             foreach ((string name, string value) in ResponseHeaders)
