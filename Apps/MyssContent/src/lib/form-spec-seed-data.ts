@@ -55,6 +55,52 @@ export const REGISTRATION_FORM_SPEC_ID = "registration";
 /** The human-readable title for the authenticated registration form. */
 export const REGISTRATION_FORM_SPEC_TITLE = "Registration information";
 
+/** The logical identifier for the Income Assistance application (POC slice). */
+export const INCOME_ASSISTANCE_FORM_SPEC_ID = "income-assistance-poc";
+
+/** The human-readable title for the Income Assistance application. */
+export const INCOME_ASSISTANCE_FORM_SPEC_TITLE =
+  "Income Assistance application";
+
+/**
+ * The first version of the Income Assistance application: the three-field
+ * proof of concept from docs/development_design/income-assistance-application.md.
+ * Required-ness lives here, on the spec, so MyssApi's FormSpecValidator
+ * enforces it server-side without a domain rule.
+ */
+export const incomeAssistanceFormSpecV1: Json = {
+  display: "form",
+  components: [
+    {
+      type: "textfield",
+      key: "firstName",
+      label: "First name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "middleName",
+      label: "Middle name (if any)",
+      input: true,
+    },
+    {
+      type: "textfield",
+      key: "lastName",
+      label: "Last name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Submit",
+      input: true,
+    },
+  ],
+};
+
 /** The first version of the registration form, authored in Strapi seed data. */
 export const registrationFormSpecV1: Json = {
   display: "form",
@@ -1304,6 +1350,11 @@ export const seededForms: readonly SeededForm[] = [
     formSpecId: POC_FORM_SPEC_ID,
     title: POC_FORM_SPEC_TITLE,
     versions: seededFormSpecs,
+  },
+  {
+    formSpecId: INCOME_ASSISTANCE_FORM_SPEC_ID,
+    title: INCOME_ASSISTANCE_FORM_SPEC_TITLE,
+    versions: [{ version: 1, spec: incomeAssistanceFormSpecV1 }],
   },
   {
     formSpecId: ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,

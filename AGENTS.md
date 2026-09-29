@@ -83,13 +83,16 @@ ClamAV's first start downloads signature databases (several minutes). `docker co
 down -v` wipes volumes; the Postgres init script and Strapi seed re-run on the next
 `up`, and the EF migrations must be re-applied.
 
-EF migrations are **not** applied automatically — two DbContexts, both required:
+EF migrations are **not** applied automatically — four DbContexts, all required
+(one per schema: forms, attachments, platform, intake):
 
 ```bash
 cd Apps/MyssApi
 dotnet tool restore                                       # dotnet-ef, pinned in .config/dotnet-tools.json
 dotnet ef database update --context FormsDbContext
 dotnet ef database update --context AttachmentsDbContext
+dotnet ef database update --context PlatformDbContext
+dotnet ef database update --context IntakeDbContext
 ```
 
 (Adding a migration: see `Apps/MyssApi/AGENTS.md`.)
@@ -108,6 +111,8 @@ Test:
 ```bash
 dotnet test Apps/MyssApi.Tests
 dotnet test Apps/MyssApi.Tests --filter "FullyQualifiedName~FormSpecValidatorTests"
+MYSS_TEST_POSTGRES="Host=localhost;Port=5432;Database=myss;Username=myss;Password=myss-local-dev" \
+  dotnet test Apps/MyssApi.Tests          # also runs the [PostgresFact] tests against the compose Postgres
 dotnet test Apps/MyssApi.Tests --filter "DisplayName~rejects"
 dotnet test Apps/IcmApi.Tests
 dotnet test Apps/IcmApi.Host.Tests
@@ -173,6 +178,18 @@ client-side validation is UX only. Fields opt into domain rules through the Form
 component type. Known gap: conditionally-required fields are exempt from the required
 check.
 
+### Platform and Intake
+
+`Myss.Api.Platform` is the shared event log of ADR-0001: one `platform.event` table
+keyed `(stream_id, version)`, reached only through `IEventStore` (append with an
+expected version, load, load-many, and a fold helper). `Myss.Api.Intake` is the
+applicant slice of Application Intake: `intake.application_answers` holds a draft's
+working copy under a row version, submit appends one `Submitted` event, and state is
+always the fold in `ApplicationProjection` — there is no status column. Modules are
+marked by **namespace** (`Myss.Api.Platform`, `Myss.Api.Intake`), with files in
+subfolders of the layer folders. Design: `docs/development_design/income-assistance-application.md`
+in the workspace; the forms and profile dependencies are ADR-0008.
+
 ### IcmApi
 
 A client library for ICM (Siebel), layered so that Siebel's shape never leaves the
@@ -203,6 +220,10 @@ deliberately absent pending verification of the mod-11 spec.
 
 ## Conventions
 
+- **Personal information is inventoried.** Adding a column, JSON field or log line
+  that holds a citizen's data is a change to `Docs/Privacy/pii-inventory.md` in the
+  same PR (handbook Part 7.5). The table there also says how each value stays out of
+  the logs.
 - **C#**: block-scoped `namespace X { ... }` with `using` directives *inside* the
   namespace; XML doc comments on all public members (`GenerateDocumentationFile` is on
   and feeds Swagger). `Apps/.editorconfig` (870 lines) force-enables analyzer rules with

@@ -18,6 +18,7 @@ from the target architecture, the event-sourcing/Temporal split, and any
 | [ADR-0005](0005-durable-event-broker.md)                 | Durable event-broker selection (if/when OCR/AI activate)                                                              | Deferred                 |
 | [ADR-0006](0006-mis-portalservices-cache-per-session.md) | MIS PORTALSERVICES cache = once per session (freshness tuned by DS-02)                                                | Accepted                 |
 | [ADR-0007](0007-citizen-role-derivation.md)              | Citizen CLIENT role derives from the identity provider (RoleCalculator); worker roles stay CSS-assigned               | Proposed — implemented, pending IDIM confirmation |
+| [ADR-0008](0008-intake-module-dependencies.md)           | Intake depends on the forms spec provider and validator and on the registration-profile service; draft lifecycle deviations | Accepted (POC) |
 
 ## Adding an ADR
 

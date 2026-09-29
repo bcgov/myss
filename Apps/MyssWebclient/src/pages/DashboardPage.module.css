@@ -11,3 +11,12 @@
     display: flex;
     justify-content: flex-end;
 }
+
+.sectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--layout-margin-medium);
+    flex-wrap: wrap;
+    margin-bottom: var(--layout-margin-medium);
+}

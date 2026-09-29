@@ -51,6 +51,24 @@ jobs:
     name: API tests
     runs-on: ubuntu-latest
 
+    # A real Postgres for the [PostgresFact] tests: the guarantees only the
+    # database can give (the event log's primary key, jsonb). Without the
+    # service those facts are reported as skipped, so the suite still runs.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: myss
+          POSTGRES_PASSWORD: myss-ci
+          POSTGRES_DB: myss
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U myss -d myss"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v6
 
@@ -61,6 +79,8 @@ jobs:
 
       - name: Run API tests
         run: dotnet test Apps/MyssApi.Tests --configuration Release
+        env:
+          MYSS_TEST_POSTGRES: "Host=localhost;Port=5432;Database=myss;Username=myss;Password=myss-ci"
 
       - name: Run ICM client tests
         run: dotnet test Apps/IcmApi.Tests --configuration Release

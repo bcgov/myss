@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -25,13 +26,20 @@ vi.mock("@/hooks/usePocForm", () => ({
 import RegistrationForm from "./RegistrationForm";
 
 function renderForm() {
+    // The widget refreshes the cached /me session through the query client
+    // after a successful registration; the hooks themselves are mocked above.
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
     return render(
-        <MemoryRouter initialEntries={[paths.register]}>
-            <Routes>
-                <Route path={paths.register} element={<RegistrationForm />} />
-                <Route path={paths.dashboard} element={<p>Dashboard landing</p>} />
-            </Routes>
-        </MemoryRouter>,
+        <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={[paths.register]}>
+                <Routes>
+                    <Route path={paths.register} element={<RegistrationForm />} />
+                    <Route path={paths.dashboard} element={<p>Dashboard landing</p>} />
+                </Routes>
+            </MemoryRouter>
+        </QueryClientProvider>,
     );
 }
 

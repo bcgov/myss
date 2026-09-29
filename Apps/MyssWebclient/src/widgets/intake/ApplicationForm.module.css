@@ -1,0 +1,64 @@
+/*
+ * One Income Assistance application: the draft form with its Save action,
+ * or the acknowledgement above the read-only render once submitted. Border
+ * and left bar carry the meaning alongside colour.
+ */
+.formHost {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.outcome {
+    border: var(--layout-border-width-medium) solid
+        var(--support-border-color-success);
+    border-left-width: var(--layout-margin-small);
+    background: var(--support-surface-color-success);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: var(--layout-margin-medium) 0;
+}
+
+.heading {
+    margin: 0 0 var(--layout-margin-small);
+}
+
+.heading:focus-visible {
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-medium);
+}
+
+.details {
+    margin: var(--layout-margin-small) 0 0;
+}
+
+.details dt {
+    font-weight: var(--typography-font-weights-bold);
+}
+
+.details dd {
+    margin: 0 0 var(--layout-margin-xsmall);
+}
+
+.notice {
+    border: var(--layout-border-width-medium) solid
+        var(--support-border-color-warning);
+    border-left-width: var(--layout-margin-small);
+    background: var(--support-surface-color-warning);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: 0;
+}
+
+.saved {
+    border: var(--layout-border-width-medium) solid
+        var(--support-border-color-info);
+    border-left-width: var(--layout-margin-small);
+    background: var(--support-surface-color-info);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: 0;
+}
+
+.actions {
+    display: flex;
+    gap: var(--layout-margin-small);
+}
