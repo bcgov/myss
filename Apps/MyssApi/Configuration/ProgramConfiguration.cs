@@ -38,6 +38,30 @@ namespace Myss.Api.Configuration
         }
 
         /// <summary>
+        /// The host for migrate mode: the same configuration layering and
+        /// logging as the API, without the web host or <see cref="Startup"/>,
+        /// so it boots with nothing but connection strings configured.
+        /// </summary>
+        /// <param name="args">Command-line arguments, without the migrate switch.</param>
+        /// <returns>The host builder.</returns>
+        public static IHostBuilder CreateMigrationHostBuilder(string[] args)
+        {
+            return Host.CreateDefaultBuilder(args)
+                // The generic host reads DOTNET_ENVIRONMENT only; the web host
+                // adds this prefix so ASPNETCORE_ENVIRONMENT selects the
+                // environment. Same here, so the Job and the API pods agree
+                // on which appsettings file applies.
+                .ConfigureHostConfiguration(config => config.AddEnvironmentVariables(prefix: "ASPNETCORE_"))
+                .UseDefaultLogging()
+                .ConfigureAppConfiguration(
+                    (_, config) =>
+                    {
+                        config.AddJsonFile("appsettings.local.json", true, true);
+                        config.AddEnvironmentVariables(prefix: EnvironmentPrefix);
+                    });
+        }
+
+        /// <summary>
         /// Create an initial logger to use during Program startup.
         /// </summary>
         /// <param name="configuration">The configuration to use.</param>

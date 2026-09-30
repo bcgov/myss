@@ -67,3 +67,12 @@ dotnet ef migrations add <Name> --context IntakeDbContext --output-dir Migration
 
 The EF model is the source of truth for schema (ADR-0003); migrations are reviewed in
 the same PR as the model change.
+
+**Migrate mode.** `MyssApi --migrate`, or the env var `Myss_MigrateAndExit=true`
+(`Configuration/MigrationRunner`), applies every
+pending migration of every context in schema order and exits 0, or 1 at the first
+failure. It builds a host without `Startup`, so it needs only the connection strings,
+not the object-storage and ICM settings the API fails closed without. The deployment
+pipeline runs it as a Kubernetes Job from the promoted image, between the retag and
+the rollout restart (gitops `t-migrate-db`, ADR-0009). Migrations stay additive; a
+destructive change is two releases (expand, then contract).

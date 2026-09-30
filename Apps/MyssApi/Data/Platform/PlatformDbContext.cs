@@ -22,14 +22,14 @@ namespace Myss.Api.Platform
         /// <summary>
         /// Gets the event log.
         /// </summary>
-        public DbSet<Event> Events => Set<Event>();
+        public DbSet<EventRow> Events => Set<EventRow>();
 
         /// <inheritdoc/>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.HasDefaultSchema("platform");
 
-            var evt = modelBuilder.Entity<Event>();
+            var evt = modelBuilder.Entity<EventRow>();
             evt.ToTable("event");
             evt.HasKey(e => new { e.StreamId, e.Version });
             evt.Property(e => e.StreamId).HasColumnName("stream_id");

@@ -81,7 +81,7 @@ namespace Myss.Api.Platform
             foreach (DomainEvent domainEvent in events)
             {
                 version++;
-                _dbContext.Events.Add(new Event
+                _dbContext.Events.Add(new EventRow
                 {
                     StreamId = streamId,
                     Version = version,
@@ -111,7 +111,7 @@ namespace Myss.Api.Platform
         /// <inheritdoc/>
         public async Task<EventStream> LoadAsync(Guid streamId, CancellationToken cancellationToken)
         {
-            List<Event> rows = await _dbContext.Events
+            List<EventRow> rows = await _dbContext.Events
                 .AsNoTracking()
                 .Where(e => e.StreamId == streamId)
                 .OrderBy(e => e.Version)
@@ -133,14 +133,14 @@ namespace Myss.Api.Platform
             }
 
             List<Guid> ids = result.Keys.ToList();
-            List<Event> rows = await _dbContext.Events
+            List<EventRow> rows = await _dbContext.Events
                 .AsNoTracking()
                 .Where(e => ids.Contains(e.StreamId))
                 .OrderBy(e => e.StreamId)
                 .ThenBy(e => e.Version)
                 .ToListAsync(cancellationToken);
 
-            foreach (IGrouping<Guid, Event> group in rows.GroupBy(e => e.StreamId))
+            foreach (IGrouping<Guid, EventRow> group in rows.GroupBy(e => e.StreamId))
             {
                 result[group.Key] = new EventStream(group.Select(ToStored).ToList());
             }
@@ -148,7 +148,7 @@ namespace Myss.Api.Platform
             return result;
         }
 
-        private static StoredEvent ToStored(Event row)
+        private static StoredEvent ToStored(EventRow row)
         {
             return new StoredEvent(
                 row.Version,
