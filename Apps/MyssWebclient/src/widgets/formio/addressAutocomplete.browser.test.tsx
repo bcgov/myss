@@ -1,5 +1,6 @@
 import { Form } from "@formio/react";
 import type { FormType } from "@formio/react/lib/components/Form";
+import { userEvent } from "@vitest/browser/context";
 import { render } from "vitest-browser-react";
 import { afterEach, expect, test, vi } from "vitest";
 
@@ -18,6 +19,7 @@ const addressFields = {
 };
 
 function addressSpec(fields: Record<string, string> = addressFields): FormType {
+  // An assertion, because Form.io's Component type has no custom properties.
   return {
     display: "form",
     components: [
@@ -72,7 +74,7 @@ function addressSpec(fields: Record<string, string> = addressFields): FormType {
         input: true,
       },
     ],
-  };
+  } as FormType;
 }
 
 const building = {
@@ -103,6 +105,20 @@ function gate() {
   return { opened, release };
 }
 
+/** Waits on `held` like a slow network, rejecting on abort as real fetch does. */
+function respondAfter(
+  held: Promise<void> | undefined,
+  signal: AbortSignal | null | undefined,
+): Promise<void> | undefined {
+  if (!held) return undefined;
+  return new Promise((resolve, reject) => {
+    signal?.addEventListener("abort", () =>
+      reject(new DOMException("Aborted", "AbortError")),
+    );
+    void held.then(resolve);
+  });
+}
+
 function stubCanadaPost({
   find = [[]],
   retrieve = [unitAddress],
@@ -115,15 +131,15 @@ function stubCanadaPost({
   retrieveGate?: Promise<void>;
 }) {
   let findCalls = 0;
-  return vi.spyOn(window, "fetch").mockImplementation(async (input) => {
+  return vi.spyOn(window, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
     let items: unknown[];
     if (url.includes("/AddressComplete/Interactive/Find/")) {
       items = find[Math.min(findCalls++, find.length - 1)];
-      await findGate;
+      await respondAfter(findGate, init?.signal);
     } else if (url.includes("/AddressComplete/Interactive/Retrieve/")) {
       items = retrieve;
-      await retrieveGate;
+      await respondAfter(retrieveGate, init?.signal);
     } else {
       throw new Error(`Unexpected fetch in test: ${url}`);
     }
@@ -248,9 +264,31 @@ test("does not reopen suggestions that arrive after the field loses focus", asyn
   await screen.getByRole("textbox", { name: "City" }).click();
   findGate.release();
 
-  await vi.waitFor(() =>
-    expect(screen.getByRole("status").element().textContent).toBe(""),
-  );
+  // Form.io has its own page-wide status region, so read the one beside line 1.
+  const addressStatus = () =>
+    line1.element().parentElement?.querySelector('[role="status"]')
+      ?.textContent;
+  await vi.waitFor(() => expect(addressStatus()).toBe(""));
+  expect(screen.getByRole("option").elements()).toHaveLength(0);
+  await expect.element(line1).toHaveAttribute("aria-expanded", "false");
+});
+
+test("Escape cancels a search in flight so the list stays closed", async () => {
+  const findGate = gate();
+  const fetchSpy = stubCanadaPost({
+    find: [[unit]],
+    findGate: findGate.opened,
+  });
+  const { screen: rendered } = renderAddressForm();
+  const screen = await rendered;
+  const line1 = screen.getByRole("combobox", { name: "Street address line 1" });
+
+  await line1.fill("5");
+  await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+  await userEvent.keyboard("{Escape}");
+  findGate.release();
+
+  await expect(fetchSpy.mock.results[0].value).rejects.toThrow("Aborted");
   expect(screen.getByRole("option").elements()).toHaveLength(0);
   await expect.element(line1).toHaveAttribute("aria-expanded", "false");
 });

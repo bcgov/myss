@@ -17,6 +17,8 @@ interface AddressListboxOptions {
   readonly host: HTMLElement;
   readonly listId: string;
   readonly onChoose: (suggestion: CanadaPostAddressSuggestion) => void;
+  /** Escape: the owner must cancel pending searches, or they reopen the list. */
+  readonly onDismiss: () => void;
 }
 
 /**
@@ -28,16 +30,24 @@ export class AddressListbox {
   private readonly input: HTMLInputElement;
   private readonly host: HTMLElement;
   private readonly onChoose: AddressListboxOptions["onChoose"];
+  private readonly onDismiss: AddressListboxOptions["onDismiss"];
   private readonly list = document.createElement("ul");
   private readonly status = document.createElement("p");
   private readonly listeners = new AbortController();
   private suggestions: readonly CanadaPostAddressSuggestion[] = [];
   private activeIndex = -1;
 
-  constructor({ input, host, listId, onChoose }: AddressListboxOptions) {
+  constructor({
+    input,
+    host,
+    listId,
+    onChoose,
+    onDismiss,
+  }: AddressListboxOptions) {
     this.input = input;
     this.host = host;
     this.onChoose = onChoose;
+    this.onDismiss = onDismiss;
 
     this.list.id = listId;
     this.list.className = "myss-address-autocomplete__list";
@@ -149,6 +159,7 @@ export class AddressListbox {
       this.onChoose(this.suggestions[this.activeIndex]);
     } else if (event.key === "Escape") {
       this.close();
+      this.onDismiss();
     }
   };
 

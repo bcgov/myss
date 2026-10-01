@@ -120,6 +120,10 @@ export class BcgovAddressAutocompleteComponent extends TextFieldBase {
       host,
       listId: `${input.id || String(this.component.key)}-address-suggestions`,
       onChoose: (suggestion) => void this.choose(suggestion),
+      onDismiss: () => {
+        this.cancelPending();
+        this.listbox?.announce("");
+      },
     });
     this.addEventListener(input, "input", this.handleInput);
     this.addEventListener(input, "blur", this.handleBlur);
