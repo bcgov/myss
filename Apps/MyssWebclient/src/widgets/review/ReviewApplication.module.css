@@ -1,0 +1,48 @@
+/*
+ * One application under review: its summary, the read-only answers, and the
+ * decision buttons. Border and left bar carry the meaning alongside colour.
+ */
+.host {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.summary {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: var(--layout-margin-xsmall) var(--layout-margin-medium);
+    margin: 0;
+}
+
+.summary dt {
+    font-weight: var(--typography-font-weights-bold);
+}
+
+.summary dd {
+    margin: 0;
+}
+
+.notice {
+    border: var(--layout-border-width-medium) solid
+        var(--support-border-color-warning);
+    border-left-width: var(--layout-margin-small);
+    background: var(--support-surface-color-warning);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: 0;
+}
+
+.outcome {
+    border: var(--layout-border-width-medium) solid
+        var(--support-border-color-info);
+    border-left-width: var(--layout-margin-small);
+    background: var(--support-surface-color-info);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: 0;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+}

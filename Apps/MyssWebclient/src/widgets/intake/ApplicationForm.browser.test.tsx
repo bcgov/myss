@@ -58,6 +58,7 @@ function draft(
 ): ApplicationPayload {
   return {
     id: ID,
+    referenceNumber: "IA-11111111",
     status: "DRAFT",
     version: 1,
     formSpecId: "income-assistance-poc",
@@ -244,7 +245,7 @@ test("an already submitted application renders read-only with no save or submit 
   await expect
     .element(screen.getByRole("heading", { name: "Application submitted" }))
     .toBeVisible();
-  await expect.element(screen.getByText(ID)).toBeVisible();
+  await expect.element(screen.getByText("IA-11111111")).toBeVisible();
 
   const firstName = screen.getByRole("textbox", { name: "First name" });
   await expect.element(firstName).toHaveValue("Ada");

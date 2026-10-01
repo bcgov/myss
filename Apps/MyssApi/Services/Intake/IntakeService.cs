@@ -299,6 +299,7 @@ namespace Myss.Api.Intake
             return new ApplicationSummaryModel
             {
                 Id = row.Id,
+                ReferenceNumber = ApplicationReference.From(row.Id),
                 Status = state.StatusCode,
                 Version = row.Version,
                 FormSpecId = row.FormSpecId,
@@ -314,6 +315,7 @@ namespace Myss.Api.Intake
             return new ApplicationModel
             {
                 Id = row.Id,
+                ReferenceNumber = ApplicationReference.From(row.Id),
                 Status = state.StatusCode,
                 Version = row.Version,
                 FormSpecId = row.FormSpecId,

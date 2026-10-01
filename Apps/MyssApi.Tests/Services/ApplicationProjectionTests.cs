@@ -60,6 +60,51 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public void TheWorkerMoves_FoldInOrderAndKeepTheSubmittedAnswers()
+        {
+            StoredEvent submitted = Submitted(1, """{"firstName":"Ada","lastName":"Lovelace"}""");
+            StoredEvent review = Marker(2, ApplicationEventTypes.ReviewStarted);
+
+            ApplicationState underReview = ApplicationProjection.Fold(new([submitted, review]));
+            ApplicationState accepted = ApplicationProjection.Fold(new([submitted, review, Marker(3, ApplicationEventTypes.Accepted)]));
+            ApplicationState denied = ApplicationProjection.Fold(new([submitted, review, Marker(3, ApplicationEventTypes.Denied)]));
+
+            Assert.Equal(ApplicationStatus.UnderReview, underReview.Status);
+            Assert.Equal(ApplicationStatusCodes.UnderReview, underReview.StatusCode);
+            Assert.Equal(2, underReview.Version);
+            Assert.Equal(ApplicationStatus.Accepted, accepted.Status);
+            Assert.Equal(ApplicationStatus.Denied, denied.Status);
+            Assert.Equal(3, denied.Version);
+            Assert.Equal(When, denied.SubmittedAt);
+            Assert.Equal("Ada", denied.Submitted!.Answers.GetProperty("firstName").GetString());
+            Assert.False(ApplicationProjection.CanSave(underReview));
+            Assert.False(ApplicationProjection.CanSubmit(accepted));
+        }
+
+        [Fact]
+        public void WorkerActions_AreComputedFromState()
+        {
+            StoredEvent submitted = Submitted(1, """{"firstName":"Ada","lastName":"Lovelace"}""");
+
+            Assert.Empty(ApplicationProjection.AvailableWorkerActions(ApplicationState.Seed));
+            Assert.Equal([WorkerActions.Review], ApplicationProjection.AvailableWorkerActions(ApplicationProjection.Fold(new([submitted]))));
+            Assert.Equal(
+                [WorkerActions.Accept, WorkerActions.Deny],
+                ApplicationProjection.AvailableWorkerActions(ApplicationProjection.Fold(new([submitted, Marker(2, ApplicationEventTypes.ReviewStarted)]))));
+            Assert.Empty(ApplicationProjection.AvailableWorkerActions(ApplicationProjection.Fold(new([submitted, Marker(2, ApplicationEventTypes.ReviewStarted), Marker(3, ApplicationEventTypes.Accepted)]))));
+            Assert.Empty(ApplicationProjection.AvailableWorkerActions(ApplicationProjection.Fold(new([submitted, Marker(2, ApplicationEventTypes.ReviewStarted), Marker(3, ApplicationEventTypes.Denied)]))));
+        }
+
+        [Fact]
+        public void TheReferenceNumber_IsDerivedFromTheIdAndStable()
+        {
+            var id = Guid.Parse("3f9a2c1b-0000-4000-8000-000000000000");
+
+            Assert.Equal("IA-3F9A2C1B", ApplicationReference.From(id));
+            Assert.Equal(ApplicationReference.From(id), ApplicationReference.From(id));
+        }
+
+        [Fact]
         public void ASubmittedPayload_RoundTripsThroughTheEvent()
         {
             var payload = new SubmittedPayload
@@ -75,6 +120,11 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(SubmittedPayload.CurrentEventVersion, evt.Payload.GetProperty("eventVersion").GetInt32());
             Assert.Equal(2, back.FormSpecVersion);
             Assert.Equal("Byron", back.Answers.GetProperty("lastName").GetString());
+        }
+
+        private static StoredEvent Marker(int version, string type)
+        {
+            return new StoredEvent(version, type, new MarkerPayload().ToEvent(type).Payload, "worker:MWORKER", When);
         }
 
         private static StoredEvent Submitted(int version, string answersJson)

@@ -34,6 +34,7 @@ const NEW_ID = "33333333-4444-5555-6666-777777777777";
 const applications: ApplicationSummaryPayload[] = [
   {
     id: DRAFT_ID,
+    referenceNumber: "IA-11111111",
     status: "DRAFT",
     version: 2,
     formSpecId: "income-assistance-poc",
@@ -44,6 +45,7 @@ const applications: ApplicationSummaryPayload[] = [
   },
   {
     id: SUBMITTED_ID,
+    referenceNumber: "IA-22222222",
     status: "SUBMITTED",
     version: 4,
     formSpecId: "income-assistance-poc",
@@ -74,6 +76,7 @@ function stubApi(list: ApplicationSummaryPayload[] = applications) {
       return json(201, {
         payload: {
           id: NEW_ID,
+          referenceNumber: "IA-33333333",
           status: "DRAFT",
           version: 1,
           formSpecId: "income-assistance-poc",
@@ -106,6 +109,10 @@ function renderDashboard() {
           <Route path={paths.dashboard} element={<DashboardPage />} />
           <Route path={paths.register} element={<p>Registration landing</p>} />
           <Route path={paths.application} element={<ApplicationLanding />} />
+          <Route
+            path={paths.workerApplications}
+            element={<p>Worker landing</p>}
+          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -125,6 +132,36 @@ describe("DashboardPage", () => {
   it("shows account checking while the profile lookup is pending", async () => {
     stubApi();
     session.isMeLoading = true;
+    const screen = await renderDashboard();
+
+    await expect
+      .element(screen.getByRole("status"))
+      .toHaveTextContent("Checking your MySS account…");
+  });
+
+  it("sends a Ministry worker to the worker view instead of registration", async () => {
+    // A worker has no citizen profile; without the role check first they
+    // would be bounced to the registration form.
+    stubApi();
+    session.user = {
+      sub: "idir-user",
+      name: "Wanda",
+      roles: ["WORKER"],
+      idirUsername: "WWORKER",
+    };
+    session.hasProfile = false;
+    const screen = await renderDashboard();
+
+    await expect
+      .element(screen.getByText("Worker landing"))
+      .toBeInTheDocument();
+  });
+
+  it("waits for the roles before deciding where a signed-in user lands", async () => {
+    stubApi();
+    session.user = { sub: "idir-user", roles: [], idirUsername: "WWORKER" };
+    session.isMeLoading = true;
+    session.hasProfile = undefined;
     const screen = await renderDashboard();
 
     await expect

@@ -18,12 +18,27 @@ import {
 //
 // Design: docs/development_design/income-assistance-application.md.
 
-/** The application's state, folded server-side from its event stream. */
-export type ApplicationStatus = "DRAFT" | "SUBMITTED";
+/**
+ * The application's state, folded server-side from its event stream. The
+ * applicant only ever edits a DRAFT; everything after SUBMITTED is what the
+ * review workflow did to the file, shown read-only.
+ */
+export type ApplicationStatus =
+  | "DRAFT"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "ACCEPTED"
+  | "DENIED";
 
 /** Mirrors the intake ApplicationModel in MyssApi (Myss.Api.Intake). */
 export interface ApplicationPayload {
   id: string;
+  /**
+   * The request number shown to the applicant at submission and to workers
+   * in their list: derived server-side from the id (IA-XXXXXXXX), the same
+   * string on both sides.
+   */
+  referenceNumber: string;
   status: ApplicationStatus;
   /**
    * The answers row version, incremented on every save. Sent back on save and
