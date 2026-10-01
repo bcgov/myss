@@ -7,6 +7,7 @@ import {
   busPassFormSpecV2,
   busPassFormSpecV3,
   busPassFormSpecV4,
+  busPassFormSpecV5,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   INCOME_ASSISTANCE_FORM_SPEC_ID,
@@ -54,6 +55,7 @@ interface Component {
   };
   readonly components?: unknown;
   readonly columns?: unknown;
+  readonly addressFields?: unknown;
 }
 
 function isRecord(value: Json): value is { [key: string]: Json } {
@@ -281,7 +283,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
   });
 
-  it("seeds the bus pass with v1, v2, v3 and v4", () => {
+  it("seeds the bus pass with v1 through v5", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -291,6 +293,7 @@ describe("seeded forms collection", () => {
       { version: 2, spec: busPassFormSpecV2 },
       { version: 3, spec: busPassFormSpecV3 },
       { version: 4, spec: busPassFormSpecV4 },
+      { version: 5, spec: busPassFormSpecV5 },
     ]);
   });
 
@@ -367,6 +370,37 @@ describe("seeded forms collection", () => {
       show: true,
       when: "serviceRequestType",
     });
+  });
+
+  it("configures residential and mailing address autocomplete in v5", () => {
+    const residential = componentByKey(busPassFormSpecV5, "streetAddress1");
+    const mailing = componentByKey(busPassFormSpecV5, "mailingStreetAddress1");
+
+    expect(residential.type).toBe("bcgovAddressAutocomplete");
+    expect(residential.addressFields).toEqual({
+      line2: "streetAddress2",
+      city: "city",
+      province: "province",
+      postalCode: "postalCode",
+    });
+
+    expect(mailing.type).toBe("bcgovAddressAutocomplete");
+    expect(mailing.addressFields).toEqual({
+      line2: "mailingStreetAddress2",
+      city: "mailingCity",
+      province: "mailingProvince",
+      postalCode: "mailingPostalCode",
+    });
+  });
+
+  it("accepts Canada Post postal codes with or without the standard space in v5", () => {
+    for (const key of ["postalCode", "mailingPostalCode"]) {
+      const pattern = componentByKey(busPassFormSpecV5, key).validate?.pattern;
+      expect(pattern).toBeTypeOf("string");
+      expect(new RegExp(String(pattern)).test("V8V 1X4")).toBe(true);
+      expect(new RegExp(String(pattern)).test("V8V1X4")).toBe(true);
+      expect(new RegExp(String(pattern)).test("not a postal code")).toBe(false);
+    }
   });
 
   it("allows one- or two-digit birth days in bus pass v2", () => {

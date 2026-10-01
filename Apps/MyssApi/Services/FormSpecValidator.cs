@@ -454,11 +454,11 @@ namespace Myss.Api.Services
             {
                 "number" or "currency" => value.ValueKind == JsonValueKind.Number,
                 "checkbox" => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
-                // "bcgovRadio" is a custom client-side component that carries a
-                // citizen answer, so unlike "bcgovAccordion" it is a data field and
-                // is expected as a string, like the built-in "radio" it extends.
+                // These custom client-side components carry citizen answers, so
+                // unlike "bcgovAccordion" they are data fields and are expected as
+                // strings, like the built-in fields they extend.
                 "textfield" or "textarea" or "email" or "select" or "radio"
-                    or "bcgovRadio"
+                    or "bcgovRadio" or "bcgovAddressAutocomplete"
                     or "phoneNumber" or "day" or "datetime" or "sin" or "phn" or "password"
                     => value.ValueKind == JsonValueKind.String,
                 _ => true,

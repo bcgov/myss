@@ -2,10 +2,12 @@
 // a Strapi-seeded form can use them by `type` and keep Form.io's own placement
 // and conditional logic.
 //
-// Two bases, because one carries an answer and one does not:
+// Three bases, matching the kind of value each component carries:
 //   bcgovAccordion — display only, extends the base component.
 //   bcgovRadio     — a data field, extends Form.io's built-in radio to inherit
 //                    value handling, validation and clearOnHide.
+//   bcgovAddressAutocomplete — a text field enhanced with Canada Post
+//                              suggestions; manual entry remains available.
 //
 // A referenced type only works if registered: call `registerBcgovComponents()`
 // once at app start, before any <Form> mounts. An unregistered type renders a
@@ -19,6 +21,8 @@ import {
   Radio,
   RadioGroup,
 } from "@bcgov/design-system-react-components";
+
+import { BcgovAddressAutocompleteComponent } from "./addressAutocomplete";
 
 // The base Form.io component class. `@formio/js` types the registry loosely, so
 // we take the constructor as `any` and keep our subclasses thin.
@@ -442,5 +446,6 @@ export function registerBcgovComponents(): void {
   ).setComponent;
   setComponent("bcgovAccordion", BcgovAccordionComponent);
   setComponent("bcgovRadio", BcgovRadioComponent);
+  setComponent("bcgovAddressAutocomplete", BcgovAddressAutocompleteComponent);
   registered = true;
 }
