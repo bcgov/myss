@@ -25,15 +25,17 @@ namespace Myss.Api.Tests.Services
         """;
 
         /// <summary>
-        /// The two custom BC Gov component types. <c>bcgovRadio</c> carries an
-        /// answer and <c>bcgovAccordion</c> does not, which is the distinction
-        /// these tests exist to pin down.
+        /// The custom BC Gov component types. <c>bcgovRadio</c> and
+        /// <c>bcgovAddressAutocomplete</c> carry answers while
+        /// <c>bcgovAccordion</c> does not, which is the distinction these tests
+        /// exist to pin down.
         /// </summary>
         private const string CustomComponentSpec = """
         {
           "display": "form",
           "components": [
             { "type": "bcgovRadio", "key": "residesInBc", "input": true, "validate": { "required": true } },
+            { "type": "bcgovAddressAutocomplete", "key": "streetAddress1", "input": true },
             { "type": "bcgovAccordion", "key": "statusHelp", "input": false },
             { "type": "button", "key": "submit", "action": "submit", "input": true }
           ]
@@ -262,6 +264,25 @@ namespace Myss.Api.Tests.Services
                 Assert.Single(Run(CustomComponentSpec, """{"residesInBc":true}"""));
 
             Assert.Equal("residesInBc", error.Field);
+            Assert.Equal(ValidationKeywords.FieldWrongType, error.Keyword);
+        }
+
+        [Fact]
+        public void Validate_AcceptsAStringBcgovAddressAutocompleteAnswer()
+        {
+            Assert.Empty(Run(
+                CustomComponentSpec,
+                """{"residesInBc":"true","streetAddress1":"501 Belleville St"}"""));
+        }
+
+        [Fact]
+        public void Validate_RejectsANonStringBcgovAddressAutocompleteAnswer()
+        {
+            ValidationErrorModel error = Assert.Single(Run(
+                CustomComponentSpec,
+                """{"residesInBc":"true","streetAddress1":{"line1":"501 Belleville St"}}"""));
+
+            Assert.Equal("streetAddress1", error.Field);
             Assert.Equal(ValidationKeywords.FieldWrongType, error.Keyword);
         }
 
