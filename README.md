@@ -95,6 +95,10 @@ dotnet ef database update --context PlatformDbContext
 dotnet ef database update --context IntakeDbContext
 ```
 
+or, equivalently, `cd Apps/MyssApi && dotnet run -- --migrate`, which applies
+all four and exits. Deployed environments get their migrations from the
+pipeline, which runs the same migrate mode as a Job before restarting the API.
+
 The connection string in `appsettings.Development.json` already points at the
 compose Postgres.
 

@@ -66,6 +66,27 @@ namespace Myss.Api.Platform
     /// </summary>
     public sealed class ConcurrencyException : Exception
     {
+        /// <summary>Initializes a new instance of the <see cref="ConcurrencyException"/> class.</summary>
+        public ConcurrencyException()
+            : base("The stream changed; reload and retry.")
+        {
+        }
+
+        /// <summary>Initializes a new instance of the <see cref="ConcurrencyException"/> class.</summary>
+        /// <param name="message">The message.</param>
+        public ConcurrencyException(string message)
+            : base(message)
+        {
+        }
+
+        /// <summary>Initializes a new instance of the <see cref="ConcurrencyException"/> class.</summary>
+        /// <param name="message">The message.</param>
+        /// <param name="innerException">The cause.</param>
+        public ConcurrencyException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ConcurrencyException"/> class.
         /// </summary>

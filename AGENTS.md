@@ -95,7 +95,16 @@ dotnet ef database update --context PlatformDbContext
 dotnet ef database update --context IntakeDbContext
 ```
 
-(Adding a migration: see `Apps/MyssApi/AGENTS.md`.)
+Or all four in one go, the way the deployment pipeline does it (the API's migrate
+mode: apply every pending migration of every context, then exit):
+
+```bash
+cd Apps/MyssApi && dotnet run -- --migrate
+```
+
+(Adding a migration: see `Apps/MyssApi/AGENTS.md`. Deployed environments never
+run migrations by hand: the pipeline runs `MyssApi --migrate` as a Job from the
+freshly built image before the rollout restart — ADR-0009.)
 
 Run:
 

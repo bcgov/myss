@@ -12,7 +12,7 @@ namespace Myss.Api.Platform
     /// and it holds across any number of API replicas because Postgres
     /// enforces it, not the application.
     /// </summary>
-    public class Event
+    public class EventRow
     {
         /// <summary>
         /// Gets or sets the file this event belongs to (for intake, the

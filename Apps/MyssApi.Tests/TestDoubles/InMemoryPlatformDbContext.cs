@@ -24,7 +24,7 @@ namespace Myss.Api.Tests.TestDoubles
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Event>()
+            modelBuilder.Entity<EventRow>()
                 .Property(e => e.Payload)
                 .HasConversion(
                     doc => doc.RootElement.GetRawText(),

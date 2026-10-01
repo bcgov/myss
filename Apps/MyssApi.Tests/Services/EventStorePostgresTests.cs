@@ -40,7 +40,7 @@ namespace Myss.Api.Tests.Services
                 Assert.Equal(PostgresErrorCodes.UniqueViolation, pg.SqlState);
 
                 using var check = new PlatformDbContext(options);
-                Event survivor = Assert.Single(await check.Events.Where(e => e.StreamId == stream).ToListAsync());
+                EventRow survivor = Assert.Single(await check.Events.Where(e => e.StreamId == stream).ToListAsync());
                 Assert.Equal("winner", survivor.Actor);
                 Assert.Equal(1, survivor.Payload.RootElement.GetProperty("eventVersion").GetInt32());
             }
@@ -83,7 +83,7 @@ namespace Myss.Api.Tests.Services
                 {
                     _raced = true;
                     using var competitor = new PlatformDbContext(_options);
-                    competitor.Events.Add(new Event
+                    competitor.Events.Add(new EventRow
                     {
                         StreamId = _stream,
                         Version = 1,

@@ -139,7 +139,7 @@ namespace Myss.Api.Tests.Services
                 {
                     _raced = true;
                     using var competitor = new RacingPlatformDbContext(_options, stream: null);
-                    competitor.Events.Add(new Event
+                    competitor.Events.Add(new EventRow
                     {
                         StreamId = stream,
                         Version = 1,
