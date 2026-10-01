@@ -2,9 +2,34 @@
     display: flex;
     flex-direction: column;
     gap: var(--layout-margin-large);
+    isolation: isolate;
     margin: 0 auto;
     max-width: 900px;
+    margin-top: calc(-1 * var(--layout-padding-xlarge));
+    padding-top: var(--layout-padding-xlarge);
+    position: relative;
     width: 100%;
+}
+
+.page::before {
+    background-color: var(--surface-color-background-white);
+    content: "";
+    inset-block: 0;
+    left: 50%;
+    position: absolute;
+    transform: translateX(-50%);
+    width: 100vw;
+    z-index: -1;
+}
+
+.aboutBand {
+    background-color: var(--surface-color-background-light-gray);
+    margin-left: calc(50% - 50vw);
+    padding: var(--layout-padding-large) max(
+        var(--layout-padding-xlarge),
+        calc((100vw - 900px) / 2)
+    );
+    width: 100vw;
 }
 
 .heading {
@@ -13,8 +38,13 @@
     justify-content: space-between;
 }
 
+.heading h1 {
+    font: var(--typography-bold-h1);
+}
+
 .actions {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
     gap: var(--layout-margin-medium, 16px);
 }
