@@ -11,6 +11,26 @@ afterEach(() => {
 });
 
 describe("findCanadaPostAddresses", () => {
+  it("does not call Canada Post for an empty search", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      findCanadaPostAddresses({ apiKey: "test-key", searchTerm: "  " }),
+    ).resolves.toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("fails before calling Canada Post when the browser key is blank", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      findCanadaPostAddresses({ apiKey: "  ", searchTerm: "501" }),
+    ).rejects.toThrow("address suggestions are not configured");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("searches Canadian English addresses with a maximum of seven suggestions", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -98,6 +118,49 @@ describe("findCanadaPostAddresses", () => {
       causeDescription: "The daily limit was reached.",
       resolution: "Increase the configured limit.",
     });
+  });
+
+  it("reports an unsuccessful HTTP response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 503 })),
+    );
+
+    await expect(
+      findCanadaPostAddresses({ apiKey: "test-key", searchTerm: "501" }),
+    ).rejects.toThrow("address search failed (503)");
+  });
+
+  it.each([
+    ["invalid JSON", new Response("not json"), "returned invalid JSON"],
+    [
+      "invalid response",
+      new Response(JSON.stringify({ Results: [] })),
+      "returned an invalid response",
+    ],
+  ])("reports an %s body", async (_case, response, expected) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+
+    await expect(
+      findCanadaPostAddresses({ apiKey: "test-key", searchTerm: "501" }),
+    ).rejects.toThrow(expected);
+  });
+
+  it("rejects an unsupported provider next step", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            Items: [{ Id: "CAN|123", Text: "501 Belleville", Next: "Other" }],
+          }),
+        ),
+      ),
+    );
+
+    await expect(
+      findCanadaPostAddresses({ apiKey: "test-key", searchTerm: "501" }),
+    ).rejects.toThrow("unsupported next step: Other");
   });
 });
 
