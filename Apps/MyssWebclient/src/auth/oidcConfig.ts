@@ -8,22 +8,28 @@ import type { AuthProviderProps } from "react-oidc-context";
 import { OIDC_AUTHORITY, OIDC_CLIENT_ID } from "@/constants";
 
 // Friendly idp name -> Keycloak kc_idp_hint alias.
-// The aliases are the identity providers enabled on the CSS integration, as a
-// real dev token showed them on 2026-09-09: `bceidboth` (Basic and Business
-// BCeID on one provider; the API's RoleCalculator decides what to do with a
-// Business GUID) and `azureidir`, the Azure-backed IDIR. `bcservicescard` is
-// assumed; the client does not have it yet. A wrong hint is not fatal: Keycloak
-// ignores it and shows its own provider chooser, so sign-in still works, just
-// with one extra screen. If the CSS integration changes (e.g. to Basic-only
-// BCeID, alias `bceidbasic`), change the alias here and in the API's
-// IdentityProviders together.
-export const IDP_ALIAS = {
-  bceid: "bceidboth",
-  bcServicesCard: "bcservicescard",
-  idir: "azureidir",
-} as const;
+// The aliases are the identity providers enabled on the CSS integration, as
+// the dev realm's own chooser lists them (2026-10-02): `bceidboth` (Basic and
+// Business BCeID on one provider; the API's RoleCalculator decides what to do
+// with a Business GUID), `azureidir` (the Azure-backed IDIR), and BC Services
+// Card. That last one has no fixed alias: CSS creates one BC Services Card
+// broker per integration and names it after the integration's client id, so
+// the hint is the client id itself (SSO docs, "Do skip the Keycloak default
+// login page"). It is therefore built from the resolved runtime below rather
+// than written here. A wrong hint is not fatal: Keycloak ignores it and shows
+// its own provider chooser, so sign-in still works, just with one extra
+// screen. If the CSS integration changes (e.g. to Basic-only BCeID, alias
+// `bceidbasic`), change the alias here and in the API's IdentityProviders
+// together.
+export function buildIdpAliases(clientId: string) {
+  return {
+    bceid: "bceidboth",
+    bcServicesCard: clientId,
+    idir: "azureidir",
+  } as const;
+}
 
-export type IdpName = keyof typeof IDP_ALIAS;
+export type IdpName = keyof ReturnType<typeof buildIdpAliases>;
 
 export interface OidcRuntime {
   authority: string;
@@ -83,13 +89,16 @@ export function buildOidcConfig(rt: OidcRuntime) {
 const origin =
   typeof window !== "undefined" ? window.location.origin : "http://localhost";
 
-export const oidcConfig: AuthProviderProps = buildOidcConfig(
-  resolveOidcRuntime({
-    appConfig: typeof window !== "undefined" ? window.APP_CONFIG : undefined,
-    viteEnv: {
-      VITE_OIDC_AUTHORITY: import.meta.env.VITE_OIDC_AUTHORITY,
-      VITE_OIDC_CLIENT_ID: import.meta.env.VITE_OIDC_CLIENT_ID,
-    },
-    origin,
-  }),
-);
+const runtime = resolveOidcRuntime({
+  appConfig: typeof window !== "undefined" ? window.APP_CONFIG : undefined,
+  viteEnv: {
+    VITE_OIDC_AUTHORITY: import.meta.env.VITE_OIDC_AUTHORITY,
+    VITE_OIDC_CLIENT_ID: import.meta.env.VITE_OIDC_CLIENT_ID,
+  },
+  origin,
+});
+
+export const oidcConfig: AuthProviderProps = buildOidcConfig(runtime);
+
+// The hint aliases for this deployment's client (see buildIdpAliases).
+export const IDP_ALIAS = buildIdpAliases(runtime.clientId);
