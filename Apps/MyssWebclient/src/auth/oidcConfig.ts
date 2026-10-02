@@ -8,12 +8,19 @@ import type { AuthProviderProps } from "react-oidc-context";
 import { OIDC_AUTHORITY, OIDC_CLIENT_ID } from "@/constants";
 
 // Friendly idp name -> Keycloak kc_idp_hint alias.
-// NOTE: confirm exact aliases with IDIM (plan §2.2 / §3.5); a wrong hint just
-// drops the user on the generic chooser, login still works.
+// The aliases are the identity providers enabled on the CSS integration, as a
+// real dev token showed them on 2026-09-09: `bceidboth` (Basic and Business
+// BCeID on one provider; the API's RoleCalculator decides what to do with a
+// Business GUID) and `azureidir`, the Azure-backed IDIR. `bcservicescard` is
+// assumed; the client does not have it yet. A wrong hint is not fatal: Keycloak
+// ignores it and shows its own provider chooser, so sign-in still works, just
+// with one extra screen. If the CSS integration changes (e.g. to Basic-only
+// BCeID, alias `bceidbasic`), change the alias here and in the API's
+// IdentityProviders together.
 export const IDP_ALIAS = {
-  bceid: "bceidbasic",
+  bceid: "bceidboth",
   bcServicesCard: "bcservicescard",
-  idir: "idir",
+  idir: "azureidir",
 } as const;
 
 export type IdpName = keyof typeof IDP_ALIAS;

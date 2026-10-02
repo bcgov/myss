@@ -45,7 +45,7 @@ describe("buildSession", () => {
     const s = buildSession(auth as never, vi.fn());
     s.login("bceid");
     expect(auth.signinRedirect).toHaveBeenCalledWith({
-      extraQueryParams: { kc_idp_hint: "bceidbasic" },
+      extraQueryParams: { kc_idp_hint: "bceidboth" },
     });
   });
 
@@ -98,6 +98,37 @@ describe("buildSession", () => {
       expect(s.isMeLoading).toBe(true);
     });
 
+    // The identity fields follow the same rule: the server's verdict wins and
+    // the token only fills in where the server said nothing. Under mock auth
+    // a BCeID sign-in can be answered as the worker persona, and the worker
+    // guard needs the IDIR username the API resolved, not the token's.
+    it("takes the IDIR username and GUID from the me payload when present", () => {
+      const s = buildSession(authed(), vi.fn(), {
+        isAuthenticated: true,
+        subject: "u1",
+        roles: ["WORKER"],
+        hasProfile: false,
+        idirUsername: "MWORKER",
+        bceidGuid: null,
+      });
+      expect(s.user?.idirUsername).toBe("MWORKER");
+      expect(s.user?.bceidGuid).toBeUndefined();
+    });
+
+    it("keeps the token's identity fields when the me payload has none", () => {
+      const auth = fakeAuth({
+        isAuthenticated: true,
+        user: { profile: { sub: "u1", idir_username: "FROMTOKEN" } },
+      }) as never;
+      const s = buildSession(auth, vi.fn(), {
+        isAuthenticated: true,
+        subject: "u1",
+        roles: [],
+        hasProfile: false,
+      });
+      expect(s.user?.idirUsername).toBe("FROMTOKEN");
+    });
+
     it("does not report loading for a signed-out visitor", () => {
       const s = buildSession(fakeAuth() as never, vi.fn(), undefined, true);
       expect(s.isLoading).toBe(false);
@@ -109,7 +140,7 @@ describe("buildSession", () => {
       const s = buildSession(auth as never, vi.fn());
       s.login("idir", "/admin");
       expect(auth.signinRedirect).toHaveBeenCalledWith({
-        extraQueryParams: { kc_idp_hint: "idir" },
+        extraQueryParams: { kc_idp_hint: "azureidir" },
         state: { returnTo: "/admin" },
       });
     });
