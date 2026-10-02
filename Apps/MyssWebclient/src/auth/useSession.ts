@@ -25,11 +25,13 @@ export interface Session {
 }
 
 // Pure shaper (unit-testable without React). Composes the two halves of the
-// caller's identity: display fields from the id token, roles from the server's
-// /auth/me response — the API's effective roles (RoleCalculator, ADR-0007),
-// which the browser cannot compute. The /auth/me query is allowed to resolve
-// independently so it cannot block the authenticated page shell; if it errors,
-// roles stay [] and role-gated UI fails closed.
+// caller's identity: display fields from the id token, and from the server's
+// /auth/me response the API's effective roles (RoleCalculator, ADR-0007) plus
+// the identity fields the API resolved — IDIR username and BCeID GUID — which
+// the browser cannot compute and must not second-guess. The token's claims
+// only fill in where the server said nothing. The /auth/me query is allowed to
+// resolve independently so it cannot block the authenticated page shell; if it
+// errors, roles stay [] and role-gated UI fails closed.
 export function buildSession(
   auth: AuthContextProps,
   logout: () => void,
@@ -38,7 +40,7 @@ export function buildSession(
 ): Session {
   return {
     user: auth.user
-      ? { ...normalizeUser(auth.user.profile), roles: me?.roles ?? [] }
+      ? withServerVerdict(normalizeUser(auth.user.profile), me)
       : undefined,
     isAuthenticated: auth.isAuthenticated,
     isLoading: auth.isLoading,
@@ -51,6 +53,18 @@ export function buildSession(
         ...(returnTo ? { state: { returnTo } } : {}),
       }),
     logout,
+  };
+}
+
+function withServerVerdict(
+  fromToken: Omit<CurrentUser, "roles">,
+  me?: MePayload,
+): CurrentUser {
+  return {
+    ...fromToken,
+    roles: me?.roles ?? [],
+    idirUsername: me?.idirUsername ?? fromToken.idirUsername,
+    bceidGuid: me?.bceidGuid ?? fromToken.bceidGuid,
   };
 }
 
