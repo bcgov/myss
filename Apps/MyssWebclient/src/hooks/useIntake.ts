@@ -68,7 +68,7 @@ export function useCreateApplication() {
   return useMutation({
     mutationFn: createApplication,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: INTAKE_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: INTAKE_QUERY_KEY });
     },
   });
 }
@@ -97,11 +97,11 @@ export function useSaveAnswers(id: string) {
     mutationFn: (input: AnswersInput) => saveAnswers(id, input),
     onSuccess: (updated) => {
       mergeIntoCache(queryClient, id, updated);
-      queryClient.invalidateQueries({ queryKey: INTAKE_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: INTAKE_QUERY_KEY });
     },
     onError: (error) => {
       if (error instanceof ApplicationRequestError && error.isConflict) {
-        queryClient.invalidateQueries({ queryKey: applicationKey(id) });
+        void queryClient.invalidateQueries({ queryKey: applicationKey(id) });
       }
     },
   });
@@ -115,11 +115,11 @@ export function useSubmitApplication(id: string) {
     mutationFn: (input: AnswersInput) => submitApplication(id, input),
     onSuccess: (updated) => {
       mergeIntoCache(queryClient, id, updated);
-      queryClient.invalidateQueries({ queryKey: INTAKE_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: INTAKE_QUERY_KEY });
     },
     onError: (error) => {
       if (error instanceof ApplicationRequestError && error.isConflict) {
-        queryClient.invalidateQueries({ queryKey: applicationKey(id) });
+        void queryClient.invalidateQueries({ queryKey: applicationKey(id) });
       }
     },
   });

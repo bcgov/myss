@@ -90,11 +90,13 @@ export function useReviewAction(id: string) {
             ? { ...old, ...updated, spec: updated.spec ?? old.spec }
             : updated,
       );
-      queryClient.invalidateQueries({ queryKey: REVIEW_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: REVIEW_QUERY_KEY });
     },
     onError: (error) => {
       if (error instanceof ApplicationRequestError && error.isConflict) {
-        queryClient.invalidateQueries({ queryKey: reviewApplicationKey(id) });
+        void queryClient.invalidateQueries({
+          queryKey: reviewApplicationKey(id),
+        });
       }
     },
   });
