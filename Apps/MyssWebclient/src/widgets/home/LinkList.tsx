@@ -9,7 +9,7 @@ interface LinkListProps {
 
 // Reusable titled list of links, used for "Common questions" and
 // "Links to other resources".
-export default function LinkList({ title, links }: LinkListProps) {
+export default function LinkList({ title, links }: Readonly<LinkListProps>) {
     return (
         <nav aria-label={title}>
             <h2>{title}</h2>

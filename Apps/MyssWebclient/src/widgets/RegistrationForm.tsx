@@ -31,7 +31,7 @@ export default function RegistrationForm() {
     if (!submit.data) return;
     let cancelled = false;
     void queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY }).then(() => {
-      if (!cancelled) navigate(paths.dashboard, { replace: true });
+      if (!cancelled) void navigate(paths.dashboard, { replace: true });
     });
     return () => {
       cancelled = true;
@@ -42,7 +42,7 @@ export default function RegistrationForm() {
   if (error) return <p>Could not load the form: {error.message}</p>;
 
   if (submit.data)
-    return <p role="status">Registration complete. Loading your dashboard…</p>;
+    return <output>Registration complete. Loading your dashboard…</output>;
 
   return (
     <section className={styles.form}>

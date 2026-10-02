@@ -6,6 +6,18 @@ import { useSubmissions } from "@/hooks/usePocForm";
 
 const FORM_SPEC_ID = "bc-bus-pass";
 
+// Replaces the popup's blank document with a plain explanation; the popup was
+// opened before the fetch so the browser does not treat it as a blocked one.
+function showUnavailable(popup: Window, message: string) {
+  const { document } = popup;
+  document.title = "PDF unavailable";
+  const heading = document.createElement("h1");
+  heading.textContent = "PDF unavailable";
+  const paragraph = document.createElement("p");
+  paragraph.textContent = message;
+  document.body.replaceChildren(heading, paragraph);
+}
+
 async function openSubmissionPdf(id: string) {
   const popup = window.open("", "_blank");
   if (!popup) {
@@ -21,10 +33,7 @@ async function openSubmissionPdf(id: string) {
 
     if (!res.ok) {
       console.error(`PDF fetch failed (${res.status})`);
-      popup.document.write(
-        `<html><head><title>PDF unavailable</title></head><body><h1>PDF unavailable</h1><p>The PDF could not be loaded.</p></body></html>`,
-      );
-      popup.document.close();
+      showUnavailable(popup, "The PDF could not be loaded.");
       return;
     }
 
@@ -35,10 +44,7 @@ async function openSubmissionPdf(id: string) {
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
   } catch (err) {
     console.error("Failed to open submission PDF", err);
-    popup.document.write(
-      `<html><head><title>PDF unavailable</title></head><body><h1>PDF unavailable</h1><p>There was a problem opening this PDF.</p></body></html>`,
-    );
-    popup.document.close();
+    showUnavailable(popup, "There was a problem opening this PDF.");
   }
 }
 

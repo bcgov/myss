@@ -32,7 +32,7 @@ function statusLabel(status: string): string {
   return STATUS_LABELS[status] ?? status;
 }
 
-export default function StatusPill({ status }: { status: string }) {
+export default function StatusPill({ status }: Readonly<{ status: string }>) {
   const label = statusLabel(status);
   return (
     <TagGroup aria-label="Status">

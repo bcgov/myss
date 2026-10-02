@@ -50,9 +50,9 @@ function formatDate(value: string | null | undefined): string {
 
 export default function ReviewApplication({
   applicationId,
-}: {
+}: Readonly<{
   applicationId: string;
-}) {
+}>) {
   const {
     data: application,
     error,
@@ -80,7 +80,7 @@ export default function ReviewApplication({
     [act.isPending, application, mutate],
   );
 
-  if (isPending) return <p role="status">Loading application…</p>;
+  if (isPending) return <output>Loading application…</output>;
   if (error) {
     return (
       <p role="alert">

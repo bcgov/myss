@@ -1,5 +1,4 @@
-import { Callout } from "@bcgov/design-system-react-components";
-import { Link } from "@bcgov/design-system-react-components";
+import { Callout, Link } from "@bcgov/design-system-react-components";
 
 import styles from "./ChequeCalendar.module.css";
 
