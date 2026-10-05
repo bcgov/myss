@@ -1,0 +1,12 @@
+/* Menu column beside the content, both stretched to the full height left
+   under the header. Narrow screens are not designed yet (MYSS-194). */
+.layout {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: 15rem minmax(0, 1fr);
+}
+
+.content {
+    background-color: var(--surface-color-background-white);
+    padding: var(--layout-padding-xlarge);
+}

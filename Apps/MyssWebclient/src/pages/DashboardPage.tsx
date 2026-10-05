@@ -1,49 +1,22 @@
 import { Button } from "@bcgov/design-system-react-components";
-import { useEffect } from "react";
 import { useNavigate } from "react-router";
 
-import { WORKER_ROLE } from "@/auth/RequireWorker";
 import { useSession } from "@/auth/useSession";
 import { useCreateApplication } from "@/hooks/useIntake";
-import { applicationPath, paths } from "@/routes/paths";
+import { applicationPath } from "@/routes/paths";
 import ApplicationsList from "@/widgets/intake/ApplicationsList";
 import styles from "./DashboardPage.module.css";
 
+// The dashboard's Home section. DashboardLayout has already sent workers and
+// unregistered citizens elsewhere, and Sign out lives in the header.
 export default function DashboardPage() {
-  const { hasProfile, isMeLoading, profileFirstName, user, logout } =
-    useSession();
+  const { hasProfile, profileFirstName, user } = useSession();
   const navigate = useNavigate();
   const create = useCreateApplication();
   const name = user?.name ?? user?.email ?? "there";
-  // Roles come from /auth/me, so this is only known once that has answered.
-  const isWorker =
-    !isMeLoading &&
-    Boolean(user?.idirUsername) &&
-    (user?.roles ?? []).includes(WORKER_ROLE);
-
-  // A Ministry worker has no citizen profile: their landing is the worker
-  // operations view, decided before the registration check below can fire.
-  // A citizen without a registered profile is sent to registration. The API
-  // refuses to create an application for them too; this is the courtesy.
-  useEffect(() => {
-    if (isWorker) {
-      navigate(paths.workerApplications, { replace: true });
-    } else if (!isMeLoading && hasProfile === false) {
-      navigate(paths.register, { replace: true });
-    }
-  }, [hasProfile, isMeLoading, isWorker, navigate]);
-
-  if (isMeLoading || isWorker || hasProfile === undefined) {
-    return <p role="status">Checking your MySS account…</p>;
-  }
 
   return (
     <div className={styles.page}>
-      <div className={styles.actions}>
-        <Button variant="primary" onPress={() => logout()}>
-          Log out
-        </Button>
-      </div>
       <h1>Hello {name}</h1>
       {hasProfile && profileFirstName && (
         <p>Your MySS account profile is registered to {profileFirstName}.</p>
