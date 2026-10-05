@@ -1,20 +1,33 @@
 .page {
     display: flex;
     flex-direction: column;
-    gap: var(--layout-margin-large);
+    gap: var(--layout-margin-medium);
     margin: 0 auto;
     max-width: 900px;
+    padding-block: var(--layout-padding-large);
     width: 100%;
 }
 
-.heading {
-    align-items: center;
-    display: flex;
-    justify-content: space-between;
+.title {
+    margin: 0;
+    padding-top: 0;
+}
+
+.title:focus-visible {
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-small);
+}
+
+/* BCDS 0.6.0 misspells the success surface token (`--suport-surface-color-success`),
+   so its success InlineAlert renders with no background. Supply the real token
+   until the library is fixed; drop this rule after upgrading. */
+.page :global(.bcds-Inline-Alert.success) {
+    background-color: var(--support-surface-color-success);
 }
 
 .actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--layout-margin-medium, 16px);
+    gap: var(--layout-margin-medium);
 }

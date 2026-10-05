@@ -19,6 +19,7 @@ import {
   REGISTRATION_FORM_SPEC_TITLE,
   registrationFormSpecV2,
   registrationFormSpecV3,
+  registrationFormSpecV4,
   seededForms,
   seededFormSpecs,
   testFormSpecV1,
@@ -26,6 +27,7 @@ import {
   testFormSpecV3,
   type Json,
 } from "./form-spec-seed-data";
+import { validateFormSpec } from "./form-spec-rules";
 
 /**
  * These tests assert the invariants that the Phase 0.3 publish-time lifecycle
@@ -47,7 +49,11 @@ interface Component {
   readonly inputMask?: unknown;
   readonly placeholder?: unknown;
   readonly conditional?: { readonly when?: unknown };
-  readonly properties?: { readonly myssValidator?: unknown };
+  readonly properties?: {
+    readonly myssValidator?: unknown;
+    readonly myssPrefill?: unknown;
+    readonly myssPrefillLock?: unknown;
+  };
   readonly validate?: {
     readonly customMessage?: unknown;
     readonly pattern?: unknown;
@@ -226,6 +232,87 @@ describe("seeded forms collection", () => {
     expect(sin.type).toBe("textfield");
     expect(sin.properties?.myssValidator).toBe("sin");
     expect(email.type).toBe("email");
+  });
+
+  describe("registration v4", () => {
+    it("passes the lifecycle's structural rules", () => {
+      expect(validateFormSpec(registrationFormSpecV4)).toEqual([]);
+    });
+
+    // The bootstrap publishes every seeded version, and v4 is held back until
+    // the team decides to release it.
+    it("is not seeded, so it is not published yet", () => {
+      const registration = seededForms.find(
+        (form) => form.formSpecId === REGISTRATION_FORM_SPEC_ID,
+      );
+      expect(
+        registration?.versions.some(
+          (v) => v.spec === registrationFormSpecV4 || v.version === 4,
+        ),
+      ).toBe(false);
+    });
+
+    it("keeps every v3 field and adds phone and gender", () => {
+      const v3 = keysOf(registrationFormSpecV3).filter((k) => k !== "submit");
+      const v4 = keysOf(registrationFormSpecV4);
+
+      expect(v4).toEqual(expect.arrayContaining(v3));
+      expect(v4).toContain("phone");
+      expect(v4).toContain("gender");
+    });
+
+    // The webclient renders its own BC Gov buttons; a spec submit button
+    // would be stripped anyway, so it should not be authored.
+    it("has no submit button", () => {
+      expect(
+        allComponents(registrationFormSpecV4).some((c) => c.type === "button"),
+      ).toBe(false);
+    });
+
+    // A contract with MyssApi: FormsService checks a submitted gender against
+    // these option values, and the webclient maps the identity claim to them.
+    it("offers the gender options as a BC Gov radio", () => {
+      const gender = componentByKey(registrationFormSpecV4, "gender");
+
+      expect(gender.type).toBe("bcgovRadio");
+      expect(gender.values).toEqual([
+        { label: "Man/Boy", value: "man" },
+        { label: "Non-Binary", value: "nonBinary" },
+        { label: "Woman/Girl", value: "woman" },
+      ]);
+    });
+
+    // Misspelled markers fail silently (Form.io ignores unknown properties), so
+    // assert the literal strings the webclient's prefill reads.
+    it.each([
+      ["firstName", "givenName", "true"],
+      ["lastName", "familyName", "true"],
+      ["email", "email", undefined],
+      ["phone", "phoneNumber", "true"],
+      ["dateOfBirth", "birthdate", "true"],
+      ["gender", "gender", "true"],
+    ])("prefills %s from %s (lock: %s)", (key, attribute, lock) => {
+      const component = componentByKey(registrationFormSpecV4, key);
+
+      expect(component.properties?.myssPrefill).toBe(attribute);
+      expect(component.properties?.myssPrefillLock).toBe(lock);
+    });
+
+    it("keeps the SIN validator and the consent links", () => {
+      const sin = componentByKey(registrationFormSpecV4, "sin");
+      const consent = componentByKey(registrationFormSpecV4, "consent");
+
+      expect(sin.properties?.myssValidator).toBe("sin");
+      expect(componentByKey(registrationFormSpecV4, "sinHelp").type).toBe(
+        "bcgovAccordion",
+      );
+      expect(consent.type).toBe("checkbox");
+      expect(consent.validate?.required).toBe(true);
+      expect(consent.label).toContain("https://myselfserve.gov.bc.ca/terms");
+      expect(consent.label).toContain(
+        "https://www2.gov.bc.ca/gov/content/home/privacy",
+      );
+    });
   });
 
   it("keeps the POC form's versions as the existing seededFormSpecs list", () => {

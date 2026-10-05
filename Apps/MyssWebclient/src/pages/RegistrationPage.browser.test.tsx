@@ -25,8 +25,23 @@ vi.mock("@/auth/useSession", () => ({
     useSession: () => session,
 }));
 
+// The widget is mocked; its buttons stand in for the real form's outcomes.
 vi.mock("@/widgets/RegistrationForm", () => ({
-    default: () => <p>Registration form</p>,
+    default: (props: {
+        identity: { givenName?: string };
+        onRegistered: () => void;
+        onCancel: () => void;
+    }) => (
+        <div>
+            <p>Registration form for {props.identity.givenName ?? "nobody"}</p>
+            <button type="button" onClick={props.onRegistered}>
+                Simulate registered
+            </button>
+            <button type="button" onClick={props.onCancel}>
+                Simulate cancel
+            </button>
+        </div>
+    ),
 }));
 
 import RegistrationPage from "./RegistrationPage";
@@ -57,6 +72,9 @@ describe("RegistrationPage", () => {
         const screen = await renderRegistration();
 
         await expect
+            .element(screen.getByRole("heading", { level: 1, name: "Create your MySS account" }))
+            .toBeInTheDocument();
+        await expect
             .element(screen.getByText("Create a MySS account with your BC Services Card or BCeID."))
             .toBeInTheDocument();
         await screen.getByRole("button", { name: "BC Services Card" }).click();
@@ -66,16 +84,84 @@ describe("RegistrationPage", () => {
         expect(session.login).toHaveBeenNthCalledWith(2, "bceid", paths.register);
     });
 
-    it("shows the registration form for an authenticated user without a profile", async () => {
+    it("shows the signed-in banner and the form to an authenticated user without a profile", async () => {
         session.isAuthenticated = true;
         session.hasProfile = false;
-        session.user = { sub: "new-user", name: "Ada", roles: [] };
+        session.user = { sub: "new-user", givenName: "Jane", roles: [] };
         const screen = await renderRegistration();
 
-        await expect.element(screen.getByText("Welcome, Ada.")).toBeInTheDocument();
-        await expect.element(screen.getByText("Registration form")).toBeInTheDocument();
-        await screen.getByRole("button", { name: "Log out" }).click();
+        await expect.element(screen.getByText("Signed in successfully")).toBeInTheDocument();
+        await expect
+            .element(screen.getByText(/You’re signed in with your BC Services Card\./))
+            .toBeInTheDocument();
+        await expect
+            .element(screen.getByRole("heading", { level: 1, name: "Create your MySS account" }))
+            .toBeInTheDocument();
+        await expect.element(screen.getByText("Registration form for Jane")).toBeInTheDocument();
+    });
+
+    it("names BCeID in the banner for a BCeID sign-in", async () => {
+        session.isAuthenticated = true;
+        session.hasProfile = false;
+        session.user = { sub: "new-user", bceidGuid: "guid-1", roles: [] };
+        const screen = await renderRegistration();
+
+        await expect
+            .element(screen.getByText(/You’re signed in with your BCeID\./))
+            .toBeInTheDocument();
+    });
+
+    it("signs the user out when they cancel registration", async () => {
+        session.isAuthenticated = true;
+        session.hasProfile = false;
+        const screen = await renderRegistration();
+
+        await screen.getByRole("button", { name: "Simulate cancel" }).click();
         expect(session.logout).toHaveBeenCalledOnce();
+    });
+
+    // The refreshed /me reports a profile right after registering; the page
+    // must keep the confirmation rather than redirect to the dashboard.
+    it("shows the confirmation after registering, even once a profile exists", async () => {
+        session.isAuthenticated = true;
+        session.hasProfile = false;
+        const screen = await renderRegistration();
+
+        await screen.getByRole("button", { name: "Simulate registered" }).click();
+        session.hasProfile = true;
+        screen.rerender(
+            <MemoryRouter initialEntries={[paths.register]}>
+                <Routes>
+                    <Route path={paths.register} element={<RegistrationPage />} />
+                    <Route path={paths.dashboard} element={<p>Dashboard landing</p>} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        const heading = screen.getByRole("heading", { level: 1, name: "Account registration complete" });
+        await expect.element(heading).toHaveFocus();
+        await expect
+            .element(screen.getByText("Your account is being prepared. This should take less than 5 minutes."))
+            .toBeInTheDocument();
+        await expect.element(screen.getByText("Dashboard landing")).not.toBeInTheDocument();
+    });
+
+    it("returns to the homepage from the confirmation", async () => {
+        session.isAuthenticated = true;
+        session.hasProfile = false;
+        const screen = await render(
+            <MemoryRouter initialEntries={[paths.register]}>
+                <Routes>
+                    <Route path={paths.register} element={<RegistrationPage />} />
+                    <Route path={paths.home} element={<p>Home landing</p>} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        await screen.getByRole("button", { name: "Simulate registered" }).click();
+        await screen.getByRole("button", { name: "Return to the MySS homepage" }).click();
+
+        await expect.element(screen.getByText("Home landing")).toBeInTheDocument();
     });
 
     it("redirects an authenticated user with a profile to the dashboard", async () => {

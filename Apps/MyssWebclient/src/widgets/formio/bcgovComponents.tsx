@@ -151,6 +151,8 @@ interface FormioRadioInstance extends FormioComponentInstance {
   /** Form.io's "the citizen has interacted with this field" flag. */
   dirty: boolean;
   setDirty(dirty: boolean): void;
+  /** True when the spec, a parent or the form itself disables this field. */
+  disabled: boolean;
   /**
    * The Webform this component belongs to. `submitting` is true only while a
    * submit's own validation pass is running.
@@ -354,6 +356,7 @@ class BcgovRadioComponent extends RadioBase {
         orientation="vertical"
         value={selectedParent}
         isRequired={hasNestedOptions ? required : undefined}
+        isDisabled={this.disabled}
         isInvalid={this.errorMessage !== ""}
         errorMessage={this.errorMessage}
         onChange={(next: string) => {

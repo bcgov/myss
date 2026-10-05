@@ -1,3 +1,67 @@
 .form :global(.formio-component-checkbox) {
   margin-left: var(--layout-padding-large);
 }
+
+/* BC Gov Design System fields label a required field "(required)" rather than
+   Form.io's red asterisk; match them so the Form.io fields and the BCDS gender
+   radio read the same. Text fields draw the asterisk as a .required-star span
+   and Form.io switches their ::after off with !important, hence the extra
+   specificity and !important here. */
+.form :global(.required-star) {
+  display: none;
+}
+
+.form :global(label.field-required)::after {
+  content: " (required)" !important;
+  color: var(--typography-color-secondary);
+  font: var(--typography-regular-small-body);
+}
+
+.form :global(.formio-component.required .bcds-react-aria-RadioGroup--label)::after {
+  content: "(required)";
+  font: var(--typography-regular-small-body);
+}
+
+/* Match the Form.io field labels above it. */
+.form :global(.bcds-react-aria-RadioGroup--label) {
+  font: var(--typography-bold-small-body);
+  color: var(--typography-color-primary);
+}
+
+/* Form.io's label template emits <span class="visually-hidden">, numeric
+   only,</span> on phone fields; the bundled Bootstrap 3 defines only .sr-only,
+   so without this the hint renders as visible text. Hide it visually, keep it
+   for screen readers. */
+.form :global(.visually-hidden) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The design keeps inputs to a readable width rather than the full column. */
+.form :global(.form-control) {
+  max-width: 24rem;
+  border-color: var(--surface-color-border-default);
+}
+
+/* Prefilled, locked fields: the BCDS disabled-field surface. */
+.form :global(.form-control[disabled]) {
+  background: var(--surface-color-forms-disabled);
+  color: var(--typography-color-secondary);
+  cursor: not-allowed;
+}
+
+.actions {
+  border-top: var(--layout-border-width-small) solid var(--surface-color-border-default);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--layout-margin-small);
+  margin-top: var(--layout-margin-medium);
+  padding-top: var(--layout-padding-medium);
+}

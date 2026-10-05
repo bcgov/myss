@@ -272,6 +272,87 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(2, await db.FormSubmissions.CountAsync());
         }
 
+        private const string RegistrationSpecV4 = """
+        {
+          "components": [
+            { "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } },
+            { "type": "textfield", "key": "lastName", "input": true, "validate": { "required": true } },
+            { "type": "email", "key": "email", "input": true, "validate": { "required": true } },
+            { "type": "phoneNumber", "key": "phone", "input": true, "validate": { "required": true } },
+            { "type": "datetime", "key": "dateOfBirth", "input": true, "validate": { "required": true } },
+            {
+              "type": "panel", "key": "aboutYou", "input": false,
+              "components": [
+                {
+                  "type": "bcgovRadio", "key": "gender", "input": true, "validate": { "required": true },
+                  "values": [ { "label": "Man/Boy", "value": "man" }, { "label": "Woman/Girl", "value": "woman" } ]
+                }
+              ]
+            },
+            { "type": "textfield", "key": "sin", "input": true, "properties": { "myssValidator": "sin" }, "validate": { "required": true } }
+          ]
+        }
+        """;
+
+        [Theory]
+        [InlineData("(250) 555-0100")]
+        [InlineData("250-555-0100")]
+        [InlineData("+1 250 555 0100")]
+        public async Task Submit_RegistrationV4_PersistsTheNormalizedPhoneAndTheGender(string phone)
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, $$"""{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"{{phone}}","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("2505550100", profile.Phone);
+            Assert.Equal("woman", profile.Gender);
+        }
+
+        [Theory]
+        [InlineData("555-0100")]
+        [InlineData("+44 20 7946 0958")]
+        public async Task Submit_RegistrationWithAPhoneThatIsNotTenDigits_IsRefused(string phone)
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, $$"""{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"{{phone}}","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("phone", error.Field);
+            Assert.Equal(ValidationKeywords.RegistrationPhoneInvalid, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationWithAGenderTheSpecDoesNotOffer_IsRefused()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"2505550100","dateOfBirth":"1815-12-10","gender":"anything","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("gender", error.Field);
+            Assert.Equal(ValidationKeywords.RegistrationGenderUnknown, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
         private static FormSubmissionRequestModel Request(int version, string answersJson)
         {
             using JsonDocument answers = JsonDocument.Parse(answersJson);

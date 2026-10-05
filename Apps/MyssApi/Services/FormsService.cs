@@ -317,7 +317,7 @@ namespace Myss.Api.Services
 
             if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
             {
-                errors = [.. errors, .. ValidateRegistration(request.Answers)];
+                errors = [.. errors, .. ValidateRegistration(spec.Spec, request.Answers)];
             }
 
             if (domainRules is not null)
@@ -382,6 +382,14 @@ namespace Myss.Api.Services
             string email = answers.GetProperty("email").GetString()!;
             string sin = answers.GetProperty("sin").GetString()!;
 
+            // Optional at this layer: registration v3 and earlier did not ask for
+            // them, and a submission is validated against the version it claims.
+            string? phone = OptionalString(answers, "phone") is { } rawPhone
+                && TryNormalizePhone(rawPhone, out string normalizedPhone)
+                    ? normalizedPhone
+                    : null;
+            string? gender = OptionalString(answers, "gender");
+
             _ = TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate);
 
             MyssUserProfile? profile = _dbContext.MyssUserProfiles
@@ -397,6 +405,8 @@ namespace Myss.Api.Services
                     DateOfBirth = parsedDate,
                     Email = email,
                     Sin = sin,
+                    Phone = phone,
+                    Gender = gender,
                     CreatedAt = DateTimeOffset.UtcNow,
                     UpdatedAt = DateTimeOffset.UtcNow,
                 });
@@ -408,42 +418,128 @@ namespace Myss.Api.Services
             profile.DateOfBirth = parsedDate;
             profile.Email = email;
             profile.Sin = sin;
+            profile.Phone = phone;
+            profile.Gender = gender;
             profile.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        private static IReadOnlyList<ValidationErrorModel> ValidateRegistration(JsonElement answers)
+        private static IReadOnlyList<ValidationErrorModel> ValidateRegistration(JsonElement spec, JsonElement answers)
         {
-            string? dateOfBirth = answers.TryGetProperty("dateOfBirth", out JsonElement value) && value.ValueKind == JsonValueKind.String
-                ? value.GetString()
-                : null;
+            List<ValidationErrorModel> errors = [];
+            string? dateOfBirth = OptionalString(answers, "dateOfBirth");
 
             if (!TryParseRegistrationDate(dateOfBirth ?? string.Empty, out DateOnly parsedDate))
             {
-                return
-                [
-                    new ValidationErrorModel
-                    {
-                        Field = "dateOfBirth",
-                        Keyword = ValidationKeywords.RegistrationDateOfBirthInvalid,
-                        Message = "Enter a valid date of birth.",
-                    },
-                ];
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = "dateOfBirth",
+                    Keyword = ValidationKeywords.RegistrationDateOfBirthInvalid,
+                    Message = "Enter a valid date of birth.",
+                });
             }
-
-            if (parsedDate > DateOnly.FromDateTime(DateTime.UtcNow))
+            else if (parsedDate > DateOnly.FromDateTime(DateTime.UtcNow))
             {
-                return
-                [
-                    new ValidationErrorModel
-                    {
-                        Field = "dateOfBirth",
-                        Keyword = ValidationKeywords.RegistrationDateOfBirthInFuture,
-                        Message = "Date of birth cannot be in the future.",
-                    },
-                ];
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = "dateOfBirth",
+                    Keyword = ValidationKeywords.RegistrationDateOfBirthInFuture,
+                    Message = "Date of birth cannot be in the future.",
+                });
             }
 
-            return [];
+            // Whether phone and gender are required is the spec's call, already
+            // enforced by FormSpecValidator. These only check a value that is there.
+            if (OptionalString(answers, "phone") is { } phone && !TryNormalizePhone(phone, out _))
+            {
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = "phone",
+                    Keyword = ValidationKeywords.RegistrationPhoneInvalid,
+                    Message = "Enter a 10-digit phone number.",
+                });
+            }
+
+            // The options are authored in Strapi, so check against the spec the
+            // citizen was shown rather than a list held here.
+            if (OptionalString(answers, "gender") is { } gender
+                && !ComponentOptionValues(spec, "gender").Contains(gender))
+            {
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = "gender",
+                    Keyword = ValidationKeywords.RegistrationGenderUnknown,
+                    Message = "Choose one of the listed options.",
+                });
+            }
+
+            return errors;
+        }
+
+        private static string? OptionalString(JsonElement answers, string key) =>
+            answers.TryGetProperty(key, out JsonElement value)
+                && value.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(value.GetString())
+                    ? value.GetString()
+                    : null;
+
+        /// <summary>
+        /// Reduces a phone number to its ten digits. Form.io's phoneNumber mask
+        /// submits "(250) 555-0100"; a leading North American "1" is dropped.
+        /// </summary>
+        private static bool TryNormalizePhone(string value, out string digits)
+        {
+            digits = new string(value.Where(char.IsAsciiDigit).ToArray());
+            if (digits.Length == 11 && digits[0] == '1')
+            {
+                digits = digits[1..];
+            }
+
+            return digits.Length == 10;
+        }
+
+        /// <summary>
+        /// The option values of the component keyed <paramref name="key"/>, found
+        /// at any depth (a panel holds its fields). Empty when there is no such
+        /// component, so an answer for it cannot match.
+        /// </summary>
+        private static HashSet<string> ComponentOptionValues(JsonElement node, string key)
+        {
+            HashSet<string> values = [];
+            if (node.ValueKind != JsonValueKind.Object
+                || !node.TryGetProperty("components", out JsonElement components)
+                || components.ValueKind != JsonValueKind.Array)
+            {
+                return values;
+            }
+
+            foreach (JsonElement component in components.EnumerateArray())
+            {
+                if (component.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if (component.TryGetProperty("key", out JsonElement k)
+                    && k.ValueKind == JsonValueKind.String
+                    && k.GetString() == key
+                    && component.TryGetProperty("values", out JsonElement options)
+                    && options.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (JsonElement option in options.EnumerateArray())
+                    {
+                        if (option.ValueKind == JsonValueKind.Object
+                            && option.TryGetProperty("value", out JsonElement v)
+                            && v.ValueKind == JsonValueKind.String)
+                        {
+                            values.Add(v.GetString()!);
+                        }
+                    }
+                }
+
+                values.UnionWith(ComponentOptionValues(component, key));
+            }
+
+            return values;
         }
 
         private static bool TryParseRegistrationDate(string value, out DateOnly date)
