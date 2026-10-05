@@ -20,29 +20,41 @@ namespace Myss.Api.Models
     }
 
     /// <summary>
-    /// One family-size row of monthly income limits, by client type A-E
-    /// (MYSS-25: A couple/neither, B single/not-PWD, C couple/either,
-    /// D single/PWD, E couple/both).
+    /// One family-size row of monthly income limits, by client type A–I.
+    /// Dependants affect the family size only; PWD takes priority over 65+.
+    /// The couple columns (A, C, D, F, H, I) hold 0 at family size 1.
     /// </summary>
     public sealed class EligibilityRateRowModel
     {
         /// <summary>Gets the family unit size (1-7; 7 is the cap).</summary>
-        public int FamilySize { get; init; }
+        public required int FamilySize { get; init; }
 
-        /// <summary>Gets the monthly income limit for client type A.</summary>
-        public decimal A { get; init; }
+        /// <summary>Gets the limit for type A: a couple, both under 65, neither PWD.</summary>
+        public required decimal A { get; init; }
 
-        /// <summary>Gets the monthly income limit for client type B.</summary>
-        public decimal B { get; init; }
+        /// <summary>Gets the limit for type B: a single adult, under 65, not PWD.</summary>
+        public required decimal B { get; init; }
 
-        /// <summary>Gets the monthly income limit for client type C.</summary>
-        public decimal C { get; init; }
+        /// <summary>Gets the limit for type C: a couple, both 65 or older, neither PWD.</summary>
+        public required decimal C { get; init; }
 
-        /// <summary>Gets the monthly income limit for client type D.</summary>
-        public decimal D { get; init; }
+        /// <summary>Gets the limit for type D: a couple, one 65 or older, neither PWD.</summary>
+        public required decimal D { get; init; }
 
-        /// <summary>Gets the monthly income limit for client type E.</summary>
-        public decimal E { get; init; }
+        /// <summary>Gets the limit for type E: a single adult, 65 or older, not PWD.</summary>
+        public required decimal E { get; init; }
+
+        /// <summary>Gets the limit for type F: a couple, one PWD, the other under 65 and not PWD.</summary>
+        public required decimal F { get; init; }
+
+        /// <summary>Gets the limit for type G: a single adult, PWD.</summary>
+        public required decimal G { get; init; }
+
+        /// <summary>Gets the limit for type H: a couple, both PWD.</summary>
+        public required decimal H { get; init; }
+
+        /// <summary>Gets the limit for type I: a couple, one PWD and the other 65 or older.</summary>
+        public required decimal I { get; init; }
     }
 
     /// <summary>
@@ -51,15 +63,15 @@ namespace Myss.Api.Models
     public sealed class EligibilityAssetLimitsModel
     {
         /// <summary>Gets the asset ceiling for category A.</summary>
-        public decimal A { get; init; }
+        public required decimal A { get; init; }
 
         /// <summary>Gets the asset ceiling for category B.</summary>
-        public decimal B { get; init; }
+        public required decimal B { get; init; }
 
         /// <summary>Gets the asset ceiling for category C.</summary>
-        public decimal C { get; init; }
+        public required decimal C { get; init; }
 
         /// <summary>Gets the asset ceiling for category D.</summary>
-        public decimal D { get; init; }
+        public required decimal D { get; init; }
     }
 }

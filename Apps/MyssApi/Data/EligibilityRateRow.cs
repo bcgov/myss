@@ -29,6 +29,18 @@ namespace Myss.Api.Data
         /// <summary>Gets or sets the limit for client type E.</summary>
         public decimal TypeE { get; set; }
 
+        /// <summary>Gets or sets the limit for client type F.</summary>
+        public decimal TypeF { get; set; }
+
+        /// <summary>Gets or sets the limit for client type G.</summary>
+        public decimal TypeG { get; set; }
+
+        /// <summary>Gets or sets the limit for client type H.</summary>
+        public decimal TypeH { get; set; }
+
+        /// <summary>Gets or sets the limit for client type I.</summary>
+        public decimal TypeI { get; set; }
+
         /// <summary>Gets or sets the date this row takes effect.</summary>
         public DateOnly EffectiveFrom { get; set; }
 
@@ -36,7 +48,7 @@ namespace Myss.Api.Data
         public string? Notes { get; set; }
 
         /// <summary>Returns the limit for the given client type code.</summary>
-        /// <param name="clientType">Client type code "A" through "E".</param>
+        /// <param name="clientType">Client type code "A" through "I".</param>
         /// <returns>The monthly income limit.</returns>
         public decimal AmountFor(string clientType) => clientType switch
         {
@@ -45,8 +57,12 @@ namespace Myss.Api.Data
             "C" => this.TypeC,
             "D" => this.TypeD,
             "E" => this.TypeE,
+            "F" => this.TypeF,
+            "G" => this.TypeG,
+            "H" => this.TypeH,
+            "I" => this.TypeI,
             _ => throw new ArgumentOutOfRangeException(
-                nameof(clientType), clientType, "Client type must be A, B, C, D or E."),
+                nameof(clientType), clientType, "Client type must be a letter from A to I."),
         };
     }
 }

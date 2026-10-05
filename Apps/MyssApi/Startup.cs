@@ -79,7 +79,7 @@ namespace Myss.Api
             // Eligibility Estimator (Option B): the browser computes the estimate;
             // MyssApi serves the Form.io spec and the rate table anonymously (see
             // EligibilityEstimatorController). The rate provider reads Strapi and
-            // falls back to the compiled MYSS-25 table; the result is cached so the
+            // falls back to the compiled table; the result is cached so the
             // public endpoint does not hit Strapi on every request.
             services.AddMemoryCache();
             services.AddHttpClient<IEligibilityRateProvider, StrapiEligibilityRateProvider>(

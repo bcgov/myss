@@ -35,7 +35,7 @@ namespace Myss.Api.Data
         }
 
         /// <summary>Returns the monthly income limit, clamping family size to the table cap.</summary>
-        /// <param name="clientType">Client type code "A" through "E".</param>
+        /// <param name="clientType">Client type code "A" through "I".</param>
         /// <param name="familySize">The family unit size.</param>
         /// <returns>The monthly income limit.</returns>
         public decimal IncomeLimitFor(string clientType, int familySize)

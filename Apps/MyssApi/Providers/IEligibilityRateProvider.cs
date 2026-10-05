@@ -13,7 +13,7 @@ namespace Myss.Api.Providers
     {
         /// <summary>
         /// Gets the current published rate table, falling back to the compiled
-        /// MYSS-25 values when the content engine cannot be read.
+        /// table when the content engine cannot be read.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The rate table; never null.</returns>
