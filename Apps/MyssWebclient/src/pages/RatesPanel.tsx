@@ -1,10 +1,15 @@
 import { useEstimatorRates } from "@/hooks/useEligibility";
+import {
+    ASSET_COLUMNS,
+    INCOME_COLUMN_GROUPS,
+    INCOME_COLUMNS,
+    isNotApplicable,
+} from "@/lib/rateColumns";
 import styles from "./RatesPanel.module.css";
 
 // Read-only view of the eligibility rate table the estimator computes against
-// (income limits by client-type category A–E, asset ceilings A–D). Uses the
-// same anonymous read the citizen estimator uses; no edit controls — editing
-// rates is separate, later work.
+// (income limits by client-type category A–I in three groups, asset ceilings
+// A–D). Uses the same anonymous read the citizen estimator uses.
 
 const money = new Intl.NumberFormat("en-CA", {
     style: "currency",
@@ -13,7 +18,15 @@ const money = new Intl.NumberFormat("en-CA", {
     maximumFractionDigits: 2,
 });
 
-const CATEGORIES = ["a", "b", "c", "d", "e"] as const;
+/** A couple column at family size 1 has no limit; read out in full by screen readers. */
+function NotApplicable() {
+    return (
+        <>
+            <span aria-hidden="true">N/A</span>
+            <span className={styles.visuallyHidden}>Not applicable</span>
+        </>
+    );
+}
 
 export default function RatesPanel() {
     const { data: rates, isPending, error } = useEstimatorRates();
@@ -38,16 +51,45 @@ export default function RatesPanel() {
                         Effective {rates.effectiveDate}
                     </p>
 
-                    <h3 className={styles.tableTitle}>Monthly income limits</h3>
+                    <h3 id="income-limits-heading" className={styles.tableTitle}>
+                        Monthly income limits
+                    </h3>
                     <p className={styles.caption}>By client-type category</p>
                     <div className={styles.tableWrap}>
-                        <table className={styles.table}>
+                        <table
+                            aria-labelledby="income-limits-heading"
+                            className={styles.table}
+                        >
+                            <colgroup>
+                                <col />
+                            </colgroup>
+                            {INCOME_COLUMN_GROUPS.map(({ group, span }) => (
+                                <colgroup key={group} span={span} />
+                            ))}
                             <thead>
                                 <tr>
-                                    <th scope="col">Family size</th>
-                                    {CATEGORIES.map((c) => (
-                                        <th key={c} scope="col">
-                                            {c.toUpperCase()}
+                                    <th
+                                        rowSpan={2}
+                                        scope="col"
+                                        className={styles.rowHeading}
+                                    >
+                                        Family size
+                                    </th>
+                                    {INCOME_COLUMN_GROUPS.map(({ group, span }) => (
+                                        <th
+                                            key={group}
+                                            colSpan={span}
+                                            scope="colgroup"
+                                            className={styles.groupHeading}
+                                        >
+                                            {group}
+                                        </th>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    {INCOME_COLUMNS.map(({ letter }) => (
+                                        <th key={letter} scope="col">
+                                            {letter.toUpperCase()}
                                         </th>
                                     ))}
                                 </tr>
@@ -56,8 +98,14 @@ export default function RatesPanel() {
                                 {rates.incomeRows.map((row) => (
                                     <tr key={row.familySize}>
                                         <th scope="row">{row.familySize}</th>
-                                        {CATEGORIES.map((c) => (
-                                            <td key={c}>{money.format(row[c])}</td>
+                                        {INCOME_COLUMNS.map(({ letter }) => (
+                                            <td key={letter}>
+                                                {isNotApplicable(row.familySize, letter) ? (
+                                                    <NotApplicable />
+                                                ) : (
+                                                    money.format(row[letter])
+                                                )}
+                                            </td>
                                         ))}
                                     </tr>
                                 ))}
@@ -65,23 +113,30 @@ export default function RatesPanel() {
                         </table>
                     </div>
 
-                    <h3 className={styles.tableTitle}>Asset limits</h3>
+                    <h3 id="asset-limits-heading" className={styles.tableTitle}>
+                        Asset limits
+                    </h3>
                     <div className={styles.tableWrap}>
-                        <table className={styles.table}>
+                        <table
+                            aria-labelledby="asset-limits-heading"
+                            className={styles.table}
+                        >
                             <thead>
                                 <tr>
-                                    <th scope="col">A</th>
-                                    <th scope="col">B</th>
-                                    <th scope="col">C</th>
-                                    <th scope="col">D</th>
+                                    {ASSET_COLUMNS.map((letter) => (
+                                        <th key={letter} scope="col">
+                                            {letter.toUpperCase()}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>{money.format(rates.assetLimits.a)}</td>
-                                    <td>{money.format(rates.assetLimits.b)}</td>
-                                    <td>{money.format(rates.assetLimits.c)}</td>
-                                    <td>{money.format(rates.assetLimits.d)}</td>
+                                    {ASSET_COLUMNS.map((letter) => (
+                                        <td key={letter}>
+                                            {money.format(rates.assetLimits[letter])}
+                                        </td>
+                                    ))}
                                 </tr>
                             </tbody>
                         </table>

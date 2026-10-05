@@ -17,15 +17,14 @@ import { API_URL } from "@/constants";
 /** Household composition after collapsing the six relationship options. */
 export type HouseholdType = "Single" | "Couple";
 
-/** Income client type (A-E). A separate axis from the asset category. */
-export type ClientType = "A" | "B" | "C" | "D" | "E";
+/** Income client type (A-I). A separate axis from the asset category. */
+export type ClientType = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
 
 /** Asset limit category (A-D). A separate axis from the income type. */
 export type AssetCategory = "A" | "B" | "C" | "D";
 
 /**
- * The calculator's flat input. Mirrors the parked C# EligibilityRequest minus
- * the server-only validation attributes. Spouse fields are 0/false for a Single
+ * The calculator's flat input. Spouse fields are 0/false for a Single
  * household; the three asset fields already combine applicant + spouse values.
  */
 export interface EligibilityRequest {
@@ -33,6 +32,10 @@ export interface EligibilityRequest {
   dependants: number;
   applicantPwd: boolean;
   spousePwd: boolean;
+  /** The applicant is 65 or older. */
+  applicantSenior: boolean;
+  /** The spouse is 65 or older. */
+  spouseSenior: boolean;
   monthlyIncome: number;
   spouseMonthlyIncome: number;
   primaryVehicleValue: number;
@@ -40,7 +43,10 @@ export interface EligibilityRequest {
   otherAssetValue: number;
 }
 
-/** One family-size row of monthly income limits by client type. */
+/**
+ * One family-size row of monthly income limits by client type A-I. Couple
+ * columns hold 0 at family size 1; see @/lib/rateColumns for each letter.
+ */
 export interface EligibilityRateRow {
   familySize: number;
   a: number;
@@ -48,7 +54,14 @@ export interface EligibilityRateRow {
   c: number;
   d: number;
   e: number;
+  f: number;
+  g: number;
+  h: number;
+  i: number;
 }
+
+/** An income-limit column letter. */
+export type IncomeColumn = Exclude<keyof EligibilityRateRow, "familySize">;
 
 /** The asset ceilings by category A-D. */
 export interface EligibilityAssetLimits {
@@ -57,6 +70,9 @@ export interface EligibilityAssetLimits {
   c: number;
   d: number;
 }
+
+/** An asset-limit column letter. */
+export type AssetColumn = keyof EligibilityAssetLimits;
 
 /**
  * The rate table the browser computes against. Shape mirrors the JSON served by
@@ -155,6 +171,8 @@ export function mapAnswersToEstimate(
     dependants: toCount(answers.dependentChildren),
     applicantPwd: toBool(answers.pwd),
     spousePwd: isCouple ? toBool(answers.partnerPwd) : false,
+    applicantSenior: toBool(answers.age65),
+    spouseSenior: isCouple ? toBool(answers.partnerAge65) : false,
     monthlyIncome: toMoney(answers.monthlyIncome),
     spouseMonthlyIncome: isCouple ? toMoney(answers.partnerMonthlyIncome) : 0,
     primaryVehicleValue:
@@ -174,26 +192,23 @@ function isYesNoAnswered(value: unknown): boolean {
   return value === true || value === false || value === "true" || value === "false";
 }
 
+/** The spouse's yes/no questions, which a couple must answer before an estimate. */
+export const REQUIRED_COUPLE_QUESTIONS = ["partnerPwd", "partnerAge65"] as const;
+
 /**
- * Spouse fields carry NO server-side `validate.required` on purpose: partnerPwd
- * uses an advanced (json-logic) conditional, and MyssApi's FormSpecValidator only
- * exempts SIMPLE-conditional fields from the required check, so a required
- * partnerPwd would reject a single applicant. But partnerPwd is a yes/no radio,
- * where an OMITTED answer is NOT the same as "No" — `mapAnswersToEstimate` would
- * silently coerce it to `false` and understate a couple's estimate.
- *
- * This is the client-side gate that closes that gap without touching the spec:
- * for a couple, the estimator must not compute until the spouse-disability
- * question has actually been answered. Returns the keys still missing (empty is
- * "ok to compute"). Singles never need spouse answers, so they return [].
+ * The spouse questions carry NO server-side `validate.required`: they use an
+ * advanced (json-logic) conditional, and MyssApi's FormSpecValidator only exempts
+ * SIMPLE-conditional fields from the required check, so a required spouse question
+ * would reject a single applicant. An OMITTED yes/no answer is not "No" —
+ * `mapAnswersToEstimate` would coerce it to `false` and understate a couple's
+ * estimate — so a couple must answer every question in REQUIRED_COUPLE_QUESTIONS
+ * before the estimator computes. Returns the keys still missing; singles return [].
  */
 export function missingRequiredCoupleAnswers(
   answers: Record<string, unknown>,
 ): string[] {
   if (householdTypeFrom(answers.relationshipStatus) !== "Couple") return [];
-  const missing: string[] = [];
-  if (!isYesNoAnswered(answers.partnerPwd)) missing.push("partnerPwd");
-  return missing;
+  return REQUIRED_COUPLE_QUESTIONS.filter((key) => !isYesNoAnswered(answers[key]));
 }
 
 /**

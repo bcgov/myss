@@ -140,9 +140,9 @@ describe("FormEditorPage", () => {
       formSpecId: "eligibility-estimator",
     });
     mockGetRates.mockResolvedValue({
-      effectiveDate: "2023-08-01",
+      effectiveDate: "2026-10-02",
       incomeRows: [
-        { familySize: 1, a: 1060, b: 1260, c: 1360, d: 1460, e: 1560 },
+        { familySize: 1, a: 0, b: 1060, c: 0, d: 0, e: 1360, f: 0, g: 1535.5, h: 0, i: 0 },
       ],
       assetLimits: { a: 5000, b: 10000, c: 100000, d: 200000 },
     });

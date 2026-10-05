@@ -1,22 +1,22 @@
 import type {
   AssetCategory,
+  AssetColumn,
   ClientType,
   EligibilityRates,
   EligibilityRequest,
   EligibilityResult,
   HouseholdType,
+  IncomeColumn,
 } from "@/api/eligibility";
 
-// The MYSS-25 eligibility calculation, ported verbatim from the parked C#
-// EligibilityCalculator (features/myss-169-ee-form). Pure and dependency-free:
-// rates are passed in, nothing is read or written. The estimate now runs in the
-// browser (Option B), so this is the ported heart of the estimator and its
-// numbers MUST match the parked `dotnet test` vectors exactly.
+// The eligibility calculation. Pure and dependency-free: rates are passed in,
+// nothing is read or written. The estimate runs in the browser; MyssApi only
+// serves the form spec and the rate table.
 //
 // Money is decimal-safe: all arithmetic is done in INTEGER CENTS (never JS
-// floats), and formatted at the edge by the caller. The income scheme (A-E) and
-// the asset scheme (A-D) are two DIFFERENT schemes — kept as two functions
-// (Handbook §8 "A/B/C/D collision" footgun); never derive one from the other.
+// floats), and formatted at the edge by the caller. The income scheme (A-I) and
+// the asset scheme (A-D) are two DIFFERENT schemes — kept as two functions;
+// never derive one from the other.
 
 /** Total assets exceed the applicable asset ceiling (BR-D9-07). */
 export const INELIGIBLE_ASSETS = "EST.INELIGIBLE.ASSETS";
@@ -46,25 +46,43 @@ export function familySize(request: EligibilityRequest): number {
   return adults + request.dependants;
 }
 
+/** How one adult counts towards the client type. */
+type AdultStatus = "pwd" | "senior" | "neither";
+
+/** PWD takes priority over 65+, at any age. */
+function adultStatus(pwd: boolean, senior: boolean): AdultStatus {
+  if (pwd) return "pwd";
+  return senior ? "senior" : "neither";
+}
+
+const SINGLE_TYPES: Record<AdultStatus, ClientType> = {
+  neither: "B",
+  senior: "E",
+  pwd: "G",
+};
+
+// Symmetric: the applicant and the spouse can swap places.
+const COUPLE_TYPES: Record<AdultStatus, Record<AdultStatus, ClientType>> = {
+  neither: { neither: "A", senior: "D", pwd: "F" },
+  senior: { neither: "D", senior: "C", pwd: "I" },
+  pwd: { neither: "F", senior: "I", pwd: "H" },
+};
+
 /**
- * BR-D9-04 (MYSS-25): classify the family unit as client type A-E. Decided
- * purely by single/couple and PWD status — DEPENDANTS NEVER AFFECT THE TYPE.
- * A = couple/neither, B = single/not-PWD, C = couple/either, D = single/PWD,
- * E = couple/both.
+ * Classify the family unit as client type A-I from single/couple and
+ * each adult's status (PWD, else 65+, else neither). DEPENDANTS NEVER AFFECT
+ * THE TYPE.
  */
 export function classifyClientType(request: EligibilityRequest): ClientType {
-  const isCouple = request.relationshipStatus === "Couple";
+  const applicant = adultStatus(request.applicantPwd, request.applicantSenior);
+  if (request.relationshipStatus !== "Couple") return SINGLE_TYPES[applicant];
 
-  if (isCouple) {
-    if (request.applicantPwd && request.spousePwd) return "E";
-    return request.applicantPwd || request.spousePwd ? "C" : "A";
-  }
-
-  return request.applicantPwd ? "D" : "B";
+  const spouse = adultStatus(request.spousePwd, request.spouseSenior);
+  return COUPLE_TYPES[applicant][spouse];
 }
 
 /**
- * BR-D9-06: pick the asset limit category A-D. A SEPARATE scheme from the income
+ * Pick the asset limit category A-D. A SEPARATE scheme from the income
  * type: both PWD -> D, either PWD -> C, else couple-or-has-dependants -> B, else A.
  */
 export function assetLimitCategory(request: EligibilityRequest): AssetCategory {
@@ -99,7 +117,7 @@ export function incomeLimitFor(
     throw new Error(`No income-limit row for family size ${lookupSize}`);
   }
 
-  const column = clientType.toLowerCase() as "a" | "b" | "c" | "d" | "e";
+  const column = clientType.toLowerCase() as IncomeColumn;
   const limit = row[column];
   if (typeof limit !== "number") {
     throw new Error(
@@ -118,7 +136,7 @@ function assetLimitCentsFor(
   category: AssetCategory,
   rates: EligibilityRates,
 ): number {
-  const column = category.toLowerCase() as "a" | "b" | "c" | "d";
+  const column = category.toLowerCase() as AssetColumn;
   const limit = rates.assetLimits[column];
   if (typeof limit !== "number") {
     throw new Error(`No asset limit for category ${category}`);
@@ -128,9 +146,9 @@ function assetLimitCentsFor(
 
 /**
  * The estimate as a pure function of (request, rates). Asset gate is checked
- * FIRST (BR-D9-07): assets over the ceiling disqualify outright (equal to the
+ * FIRST: assets over the ceiling disqualify outright (equal to the
  * ceiling still passes). Otherwise the benefit is what's left of the income
- * limit (BR-D9-08): `<= 0` is ineligible, else eligible.
+ * limit: `<= 0` is ineligible, else eligible.
  */
 export function calculateEstimate(
   request: EligibilityRequest,
@@ -160,7 +178,7 @@ export function calculateEstimate(
     totalAssets,
   };
 
-  // BR-D9-07: the asset gate is checked first — assets disqualify outright.
+  // the asset gate is checked first — assets disqualify outright.
   const assetCeilingCents = assetLimitCentsFor(assetLimitCategory(request), rates);
   if (totalAssetsCents > assetCeilingCents) {
     return {
@@ -171,7 +189,7 @@ export function calculateEstimate(
     };
   }
 
-  // BR-D9-05 / BR-D9-08: benefit is what's left of the income limit.
+  // the benefit is what's left of the income limit.
   const { limitCents } = incomeLimitFor(clientType, size, rates);
   const benefitCents = limitCents - totalIncomeCents;
   if (benefitCents <= 0) {

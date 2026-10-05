@@ -12,6 +12,7 @@ import {
   calculateEstimate,
   mapAnswersToEstimate,
   missingRequiredCoupleAnswers,
+  REQUIRED_COUPLE_QUESTIONS,
   screenPreCheck,
   useEstimatorRates,
   useEstimatorSpec,
@@ -23,8 +24,8 @@ import styles from "./EligibilityEstimatorPage.module.css";
 // served by MyssApi, hard-screens on the residency / status pre-check, and computes
 // the estimate CLIENT-SIDE against the fetched rate table (no server calculation,
 // nothing persisted). The result is an estimate card + prose only, with no
-// itemised breakdown table. The spouse section (incl. partnerPwd) is revealed by
-// the seed's own Form.io conditional on married / marriage-like.
+// itemised breakdown table. The spouse section (incl. the spouse questions) is
+// revealed by the seed's own Form.io conditional on married / marriage-like.
 
 // --- Programme content (URLs confirmed; some copy still placeholder) ---
 // TODO(content): remaining real copy pending from the programme / content designer.
@@ -214,14 +215,12 @@ export default function EligibilityEstimatorPage() {
       | undefined;
   }) {
     formInstanceRef.current = instance;
-    // `partnerPwd` cannot be server-`required` — an advanced-conditional required
-    // field fails the FormSpecValidator and would reject singles.
-    // Mark it required at RUNTIME, with a matching message, so Form.io renders the
-    // SAME inline error as the applicant PWD field. It is shown only for couples,
-    // so singles — where it stays hidden — are never validated. The couple-check
-    // in handleSubmit remains as a fallback.
-    const partner = instance.getComponent?.("partnerPwd");
-    if (partner?.component) {
+    // The spouse questions cannot be required in the spec (see
+    // missingRequiredCoupleAnswers), so require them here for the same inline error
+    // as the applicant's questions. Singles never see them, so are never validated.
+    for (const key of REQUIRED_COUPLE_QUESTIONS) {
+      const partner = instance.getComponent?.(key);
+      if (!partner?.component) continue;
       partner.component.validate = {
         ...(partner.component.validate ?? {}),
         required: true,
@@ -303,10 +302,10 @@ export default function EligibilityEstimatorPage() {
       return;
     }
 
-    // partnerPwd is a yes/no radio that carries no server-side `required` (it
-    // would break single applicants — see missingRequiredCoupleAnswers). An
-    // unanswered spouse-disability question must NOT be silently scored as "No",
-    // so refuse to compute until a couple has answered it.
+    // The spouse questions carry no server-side `required` (it would break single
+    // applicants — see missingRequiredCoupleAnswers). An unanswered spouse
+    // question must NOT be silently scored as "No", so refuse to compute until a
+    // couple has answered them all.
     if (missingRequiredCoupleAnswers(answers).length > 0) {
       setOutcome({ kind: "incomplete" });
       return;
@@ -424,9 +423,8 @@ export default function EligibilityEstimatorPage() {
 
       {outcome?.kind === "incomplete" && (
         <p role="alert" className={styles.error}>
-          Please answer whether your spouse plans to apply for the Persons with
-          Disabilities (PWD) designation. We need this to estimate your
-          eligibility.
+          Please answer the questions about your spouse. We need your answers to
+          estimate your eligibility.
         </p>
       )}
 

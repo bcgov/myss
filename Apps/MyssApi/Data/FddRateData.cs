@@ -43,16 +43,11 @@ namespace Myss.Api.Data
             Limit(4, "D", 200000.00m, "Asset category D — household mapping pending"),
         ];
 
-        private static readonly EligibilityRates Lookup = new(Rates, Limits);
-
         /// <summary>Gets the seeded income limit rows.</summary>
         public static IReadOnlyList<EligibilityRateRow> RateRows => Rates;
 
         /// <summary>Gets the seeded asset limits.</summary>
         public static IReadOnlyList<EligibilityAssetLimit> AssetLimits => Limits;
-
-        /// <summary>Gets the seeded values as a lookup ready for the calculator.</summary>
-        public static EligibilityRates Current => Lookup;
 
         private static EligibilityRateRow Row(
             int id,

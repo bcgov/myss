@@ -6,7 +6,7 @@ import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
 
 // End-to-end of the estimator page against a stubbed anonymous API, driving the
-// v4 spec: residency is a hard gate (the status question reveals only for "Yes",
+// v5 spec: residency is a hard gate (the status question reveals only for "Yes",
 // so "No" is terminal), the remaining questions reveal only when status is "Yes",
 // the inline "not eligible" warning fires on either "No", plus validation display
 // and the client-side estimate. The spec + rates fetches are mocked; the
@@ -15,12 +15,12 @@ import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
 // (Runs in the browser project — `npm run test:browser`. The cloud sandbox
 // can't launch the browser runner, so this is verified on the dev machine.)
 //
-// Radios are driven by their VISIBLE LABEL via `option()` below, not by DOM name
-// (Form.io names groups data[<key>][<random-per-render suffix>]) and not by
-// `role=radio` either — see the note on `option()`. The Yes/No groups render (and
-// reveal) in spec order — residesInBc(0), then hasEligibleStatus(1) after Q1, then
-// pwd(2) after Q2=Yes, then partnerPwd(3) after Married — so a duplicate
-// "Yes"/"No" is picked by index.
+// Radios are driven by their VISIBLE LABEL, not by DOM name (Form.io names groups
+// data[<key>][<random-per-render suffix>]) and not by `role=radio` either — see
+// the note on `option()`. Q1 and Q2 are always the first two Yes/No groups, so
+// `option()` picks them by index (0 and 1); every later question is answered
+// inside its own radio group with `answer()`, so a question revealed above it
+// (the age questions, the spouse questions) cannot shift the target.
 
 const yesNo = [
   { label: "Yes", value: "true" },
@@ -29,15 +29,15 @@ const yesNo = [
 const partneredConditional = {
   json: { in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]] },
 };
-// v4 gates (see form-spec-seed-data.ts). The status question shows only for
+// v5 gates (see form-spec-seed-data.ts). The status question shows only for
 // residesInBc = "true", so answering "No" is terminal.
 const q1YesConditional = { show: true, when: "residesInBc", eq: "true" };
 const hasStatusConditional = { show: true, when: "hasEligibleStatus", eq: "true" };
 
-/** A faithful slice of the v4 estimator spec — real keys + the v4 conditionals. */
+/** A faithful slice of the v5 estimator spec — real keys + the v5 conditionals. */
 const estimatorSpec = {
   formSpecId: "eligibility-estimator",
-  version: 4,
+  version: 5,
   title: "Eligibility Estimator",
   spec: {
     display: "form",
@@ -74,6 +74,16 @@ const estimatorSpec = {
       },
       {
         type: "bcgovRadio",
+        key: "age65",
+        label: "Are you 65 years of age or older?",
+        input: true,
+        values: yesNo,
+        validate: { required: true },
+        errors: { required: "Please select an option." },
+        conditional: hasStatusConditional,
+      },
+      {
+        type: "bcgovRadio",
         key: "relationshipStatus",
         label: "What is your relationship status?",
         input: true,
@@ -87,6 +97,14 @@ const estimatorSpec = {
         ],
         validate: { required: true },
         conditional: hasStatusConditional,
+      },
+      {
+        type: "bcgovRadio",
+        key: "partnerAge65",
+        label: "Is your spouse 65 years of age or older?",
+        input: true,
+        values: yesNo,
+        conditional: partneredConditional,
       },
       {
         type: "number",
@@ -188,22 +206,34 @@ const estimatorSpecWithRequiredName = {
   },
 };
 
-// The spec the stubbed API serves; reset before each test, overridden by the one
-// test that needs the required-name variant.
+// A spec whose spouse age question was deleted in the form editor: couples can
+// then never answer it, which is what the page's fallback message is for.
+const estimatorSpecWithoutSpouseAge = {
+  ...estimatorSpec,
+  spec: {
+    ...estimatorSpec.spec,
+    components: estimatorSpec.spec.components.filter(
+      (component) => component.key !== "partnerAge65",
+    ),
+  },
+};
+
+// The spec the stubbed API serves; reset before each test, overridden by the
+// tests that need a variant.
 let activeSpec: typeof estimatorSpec | typeof estimatorSpecWithRequiredName =
   estimatorSpec;
 
-/** August-2023 rate table (matches the seed). */
+/** The nine-type rate table (matches the seed). */
 const rates = {
-  effectiveDate: "2023-08-01",
+  effectiveDate: "2026-10-02",
   incomeRows: [
-    { familySize: 1, a: 0, b: 1060, c: 0, d: 1535.5, e: 0 },
-    { familySize: 2, a: 1650, b: 1405, c: 2290.5, d: 1880.5, e: 2766 },
-    { familySize: 3, a: 1845, b: 1500, c: 2485.5, d: 1975.5, e: 2961 },
-    { familySize: 4, a: 1895, b: 1550, c: 2535.5, d: 2025.5, e: 3011 },
-    { familySize: 5, a: 1945, b: 1600, c: 2585.5, d: 2075.5, e: 3061 },
-    { familySize: 6, a: 1995, b: 1650, c: 2635.5, d: 2125.5, e: 3111 },
-    { familySize: 7, a: 2045, b: 1700, c: 2685.5, d: 2175.5, e: 3161 },
+    { familySize: 1, a: 0, b: 1060, c: 0, d: 0, e: 1360, f: 0, g: 1535.5, h: 0, i: 0 },
+    { familySize: 2, a: 1650, b: 1405, c: 2200, d: 1950, e: 1705, f: 2290.5, g: 1880.5, h: 2766, i: 2590.5 },
+    { familySize: 3, a: 1845, b: 1500, c: 2395, d: 2145, e: 1800, f: 2485.5, g: 1975.5, h: 2961, i: 2785.5 },
+    { familySize: 4, a: 1895, b: 1550, c: 2445, d: 2195, e: 1850, f: 2535.5, g: 2025.5, h: 3011, i: 2835.5 },
+    { familySize: 5, a: 1945, b: 1600, c: 2495, d: 2245, e: 1900, f: 2585.5, g: 2075.5, h: 3061, i: 2885.5 },
+    { familySize: 6, a: 1995, b: 1650, c: 2545, d: 2295, e: 1950, f: 2635.5, g: 2125.5, h: 3111, i: 2935.5 },
+    { familySize: 7, a: 2045, b: 1700, c: 2595, d: 2345, e: 2000, f: 2685.5, g: 2175.5, h: 3161, i: 2985.5 },
   ],
   assetLimits: { a: 5000, b: 10000, c: 100000, d: 200000 },
 };
@@ -260,7 +290,13 @@ function option(screen: Screen, label: string | RegExp, index = 0) {
   return screen.getByText(matcher).nth(index);
 }
 
-// The v3 spec references the custom bcgovAccordion type; register it once so
+/** Answers a question by clicking an option inside that question's radio group. */
+async function answer(screen: Screen, question: string, choice: string) {
+  const group = screen.getByRole("radiogroup", { name: question, exact: true });
+  await group.getByText(choice, { exact: true }).click();
+}
+
+// The spec references the custom bcgovAccordion type; register it once so
 // Form.io renders it instead of a blank slot (mirrors main.tsx at app start).
 registerBcgovComponents();
 
@@ -272,6 +308,12 @@ afterEach(() => vi.restoreAllMocks());
 
 const Q2_LABEL = "Do you have a status that allows you to live in Canada?";
 const RELATIONSHIP_LABEL = "What is your relationship status?";
+const AGE_LABEL = "Are you 65 years of age or older?";
+const SPOUSE_AGE_LABEL = "Is your spouse 65 years of age or older?";
+const PWD_LABEL =
+  "Do you plan to apply for the Persons with Disabilities (PWD) designation?";
+const SPOUSE_PWD_LABEL =
+  "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?";
 
 // --- Progressive disclosure ------------------------------------------------
 
@@ -426,9 +468,13 @@ test("a newly revealed question carries NO error once the form is dirty", async 
 
   // Answer everything outstanding, so no error is left on screen.
   await option(screen, "Single and Never Married").click();
-  await option(screen, /^No$/, 2).click(); // pwd = No
+  await answer(screen, AGE_LABEL, "No");
+  await answer(screen, PWD_LABEL, "No");
   await expect
     .element(screen.getByText(/is required/i).first())
+    .not.toBeInTheDocument();
+  await expect
+    .element(screen.getByText("Please select an option."))
     .not.toBeInTheDocument();
 
   // Hide and re-reveal Q2. It comes back empty and required, on a form Form.io
@@ -477,7 +523,8 @@ test("re-passing the Q1 gate re-reveals Q2 CLEAN after a SUCCESSFUL estimate", a
   await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
   await option(screen, "Single and Never Married").click();
-  await option(screen, /^No$/, 2).click(); // pwd = No
+  await answer(screen, AGE_LABEL, "No");
+  await answer(screen, PWD_LABEL, "No");
   await screen.getByRole("button", { name: "Get Estimate" }).click();
   await expect
     .element(screen.getByText("You may be eligible for assistance"))
@@ -519,7 +566,8 @@ test("Q1 = No, then Yes, then Q2 = Yes reaches a full estimate", async () => {
   await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
   await option(screen, "Single and Never Married").click();
-  await option(screen, /^No$/, 2).click(); // pwd = No
+  await answer(screen, AGE_LABEL, "No");
+  await answer(screen, PWD_LABEL, "No");
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 
@@ -538,6 +586,7 @@ test("reveals the spouse section on Married", async () => {
   await option(screen, /^Married$/).click();
 
   await expect.element(screen.getByText(/Spouse's Monthly Income/)).toBeVisible();
+  await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).toBeVisible();
   await expect
     .element(
       screen.getByText(
@@ -556,7 +605,8 @@ test("computes an eligible estimate in the browser (single, no PWD, no income �
   await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
   await option(screen, "Single and Never Married").click();
-  await option(screen, /^No$/, 2).click(); // pwd = No
+  await answer(screen, AGE_LABEL, "No");
+  await answer(screen, PWD_LABEL, "No");
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 
@@ -575,7 +625,8 @@ test("shows the ineligible ($0) result with the hardship link when income exceed
   await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
   await option(screen, "Single and Never Married").click();
-  await option(screen, /^No$/, 2).click(); // pwd = No
+  await answer(screen, AGE_LABEL, "No");
+  await answer(screen, PWD_LABEL, "No");
   // Single type-B income limit is 1060 → 2000 is over the limit → ineligible.
   await screen.getByLabelText("Your Monthly Income").fill("2000");
 
@@ -600,7 +651,9 @@ test("a couple who leaves the spouse-PWD question blank is blocked, not silently
   await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
   await option(screen, /^Married$/).click();
-  await option(screen, /^No$/, 2).click(); // pwd (applicant) = No
+  await answer(screen, AGE_LABEL, "No");
+  await answer(screen, SPOUSE_AGE_LABEL, "No");
+  await answer(screen, PWD_LABEL, "No");
 
   // Spouse section is revealed. partnerPwd carries no SERVER-side required (that
   // would fail the FormSpecValidator + reject singles), so it is required at
@@ -618,9 +671,8 @@ test("a couple who leaves the spouse-PWD question blank is blocked, not silently
 
   // Blocked INLINE on the spouse field (runtime-required), not via the old
   // page-level alert — and no estimate is produced.
-  await expect
-    .element(screen.getByText("Please select an option."))
-    .toBeVisible();
+  const spousePwd = screen.getByRole("radiogroup", { name: SPOUSE_PWD_LABEL, exact: true });
+  await expect.element(spousePwd.getByText("Please select an option.")).toBeVisible();
   expect(document.body.textContent).not.toContain("/ month");
 });
 
@@ -630,7 +682,9 @@ test("the same couple gets an estimate once the spouse-PWD question is answered"
   await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
   await option(screen, /^Married$/).click();
-  await option(screen, /^No$/, 2).click(); // pwd (applicant) = No
+  await answer(screen, AGE_LABEL, "No");
+  await answer(screen, SPOUSE_AGE_LABEL, "No");
+  await answer(screen, PWD_LABEL, "No");
 
   await expect
     .element(
@@ -639,7 +693,7 @@ test("the same couple gets an estimate once the spouse-PWD question is answered"
       ),
     )
     .toBeVisible();
-  await option(screen, /^No$/, 3).click(); // partnerPwd = No
+  await answer(screen, SPOUSE_PWD_LABEL, "No");
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 
@@ -649,15 +703,129 @@ test("the same couple gets an estimate once the spouse-PWD question is answered"
   await expect.element(screen.getByText(/\/ month/)).toBeVisible();
 });
 
+// --- The age questions ------------------------------------------------------
+
+// The question order itself is pinned against the seed in MyssContent's
+// eligibility-estimator-seed.test.ts; these tests cover when the questions show.
+test("the age question appears only after Q1 and Q2 are Yes", async () => {
+  const screen = await renderPage();
+  await expect.element(screen.getByText(AGE_LABEL)).not.toBeInTheDocument();
+
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await expect.element(screen.getByText(Q2_LABEL)).toBeVisible();
+  await expect.element(screen.getByText(AGE_LABEL)).not.toBeInTheDocument();
+
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
+  await expect.element(screen.getByText(AGE_LABEL)).toBeVisible();
+});
+
+test("the spouse age question appears only for Married and Marriage-Like", async () => {
+  const screen = await renderPage();
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
+  await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
+  await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).not.toBeInTheDocument();
+
+  // Each step changes the visibility, so each assertion waits for that change.
+  await option(screen, "Married").click();
+  await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).toBeVisible();
+
+  await option(screen, "Single and Never Married").click();
+  await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).not.toBeInTheDocument();
+
+  await option(screen, "Marriage-Like Relationship").click();
+  await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).toBeVisible();
+
+  await option(screen, "Divorced").click();
+  await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).not.toBeInTheDocument();
+});
+
+interface AgeCase {
+  household: string;
+  age: string;
+  pwd: string;
+  /** Present for a couple. */
+  spouse?: { relationship: string; age: string; pwd: string };
+  amount: RegExp;
+}
+
+// Zero income, no children: the amount is the client type's limit at family size 1 or 2.
+test.each<AgeCase>([
+  { household: "single 65+ (type E)", age: "Yes", pwd: "No", amount: /\$1,360\.00/ },
+  { household: "single PWD and 65+ (type G)", age: "Yes", pwd: "Yes", amount: /\$1,535\.50/ },
+  { household: "couple, both 65+ (type C)", age: "Yes", pwd: "No", spouse: { relationship: "Married", age: "Yes", pwd: "No" }, amount: /\$2,200\.00/ },
+  { household: "couple, one 65+ (type D)", age: "No", pwd: "No", spouse: { relationship: "Married", age: "Yes", pwd: "No" }, amount: /\$1,950\.00/ },
+  { household: "marriage-like couple, one 65+ (type D)", age: "Yes", pwd: "No", spouse: { relationship: "Marriage-Like Relationship", age: "No", pwd: "No" }, amount: /\$1,950\.00/ },
+  { household: "couple, applicant PWD and spouse 65+ (type I)", age: "No", pwd: "Yes", spouse: { relationship: "Married", age: "Yes", pwd: "No" }, amount: /\$2,590\.50/ },
+  { household: "couple, applicant PWD and 65+, spouse neither (type F)", age: "Yes", pwd: "Yes", spouse: { relationship: "Married", age: "No", pwd: "No" }, amount: /\$2,290\.50/ },
+])("estimates $household", async ({ age, pwd, spouse, amount }) => {
+  const screen = await renderPage();
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
+  await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
+
+  await answer(screen, AGE_LABEL, age);
+  await option(screen, spouse?.relationship ?? "Single and Never Married").click();
+  if (spouse) {
+    await answer(screen, SPOUSE_AGE_LABEL, spouse.age);
+    await answer(screen, SPOUSE_PWD_LABEL, spouse.pwd);
+  }
+  await answer(screen, PWD_LABEL, pwd);
+
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+
+  await expect.element(screen.getByText(amount)).toBeVisible();
+});
+
+test("a couple who leaves the spouse age question blank is blocked, not silently scored as 'No'", async () => {
+  const screen = await renderPage();
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
+  await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
+  await answer(screen, AGE_LABEL, "No");
+  await option(screen, /^Married$/).click();
+  await answer(screen, PWD_LABEL, "No");
+  await answer(screen, SPOUSE_PWD_LABEL, "No");
+
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+
+  // Required at runtime like the spouse PWD question: an inline error on the
+  // spouse age question, and no estimate.
+  const spouseAge = screen.getByRole("radiogroup", { name: SPOUSE_AGE_LABEL, exact: true });
+  await expect.element(spouseAge.getByText("Please select an option.")).toBeVisible();
+  expect(document.body.textContent).not.toContain("/ month");
+});
+
+test("a couple is asked to answer the spouse questions when one is missing from the form", async () => {
+  activeSpec = estimatorSpecWithoutSpouseAge;
+  const screen = await renderPage();
+  await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
+  await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
+  await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
+  await answer(screen, AGE_LABEL, "No");
+  await option(screen, /^Married$/).click();
+  await answer(screen, PWD_LABEL, "No");
+  await answer(screen, SPOUSE_PWD_LABEL, "No");
+
+  await screen.getByRole("button", { name: "Get Estimate" }).click();
+
+  await expect
+    .element(screen.getByRole("alert"))
+    .toHaveTextContent("Please answer the questions about your spouse.");
+  expect(document.body.textContent).not.toContain("/ month");
+});
+
 // --- Regression: the result only changes on a "Get Estimate" click ---------
 
-/** Married + both PWD, no income → family size 2, column e = $2,766.00. */
+/** Married + both PWD, no income → family size 2, column h = $2,766.00. */
 async function reachCoupleEstimate(screen: Awaited<ReturnType<typeof renderPage>>) {
   await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
   await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
   await option(screen, /^Married$/).click();
-  await option(screen, /^Yes$/, 2).click(); // pwd (applicant) = Yes
+  await answer(screen, AGE_LABEL, "No");
+  await answer(screen, SPOUSE_AGE_LABEL, "No");
+  await answer(screen, PWD_LABEL, "Yes");
   await expect
     .element(
       screen.getByText(
@@ -665,7 +833,7 @@ async function reachCoupleEstimate(screen: Awaited<ReturnType<typeof renderPage>
       ),
     )
     .toBeVisible();
-  await option(screen, /^Yes$/, 3).click(); // partnerPwd = Yes
+  await answer(screen, SPOUSE_PWD_LABEL, "Yes");
   await screen.getByRole("button", { name: "Get Estimate" }).click();
   await expect.element(screen.getByText(/\$2,766\.00/)).toBeVisible();
 }
@@ -693,7 +861,8 @@ test("changing Q2 to No after an estimate hides the stale result under the warni
   await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
   await option(screen, "Single and Never Married").click();
-  await option(screen, /^No$/, 2).click(); // pwd = No
+  await answer(screen, AGE_LABEL, "No");
+  await answer(screen, PWD_LABEL, "No");
   await screen.getByRole("button", { name: "Get Estimate" }).click();
   await expect.element(screen.getByText(/\$1,060\.00/)).toBeVisible();
 

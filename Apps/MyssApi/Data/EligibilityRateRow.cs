@@ -46,23 +46,5 @@ namespace Myss.Api.Data
 
         /// <summary>Gets or sets provenance notes (e.g. the FDD rule reference).</summary>
         public string? Notes { get; set; }
-
-        /// <summary>Returns the limit for the given client type code.</summary>
-        /// <param name="clientType">Client type code "A" through "I".</param>
-        /// <returns>The monthly income limit.</returns>
-        public decimal AmountFor(string clientType) => clientType switch
-        {
-            "A" => this.TypeA,
-            "B" => this.TypeB,
-            "C" => this.TypeC,
-            "D" => this.TypeD,
-            "E" => this.TypeE,
-            "F" => this.TypeF,
-            "G" => this.TypeG,
-            "H" => this.TypeH,
-            "I" => this.TypeI,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(clientType), clientType, "Client type must be a letter from A to I."),
-        };
     }
 }

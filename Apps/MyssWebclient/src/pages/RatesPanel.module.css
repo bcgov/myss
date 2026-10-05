@@ -26,9 +26,11 @@
     margin: 0 0 var(--layout-margin-small, 8px);
 }
 
-/* Tables can be wider than the panel on a narrow screen. */
+/* Tables can be wider than the panel on a narrow screen. Positioned so the
+   visually hidden text in the cells scrolls with the table, not the page. */
 .tableWrap {
     overflow-x: auto;
+    position: relative;
 }
 
 .table {
@@ -50,13 +52,29 @@
     text-align: right;
 }
 
-.table thead th:first-child,
+.table thead th.rowHeading,
 .table tbody th {
     text-align: left;
 }
 
+.table thead th.groupHeading {
+    text-align: center;
+}
+
 .table tbody tr:nth-child(even) {
     background-color: var(--surface-color-background-light, #f2f2f2);
+}
+
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 .error {
