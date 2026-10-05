@@ -27,14 +27,14 @@ export default function DashboardPage() {
   // refuses to create an application for them too; this is the courtesy.
   useEffect(() => {
     if (isWorker) {
-      navigate(paths.workerApplications, { replace: true });
+      void navigate(paths.workerApplications, { replace: true });
     } else if (!isMeLoading && hasProfile === false) {
-      navigate(paths.register, { replace: true });
+      void navigate(paths.register, { replace: true });
     }
   }, [hasProfile, isMeLoading, isWorker, navigate]);
 
   if (isMeLoading || isWorker || hasProfile === undefined) {
-    return <p role="status">Checking your MySS account…</p>;
+    return <output>Checking your MySS account…</output>;
   }
 
   return (

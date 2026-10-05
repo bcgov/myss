@@ -1,4 +1,5 @@
 import type { FormType } from "@formio/react/lib/components/Form";
+import { forEachComponent, isRecord } from "./specWalk";
 
 // Pure helpers for reading and changing a form spec in the editor. No fetch, no
 // React. The setters return a brand-new spec rather than mutating the input, so
@@ -11,41 +12,6 @@ export interface EditableComponent {
   label: string;
   required: boolean;
   type: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-// Visit every component in the tree. Form.io nests components inside panels,
-// columns and table cells, so a top-level scan would miss most of a real form.
-function forEachComponent(
-  spec: unknown,
-  visit: (component: Record<string, unknown>) => void,
-): void {
-  const walk = (nodes: unknown): void => {
-    if (!Array.isArray(nodes)) return;
-    for (const node of nodes) {
-      if (!isRecord(node)) continue;
-      visit(node);
-      walk(node.components);
-      if (Array.isArray(node.columns)) {
-        for (const column of node.columns) {
-          if (isRecord(column)) walk(column.components);
-        }
-      }
-      if (Array.isArray(node.rows)) {
-        for (const row of node.rows) {
-          if (!Array.isArray(row)) continue;
-          for (const cell of row) {
-            if (isRecord(cell)) walk(cell.components);
-          }
-        }
-      }
-    }
-  };
-
-  if (isRecord(spec)) walk(spec.components);
 }
 
 function isRequired(component: Record<string, unknown>): boolean {
@@ -92,9 +58,13 @@ export function listEditableComponents(spec: FormType): EditableComponent[] {
   const out: EditableComponent[] = [];
   forEachComponent(spec, (component) => {
     if (component.input !== true) return;
-    if (typeof component.type === "string" && NON_EDITABLE_TYPES.has(component.type))
+    if (
+      typeof component.type === "string" &&
+      NON_EDITABLE_TYPES.has(component.type)
+    )
       return;
-    if (typeof component.key !== "string" || component.key.trim() === "") return;
+    if (typeof component.key !== "string" || component.key.trim() === "")
+      return;
     out.push({
       key: component.key,
       label: typeof component.label === "string" ? component.label : "",

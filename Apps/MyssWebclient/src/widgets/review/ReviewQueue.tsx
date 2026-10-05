@@ -16,7 +16,7 @@ function formatDate(value: string | null | undefined): string {
 export default function ReviewQueue() {
   const { data: applications, error, isPending } = useReviewQueue();
 
-  if (isPending) return <p role="status">Loading submitted applications…</p>;
+  if (isPending) return <output>Loading submitted applications…</output>;
   if (error) {
     return (
       <p role="alert">

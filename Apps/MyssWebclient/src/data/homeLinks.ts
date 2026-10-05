@@ -11,12 +11,12 @@ export interface ResourceLink {
 export const commonQuestions: ResourceLink[] = [
     {
         label: "What are common eligibility requirements to consider when applying for Income Assistance or Disability Assistance?",
-        href: "http://www2.gov.bc.ca/assets/download/EC6CBA242B494D0DBDAA1427B9D61CE2",
+        href: "https://www2.gov.bc.ca/assets/download/EC6CBA242B494D0DBDAA1427B9D61CE2",
         external: true,
     },
     {
         label: "Learn More about My Self Serve",
-        href: "http://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/access-services/my-self-serve",
+        href: "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/access-services/my-self-serve",
         external: true,
     },
     {
@@ -26,22 +26,22 @@ export const commonQuestions: ResourceLink[] = [
     },
     {
         label: "What are my Rights and Responsibilities?",
-        href: "http://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/apply-for-assistance/rights-responsibilities",
+        href: "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/apply-for-assistance/rights-responsibilities",
         external: true,
     },
     {
         label: "Where can I find an office near me?",
-        href: "http://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/access-services",
+        href: "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/access-services",
         external: true,
     },
     {
         label: "How can I report fraud?",
-        href: "http://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/compliance-and-debt-management/referral-for-plms-review-or-investigation",
+        href: "https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/compliance-and-debt-management/referral-for-plms-review-or-investigation",
         external: true,
     },
     {
         label: "How do I submit documents for my application?",
-        href: "http://www2.gov.bc.ca/assets/download/67FFD5354CE34D1087D587B12DA806E2",
+        href: "https://www2.gov.bc.ca/assets/download/67FFD5354CE34D1087D587B12DA806E2",
         external: true,
     },
     {
@@ -64,27 +64,27 @@ export const commonQuestions: ResourceLink[] = [
 export const otherResources: ResourceLink[] = [
     {
         label: "Employment Planning",
-        href: "http://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/employment-planning",
+        href: "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/employment-planning",
         external: true,
     },
     {
         label: "General Health and Supplements",
-        href: "http://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/supplements",
+        href: "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/supplements",
         external: true,
     },
     {
         label: "Support for Young Families",
-        href: "http://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/fyp",
+        href: "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/fyp",
         external: true,
     },
     {
         label: "Leaving Assistance",
-        href: "http://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/leaving-assistance",
+        href: "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/leaving-assistance",
         external: true,
     },
     {
         label: "BC Employment and Assistance Manual",
-        href: "http://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual",
+        href: "https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual",
         external: true,
     },
 ];

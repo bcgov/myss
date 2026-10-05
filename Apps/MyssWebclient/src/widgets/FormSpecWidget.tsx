@@ -1,7 +1,7 @@
 import { Form } from "@formio/react";
 import type { Webform } from "@formio/js";
 import {
-  type FormEvent,
+  type InputEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -68,7 +68,7 @@ export default function FormSpecWidget({
   formSpecId,
   renderSubmissionError,
   showSpecHeading = false,
-}: FormSpecWidgetProps) {
+}: Readonly<FormSpecWidgetProps>) {
   const { data: spec, error, isPending } = useFormSpec(formSpecId);
   const submit = useSubmitForm(formSpecId);
   const { mutate: submitForm } = submit;
@@ -81,7 +81,7 @@ export default function FormSpecWidget({
   const handleFormReady = useCallback((instance: Webform) => {
     formInstanceRef.current = instance;
   }, []);
-  const handleInputCapture = useCallback((event: FormEvent<HTMLElement>) => {
+  const handleInputCapture = useCallback((event: InputEvent<HTMLElement>) => {
     const field = formFieldName(event.target);
     const form = formInstanceRef.current;
     const displayedError = displayedErrorRef.current;

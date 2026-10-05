@@ -39,10 +39,10 @@ const READ_ONLY_OPTIONS = { readOnly: true, noAlerts: true };
 export default function ReadOnlySpecForm({
   spec,
   answers,
-}: {
+}: Readonly<{
   spec: FormType;
   answers: { [key: string]: FormioJson };
-}) {
+}>) {
   const readOnlySpec = useMemo(() => withoutButtons(spec), [spec]);
   const submission = useMemo(() => ({ data: answers }), [answers]);
 

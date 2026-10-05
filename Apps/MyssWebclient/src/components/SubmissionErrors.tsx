@@ -34,7 +34,7 @@ function focusField(field: string) {
  * to the heading when it appears, so a screen-reader user is told the
  * submission failed instead of being left at the submit button in silence.
  */
-export default function SubmissionErrors({ error }: { error: Error }) {
+export default function SubmissionErrors({ error }: Readonly<{ error: Error }>) {
     const headingRef = useRef<HTMLHeadingElement>(null);
     const errors = error instanceof SubmissionRejectedError ? error.errors : [];
 
