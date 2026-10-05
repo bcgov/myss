@@ -2,7 +2,7 @@
  * Deep JSON equality that ignores object key order.
  *
  * The seed bootstrap compares a stored form spec / rate table against the seed
- * file to decide whether to re-publish it. Strapi stores these in JSON (jsonb)
+ * file to detect a changed one. Strapi stores these in JSON (jsonb)
  * columns that do NOT preserve object key order, so a plain
  * `JSON.stringify(a) === JSON.stringify(b)` would report a difference on every
  * boot even when nothing changed. Canonicalising keys first makes the check

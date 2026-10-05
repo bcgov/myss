@@ -2,6 +2,7 @@ import type { Core } from "@strapi/strapi";
 
 import { seededForms, type Json } from "./lib/form-spec-seed-data";
 import { seededRates } from "./lib/eligibility-rate-seed-data";
+import { seedRateAction } from "./lib/eligibility-rate-seeding";
 import { jsonEqual } from "./lib/json-equal";
 
 const FORM_SPEC_UID = "api::form-spec.form-spec";
@@ -81,49 +82,46 @@ async function seedForms(strapi: Core.Strapi) {
   }
 }
 
-// Publishes every seeded rate table (an upsert, keyed by effectiveDate). Missing
-// tables are created; an existing one is re-published only when its incomeRows
-// or assetLimits differ from the seed, so a rate edit also rolls out on a plain
-// restart.
+// Publishes every seeded rate table that is missing (keyed by effectiveDate).
+// An existing table is never changed: an admin may have edited it, and a
+// restart must not put the seed's values back over that edit.
 async function seedRates(strapi: Core.Strapi) {
-  for (const { effectiveDate, incomeRows, assetLimits } of seededRates) {
-    const existing = await strapi.documents(ELIGIBILITY_RATE_UID).findFirst({
+  for (const seed of seededRates) {
+    const { effectiveDate } = seed;
+    const draft = await strapi.documents(ELIGIBILITY_RATE_UID).findFirst({
       filters: { effectiveDate },
     });
-
-    const data = {
-      effectiveDate,
-      // The seed keeps precise readonly types for its own tests; Strapi's JSON
-      // columns take the repo's permissive `Json` (the same widening seedForms
-      // does with `spec`).
-      incomeRows: incomeRows as unknown as Json,
-      assetLimits: assetLimits as unknown as Json,
-    };
-
-    if (existing) {
-      if (
-        jsonEqual(existing.incomeRows, data.incomeRows) &&
-        jsonEqual(existing.assetLimits, data.assetLimits)
-      ) {
-        continue;
-      }
-      // Update in place and re-publish rather than delete-then-create, so an
-      // interrupted or failing reseed can never leave the live rate table
-      // missing (MyssApi reads it live).
-      await strapi.documents(ELIGIBILITY_RATE_UID).update({
-        documentId: existing.documentId,
-        data,
-        status: "published",
-      });
-      strapi.log.info(`Re-seeded changed eligibility-rate ${effectiveDate}`);
-      continue;
-    }
-
-    await strapi.documents(ELIGIBILITY_RATE_UID).create({
-      data,
+    const published = await strapi.documents(ELIGIBILITY_RATE_UID).findFirst({
+      filters: { effectiveDate },
       status: "published",
     });
-    strapi.log.info(`Seeded eligibility-rate ${effectiveDate}`);
+
+    switch (seedRateAction(seed, draft, published)) {
+      case "create":
+        await strapi.documents(ELIGIBILITY_RATE_UID).create({
+          data: {
+            effectiveDate,
+            // The seed keeps precise readonly types for its own tests; Strapi's
+            // JSON columns take the repo's permissive `Json` (the same widening
+            // seedForms does with `spec`).
+            incomeRows: seed.incomeRows as unknown as Json,
+            assetLimits: seed.assetLimits as unknown as Json,
+          },
+          status: "published",
+        });
+        strapi.log.info(`Seeded eligibility-rate ${effectiveDate}`);
+        break;
+      case "keep-changed":
+        strapi.log.info(`Kept eligibility-rate ${effectiveDate} unchanged; it differs from the seed`);
+        break;
+      case "keep-draft-only":
+        strapi.log.warn(
+          `Kept eligibility-rate ${effectiveDate} unchanged; it is not published, so it is not served`,
+        );
+        break;
+      case "keep":
+        break;
+    }
   }
 }
 
