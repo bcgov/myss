@@ -10,19 +10,15 @@ interface AnnouncementBannerProps {
 // "call us for help" announcement). Purely presentational.
 export default function AnnouncementBanner({
     children,
-}: AnnouncementBannerProps) {
+}: Readonly<AnnouncementBannerProps>) {
     return (
-        <div
-            className={styles.banner}
-            role="complementary"
-            aria-label="Announcement"
-        >
+        <aside className={styles.banner} aria-label="Announcement">
             <div className={styles.content}>
                 <span className={styles.icon} aria-hidden="true">
                     &#9888;
                 </span>
                 <span>{children}</span>
             </div>
-        </div>
+        </aside>
     );
 }

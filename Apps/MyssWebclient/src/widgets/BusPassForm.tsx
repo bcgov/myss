@@ -55,10 +55,10 @@ function useFocusOnMount() {
 function SubmissionOutcome({
   result,
   onStartAgain,
-}: {
+}: Readonly<{
   result: BusPassSubmissionPayload;
   onStartAgain: () => void;
-}) {
+}>) {
   const headingRef = useFocusOnMount();
 
   if (result.outcome === "Accepted") {
@@ -131,23 +131,32 @@ function SubmissionOutcome({
  * request); when it provably never arrived, this sits above the form so they
  * can try again. A throttled request reads the same way as the second case.
  */
-function SubmissionUnavailable({ error }: { error: BusPassUnavailableError }) {
+function unavailableCopy(error: BusPassUnavailableError): {
+  heading: string;
+  message: string;
+} {
+  if (error.keyword === BUS_PASS_KEYWORDS.rateLimited) {
+    return {
+      heading: "Too many requests",
+      message: KEYWORD_MESSAGES[BUS_PASS_KEYWORDS.rateLimited],
+    };
+  }
+  if (error.mayHaveReachedIcm) {
+    return { heading: "Request saved", message: MESSAGE_MAY_HAVE_REACHED };
+  }
+  return { heading: "Request saved but not sent", message: MESSAGE_RETRY_SAFE };
+}
+
+function SubmissionUnavailable({
+  error,
+}: Readonly<{ error: BusPassUnavailableError }>) {
   const headingRef = useFocusOnMount();
-  const throttled = error.keyword === BUS_PASS_KEYWORDS.rateLimited;
-  const message = throttled
-    ? KEYWORD_MESSAGES[BUS_PASS_KEYWORDS.rateLimited]
-    : error.mayHaveReachedIcm
-      ? MESSAGE_MAY_HAVE_REACHED
-      : MESSAGE_RETRY_SAFE;
+  const { heading, message } = unavailableCopy(error);
 
   return (
     <section className={`${styles.outcome} ${styles.unavailable}`} role="alert">
       <h2 ref={headingRef} tabIndex={-1} className={styles.heading}>
-        {throttled
-          ? "Too many requests"
-          : error.mayHaveReachedIcm
-            ? "Request saved"
-            : "Request saved but not sent"}
+        {heading}
       </h2>
       <p>{message}</p>
       {error.submissionId && (

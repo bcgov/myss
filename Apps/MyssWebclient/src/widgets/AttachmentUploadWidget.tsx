@@ -80,7 +80,7 @@ export default function AttachmentUploadWidget() {
       </div>
 
       <h3>Your files</h3>
-      {attachments && attachments.length === 0 && <p>None yet.</p>}
+      {attachments?.length === 0 && <p>None yet.</p>}
       {attachments && attachments.length > 0 && (
         <ul>
           {attachments.map((a) => (

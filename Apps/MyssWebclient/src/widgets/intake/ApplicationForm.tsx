@@ -3,7 +3,7 @@ import { Form } from "@formio/react";
 import type { FormType } from "@formio/react/lib/components/Form";
 import type { Webform } from "@formio/js";
 import {
-  type FormEvent,
+  type InputEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -74,11 +74,11 @@ function SubmittedView({
   application,
   spec,
   announce,
-}: {
+}: Readonly<{
   application: ApplicationPayload;
   spec: FormType;
   announce: boolean;
-}) {
+}>) {
   const headingRef = useFocusOnMount(announce);
   const submittedAt = application.submittedAt
     ? new Date(application.submittedAt).toLocaleString()
@@ -112,11 +112,11 @@ function DraftForm({
   application,
   spec,
   onSubmitted,
-}: {
+}: Readonly<{
   application: ApplicationPayload;
   spec: FormType;
   onSubmitted: () => void;
-}) {
+}>) {
   const save = useSaveAnswers(application.id);
   const submit = useSubmitApplication(application.id);
   const { mutate: saveAnswers } = save;
@@ -144,7 +144,7 @@ function DraftForm({
   // A server error stays on a field until the user edits it. Form.io counts
   // outstanding server errors as invalid, so without this the next submit
   // would be refused client-side with the stale message still showing.
-  const handleInputCapture = useCallback((event: FormEvent<HTMLElement>) => {
+  const handleInputCapture = useCallback((event: InputEvent<HTMLElement>) => {
     const field = formFieldName(event.target);
     const form = formInstanceRef.current;
     const displayedError = displayedErrorRef.current;
@@ -246,11 +246,9 @@ function DraftForm({
     (save.error instanceof ApplicationRequestError &&
       save.error.keyword === INTAKE_KEYWORDS.notEditable);
   const otherSaveError =
-    save.error && !(save.error instanceof ApplicationRequestError)
-      ? save.error
-      : save.error instanceof ApplicationRequestError && !save.error.isConflict
-        ? save.error
-        : null;
+    save.error instanceof ApplicationRequestError && save.error.isConflict
+      ? null
+      : save.error;
 
   return (
     <section className={styles.formHost} onInputCapture={handleInputCapture}>
@@ -266,13 +264,13 @@ function DraftForm({
       )}
       {submit.error && !conflict && <SubmissionErrors error={submit.error} />}
       {save.isSuccess && !save.isPending && (
-        <p role="status" className={styles.saved}>
+        <output className={styles.saved}>
           Saved{" "}
           {save.data.updatedAt
             ? `at ${new Date(save.data.updatedAt).toLocaleTimeString()}`
             : ""}
           . You can come back and finish this application later.
-        </p>
+        </output>
       )}
       <Form
         src={spec}
@@ -301,9 +299,9 @@ function DraftForm({
  */
 export default function ApplicationForm({
   applicationId,
-}: {
+}: Readonly<{
   applicationId: string;
-}) {
+}>) {
   const { data: application, error, isPending } = useApplication(applicationId);
   // The acknowledgement heading takes focus only when the submit happened in
   // this session; a later visit to a submitted application just renders it.

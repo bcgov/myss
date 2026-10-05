@@ -14,6 +14,27 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const create = useCreateApplication();
   const name = user?.name ?? user?.email ?? "there";
+  // Roles come from /auth/me, so this is only known once that has answered.
+  const isWorker =
+    !isMeLoading &&
+    Boolean(user?.idirUsername) &&
+    (user?.roles ?? []).includes(WORKER_ROLE);
+
+  // A Ministry worker has no citizen profile: their landing is the worker
+  // operations view, decided before the registration check below can fire.
+  // A citizen without a registered profile is sent to registration. The API
+  // refuses to create an application for them too; this is the courtesy.
+  useEffect(() => {
+    if (isWorker) {
+      void navigate(paths.workerApplications, { replace: true });
+    } else if (!isMeLoading && hasProfile === false) {
+      void navigate(paths.register, { replace: true });
+    }
+  }, [hasProfile, isMeLoading, isWorker, navigate]);
+
+  if (isMeLoading || isWorker || hasProfile === undefined) {
+    return <output>Checking your MySS account…</output>;
+  }
 
   return (
     <div className={styles.page}>
