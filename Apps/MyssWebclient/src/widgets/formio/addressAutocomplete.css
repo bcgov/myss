@@ -1,0 +1,64 @@
+.myss-address-autocomplete {
+    position: relative;
+}
+
+.myss-address-autocomplete__list {
+    position: absolute;
+    z-index: 20;
+    box-sizing: border-box;
+    width: 100%;
+    max-height: 18rem;
+    overflow-y: auto;
+    margin: var(--layout-margin-hair) 0 0;
+    padding: var(--layout-padding-none);
+    list-style: none;
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-dark);
+    border-radius: var(--layout-border-radius-medium);
+    background: var(--surface-color-background-white);
+}
+
+.myss-address-autocomplete__option {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-hair);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    cursor: pointer;
+}
+
+.myss-address-autocomplete__option + .myss-address-autocomplete__option {
+    border-top: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+}
+
+.myss-address-autocomplete__option:hover,
+.myss-address-autocomplete__option[aria-selected="true"] {
+    background: var(--surface-color-background-light-blue);
+}
+
+.myss-address-autocomplete__option-text {
+    font-weight: var(--typography-font-weights-bold);
+}
+
+.myss-address-autocomplete__option-description {
+    color: var(--typography-color-secondary);
+    font-size: var(--typography-font-size-small-body);
+}
+
+.myss-address-autocomplete__status {
+    margin: var(--layout-margin-xsmall) 0 0;
+    padding: var(--layout-padding-small);
+    border-left: var(--layout-border-width-large) solid
+        var(--support-border-color-info);
+    background: var(--support-surface-color-info);
+}
+
+.myss-address-autocomplete__status--hidden {
+    position: absolute;
+    width: var(--layout-border-width-small);
+    height: var(--layout-border-width-small);
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
