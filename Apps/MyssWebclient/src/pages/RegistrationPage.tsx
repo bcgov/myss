@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Button, InlineAlert } from "@bcgov/design-system-react-components";
+import {
+    Accordion,
+    AccordionGroup,
+    Button,
+    InlineAlert,
+} from "@bcgov/design-system-react-components";
 import { useSession } from "@/auth/useSession";
 import { paths } from "@/routes/paths";
 import RegistrationForm from "@/widgets/RegistrationForm";
+import AboutMySS from "@/widgets/home/AboutMySS";
 import styles from "./RegistrationPage.module.css";
 
 /**
@@ -95,7 +101,8 @@ export default function RegistrationPage() {
                 <>
                     <h1 className={styles.title}>Create your MySS account</h1>
                     <p>
-                        Create a MySS account with your BC Services Card or BCeID.
+                        To create your MySS account, you will need to first sign in with a B.C. government ID. You can use your BC Services Card or BCeID. <br />
+                        After signing in you can start your MySS registration.
                     </p>
                     <div className={styles.actions}>
                         <Button
@@ -103,16 +110,34 @@ export default function RegistrationPage() {
                             size="large"
                             onPress={() => login("bcServicesCard", paths.register)}
                         >
-                            BC Services Card
+                            Register with BC Services Card
                         </Button>
                         <Button
                             variant="secondary"
                             size="large"
                             onPress={() => login("bceid", paths.register)}
                         >
-                            BCeID
+                            Register with Basic BCeID
                         </Button>
                     </div>
+                    <p>
+                        <strong>Notice:</strong> If you have used MySS previously, do not register for a new account, PLACEHOLDER TEXT. ADD REAL TEXT.
+                    </p>
+                    <h2>MySS account Help</h2>
+                    <AccordionGroup>
+                        <Accordion label="I don’t have a BC Service Card or BCeID">
+                            <p>Information coming soon.</p>
+                        </Accordion>
+                        <Accordion label="Why do I need to log in with my government ID?">
+                            <p>Information coming soon.</p>
+                        </Accordion>
+                        <Accordion label="How do I log into my previous MySS account?">
+                            <p>Information coming soon.</p>
+                        </Accordion>
+                    </AccordionGroup>
+                    <section className={styles.aboutBand}>
+                        <AboutMySS />
+                    </section>
                 </>
             )}
         </div>

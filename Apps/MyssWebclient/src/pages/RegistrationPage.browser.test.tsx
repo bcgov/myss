@@ -75,13 +75,24 @@ describe("RegistrationPage", () => {
             .element(screen.getByRole("heading", { level: 1, name: "Create your MySS account" }))
             .toBeInTheDocument();
         await expect
-            .element(screen.getByText("Create a MySS account with your BC Services Card or BCeID."))
+            .element(screen.getByText(/you will need to first sign in with a B\.C\. government ID/))
             .toBeInTheDocument();
-        await screen.getByRole("button", { name: "BC Services Card" }).click();
-        await screen.getByRole("button", { name: "BCeID" }).click();
+        await screen.getByRole("button", { name: "Register with BC Services Card" }).click();
+        await screen.getByRole("button", { name: "Register with Basic BCeID" }).click();
 
         expect(session.login).toHaveBeenNthCalledWith(1, "bcServicesCard", paths.register);
         expect(session.login).toHaveBeenNthCalledWith(2, "bceid", paths.register);
+    });
+
+    it("offers account help to a signed-out visitor", async () => {
+        const screen = await renderRegistration();
+
+        await expect
+            .element(screen.getByRole("heading", { level: 2, name: "MySS account Help" }))
+            .toBeInTheDocument();
+        await expect
+            .element(screen.getByRole("button", { name: "Why do I need to log in with my government ID?" }))
+            .toBeInTheDocument();
     });
 
     it("shows the signed-in banner and the form to an authenticated user without a profile", async () => {
