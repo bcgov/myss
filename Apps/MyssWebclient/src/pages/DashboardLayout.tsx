@@ -25,9 +25,9 @@ export default function DashboardLayout() {
   // refuses to create an application for them too; this is the courtesy.
   useEffect(() => {
     if (isWorker) {
-      navigate(paths.workerApplications, { replace: true });
+      void navigate(paths.workerApplications, { replace: true });
     } else if (!isMeLoading && hasProfile === false) {
-      navigate(paths.register, { replace: true });
+      void navigate(paths.register, { replace: true });
     }
   }, [hasProfile, isMeLoading, isWorker, navigate]);
 
@@ -36,7 +36,7 @@ export default function DashboardLayout() {
   if (isMeLoading || isWorker || hasProfile !== true) {
     return (
       <div className={styles.content}>
-        <p role="status">Checking your MySS account…</p>
+        <output>Checking your MySS account…</output>
       </div>
     );
   }
