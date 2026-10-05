@@ -50,6 +50,7 @@
 }
 
 .saved {
+    display: block;
     border: var(--layout-border-width-medium) solid
         var(--support-border-color-info);
     border-left-width: var(--layout-margin-small);

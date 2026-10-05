@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { Link, useNavigate } from "react-router";
 
 import { useAdminForms } from "@/hooks/useForms";
@@ -33,7 +33,7 @@ export default function FormManagementPage() {
                 </p>
             )}
 
-            {!isPending && !error && forms && forms.length === 0 && (
+            {!isPending && !error && forms?.length === 0 && (
                 <p className={styles.status}>No forms found.</p>
             )}
 
@@ -54,7 +54,7 @@ export default function FormManagementPage() {
 
 // Collects the ID and title for a form that does not exist yet, then opens the
 // editor on a local template; nothing is stored until the first Save draft.
-function NewFormSection({ forms }: { forms: FormSummary[] }) {
+function NewFormSection({ forms }: Readonly<{ forms: FormSummary[] }>) {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const [formSpecId, setFormSpecId] = useState("");
@@ -81,7 +81,7 @@ function NewFormSection({ forms }: { forms: FormSummary[] }) {
         setOpen(next);
     }
 
-    function create(event: FormEvent<HTMLFormElement>) {
+    function create(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         const id = formSpecId.trim();
         if (!FORM_ID_PATTERN.test(id)) {
@@ -94,7 +94,7 @@ function NewFormSection({ forms }: { forms: FormSummary[] }) {
             setError(`A form with the ID "${id}" already exists.`);
             return;
         }
-        navigate(adminNewFormPath(id, title));
+        void navigate(adminNewFormPath(id, title));
     }
 
     if (!open) {
@@ -159,7 +159,7 @@ function NewFormSection({ forms }: { forms: FormSummary[] }) {
     );
 }
 
-function FormRow({ form }: { form: FormSummary }) {
+function FormRow({ form }: Readonly<{ form: FormSummary }>) {
     return (
         <li className={styles.item}>
             <Link

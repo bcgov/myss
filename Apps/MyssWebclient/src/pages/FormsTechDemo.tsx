@@ -25,7 +25,7 @@ export default function FormsTechDemo() {
       />
       <section>
         <h3>Previous submissions</h3>
-        {submissions && submissions.length === 0 && <p>None yet.</p>}
+        {submissions?.length === 0 && <p>None yet.</p>}
         {submissions && submissions.length > 0 && (
           <ul>
             {submissions.map((s) => (

@@ -5,45 +5,19 @@
 // and unknown-conditional-target rules and must stay in step with it.
 // No fetch, no React. Each takes a spec and returns the offending keys.
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import { forEachComponent, isRecord } from "./specWalk";
 
 interface ComponentLike {
   readonly key?: unknown;
   readonly conditional?: unknown;
 }
 
-/**
- * Every component in the tree. Form.io nests components inside panels, columns,
- * fieldsets and table cells, so a top-level scan would miss most of a real form.
- */
+/** Every component in the tree, in document order (see specWalk). */
 function collectComponents(spec: unknown): ComponentLike[] {
   const out: ComponentLike[] = [];
-
-  const walk = (nodes: unknown): void => {
-    if (!Array.isArray(nodes)) return;
-    for (const node of nodes) {
-      if (!isRecord(node)) continue;
-      out.push(node as ComponentLike);
-      walk(node.components);
-      if (Array.isArray(node.columns)) {
-        for (const column of node.columns) {
-          if (isRecord(column)) walk(column.components);
-        }
-      }
-      if (Array.isArray(node.rows)) {
-        for (const row of node.rows) {
-          if (!Array.isArray(row)) continue;
-          for (const cell of row) {
-            if (isRecord(cell)) walk(cell.components);
-          }
-        }
-      }
-    }
-  };
-
-  if (isRecord(spec)) walk(spec.components);
+  forEachComponent(spec, (component) => {
+    out.push(component);
+  });
   return out;
 }
 

@@ -14,12 +14,12 @@ export default function SignInPage() {
 
     useEffect(() => {
         if (isAuthenticated && hasProfile !== undefined) {
-            navigate(hasProfile ? paths.dashboard : paths.register, { replace: true });
+            void navigate(hasProfile ? paths.dashboard : paths.register, { replace: true });
         }
     }, [hasProfile, isAuthenticated, navigate]);
 
     if (isAuthenticated && isMeLoading) {
-        return <p role="status">Checking your MySS account…</p>;
+        return <output>Checking your MySS account…</output>;
     }
 
     return (

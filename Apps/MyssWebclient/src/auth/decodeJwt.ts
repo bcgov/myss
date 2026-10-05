@@ -14,7 +14,7 @@ export type JwtClaims = Record<string, unknown>;
 // base64url -> UTF-8 string. Handles the '-'/'_' alphabet, missing padding, and
 // multibyte characters (via decodeURIComponent over the percent-escaped bytes).
 function base64UrlDecode(segment: string): string {
-  let base64 = segment.replace(/-/g, "+").replace(/_/g, "/");
+  let base64 = segment.replaceAll("-", "+").replaceAll("_", "/");
   const pad = base64.length % 4;
   if (pad === 2) base64 += "==";
   else if (pad === 3) base64 += "=";
@@ -24,7 +24,7 @@ function base64UrlDecode(segment: string): string {
   // Re-encode each byte as a percent escape so decodeURIComponent can rebuild
   // any multibyte UTF-8 sequences correctly.
   const percent = Array.from(binary)
-    .map((ch) => "%" + ch.charCodeAt(0).toString(16).padStart(2, "0"))
+    .map((ch) => "%" + (ch.codePointAt(0) ?? 0).toString(16).padStart(2, "0"))
     .join("");
   return decodeURIComponent(percent);
 }
