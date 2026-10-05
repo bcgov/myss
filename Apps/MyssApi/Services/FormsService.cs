@@ -418,8 +418,18 @@ namespace Myss.Api.Services
             profile.DateOfBirth = parsedDate;
             profile.Email = email;
             profile.Sin = sin;
-            profile.Phone = phone;
-            profile.Gender = gender;
+            // v1-v3 are still published and do not ask for these, so an absent
+            // answer means "not on this form", not "cleared": keep what v4 stored.
+            if (phone is not null)
+            {
+                profile.Phone = phone;
+            }
+
+            if (gender is not null)
+            {
+                profile.Gender = gender;
+            }
+
             profile.UpdatedAt = DateTimeOffset.UtcNow;
         }
 

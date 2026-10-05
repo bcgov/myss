@@ -205,14 +205,16 @@ describe("seeded forms collection", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("seeds the registration form with all three versions", () => {
+  it("seeds the registration form with all four versions", () => {
     const registration = seededForms.find(
       (form) => form.formSpecId === REGISTRATION_FORM_SPEC_ID,
     );
     expect(registration?.title).toBe(REGISTRATION_FORM_SPEC_TITLE);
-    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3]);
+    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
     expect(registration?.versions[1]?.spec).toBe(registrationFormSpecV2);
     expect(registration?.versions[2]?.spec).toBe(registrationFormSpecV3);
+    // The API serves the highest published version, so v4 is what citizens see.
+    expect(registration?.versions[3]?.spec).toBe(registrationFormSpecV4);
   });
 
   it("requires registration consent", () => {
@@ -237,19 +239,6 @@ describe("seeded forms collection", () => {
   describe("registration v4", () => {
     it("passes the lifecycle's structural rules", () => {
       expect(validateFormSpec(registrationFormSpecV4)).toEqual([]);
-    });
-
-    // The bootstrap publishes every seeded version, and v4 is held back until
-    // the team decides to release it.
-    it("is not seeded, so it is not published yet", () => {
-      const registration = seededForms.find(
-        (form) => form.formSpecId === REGISTRATION_FORM_SPEC_ID,
-      );
-      expect(
-        registration?.versions.some(
-          (v) => v.spec === registrationFormSpecV4 || v.version === 4,
-        ),
-      ).toBe(false);
     });
 
     it("keeps every v3 field and adds phone and gender", () => {

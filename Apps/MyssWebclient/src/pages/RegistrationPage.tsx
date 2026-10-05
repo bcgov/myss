@@ -125,7 +125,7 @@ export default function RegistrationPage() {
                     </p>
                     <h2>MySS account Help</h2>
                     <AccordionGroup>
-                        <Accordion label="I don’t have a BC Service Card or BCeID">
+                        <Accordion label="I don’t have a BC Services Card or BCeID">
                             <p>Information coming soon.</p>
                         </Accordion>
                         <Accordion label="Why do I need to log in with my government ID?">

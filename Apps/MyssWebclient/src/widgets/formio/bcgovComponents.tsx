@@ -23,6 +23,7 @@ import {
 } from "@bcgov/design-system-react-components";
 
 import { BcgovAddressAutocompleteComponent } from "./addressAutocomplete";
+import "./bcgovComponents.css";
 
 // The base Form.io component class. `@formio/js` types the registry loosely, so
 // we take the constructor as `any` and keep our subclasses thin.
@@ -32,6 +33,8 @@ type FormioComponentCtor = {
 };
 
 interface FormioComponentInstance {
+  /** Form.io's per-instance element id, unique within the page. */
+  id: string;
   component: Record<string, unknown>;
   /** Render options; Utils.sanitize reads its sanitize config from here. */
   options: Record<string, unknown>;
@@ -349,79 +352,93 @@ class BcgovRadioComponent extends RadioBase {
       validate && typeof validate === "object" && "required" in validate
         ? (validate as { required?: unknown }).required === true
         : false;
+    const labelId = `${this.id}-label`;
 
+    // The label is drawn here rather than through RadioGroup's `label` prop.
+    // BCDS appends "(required)" to that label as bare text whenever
+    // `isRequired` is set, which a page cannot style or hide. Owning it lets
+    // every group report `isRequired` (so assistive technology announces the
+    // field as required) while a page that marks required fields another way
+    // hides the `[data-myss-required]` text visually. Same BCDS class, so it
+    // looks the same.
     return (
-      <RadioGroup
-        label={String(this.component.label ?? "")}
-        orientation="vertical"
-        value={selectedParent}
-        isRequired={hasNestedOptions ? required : undefined}
-        isDisabled={this.disabled}
-        isInvalid={this.errorMessage !== ""}
-        errorMessage={this.errorMessage}
-        onChange={(next: string) => {
-          const option = options.find(
-            (candidate) => String(candidate.value) === next,
-          );
-          if (!hasNestedOptions) {
-            this.updateValue(next, { modified: true });
-          } else if (option?.children?.length) {
-            this.updateValue("", { modified: true });
-            this.selectedParent = next;
-          } else {
-            this.selectedParent = next;
-            this.updateValue(next, { modified: true });
-          }
-          this.renderGroup();
-        }}
-      >
-        {options.map((option) => {
-          const optionValue = String(option.value ?? "");
-          const children = option.children ?? [];
-          if (!hasNestedOptions) {
-            return (
-              <Radio key={optionValue} value={optionValue}>
-                {String(option.label ?? "")}
-              </Radio>
+      <div className="myss-radio-field">
+        <span id={labelId} className="bcds-react-aria-RadioGroup--label">
+          {String(this.component.label ?? "")}
+          {required && <span data-myss-required=""> (required)</span>}
+        </span>
+        <RadioGroup
+          aria-labelledby={labelId}
+          orientation="vertical"
+          value={selectedParent}
+          isRequired={required}
+          isDisabled={this.disabled}
+          isInvalid={this.errorMessage !== ""}
+          errorMessage={this.errorMessage}
+          onChange={(next: string) => {
+            const option = options.find(
+              (candidate) => String(candidate.value) === next,
             );
-          }
-          const isExpanded =
-            selectedParent === optionValue && children.length > 0;
+            if (!hasNestedOptions) {
+              this.updateValue(next, { modified: true });
+            } else if (option?.children?.length) {
+              this.updateValue("", { modified: true });
+              this.selectedParent = next;
+            } else {
+              this.selectedParent = next;
+              this.updateValue(next, { modified: true });
+            }
+            this.renderGroup();
+          }}
+        >
+          {options.map((option) => {
+            const optionValue = String(option.value ?? "");
+            const children = option.children ?? [];
+            if (!hasNestedOptions) {
+              return (
+                <Radio key={optionValue} value={optionValue}>
+                  {String(option.label ?? "")}
+                </Radio>
+              );
+            }
+            const isExpanded =
+              selectedParent === optionValue && children.length > 0;
 
-          return (
-            <div key={optionValue} data-myss-nested-option={optionValue}>
-              <Radio value={optionValue}>{String(option.label ?? "")}</Radio>
-              {isExpanded && (
-                <RadioGroup
-                  aria-label={String(
-                    option.childrenLabel ??
-                      option.label ??
-                      "Additional options",
-                  )}
-                  orientation="vertical"
-                  value={value}
-                  isRequired={required}
-                  onChange={(next: string) => {
-                    this.updateValue(next, { modified: true });
-                    this.renderGroup();
-                  }}
-                >
-                  {children.map((child) => (
-                    <div
-                      key={String(child.value)}
-                      data-myss-nested-option-child={String(child.value)}
-                    >
-                      <Radio value={String(child.value)}>
-                        {String(child.label ?? "")}
-                      </Radio>
-                    </div>
-                  ))}
-                </RadioGroup>
-              )}
-            </div>
-          );
-        })}
-      </RadioGroup>
+            return (
+              <div key={optionValue} data-myss-nested-option={optionValue}>
+                <Radio value={optionValue}>{String(option.label ?? "")}</Radio>
+                {isExpanded && (
+                  <RadioGroup
+                    aria-label={String(
+                      option.childrenLabel ??
+                        option.label ??
+                        "Additional options",
+                    )}
+                    orientation="vertical"
+                    value={value}
+                    isRequired={required}
+                    onChange={(next: string) => {
+                      this.updateValue(next, { modified: true });
+                      this.renderGroup();
+                    }}
+                  >
+                    {children.map((child) => (
+                      <div
+                        key={String(child.value)}
+                        data-myss-nested-option-child={String(child.value)}
+                      >
+                        <Radio value={String(child.value)}>
+                          {String(child.label ?? "")}
+                        </Radio>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+              </div>
+            );
+          })}
+        </RadioGroup>
+      </div>
     );
   }
 

@@ -17,8 +17,9 @@
   font: var(--typography-regular-small-body);
 }
 
-.form :global(.formio-component.required .bcds-react-aria-RadioGroup--label)::after {
-  content: "(required)";
+/* The BC Gov radio writes its own "(required)"; set it like the one above. */
+.form :global([data-myss-required]) {
+  color: var(--typography-color-secondary);
   font: var(--typography-regular-small-body);
 }
 

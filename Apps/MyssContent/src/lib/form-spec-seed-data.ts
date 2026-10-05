@@ -253,8 +253,6 @@ export const registrationFormSpecV3: Json = {
  *
  * No submit button: the webclient renders BC Gov Design System Cancel and
  * "Complete registration" buttons and submits the form through Form.io's API.
- *
- * Not yet in `seededForms`, so not published — see the note there.
  */
 export const registrationFormSpecV4: Json = {
   display: "form",
@@ -269,7 +267,7 @@ export const registrationFormSpecV4: Json = {
       type: "content",
       key: "reviewIntro",
       input: false,
-      html: "<p>We have pre-filled what your BC Services Card knows about you. If any of this information is wrong, update it with BC Services Card before you register your account.</p>",
+      html: "<p>We have pre-filled the information provided by the government ID you used to sign in. If any of this information is wrong, update it with that provider before you register your account.</p>",
     },
     {
       type: "textfield",
@@ -1482,9 +1480,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 1, spec: registrationFormSpecV1 },
       { version: 2, spec: registrationFormSpecV2 },
       { version: 3, spec: registrationFormSpecV3 },
-      // registrationFormSpecV4 is deliberately not seeded yet: the bootstrap
-      // publishes every version listed here, and v4 is not ready to go live.
-      // Add `{ version: 4, spec: registrationFormSpecV4 }` to release it.
+      { version: 4, spec: registrationFormSpecV4 },
     ],
   },
   {

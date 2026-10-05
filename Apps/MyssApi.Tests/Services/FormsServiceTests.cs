@@ -315,6 +315,32 @@ namespace Myss.Api.Tests.Services
             Assert.Equal("woman", profile.Gender);
         }
 
+        [Fact]
+        public async Task Submit_RegistrationOnAnEarlierVersion_KeepsThePhoneAndGenderV4Stored()
+        {
+            using FormsDbContext db = NewDb();
+            FormsService service = NewService(db);
+
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"2505550100","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            // An old tab still showing v3, which has no phone or gender field.
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Augusta","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"augusta@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("Augusta", profile.FirstName);
+            Assert.Equal("2505550100", profile.Phone);
+            Assert.Equal("woman", profile.Gender);
+        }
+
         [Theory]
         [InlineData("555-0100")]
         [InlineData("+44 20 7946 0958")]
