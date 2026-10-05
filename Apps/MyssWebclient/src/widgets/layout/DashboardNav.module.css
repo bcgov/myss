@@ -35,8 +35,9 @@
    the link so the list never clips it. The selected item is white itself,
    so it keeps the standard blue ring. */
 .link:focus-visible {
-    outline: 2px solid var(--surface-color-secondary-default);
-    outline-offset: -4px;
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-secondary-default);
+    outline-offset: calc(-1 * var(--layout-padding-xsmall));
 }
 
 .link[aria-current="page"]:focus-visible {
