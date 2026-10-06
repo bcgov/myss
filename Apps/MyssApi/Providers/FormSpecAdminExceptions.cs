@@ -4,7 +4,7 @@ namespace Myss.Api.Providers
     using System.Net;
 
     /// <summary>
-    /// Thrown when the content engine refuses a form-spec write. Carries Strapi's
+    /// Thrown when the content engine refuses a write. Carries Strapi's
     /// HTTP status and raw error body so the caller can surface the reason (for
     /// example, a lifecycle validation refusal) rather than a generic failure.
     /// </summary>
@@ -16,7 +16,7 @@ namespace Myss.Api.Providers
         /// <param name="statusCode">The HTTP status Strapi returned.</param>
         /// <param name="body">The raw response body Strapi returned.</param>
         public StrapiWriteException(HttpStatusCode statusCode, string? body)
-            : base($"Strapi refused the form-spec write with {(int)statusCode}.")
+            : base($"Strapi refused the write with {(int)statusCode}.")
         {
             this.StatusCode = statusCode;
             this.Body = body;

@@ -106,6 +106,9 @@ namespace Myss.Api.Providers
             return fallback;
         }
 
+        /// <inheritdoc/>
+        public void InvalidateCache() => _cache.Remove(CacheKey);
+
         private static EligibilityRatesModel Map(JsonElement entry)
         {
             var rows = new List<EligibilityRateRowModel>();

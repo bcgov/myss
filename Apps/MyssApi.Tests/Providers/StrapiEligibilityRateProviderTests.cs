@@ -328,6 +328,21 @@ namespace Myss.Api.Tests.Providers
         }
 
         [Fact]
+        public async Task InvalidateCache_MakesTheNextReadFetchTheNewTable()
+        {
+            _http.Body = RateBody;
+            StrapiEligibilityRateProvider provider = NewProvider();
+            await provider.GetRatesAsync(CancellationToken.None);
+            _http.Body = RateBody.Replace("\"2099-01-01\"", "\"2099-02-01\"", StringComparison.Ordinal);
+
+            provider.InvalidateCache();
+            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
+
+            Assert.Equal(2, _http.Calls);
+            Assert.Equal("2099-02-01", rates.EffectiveDate);
+        }
+
+        [Fact]
         public async Task GetRates_CachesTheTable_SecondCallDoesNotReHitStrapi()
         {
             _http.Body = RateBody;

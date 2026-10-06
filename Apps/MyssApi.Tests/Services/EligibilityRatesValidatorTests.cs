@@ -1,10 +1,10 @@
 namespace Myss.Api.Tests.Services
 {
     using System.Globalization;
-    using Myss.Api.Data;
     using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using static Myss.Api.Tests.TestSupport.EligibilityRatesTestData;
 
     /// <summary>
     /// Tests for <see cref="EligibilityRatesValidator"/>.
@@ -279,36 +279,6 @@ namespace Myss.Api.Tests.Services
             List<EligibilityRateRowModel> rows,
             EligibilityAssetLimitsModel? assetLimits = null) =>
             new() { IncomeRows = rows, AssetLimits = assetLimits ?? SeededAssetLimits() };
-
-        private static List<EligibilityRateRowModel> SeededRows() =>
-        [
-            .. FddRateData.RateRows.Select(row => new EligibilityRateRowModel
-            {
-                FamilySize = row.FamilySize,
-                A = row.TypeA,
-                B = row.TypeB,
-                C = row.TypeC,
-                D = row.TypeD,
-                E = row.TypeE,
-                F = row.TypeF,
-                G = row.TypeG,
-                H = row.TypeH,
-                I = row.TypeI,
-            }),
-        ];
-
-        private static EligibilityAssetLimitsModel SeededAssetLimits()
-        {
-            Dictionary<string, decimal> byCategory =
-                FddRateData.AssetLimits.ToDictionary(limit => limit.LimitType, limit => limit.Limit);
-            return new()
-            {
-                A = byCategory["A"],
-                B = byCategory["B"],
-                C = byCategory["C"],
-                D = byCategory["D"],
-            };
-        }
 
         private static EligibilityRateRowModel WithAmount(EligibilityRateRowModel row, string letter, decimal amount)
         {

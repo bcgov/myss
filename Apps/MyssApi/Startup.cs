@@ -85,6 +85,12 @@ namespace Myss.Api
             services.AddHttpClient<IEligibilityRateProvider, StrapiEligibilityRateProvider>(
                 client => client.Timeout = TimeSpan.FromSeconds(5));
 
+            // The admin rates editor writes through its own typed client, so the
+            // write token never reaches the anonymous read path above.
+            services.AddHttpClient<IEligibilityRateAdminProvider, StrapiEligibilityRateAdminProvider>(
+                client => client.Timeout = TimeSpan.FromSeconds(10));
+            services.AddScoped<IEligibilityRatesService, EligibilityRatesService>();
+
             // Configure the attachments module: validate -> quarantined row ->
             // ClamAV scan -> object store -> release. Protected behind
             // authentication (see AttachmentsController [Authorize]).
