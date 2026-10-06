@@ -6,11 +6,15 @@ namespace Myss.Api.Domain
     using Myss.Api.Models;
 
     /// <summary>
-    /// The rate-table columns, defined once so every check over a rate table
-    /// iterates the same list. The letters match MyssContent's <c>eligibility-rate-rules.ts</c>.
+    /// The rate-table columns and family sizes, defined once so every check over a
+    /// rate table uses the same lists. The letters match MyssContent's
+    /// <c>eligibility-rate-rules.ts</c>.
     /// </summary>
     public static class EligibilityRateColumns
     {
+        /// <summary>The largest family size with its own income row; it also serves larger households.</summary>
+        public const int MaxFamilySize = 7;
+
         /// <summary>Gets the income-limit columns A–I, one per client type.</summary>
         public static IReadOnlyList<EligibilityRateColumn<EligibilityRateRowModel>> Income { get; } =
         [

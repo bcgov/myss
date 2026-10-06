@@ -26,12 +26,6 @@ namespace Myss.Api.Providers
     {
         private const string CacheKey = "eligibility-rate-table";
 
-        // The published table must cover every family size 1..7 (7 is the "7+"
-        // cap the browser clamps to). A published entry missing any of these rows
-        // is treated as invalid so the compiled fallback serves a complete table,
-        // rather than letting the browser throw on the missing size.
-        private const int FamilySizeCap = 7;
-
         // The latest published entry: newest effective date first, one row.
         private const string RatesQuery =
             "/api/eligibility-rates?sort=effectiveDate:desc&pagination[limit]=1";
@@ -281,7 +275,7 @@ namespace Myss.Api.Providers
                 return false;
             }
 
-            for (int size = 1; size <= FamilySizeCap; size++)
+            for (int size = 1; size <= EligibilityRateColumns.MaxFamilySize; size++)
             {
                 int matches = rates.IncomeRows.Count(row => row.FamilySize == size);
                 if (matches != 1)
@@ -293,11 +287,10 @@ namespace Myss.Api.Providers
                 }
             }
 
-            // The incomeRows/assetLimits JSON columns have no value-level validation
-            // in Strapi, so an admin typo could publish a negative amount. A negative
-            // income limit or asset ceiling would yield a nonsensical estimate, so
-            // treat it as invalid and fall back. Zero is legitimate (the couple columns
-            // hold 0 at family size 1), hence the strict < 0 test.
+            // A table stored before Strapi validated rate values could still hold a
+            // negative amount, which would yield a nonsensical estimate, so treat it as
+            // invalid and fall back. Zero is legitimate (the couple columns hold 0 at
+            // family size 1), hence the strict < 0 test.
             if (rates.IncomeRows.Any(row => EligibilityRateColumns.Income.Any(column => column.Amount(row) < 0))
                 || EligibilityRateColumns.Asset.Any(column => column.Amount(rates.AssetLimits) < 0))
             {
