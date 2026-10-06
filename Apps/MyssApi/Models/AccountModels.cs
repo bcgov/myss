@@ -90,8 +90,12 @@ namespace Myss.Api.Models
     /// </summary>
     public class UpdateNotificationPreferencesRequestModel
     {
-        /// <summary>Gets or sets a value indicating whether the citizen wants the monthly report reminder.</summary>
-        public bool MonthlyReportReminder { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether the citizen wants the monthly report reminder.
+        /// Required: a body without it is refused instead of read as false, which would turn the
+        /// reminder off without the citizen asking.
+        /// </summary>
+        public required bool MonthlyReportReminder { get; set; }
     }
 
     /// <summary>

@@ -205,6 +205,21 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
+        public async Task ABodyWithoutTheReminderFlagIsRefusedNotReadAsFalse()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            using HttpResponseMessage on = await host.Send(
+                "alice", HttpMethod.Put, Preferences, JsonContent.Create(new { monthlyReportReminder = true }));
+            Assert.Equal(HttpStatusCode.OK, on.StatusCode);
+
+            using HttpResponseMessage response = await host.Send(
+                "alice", HttpMethod.Put, Preferences, JsonContent.Create(new { }));
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.True((await GetAccount(host, "alice")).GetProperty("monthlyReportReminder").GetBoolean());
+        }
+
+        [Fact]
         public async Task SavesTheMonthlyReportReminder()
         {
             using IntakeTestHost host = NewHost(registered: ["alice"]);
