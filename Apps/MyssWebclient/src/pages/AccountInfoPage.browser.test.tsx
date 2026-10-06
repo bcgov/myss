@@ -226,15 +226,42 @@ describe("AccountInfoPage", () => {
     await number.fill("555-0123");
     await screen.getByRole("button", { name: "Save" }).click();
 
+    // Focus lands on the summary, and each entry takes you to its field.
     await expect
-      .element(
-        screen.getByText(
-          "Enter a 10-digit phone number with the area code, like (250) 555-0123.",
-        ),
-      )
-      .toBeVisible();
+      .element(screen.getByRole("heading", { name: "There is a problem" }))
+      .toHaveFocus();
+    await screen
+      .getByRole("button", {
+        name: "Phone number 1: Enter a 10-digit phone number with the area code, like (250) 555-0123.",
+      })
+      .click();
     await expect.element(number).toHaveFocus();
+    await expect.element(number).toHaveAttribute("aria-invalid", "true");
     expect(writes).toEqual([]);
+  });
+
+  it("takes you from the summary to an invalid phone type", async () => {
+    stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
+    await screen.getByRole("button", { name: "Add phone number" }).click();
+    const second = screen.getByRole("group", { name: "Phone number 2" });
+    await second
+      .getByRole("textbox", { name: "Phone Number" })
+      .fill("250-555-0124");
+    await second.getByRole("button", { name: /Type/ }).click();
+    await screen.getByRole("option", { name: "Home Phone" }).click();
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await screen
+      .getByRole("button", { name: /^Phone number 2: You can have one/ })
+      .click();
+    await expect
+      .element(second.getByRole("button", { name: /Type/ }))
+      .toHaveFocus();
   });
 
   it("shows the API's field errors when it refuses the list", async () => {
@@ -261,8 +288,15 @@ describe("AccountInfoPage", () => {
     await screen.getByRole("button", { name: "Save" }).click();
 
     await expect
-      .element(screen.getByText("That number was refused upstream."))
+      .element(
+        screen.getByRole("button", {
+          name: "Phone number 1: That number was refused upstream.",
+        }),
+      )
       .toBeVisible();
+    await expect
+      .element(screen.getByRole("heading", { name: "There is a problem" }))
+      .toHaveFocus();
     await expect
       .element(screen.getByRole("button", { name: "Save" }))
       .toBeVisible();

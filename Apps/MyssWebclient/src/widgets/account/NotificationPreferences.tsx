@@ -18,7 +18,7 @@ export default function NotificationPreferences({
       aria-labelledby="notification-preferences"
       className={styles.section}
     >
-      <h2 id="notification-preferences">Notifications Preferences</h2>
+      <h2 id="notification-preferences">Notification Preferences</h2>
       <Checkbox
         isSelected={account.monthlyReportReminder}
         isDisabled={save.isPending}

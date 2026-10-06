@@ -70,16 +70,24 @@ export default function ContactInformation({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSaved, setIsSaved] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const summaryRef = useRef<HTMLHeadingElement>(null);
   // BCDS Button does not forward a ref, so focus goes through its wrapper.
   const editActionRef = useRef<HTMLDivElement>(null);
 
-  // After a refused save, take the citizen to the first field to fix.
+  // After a refused save, move focus to the error summary, so a screen-reader
+  // user hears that the save failed and can go from there to each field.
   useEffect(() => {
     if (Object.keys(errors).length === 0) return;
-    formRef.current
-      ?.querySelector<HTMLElement>('[aria-invalid="true"]')
-      ?.focus();
+    summaryRef.current?.focus();
   }, [errors]);
+
+  /** Focuses the input (or Select trigger) an error key like `phones[0].type` belongs to. */
+  function focusField(field: string) {
+    formRef.current
+      ?.querySelector(`[data-field="${CSS.escape(field)}"]`)
+      ?.querySelector<HTMLElement>("input, button")
+      ?.focus();
+  }
 
   function startEditing() {
     setRows(
@@ -185,6 +193,13 @@ export default function ContactInformation({
           noValidate
           aria-label="Edit phone numbers"
         >
+          {Object.keys(errors).length > 0 && (
+            <ErrorSummary
+              errors={errors}
+              headingRef={summaryRef}
+              onSelect={focusField}
+            />
+          )}
           {rows.length === 0 && <p>No phone numbers. Add one below.</p>}
           {rows.map((row, i) => (
             <fieldset key={row.key} className={styles.phoneEdit}>
@@ -194,7 +209,10 @@ export default function ContactInformation({
               {/* Layout classes go on wrappers: a className on a BCDS field
                   replaces its own and drops the design system's styling. */}
               <div className={styles.phoneRow}>
-                <div className={styles.number}>
+                <div
+                  className={styles.number}
+                  data-field={`phones[${i}].number`}
+                >
                   <TextField
                     label="Phone Number"
                     type="tel"
@@ -205,7 +223,7 @@ export default function ContactInformation({
                     errorMessage={errors[`phones[${i}].number`]}
                   />
                 </div>
-                <div className={styles.type}>
+                <div className={styles.type} data-field={`phones[${i}].type`}>
                   <Select
                     label="Type"
                     items={TYPE_ITEMS}
@@ -279,6 +297,51 @@ export default function ContactInformation({
         </div>
       )}
     </section>
+  );
+}
+
+/** "phones[1].type" reads as "Phone number 2"; anything else as a whole. */
+function fieldName(field: string): string {
+  const index = /^phones\[(\d+)\]/.exec(field)?.[1];
+  return index === undefined
+    ? "Phone numbers"
+    : `Phone number ${Number(index) + 1}`;
+}
+
+/**
+ * Every reason the save was refused, at the top of the form, each one a button
+ * that moves focus to its field (Docs/accessibility.md, error summaries). The
+ * same messages also sit on the fields themselves. Buttons, not links: they
+ * move focus within the page rather than navigate.
+ */
+function ErrorSummary({
+  errors,
+  headingRef,
+  onSelect,
+}: Readonly<{
+  errors: FieldErrors;
+  headingRef: React.RefObject<HTMLHeadingElement | null>;
+  onSelect: (field: string) => void;
+}>) {
+  return (
+    <div className={styles.summary} role="alert">
+      <h3 ref={headingRef} tabIndex={-1} className={styles.summaryHeading}>
+        There is a problem
+      </h3>
+      <ul className={styles.summaryList}>
+        {Object.entries(errors).map(([field, message]) => (
+          <li key={field}>
+            <button
+              type="button"
+              className={styles.summaryLink}
+              onClick={() => onSelect(field)}
+            >
+              {fieldName(field)}: {message}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
