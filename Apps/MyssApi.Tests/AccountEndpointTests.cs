@@ -6,7 +6,9 @@ namespace Myss.Api.Tests
     using Microsoft.AspNetCore.Mvc.Testing;
     using Myss.Api.Controllers;
     using Myss.Api.Domain;
+    using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
 
@@ -153,6 +155,31 @@ namespace Myss.Api.Tests
 
             JsonElement phones = (await GetAccount(host, "alice")).GetProperty("phones");
             Assert.Equal("2505550123", Assert.Single(phones.EnumerateArray()).GetProperty("number").GetString());
+        }
+
+        [Fact]
+        public async Task RefusesALongerListThanThereArePhoneTypes()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            await PutPhones(host, "alice", new { number = "2505550123", type = "Home" });
+            object[] tooMany = [.. Enumerable.Range(0, 1000).Select(i => new { number = "2505550123", type = "Home" })];
+
+            using HttpResponseMessage response = await PutPhones(host, "alice", tooMany);
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            using JsonDocument body = await Json(response);
+            JsonElement error = Assert.Single(body.RootElement.GetProperty("payload").EnumerateArray());
+            Assert.Equal("phones", error.GetProperty("field").GetString());
+            Assert.Equal(ValidationKeywords.PhoneTooMany, error.GetProperty("keyword").GetString());
+
+            JsonElement phones = (await GetAccount(host, "alice")).GetProperty("phones");
+            Assert.Equal("2505550123", Assert.Single(phones.EnumerateArray()).GetProperty("number").GetString());
+        }
+
+        [Fact]
+        public void TheLimitIsOneNumberPerPhoneType()
+        {
+            Assert.Equal(AccountService.MaxPhones, Enum.GetValues<AccountPhoneType>().Length);
         }
 
         [Fact]

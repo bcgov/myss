@@ -57,5 +57,8 @@ namespace Myss.Api.Domain
 
         /// <summary>Two phone numbers were given the same type.</summary>
         public const string PhoneTypeDuplicate = "ACCOUNT.PHONE.DUPLICATE_TYPE";
+
+        /// <summary>More phone numbers were sent than there are phone types.</summary>
+        public const string PhoneTooMany = "ACCOUNT.PHONE.TOO_MANY";
     }
 }

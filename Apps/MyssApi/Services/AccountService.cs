@@ -19,6 +19,12 @@ namespace Myss.Api.Services
     /// </summary>
     public class AccountService : IAccountService
     {
+        /// <summary>
+        /// The most phone numbers an account holds: one of each <see cref="AccountPhoneType"/>.
+        /// A constant rather than the enum's count so the bound is visible where it is checked.
+        /// </summary>
+        public const int MaxPhones = 4;
+
         private readonly ILogger<AccountService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly ICaseAccountProvider _caseAccountProvider;
@@ -68,6 +74,18 @@ namespace Myss.Api.Services
             if (profile is null)
             {
                 return AccountResultModel.ProfileRequired();
+            }
+
+            // The list length comes from the request body, so bound it before
+            // looping over it (Sonar S6680): one number per type means a longer
+            // list is never valid, and refusing it here keeps an oversized
+            // body from setting how much work the loop does.
+            if (request.Phones.Count > MaxPhones)
+            {
+                return AccountResultModel.Invalid([Error(
+                    "phones",
+                    ValidationKeywords.PhoneTooMany,
+                    $"You can have up to {MaxPhones} phone numbers, one of each type.")]);
             }
 
             var errors = new List<ValidationErrorModel>();
