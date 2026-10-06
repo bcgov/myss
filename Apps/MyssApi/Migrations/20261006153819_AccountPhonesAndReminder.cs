@@ -8,6 +8,9 @@ namespace Myss.Api.Migrations
     /// <inheritdoc />
     public partial class AccountPhonesAndReminder : Migration
     {
+        // Hand-edited from the generated `new[] { ... }` argument (CA1861).
+        private static readonly string[] ProfileIdAndTypeColumns = ["profile_id", "type"];
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -46,7 +49,7 @@ namespace Myss.Api.Migrations
                 name: "IX_myss_user_phones_profile_id_type",
                 schema: "forms",
                 table: "myss_user_phones",
-                columns: new[] { "profile_id", "type" },
+                columns: ProfileIdAndTypeColumns,
                 unique: true);
         }
 
