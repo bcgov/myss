@@ -48,5 +48,14 @@ namespace Myss.Api.Domain
 
         /// <summary>A registration date of birth must not be in the future.</summary>
         public const string RegistrationDateOfBirthInFuture = "REGISTRATION.DOB.FUTURE";
+
+        /// <summary>A phone number is not ten digits in the (area code) ###-#### format.</summary>
+        public const string PhoneInvalidFormat = "ACCOUNT.PHONE.INVALID_FORMAT";
+
+        /// <summary>A phone type is not one of Home, Cell, Work or Message.</summary>
+        public const string PhoneTypeUnknown = "ACCOUNT.PHONE.TYPE_UNKNOWN";
+
+        /// <summary>Two phone numbers were given the same type.</summary>
+        public const string PhoneTypeDuplicate = "ACCOUNT.PHONE.DUPLICATE_TYPE";
     }
 }

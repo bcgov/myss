@@ -1,6 +1,7 @@
 namespace Myss.Api.Data
 {
     using System;
+    using System.Collections.Generic;
 
     /// <summary>
     /// Registration details linked to the authenticated identity subject.
@@ -27,6 +28,15 @@ namespace Myss.Api.Data
 
         /// <summary>Gets or sets the submitted social insurance number.</summary>
         public required string Sin { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the citizen wants a reminder when the
+        /// online monthly report opens. Stored only: nothing sends it yet (MYSS-271).
+        /// </summary>
+        public bool MonthlyReportReminder { get; set; }
+
+        /// <summary>Gets or sets the citizen's phone numbers, in their chosen order.</summary>
+        public List<MyssUserPhone> Phones { get; set; } = [];
 
         /// <summary>Gets or sets when the profile was first created.</summary>
         public DateTimeOffset CreatedAt { get; set; }

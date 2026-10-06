@@ -76,6 +76,11 @@ namespace Myss.Api
             services.AddScoped<IFormsService, FormsService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
 
+            // Account Info (MYSS-271). The case details are placeholders until
+            // ICM and MIS PORTALSERVICES are connected; swap the provider then.
+            services.AddScoped<IAccountService, AccountService>();
+            services.AddSingleton<ICaseAccountProvider, PlaceholderCaseAccountProvider>();
+
             // Eligibility Estimator (Option B): the browser computes the estimate;
             // MyssApi serves the Form.io spec and the rate table anonymously (see
             // EligibilityEstimatorController). The rate provider reads Strapi and
