@@ -44,6 +44,12 @@ namespace Myss.Api.Configuration
         /// <summary>Canonical claim type for the Basic BCeID user GUID.</summary>
         public const string BceidGuidClaimType = "bceid_user_guid";
 
+        /// <summary>
+        /// Claim type for the Business BCeID GUID. Its presence on a
+        /// <see cref="IdentityProviders.BceidBoth"/> token marks a Business BCeID sign-in.
+        /// </summary>
+        public const string BceidBusinessGuidClaimType = "bceid_business_guid";
+
         /// <summary>Canonical claim type for the IDIR username.</summary>
         public const string IdirUsernameClaimType = "idir_username";
 

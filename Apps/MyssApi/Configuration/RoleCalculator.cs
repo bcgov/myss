@@ -18,7 +18,18 @@ namespace Myss.Api.Configuration
         /// <summary>Business BCeID — never a citizen path (RULE-IDA-08).</summary>
         public const string BceidBusiness = "bceidbusiness";
 
-        /// <summary>BC Services Card — offered beside Basic BCeID on the citizen sign-in chooser.</summary>
+        /// <summary>
+        /// Basic and Business BCeID behind one broker — what the CSS integration actually
+        /// enables (dev realm, 2026-09-09). A citizen only when the token carries no
+        /// Business BCeID GUID (RULE-IDA-08).
+        /// </summary>
+        public const string BceidBoth = "bceidboth";
+
+        /// <summary>
+        /// BC Services Card under a fixed alias. CSS brokers BC Services Card per
+        /// integration under the client id instead, so the live alias is configured
+        /// (<c>Oidc:BcServicesCardIdp</c>, default the client id); this one stays accepted.
+        /// </summary>
         public const string BcServicesCard = "bcservicescard";
 
         /// <summary>IDIR via SiteMinder — the worker sign-in path.</summary>
@@ -41,6 +52,12 @@ namespace Myss.Api.Configuration
         /// <summary>Gets the roles delivered on the token, flattened by <see cref="KeycloakClaims"/>.</summary>
         public IReadOnlyCollection<string> Roles { get; init; } = [];
 
+        /// <summary>
+        /// Gets a value indicating whether the token carries a Business BCeID GUID, which
+        /// marks a <see cref="IdentityProviders.BceidBoth"/> sign-in as Business BCeID.
+        /// </summary>
+        public bool HasBceidBusinessGuid { get; init; }
+
         /// <summary>Reads the token identity off a validated principal.</summary>
         /// <param name="principal">The principal built from the validated token.</param>
         /// <returns>The typed token identity.</returns>
@@ -56,6 +73,8 @@ namespace Myss.Api.Configuration
                     .FindAll(KeycloakClaims.RolesClaimType)
                     .Select(c => c.Value)
                     .ToArray(),
+                HasBceidBusinessGuid = !string.IsNullOrWhiteSpace(
+                    principal.FindFirst(KeycloakClaims.BceidBusinessGuidClaimType)?.Value),
             };
         }
     }
@@ -108,18 +127,28 @@ namespace Myss.Api.Configuration
         /// default true). The cross-line stripping below is hardening, not derivation, and
         /// applies regardless.
         /// </param>
+        /// <param name="bcServicesCardIdp">
+        /// The alias this integration's BC Services Card broker mints into
+        /// <c>identity_provider</c> (CSS names it after the client id). Null or blank
+        /// accepts only the fixed <see cref="IdentityProviders.BcServicesCard"/> alias.
+        /// </param>
         /// <returns>The effective role set.</returns>
         public static IReadOnlySet<string> Calculate(
             TokenIdentity token,
             MyssAccountSnapshot account,
-            bool deriveCitizenRoleFromIdp = true)
+            bool deriveCitizenRoleFromIdp = true,
+            string? bcServicesCardIdp = null)
         {
             ArgumentNullException.ThrowIfNull(token);
             ArgumentNullException.ThrowIfNull(account);
 
             var roles = new HashSet<string>(token.Roles, StringComparer.Ordinal);
 
-            bool citizenIdp = MatchesAny(token.IdentityProvider, CitizenIdps);
+            bool citizenIdp = MatchesAny(token.IdentityProvider, CitizenIdps)
+                || (MatchesAny(token.IdentityProvider, [IdentityProviders.BceidBoth])
+                    && !token.HasBceidBusinessGuid)
+                || (!string.IsNullOrWhiteSpace(bcServicesCardIdp)
+                    && MatchesAny(token.IdentityProvider, [bcServicesCardIdp]));
             bool workerIdp = MatchesAny(token.IdentityProvider, WorkerIdps);
 
             if (citizenIdp)
