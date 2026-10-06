@@ -98,9 +98,15 @@ namespace Myss.Api.Services
             var typesSeen = new HashSet<AccountPhoneType>();
             for (int i = 0; i < count; i++)
             {
-                PhoneInputModel input = request.Phones[i];
+                // A JSON body can hold a null entry ({"phones":[null]}) despite the
+                // non-nullable annotation; model validation does not look inside
+                // the list. Read through it so a null fails both checks below as
+                // an empty entry would, a 422 rather than a 500.
+                PhoneInputModel? input = request.Phones[i];
+                string? rawNumber = input?.Number;
+                string? rawType = input?.Type;
 
-                DomainValidationResult<PhoneNumber> number = PhoneNumber.TryCreate(input.Number);
+                DomainValidationResult<PhoneNumber> number = PhoneNumber.TryCreate(rawNumber);
                 if (!number.IsValid)
                 {
                     errors.Add(Error($"phones[{i}].number", number.Keyword!, number.Message!));
@@ -109,7 +115,7 @@ namespace Myss.Api.Services
                 // Parsed by name only: Enum.TryParse would also take "0" or "7".
                 AccountPhoneType? type = Enum.GetValues<AccountPhoneType>()
                     .Cast<AccountPhoneType?>()
-                    .FirstOrDefault(t => string.Equals(t.ToString(), input.Type, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(t => string.Equals(t.ToString(), rawType, StringComparison.OrdinalIgnoreCase));
                 if (type is null)
                 {
                     errors.Add(Error(

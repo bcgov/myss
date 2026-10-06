@@ -183,6 +183,30 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
+        public async Task ANullEntryIsAFieldErrorNotAServerError()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+
+            using HttpResponseMessage response = await host.Send(
+                "alice",
+                HttpMethod.Put,
+                Phones,
+                new StringContent("""{"phones":[null]}""", System.Text.Encoding.UTF8, "application/json"));
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            using JsonDocument body = await Json(response);
+            var errors = body.RootElement.GetProperty("payload").EnumerateArray()
+                .Select(e => (e.GetProperty("field").GetString(), e.GetProperty("keyword").GetString()))
+                .ToList();
+            Assert.Equal(
+                [
+                    ("phones[0].number", ValidationKeywords.PhoneInvalidFormat),
+                    ("phones[0].type", ValidationKeywords.PhoneTypeUnknown),
+                ],
+                errors);
+        }
+
+        [Fact]
         public async Task AnEmptyListRemovesEveryNumber()
         {
             using IntakeTestHost host = NewHost(registered: ["alice"]);
