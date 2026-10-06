@@ -3,6 +3,8 @@ import { createBrowserRouter } from "react-router";
 import App from "@/App";
 import HomePage from "@/pages/HomePage";
 import DashboardPage from "@/pages/DashboardPage";
+import DashboardLayout from "@/pages/DashboardLayout";
+import UnderDevelopmentPage from "@/pages/UnderDevelopmentPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
@@ -96,15 +98,37 @@ export const router = createBrowserRouter([
         ),
       },
 
-      // ---- Protected (Forms / Strapi): only after login/auth ----
+      // ---- Dashboard (MYSS-194): the signed-in citizen's sections, framed
+      // by the left-hand menu. A section still under development renders the
+      // placeholder; connecting its feature means swapping that element only.
       {
-        path: paths.dashboard,
         element: (
           <RequireAuth>
-            <DashboardPage />
+            <DashboardLayout />
           </RequireAuth>
         ),
+        children: [
+          { path: paths.dashboard, element: <DashboardPage /> },
+          {
+            path: paths.notifications,
+            element: <UnderDevelopmentPage title="Notifications" />,
+          },
+          {
+            path: paths.messages,
+            element: <UnderDevelopmentPage title="Messages" />,
+          },
+          {
+            path: paths.serviceRequests,
+            element: <UnderDevelopmentPage title="Service Requests" />,
+          },
+          {
+            path: paths.accountInfo,
+            element: <UnderDevelopmentPage title="Account Info" />,
+          },
+        ],
       },
+
+      // ---- Protected (Forms / Strapi): only after login/auth ----
       {
         path: paths.application,
         element: (
