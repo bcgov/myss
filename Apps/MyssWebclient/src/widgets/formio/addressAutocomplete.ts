@@ -1,5 +1,3 @@
-import { Components } from "@formio/js";
-
 import {
   findCanadaPostAddresses,
   retrieveCanadaPostAddress,
@@ -9,6 +7,8 @@ import {
 import { CANADA_POST_API_KEY } from "@/constants";
 
 import { AddressListbox } from "./addressListbox";
+import { stockComponent } from "./bcgovField";
+import { BcgovTextFieldComponent } from "./bcgovTextField";
 
 const SEARCH_DELAY_MS = 250;
 
@@ -23,31 +23,6 @@ interface FormioTargetComponent {
 
 type AddressTargets = Record<AddressPart, FormioTargetComponent>;
 
-interface FormioTextFieldInstance {
-  component: Record<string, unknown>;
-  refs: Record<string, unknown>;
-  root?: { getComponent(key: string): FormioTargetComponent | undefined };
-  attach(element: HTMLElement): Promise<void>;
-  detach(): void;
-  setValue(value: unknown, flags?: Record<string, unknown>): boolean;
-  addEventListener(
-    element: EventTarget,
-    type: string,
-    listener: EventListener,
-  ): void;
-}
-
-type FormioTextFieldCtor = {
-  new (...args: unknown[]): FormioTextFieldInstance;
-  schema(...extend: unknown[]): Record<string, unknown>;
-};
-
-const TextFieldBase = (
-  Components as unknown as {
-    components: { textfield: FormioTextFieldCtor };
-  }
-).components.textfield;
-
 function addressParts(address: CanadaPostAddress): Record<AddressPart, string> {
   return {
     line2: address.line2,
@@ -57,26 +32,23 @@ function addressParts(address: CanadaPostAddress): Record<AddressPart, string> {
   };
 }
 
-function firstInput(ref: unknown): HTMLInputElement | undefined {
-  if (ref instanceof HTMLInputElement) return ref;
-  if (typeof ref !== "object" || ref === null) return undefined;
-
-  const first = (ref as { readonly 0?: unknown })[0];
-  return first instanceof HTMLInputElement ? first : undefined;
-}
-
 /**
- * A Form.io text field enhanced with Canada Post AddressComplete suggestions.
- * The native text input remains the source of truth, preserving Form.io's
- * required/pattern validation and allowing ordinary manual entry.
+ * The design system text field enhanced with Canada Post AddressComplete
+ * suggestions. The field's input remains the source of truth, preserving
+ * Form.io's required/pattern validation and allowing ordinary manual entry.
+ * The suggestion list lives in a sibling of the React root, so React never
+ * sees DOM it did not render.
  */
-export class BcgovAddressAutocompleteComponent extends TextFieldBase {
+export class BcgovAddressAutocompleteComponent extends BcgovTextFieldComponent {
   private input?: HTMLInputElement;
   private listbox?: AddressListbox;
   private searchTimer?: number;
   private request?: AbortController;
 
   static schema(...extend: unknown[]): Record<string, unknown> {
+    const TextFieldBase = stockComponent("textfield") as unknown as {
+      schema(...extend: unknown[]): Record<string, unknown>;
+    };
     return TextFieldBase.schema(
       {
         type: "bcgovAddressAutocomplete",
@@ -100,12 +72,27 @@ export class BcgovAddressAutocompleteComponent extends TextFieldBase {
     };
   }
 
+  protected override bcgovMarkup(): string {
+    return '<div ref="reactRoot"></div><div ref="addressList"></div>';
+  }
+
   override async attach(element: HTMLElement): Promise<void> {
     await super.attach(element);
+    if (this.bcgovStockRendering) return;
 
-    const input = firstInput(this.refs.input);
-    const host = input?.parentElement;
-    if (!input || !host || input.disabled || input.readOnly) return;
+    this.loadRefs(element, { addressList: "single" });
+    const host = this.refs.reactRoot;
+    const listHost = this.refs.addressList;
+    const input =
+      host instanceof HTMLElement ? host.querySelector("input") : null;
+    if (
+      !(input instanceof HTMLInputElement) ||
+      !(listHost instanceof HTMLElement) ||
+      input.disabled ||
+      input.readOnly
+    ) {
+      return;
+    }
     if (!this.addressTargets()) {
       // A spec error: stay a plain text field rather than half-fill an address.
       console.error(
@@ -117,7 +104,7 @@ export class BcgovAddressAutocompleteComponent extends TextFieldBase {
     this.input = input;
     this.listbox = new AddressListbox({
       input,
-      host,
+      host: listHost,
       listId: `${input.id || String(this.component.key)}-address-suggestions`,
       onChoose: (suggestion) => void this.choose(suggestion),
       onDismiss: () => {
@@ -125,12 +112,14 @@ export class BcgovAddressAutocompleteComponent extends TextFieldBase {
         this.listbox?.announce("");
       },
     });
-    this.addEventListener(input, "input", this.handleInput);
-    this.addEventListener(input, "blur", this.handleBlur);
+    input.addEventListener("input", this.handleInput);
+    input.addEventListener("blur", this.handleBlur);
   }
 
   override detach(): void {
     this.cancelPending();
+    this.input?.removeEventListener("input", this.handleInput);
+    this.input?.removeEventListener("blur", this.handleBlur);
     this.listbox?.destroy();
     this.listbox = undefined;
     this.input = undefined;
@@ -247,13 +236,16 @@ export class BcgovAddressAutocompleteComponent extends TextFieldBase {
   /** The sibling components named by `addressFields`; null if any is missing. */
   private addressTargets(): AddressTargets | null {
     const keys = this.component.addressFields as
-      | Partial<Record<AddressPart, unknown>>
+      Partial<Record<AddressPart, unknown>> | undefined;
+    const root = this.root as
+      | { getComponent?(key: string): FormioTargetComponent | undefined }
+      | null
       | undefined;
     const targets: Partial<AddressTargets> = {};
     for (const part of ADDRESS_PARTS) {
       const key = keys?.[part];
       const target =
-        typeof key === "string" ? this.root?.getComponent(key) : undefined;
+        typeof key === "string" ? root?.getComponent?.(key) : undefined;
       if (!target) return null;
       targets[part] = target;
     }

@@ -226,10 +226,27 @@ function useWorkingSpec(
         if (next) setState((s) => withBuilderSpec(s, next));
     }, []);
 
+    // The builder announces an edit only after its rebuild settles, so a save
+    // that follows an edit closely could send the copy from before it. In
+    // build mode the spec to send is read from the builder itself, and the
+    // working copy is brought up to date at the same time.
+    const specToSend = useCallback((): FormType | null => {
+        const live =
+            state.mode === "build"
+                ? builderInstance.current?.instance?.schema
+                : undefined;
+        if (!live || sameSpec(state.workingSpec, live)) {
+            return state.workingSpec;
+        }
+        setState((s) => withBuilderSpec(s, live));
+        return live;
+    }, [state.mode, state.workingSpec]);
+
     return {
         ...state,
         captureBuilder,
         editInBuilder,
+        specToSend,
         editLabel: (key: string, label: string) =>
             setState((s) =>
                 editedSpec(s, (spec) => setLabel(spec, key, label)),
@@ -676,7 +693,8 @@ function SaveBar({
 
 interface EditorActionsInput {
     formSpecId: string | undefined;
-    workingSpec: FormType | null;
+    /** The spec to send: the working copy, read from the builder in build mode. */
+    specToSend: () => FormType | null;
     saveTitle: string | null;
     isNew: boolean;
     creating: boolean;
@@ -691,7 +709,7 @@ interface EditorActionsInput {
 function useEditorActions(input: EditorActionsInput) {
     const {
         formSpecId,
-        workingSpec,
+        specToSend,
         saveTitle,
         isNew,
         creating,
@@ -707,12 +725,13 @@ function useEditorActions(input: EditorActionsInput) {
     // The spec to send, or null when a rule failed and the reasons are already
     // on screen.
     function beginAction(action: EditorAction): FormType | null {
-        if (!workingSpec) return null;
+        const spec = specToSend();
+        if (!spec) return null;
         setLastAction(action);
         setSaveWarning(null);
-        const errs = ruleErrors(workingSpec);
+        const errs = ruleErrors(spec);
         setClientErrors(errs);
-        return errs.length ? null : workingSpec;
+        return errs.length ? null : spec;
     }
 
     // After the first save of a new form, drop the new-form flag from the URL
@@ -793,7 +812,7 @@ export default function FormEditorPage() {
 
     const actions = useEditorActions({
         formSpecId,
-        workingSpec,
+        specToSend: editor.specToSend,
         saveTitle: saveTitleFor(draft, creating, newTitle),
         isNew,
         creating,

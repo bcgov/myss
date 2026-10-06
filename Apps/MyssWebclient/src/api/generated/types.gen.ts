@@ -338,6 +338,26 @@ export type MyssApiModelsBaseResponseModelMyssApiModelsPublishResultModel = {
 };
 
 /**
+ * BaseResponseModel<IReadOnlyDictionary`2>
+ *
+ * Represents the result of a request.
+ */
+export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString = {
+    /**
+     * IReadOnlyDictionary<String>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: {
+        [key: string]: string;
+    } | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
  * BaseResponseModel<IReadOnlyList`1>
  *
  * Represents the result of a request.
@@ -1019,6 +1039,22 @@ export type GetFormSpecResponses = {
 };
 
 export type GetFormSpecResponse = GetFormSpecResponses[keyof GetFormSpecResponses];
+
+export type GetErrorMessagesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/forms/error-messages';
+};
+
+export type GetErrorMessagesResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString;
+};
+
+export type GetErrorMessagesResponse = GetErrorMessagesResponses[keyof GetErrorMessagesResponses];
 
 export type ListFormSubmissionsData = {
     body?: never;

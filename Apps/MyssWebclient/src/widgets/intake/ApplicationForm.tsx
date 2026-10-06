@@ -17,6 +17,7 @@ import styles from "./ApplicationForm.module.css";
 
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
 import SubmissionErrors from "@/components/SubmissionErrors";
+import { useClientValidation } from "@/hooks/useClientValidation";
 import ReadOnlySpecForm from "@/widgets/ReadOnlySpecForm";
 import {
   ApplicationRequestError,
@@ -127,6 +128,10 @@ function DraftForm({
   // discard anything typed since the click.
   const [initialSubmission] = useState(() => ({ data: application.answers }));
   const formOptions = useMemo(() => ({ noAlerts: true }), []);
+  // A submit Form.io blocks is listed in the same summary as one the API
+  // refuses (Form.io's own alert is already off).
+  const clientValidation = useClientValidation();
+  const { clear: clearClientValidation } = clientValidation;
   const formInstanceRef = useRef<Webform>(null);
   const displayedErrorRef = useRef<Error>(null);
   const validationErrors = useMemo(
@@ -192,6 +197,7 @@ function DraftForm({
   const handleSubmit = useCallback(
     (submission: FormSubmission) => {
       if (submit.isPending) return;
+      clearClientValidation();
       submitApplication(
         { version: application.version, answers: submission.data },
         {
@@ -203,7 +209,13 @@ function DraftForm({
         },
       );
     },
-    [application.version, onSubmitted, submit.isPending, submitApplication],
+    [
+      application.version,
+      clearClientValidation,
+      onSubmitted,
+      submit.isPending,
+      submitApplication,
+    ],
   );
 
   useEffect(() => {
@@ -262,7 +274,11 @@ function DraftForm({
           Your answers could not be saved: {otherSaveError.message}
         </p>
       )}
-      {submit.error && !conflict && <SubmissionErrors error={submit.error} />}
+      {clientValidation.error ? (
+        <SubmissionErrors error={clientValidation.error} />
+      ) : (
+        submit.error && !conflict && <SubmissionErrors error={submit.error} />
+      )}
       {save.isSuccess && !save.isPending && (
         <output className={styles.saved}>
           Saved{" "}
@@ -277,6 +293,7 @@ function DraftForm({
         submission={initialSubmission}
         options={formOptions}
         onFormReady={handleFormReady}
+        onSubmitError={clientValidation.onSubmitError}
         onSubmit={handleSubmit}
       />
       <div className={styles.actions}>

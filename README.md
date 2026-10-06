@@ -58,6 +58,10 @@ two can be up at a time (same host ports).
 
 Still manual, because they live inside Strapi's admin UI: the first-visit admin user,
 and the API token for `Strapi:ApiToken` (goes in `Apps/MyssApi/appsettings.local.json`).
+The token is read-only and scoped: it needs `find` and `findOne` on Form Spec,
+Eligibility Rate and Error Message. A token created before the Error Message collection
+existed lacks the last grant; MyssApi then logs a warning and words refused submissions
+from its compiled defaults until the token is updated.
 
 ## Start the stack manually (compose)
 

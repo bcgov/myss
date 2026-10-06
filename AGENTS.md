@@ -182,10 +182,46 @@ revokes public read on form specs and seeds the POC forms on every boot (idempot
 `MyssApi` reads specs through `StrapiFormSpecProvider` with a scoped read-only API token.
 On submit, `FormsService` resolves **the version the client claims to have rendered**,
 not the latest, and `FormSpecValidator` re-validates every value server-side —
-client-side validation is UX only. Fields opt into domain rules through the Form.io
-`properties` map (`{"myssValidator": "sin"}`, `{"myssMatches": "contactEmail"}`) or the
-component type. Known gap: conditionally-required fields are exempt from the required
-check.
+client-side validation is UX only. It enforces the spec's own rules (`validate.required`,
+`pattern` read as JavaScript reads it, `minLength`/`maxLength`, `min`/`max`), evaluates
+simple conditionals (`conditional.when`/`eq`/`show`, on the field or a container above it,
+with `show` meaning the literal `true` exactly as Form.io reads it) so a field is required
+only when the citizen could see it, accepts a choice in whatever JSON shape Form.io posts it
+(a numeric option arrives as a number), reports one failure per field, and runs the named
+domain rules a field opts
+into through the Form.io `properties` map: `{"myssValidator": "sin" | "email" | "phone" |
+"postalCode" | "date" | "dateParts"}` (`dateParts` names its siblings in
+`myssDateParts: { month, year }`), `{"myssMatches": "contactEmail"}` for a confirmation
+field, or the component type. Advanced (JSON logic) conditionals are not evaluated; a
+field behind one counts as visible. `BusPassRules` keeps only the cross-field rules the
+spec cannot express.
+
+**The browser runs the same rules.** `MyssWebclient/src/widgets/formio/` re-registers
+Form.io's stock input types (`textfield`, `email`, `textarea`, `number`, `select`,
+`checkbox`, `radio`, `datetime`, `button`) with wrappers that keep the stock class's value
+handling and validation and draw the BC Gov Design System component instead
+(`bcgovField.tsx` is the shared base), so every published spec renders with the design
+system without a spec change. `validationRules.ts` is the TypeScript mirror of the domain
+rules, held to the C# ones by `Shared/validation/validation-vectors.json`. Inside the form
+builder's settings dialog the wrappers render Form.io's stock markup. A blocked submit and
+a refused submit feed the same `SubmissionErrors` summary (`useClientValidation`).
+
+**Error wording is content, in three layers.** Wording authored on the form itself comes
+first, in the order the browser shows it: for Form.io's own rules (`required`, `pattern`,
+lengths, `min`/`max`) `validate.customMessage`, then `validate.patternMessage`, then the
+`errors.<rule>` entry; for the named domain rules the `errors.<rule>` entry, then
+`validate.customMessage`. The API flags authored wording and never replaces it. Otherwise a validator emits a stable
+keyword (`DOMAIN.CONTEXT.NAME`, see `Domain/ValidationKeywords.cs`) with compiled default
+text, and before a 422 leaves `ErrorMessageResolver` replaces the text keyword by keyword
+from the `error-message` collection in Strapi (`StrapiErrorMessageProvider`: same read-only
+token, 5-minute cache, compiled fallback in `Data/ErrorMessageDefaults.cs`). The browser
+reads the same catalogue anonymously from `GET /v1/forms/error-messages`, once per session
+in `App`, and its field wrappers resolve rule failures in the same order.
+`Shared/validation/error-messages.json` is the contract between the fallback, the Strapi
+seed and the browser's compiled text; its header says which keywords deliberately stay in
+code (`FORM.FIELD.REQUIRED` is per-field wording on the form, not a catalogue row). The seed
+is create-if-missing, so a designer's edit survives restarts. Adding a keyword means a row
+in the shared file and every mirror, or a reason in the header — the test suites check.
 
 ### Platform and Intake
 
@@ -222,11 +258,16 @@ shared user-secret store: see `Apps/IcmApi.Host/AGENTS.md`.
 ### Shared validation vectors
 
 `Shared/validation/validation-vectors.json` is the contract between the C# and
-TypeScript implementations of the same rules (SIN Luhn, email, confirmation match).
-It is **linked**, not copied, into `MyssApi.Tests.csproj`; both suites read it, so a
-divergence is a failing test. Adding a case means both suites must handle it. Every
-value is synthetic — never add a real SIN, PHN or personal email. PHN vectors are
+TypeScript implementations of the same rules (SIN Luhn, email, confirmation match, phone,
+postal code, ISO date). It is **linked**, not copied, into `MyssApi.Tests.csproj` and
+imported by `MyssWebclient/src/widgets/formio/validationRules.unit.test.ts`; both suites
+read it, so a divergence is a failing test. Adding a case means both suites must handle
+it. Every value is synthetic — never add a real SIN, PHN or personal email. PHN vectors are
 deliberately absent pending verification of the mod-11 spec.
+
+`Shared/validation/error-messages.json` works the same way for error wording: linked
+into `MyssApi.Tests.csproj` and read from disk by the MyssContent seed test, so the
+compiled fallback and the Strapi seed cannot drift apart.
 
 ## Conventions
 

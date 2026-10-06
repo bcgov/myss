@@ -91,10 +91,7 @@ namespace Myss.Api.Services
             FormSubmissionResultModel stored = await _formsService.SubmitAsync(
                 FormSpecId,
                 request,
-                answers => BusPassRules.Validate(
-                    answers,
-                    today,
-                    request.FormSpecVersion >= BusPassRules.ReplacementAcknowledgementVersion),
+                answers => BusPassRules.Validate(answers, today, request.FormSpecVersion),
                 cancellationToken);
 
             if (!stored.IsValid)

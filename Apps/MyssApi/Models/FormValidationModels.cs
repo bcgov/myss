@@ -1,6 +1,7 @@
 namespace Myss.Api.Models
 {
     using System.Collections.Generic;
+    using System.Text.Json.Serialization;
 
     /// <summary>
     /// One rejected value: which field, why, and what to tell the citizen.
@@ -21,6 +22,16 @@ namespace Myss.Api.Models
 
         /// <summary>Gets or sets the human-readable message.</summary>
         public required string Message { get; set; }
+
+        /// <summary>
+        /// Gets a value indicating whether the message was authored on the form
+        /// itself (the component's <c>errors</c> map or
+        /// <c>validate.customMessage</c>). Such wording is specific to the field
+        /// and outranks the catalogue, so the resolver leaves it alone. Not part
+        /// of the wire shape.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasAuthoredMessage { get; init; }
     }
 
     /// <summary>

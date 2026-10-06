@@ -13,6 +13,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Configuration;
     using Myss.Api.Data;
     using Myss.Api.Domain;
+    using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
     using Xunit;
@@ -57,6 +58,7 @@ namespace Myss.Api.Tests
 
         private readonly WebApplicationFactory<Startup> _factory;
         private readonly FakeFormSpecProvider _provider = new();
+        private readonly FakeErrorMessageProvider _errorMessages = new();
 
         /// <summary>Initializes a new instance of the <see cref="FormsValidationEndpointTests"/> class.</summary>
         /// <param name="factory">The injected in-memory host factory.</param>
@@ -65,6 +67,46 @@ namespace Myss.Api.Tests
             _factory = factory;
             _provider.VersionResult = FakeFormSpecProvider.Spec(FormSpecId, 1, Spec);
             _provider.LatestResult = FakeFormSpecProvider.Spec(FormSpecId, 1, Spec);
+        }
+
+        [Fact]
+        public async Task A422_CarriesTheCatalogueWording_ForEachKeyword()
+        {
+            // The wording the Service Designer published in the content engine
+            // is what the citizen reads in the error summary, not the compiled
+            // default the validator started from.
+            _errorMessages.Overrides[ValidationKeywords.SinInvalidChecksum] = "Authored SIN wording";
+            HttpClient client = CreateClient();
+
+            using HttpResponseMessage response = await Submit(client, 1, new
+            {
+                firstName = "Ada",
+                sin = "050082830",
+            });
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            JsonElement sin = Assert.Single(
+                (await Payload(response)).EnumerateArray(),
+                e => e.GetProperty("field").GetString() == "sin");
+            Assert.Equal("Authored SIN wording", sin.GetProperty("message").GetString());
+        }
+
+        [Fact]
+        public async Task ErrorMessages_AreReadableAnonymously()
+        {
+            // The public bus pass page words the ministry's outcomes from this
+            // catalogue, and it has no signed-in user to ask on behalf of.
+            _errorMessages.Overrides[BusPassErrorKeywords.Rejected] = "Authored outcome wording";
+            HttpClient client = CreateClient(mockAuth: false);
+
+            using HttpResponseMessage response = await client.GetAsync("/v1/forms/error-messages");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            JsonElement catalogue = await Payload(response);
+            Assert.Equal("Authored outcome wording", catalogue.GetProperty(BusPassErrorKeywords.Rejected).GetString());
+            Assert.Equal(
+                ErrorMessageDefaults.Messages[ValidationKeywords.SinWrongLength],
+                catalogue.GetProperty(ValidationKeywords.SinWrongLength).GetString());
         }
 
         [Fact]
@@ -289,6 +331,9 @@ namespace Myss.Api.Tests
 
                         services.RemoveAll<IFormSpecProvider>();
                         services.AddSingleton<IFormSpecProvider>(_provider);
+
+                        services.RemoveAll<IErrorMessageProvider>();
+                        services.AddSingleton<IErrorMessageProvider>(_errorMessages);
                     });
                 })
                 .CreateClient();

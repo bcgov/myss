@@ -1,0 +1,151 @@
+{
+  "$comment": [
+    "SHARED ERROR MESSAGE CATALOGUE — the contract between the Strapi seed and the",
+    "C# compiled fallback for the citizen-facing text of every stable error keyword.",
+    "",
+    "The live catalogue is the `error-message` collection in MyssContent (Strapi).",
+    "A Service Designer edits a row there and publishes; the new wording is served",
+    "without a deploy. This file seeds that collection on a fresh database AND is",
+    "the text MyssApi serves when Strapi cannot be read, so it is mirrored twice:",
+    "  Apps/MyssContent/src/lib/error-message-seed-data.ts   (the seed)",
+    "  Apps/MyssApi/Data/ErrorMessageDefaults.cs             (the compiled fallback)",
+    "Both are tested against this file, so a divergence is a failing test rather",
+    "than two systems quietly wording the same failure differently.",
+    "",
+    "The seed is create-if-missing: a row the designer has already edited in the",
+    "admin panel is never overwritten by a restart. Changing the text here changes",
+    "the fallback and what a fresh environment starts with, not a live row.",
+    "",
+    "RULES FOR EDITING",
+    "  - A keyword is DOMAIN.CONTEXT.NAME in upper case, and is never reused for a",
+    "    different meaning. Adding one means adding it to both mirrors.",
+    "  - Only keywords whose wording is the same wherever they are raised belong",
+    "    here. FORM.FIELD.REQUIRED is deliberately absent: its wording is authored",
+    "    per field on the form (errors.required / validate.customMessage), and the",
+    "    bus pass rules carry field-specific wording of their own.",
+    "  - Keywords whose message embeds a value stay in code until the resolver",
+    "    supports placeholders: FORM.FIELD.UNKNOWN and FORM.FIELD.WRONG_TYPE name",
+    "    the key, FORM.VERSION.UNKNOWN names the version. BUSPASS.SUBMIT.ICM_UNAVAILABLE",
+    "    is worded by the browser from the API's verdict on whether the ministry may",
+    "    already hold the request, so one keyword has two texts and stays there too.",
+    "  - `note` says where the keyword is raised, for the designer's benefit. It is",
+    "    seeded into the row but never shown to a citizen."
+  ],
+  "messages": [
+    {
+      "keyword": "IDA.SIN.WRONG_LENGTH",
+      "message": "A Social Insurance Number must be 9 digits.",
+      "note": "A SIN field (properties.myssValidator = sin) with other than nine digits once formatting is stripped."
+    },
+    {
+      "keyword": "IDA.SIN.INVALID_CHECKSUM",
+      "message": "That Social Insurance Number is not valid. Check the digits and try again.",
+      "note": "A nine-digit SIN that fails the Luhn check."
+    },
+    {
+      "keyword": "IDA.EMAIL.INVALID_FORMAT",
+      "message": "Enter an email address in the format name@example.com.",
+      "note": "An email field whose value is not a recognisable address."
+    },
+    {
+      "keyword": "IDA.EMAIL.MISMATCH",
+      "message": "The two email addresses do not match.",
+      "note": "A confirmation field (properties.myssMatches) that differs from the field it confirms."
+    },
+    {
+      "keyword": "IDA.PHONE.INVALID_FORMAT",
+      "message": "Enter a 10-digit phone number, for example 250 555 0199.",
+      "note": "A phone field (properties.myssValidator = phone) with other than ten digits once formatting is stripped."
+    },
+    {
+      "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT",
+      "message": "Enter a postal code in the format A1A 1A1.",
+      "note": "A postal code field (properties.myssValidator = postalCode) that is not a Canadian postal code."
+    },
+    {
+      "keyword": "FORM.DATE.INVALID",
+      "message": "Enter a valid date.",
+      "note": "A date field (properties.myssValidator = date), or the day of a day/month/year group (dateParts), that is not a real date."
+    },
+    {
+      "keyword": "FORM.FIELD.PATTERN",
+      "message": "This answer is not in the expected format.",
+      "note": "A field whose validate.pattern the answer does not match. Forms usually word this per field with errors.pattern."
+    },
+    {
+      "keyword": "FORM.FIELD.MIN_LENGTH",
+      "message": "This answer is too short.",
+      "note": "A field whose validate.minLength the answer is under."
+    },
+    {
+      "keyword": "FORM.FIELD.MAX_LENGTH",
+      "message": "This answer is too long.",
+      "note": "A field whose validate.maxLength the answer is over."
+    },
+    {
+      "keyword": "FORM.FIELD.MIN",
+      "message": "This number is too small.",
+      "note": "A number under the field's validate.min."
+    },
+    {
+      "keyword": "FORM.FIELD.MAX",
+      "message": "This number is too large.",
+      "note": "A number over the field's validate.max."
+    },
+    {
+      "keyword": "REGISTRATION.DOB.INVALID",
+      "message": "Enter a valid date of birth.",
+      "note": "Registration: the date of birth is not a real date."
+    },
+    {
+      "keyword": "REGISTRATION.DOB.FUTURE",
+      "message": "Date of birth cannot be in the future.",
+      "note": "Registration: the date of birth is after today."
+    },
+    {
+      "keyword": "BUSPASS.REQUEST.TYPE_INVALID",
+      "message": "Select a valid service type",
+      "note": "Bus pass: the service type selector holds a value the form does not offer."
+    },
+    {
+      "keyword": "BUSPASS.IDENTITY.IDENTIFIER_REQUIRED",
+      "message": "A Social Insurance Number or bus pass account number is required",
+      "note": "Bus pass: neither a SIN nor a bus pass account number was given."
+    },
+    {
+      "keyword": "BUSPASS.DOB.INVALID",
+      "message": "Enter a valid date of birth",
+      "note": "Bus pass: the day, month and year do not make a real date."
+    },
+    {
+      "keyword": "BUSPASS.DOB.FUTURE",
+      "message": "The date of birth cannot be in the future",
+      "note": "Bus pass: the date of birth is after today."
+    },
+    {
+      "keyword": "BUSPASS.DOB.UNDER_16",
+      "message": "You must be at least 16",
+      "note": "Bus pass: the applicant is younger than the program's minimum age of 16."
+    },
+    {
+      "keyword": "BUSPASS.CONTACT.EMAIL_REQUIRED",
+      "message": "An email address is required when email is the preferred means of communication",
+      "note": "Bus pass: email was chosen as the contact method but no address was given."
+    },
+    {
+      "keyword": "BUSPASS.CONTACT.EMAIL_MISMATCH",
+      "message": "The two email addresses do not match",
+      "note": "Bus pass: the email and its verification field differ."
+    },
+    {
+      "keyword": "BUSPASS.SUBMIT.REJECTED",
+      "message": "The BC Bus Pass Program could not accept this request. Check that the details you entered match what the ministry has on file, or contact the program for help.",
+      "note": "Bus pass: the ministry received the request and declined it. Worded by the browser; the API returns the keyword."
+    },
+    {
+      "keyword": "BUSPASS.SUBMIT.RATE_LIMITED",
+      "message": "Too many requests have been sent from your connection in a short time. Wait a few minutes and try again.",
+      "note": "Bus pass: too many submissions from one connection in the window. Worded by the browser; the API returns the keyword."
+    }
+  ]
+}

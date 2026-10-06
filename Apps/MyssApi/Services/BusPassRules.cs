@@ -12,92 +12,95 @@ namespace Myss.Api.Services
     /// server-side before anything is stored.
     /// </summary>
     /// <remarks>
-    /// Two kinds of rule live here. Cross-field rules (a SIN or an account
-    /// number, an email when email is the contact method, a plausible date of
-    /// birth) have no Form.io equivalent. Conditionally required fields do, but
-    /// <see cref="FormSpecValidator"/> exempts them, a known gap, so the ones
-    /// that matter for a deliverable request are checked again here.
+    /// Only cross-field rules live here: a SIN or an account number, an email
+    /// when email is the contact method, a plausible date of birth, and a
+    /// service type the form offers. Everything a single field can declare is
+    /// the spec's job and <see cref="FormSpecValidator"/>'s to enforce, the
+    /// conditionally required fields included, so nothing here duplicates a
+    /// failure the spec already reports.
     /// </remarks>
     public static class BusPassRules
     {
         /// <summary>The youngest age the program accepts an applicant at.</summary>
         public const int MinimumAge = 16;
 
-        /// <summary>The first bus pass form version that includes replacement acknowledgement.</summary>
-        public const int ReplacementAcknowledgementVersion = 4;
+        /// <summary>
+        /// The first bus pass form version whose spec names the email verification
+        /// field's partner (<c>properties.myssMatches</c>), so the spec validator
+        /// reports a mismatch and this class must not report it twice.
+        /// </summary>
+        public const int SpecValidatesEmailMatchVersion = 6;
 
         /// <summary>
         /// Checks the answers against the bus pass rules.
         /// </summary>
         /// <param name="answers">The submitted answers, keyed by component key.</param>
         /// <param name="today">Today's date, for the age rules.</param>
-        /// <param name="requireReplacementAcknowledgement">Whether the rendered form includes the replacement acknowledgement.</param>
+        /// <param name="formSpecVersion">The spec version the answers were rendered with.</param>
         /// <returns>Every failure, in field order; empty when the answers pass.</returns>
         public static IReadOnlyList<ValidationErrorModel> Validate(
             JsonElement answers,
             DateOnly today,
-            bool requireReplacementAcknowledgement = false)
+            int formSpecVersion = 0)
         {
             var errors = new List<ValidationErrorModel>();
 
-            ValidateRequestType(answers, requireReplacementAcknowledgement, errors);
+            ValidateRequestType(answers, errors);
             ValidateIdentifier(answers, errors);
             ValidateDateOfBirth(answers, today, errors);
-            ValidateContact(answers, errors);
-            ValidateMailingAddress(answers, errors);
+            ValidateContact(answers, formSpecVersion, errors);
 
             return errors;
         }
 
-        private static void ValidateRequestType(
-            JsonElement answers,
-            bool requireReplacementAcknowledgement,
-            List<ValidationErrorModel> errors)
+        /// <summary>
+        /// A service type the form does not offer is a probe, not a mistake: the
+        /// selectors are required by the spec and only offer known values. A
+        /// missing selector is the spec's required rule to report, not this one's;
+        /// a present value that resolves to no request type is refused here,
+        /// because the mapper would otherwise default it to a new application.
+        /// </summary>
+        private static void ValidateRequestType(JsonElement answers, List<ValidationErrorModel> errors)
         {
-            if (!BusPassAnswers.TryGetRequestType(answers, out BusPassRequestType requestType))
+            if (BusPassAnswers.TryGetRequestType(answers, out _))
             {
-                bool hasV3Value = answers.TryGetProperty(BusPassAnswers.ServiceRequestType, out JsonElement serviceType);
-                string? legacyCategory = BusPassAnswers.GetString(answers, BusPassAnswers.ApplicantCategory);
-                if (!hasV3Value
-                    && legacyCategory == "existing"
-                    && BusPassAnswers.GetString(answers, BusPassAnswers.ExistingClientReason) is null)
-                {
-                    errors.Add(Required(BusPassAnswers.ExistingClientReason, "A selection is required"));
-                    return;
-                }
-
-                errors.Add(new ValidationErrorModel
-                {
-                    Field = hasV3Value ? BusPassAnswers.ServiceRequestType : BusPassAnswers.ApplicantCategory,
-                    Keyword = hasV3Value
-                        ? BusPassErrorKeywords.RequestTypeInvalid
-                        : ValidationKeywords.FieldRequired,
-                    Message = hasV3Value
-                        ? "Select a valid service type"
-                        : "A service type is required",
-                });
                 return;
             }
 
-            if (requestType == BusPassRequestType.NewApplication)
+            if (BusPassAnswers.GetString(answers, BusPassAnswers.ServiceRequestType) is not null)
             {
-                if (BusPassAnswers.GetString(answers, BusPassAnswers.EligibilityCategory) is null)
+                errors.Add(RequestTypeInvalid(BusPassAnswers.ServiceRequestType));
+                return;
+            }
+
+            // The v1/v2 shape: a category, and for an existing client a reason.
+            string? category = BusPassAnswers.GetString(answers, BusPassAnswers.ApplicantCategory);
+            if (category is null)
+            {
+                return;
+            }
+
+            if (category == "existing")
+            {
+                // No reason at all is the spec's conditional required rule.
+                if (BusPassAnswers.GetString(answers, BusPassAnswers.ExistingClientReason) is not null)
                 {
-                    errors.Add(Required(BusPassAnswers.EligibilityCategory, "A selection is required"));
+                    errors.Add(RequestTypeInvalid(BusPassAnswers.ExistingClientReason));
                 }
 
-                if (BusPassAnswers.GetBool(answers, BusPassAnswers.EligibilityAcknowledged) != true)
-                {
-                    errors.Add(Required(BusPassAnswers.EligibilityAcknowledged, "Acknowledgement is required"));
-                }
+                return;
             }
-            else if (requestType == BusPassRequestType.Replacement
-                && requireReplacementAcknowledgement
-                && BusPassAnswers.GetBool(answers, BusPassAnswers.AcknowledgedPassCancellation) != true)
-            {
-                errors.Add(Required(BusPassAnswers.AcknowledgedPassCancellation, "Acknowledgement is required"));
-            }
+
+            errors.Add(RequestTypeInvalid(BusPassAnswers.ApplicantCategory));
         }
+
+        private static ValidationErrorModel RequestTypeInvalid(string field) =>
+            new()
+            {
+                Field = field,
+                Keyword = BusPassErrorKeywords.RequestTypeInvalid,
+                Message = "Select a valid service type",
+            };
 
         private static void ValidateIdentifier(JsonElement answers, List<ValidationErrorModel> errors)
         {
@@ -150,7 +153,7 @@ namespace Myss.Api.Services
             }
         }
 
-        private static void ValidateContact(JsonElement answers, List<ValidationErrorModel> errors)
+        private static void ValidateContact(JsonElement answers, int formSpecVersion, List<ValidationErrorModel> errors)
         {
             string? email = BusPassAnswers.GetString(answers, BusPassAnswers.Email);
 
@@ -165,7 +168,11 @@ namespace Myss.Api.Services
                 });
             }
 
-            if (email is not null
+            // From v6 the spec itself names the partner field, and the spec
+            // validator reports the mismatch; earlier versions checked it only in
+            // browser script, so this is their server-side check.
+            if (formSpecVersion < SpecValidatesEmailMatchVersion
+                && email is not null
                 && !EmailAddress.ConfirmationMatches(email, BusPassAnswers.GetString(answers, BusPassAnswers.EmailVerification)))
             {
                 errors.Add(new ValidationErrorModel
@@ -175,37 +182,6 @@ namespace Myss.Api.Services
                     Message = "The two email addresses do not match",
                 });
             }
-        }
-
-        private static void ValidateMailingAddress(JsonElement answers, List<ValidationErrorModel> errors)
-        {
-            if (BusPassAnswers.GetString(answers, BusPassAnswers.MailingAddressDifferent) != "yes")
-            {
-                return;
-            }
-
-            AddIfMissing(answers, errors, BusPassAnswers.MailingStreetAddress1, "An address is required");
-            AddIfMissing(answers, errors, BusPassAnswers.MailingCity, "A city is required");
-            AddIfMissing(answers, errors, BusPassAnswers.MailingProvince, "A province is required");
-            AddIfMissing(answers, errors, BusPassAnswers.MailingPostalCode, "A postal code is required");
-        }
-
-        private static void AddIfMissing(JsonElement answers, List<ValidationErrorModel> errors, string key, string message)
-        {
-            if (BusPassAnswers.GetString(answers, key) is null)
-            {
-                errors.Add(Required(key, message));
-            }
-        }
-
-        private static ValidationErrorModel Required(string field, string message)
-        {
-            return new ValidationErrorModel
-            {
-                Field = field,
-                Keyword = ValidationKeywords.FieldRequired,
-                Message = message,
-            };
         }
     }
 }

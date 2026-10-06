@@ -2,17 +2,20 @@ import type { Core } from "@strapi/strapi";
 
 import { seededForms, type Json } from "./lib/form-spec-seed-data";
 import { seededRates } from "./lib/eligibility-rate-seed-data";
+import { seededErrorMessages } from "./lib/error-message-seed-data";
 import { jsonEqual } from "./lib/json-equal";
 
 const FORM_SPEC_UID = "api::form-spec.form-spec";
 const ELIGIBILITY_RATE_UID = "api::eligibility-rate.eligibility-rate";
+const ERROR_MESSAGE_UID = "api::error-message.error-message";
 
-// Phase 0: form specs and the eligibility rate table are read with a scoped,
-// read-only Strapi API token held by MyssApi (Strapi:ApiToken), so the Public
-// role must NOT be able to read them. This actively revokes the grant rather
-// than merely no longer creating it, because earlier boots of this app wrote
-// those permission rows into the database — removing the code that created them
-// would leave the API exactly as open as before, in a way that reads as fixed.
+// Phase 0: form specs, the eligibility rate table and the error message
+// catalogue are read with a scoped, read-only Strapi API token held by MyssApi
+// (Strapi:ApiToken), so the Public role must NOT be able to read them. This
+// actively revokes the grant rather than merely no longer creating it, because
+// earlier boots of this app wrote those permission rows into the database —
+// removing the code that created them would leave the API exactly as open as
+// before, in a way that reads as fixed.
 //
 // Idempotent and safe on a fresh database: nothing to revoke is the normal case.
 async function revokePublicRead(strapi: Core.Strapi) {
@@ -21,7 +24,7 @@ async function revokePublicRead(strapi: Core.Strapi) {
     .findOne({ where: { type: "public" } });
   if (!publicRole) return;
 
-  for (const uid of [FORM_SPEC_UID, ELIGIBILITY_RATE_UID]) {
+  for (const uid of [FORM_SPEC_UID, ELIGIBILITY_RATE_UID, ERROR_MESSAGE_UID]) {
     for (const action of [`${uid}.find`, `${uid}.findOne`]) {
       const existing = await strapi.db
         .query("plugin::users-permissions.permission")
@@ -127,6 +130,29 @@ async function seedRates(strapi: Core.Strapi) {
   }
 }
 
+// Publishes every seeded error message a fresh database is missing, keyed by
+// keyword. Deliberately create-if-missing and never an upsert, unlike the rate
+// table: the catalogue exists so a Service Designer can reword a message in the
+// admin panel, and an upsert would silently revert that edit on the next
+// restart. A changed seed therefore reaches an existing environment only
+// through the admin panel (or by deleting the row so the next boot reseeds it).
+// MyssApi serves the same seed text as its compiled fallback while a row is
+// missing, so a keyword never goes unworded in between.
+async function seedErrorMessages(strapi: Core.Strapi) {
+  for (const { keyword, message, note } of seededErrorMessages) {
+    const existing = await strapi.documents(ERROR_MESSAGE_UID).findFirst({
+      filters: { keyword },
+    });
+    if (existing) continue;
+
+    await strapi.documents(ERROR_MESSAGE_UID).create({
+      data: { keyword, message, note },
+      status: "published",
+    });
+    strapi.log.info(`Seeded error-message ${keyword}`);
+  }
+}
+
 export default {
   register(/* { strapi }: { strapi: Core.Strapi } */) {},
 
@@ -134,5 +160,6 @@ export default {
     await revokePublicRead(strapi);
     await seedForms(strapi);
     await seedRates(strapi);
+    await seedErrorMessages(strapi);
   },
 };

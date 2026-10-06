@@ -264,10 +264,13 @@ test("does not reopen suggestions that arrive after the field loses focus", asyn
   await screen.getByRole("textbox", { name: "City" }).click();
   findGate.release();
 
-  // Form.io has its own page-wide status region, so read the one beside line 1.
+  // Form.io has its own page-wide status region, so read the one inside the
+  // line 1 component, which sits beside the design system field.
   const addressStatus = () =>
-    line1.element().parentElement?.querySelector('[role="status"]')
-      ?.textContent;
+    line1
+      .element()
+      .closest(".formio-component")
+      ?.querySelector('[role="status"]')?.textContent;
   await vi.waitFor(() => expect(addressStatus()).toBe(""));
   expect(screen.getByRole("option").elements()).toHaveLength(0);
   await expect.element(line1).toHaveAttribute("aria-expanded", "false");

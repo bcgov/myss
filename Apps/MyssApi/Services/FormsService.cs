@@ -31,6 +31,7 @@ namespace Myss.Api.Services
         private readonly ITemplateProvider _templateProvider;
         private readonly IFormSpecAdminProvider _formSpecAdminProvider;
         private readonly ICurrentUserAccessor _currentUserAccessor;
+        private readonly IErrorMessageProvider _errorMessageProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -41,6 +42,8 @@ namespace Myss.Api.Services
         /// <param name="pdfProvider">Injected PDF provider.</param>
         /// <param name="templateProvider">Injected template provider.</param>
         /// <param name="formSpecAdminProvider">Injected form-spec admin (write) provider.</param>
+        /// <param name="currentUserAccessor">Injected current user accessor.</param>
+        /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
         public FormsService(
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
@@ -48,7 +51,8 @@ namespace Myss.Api.Services
             IPdfProvider pdfProvider,
             ITemplateProvider templateProvider,
             IFormSpecAdminProvider formSpecAdminProvider,
-            ICurrentUserAccessor currentUserAccessor)
+            ICurrentUserAccessor currentUserAccessor,
+            IErrorMessageProvider errorMessageProvider)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -57,12 +61,19 @@ namespace Myss.Api.Services
             _templateProvider = templateProvider;
             _formSpecAdminProvider = formSpecAdminProvider;
             _currentUserAccessor = currentUserAccessor;
+            _errorMessageProvider = errorMessageProvider;
         }
 
         /// <inheritdoc/>
         public Task<FormSpecModel?> GetLatestSpecAsync(string formSpecId, CancellationToken cancellationToken)
         {
             return _formSpecProvider.GetLatestAsync(formSpecId, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<IReadOnlyDictionary<string, string>> GetErrorMessagesAsync(CancellationToken cancellationToken)
+        {
+            return _errorMessageProvider.GetMessagesAsync(cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -317,15 +328,18 @@ namespace Myss.Api.Services
 
             if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
             {
-                errors = [.. errors, .. ValidateRegistration(request.Answers)];
+                errors = FormSpecValidator.OnePerField([.. errors, .. ValidateRegistration(request.Answers)]);
             }
 
             if (domainRules is not null)
             {
+                // The spec's failure for a field comes first; a domain rule adds
+                // a field's failure only when the spec found none, so the citizen
+                // reads one reason per field, as the form shows them.
                 IReadOnlyList<ValidationErrorModel> domainErrors = domainRules(request.Answers);
                 if (domainErrors.Count > 0)
                 {
-                    errors = [.. errors, .. domainErrors];
+                    errors = FormSpecValidator.OnePerField([.. errors, .. domainErrors]);
                 }
             }
 
@@ -339,7 +353,15 @@ namespace Myss.Api.Services
                     request.FormSpecVersion,
                     errors.Count);
 
-                return FormSubmissionResultModel.Refused(errors);
+                // The validators carry compiled default wording. The catalogue
+                // a Service Designer publishes in the content engine replaces
+                // it keyword by keyword, so what the citizen reads is authored
+                // content rather than code. Read only on this path: an accepted
+                // submission never needs it.
+                return FormSubmissionResultModel.Refused(
+                    ErrorMessageResolver.Resolve(
+                        errors,
+                        await _errorMessageProvider.GetMessagesAsync(cancellationToken)));
             }
 
             var submission = new FormSubmission

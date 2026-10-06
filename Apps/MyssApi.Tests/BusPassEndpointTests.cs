@@ -202,6 +202,40 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
+        public async Task ABirthMonthPostedAsANumber_IsAccepted()
+        {
+            // Form.io turns the option "12" into the number 12 before posting;
+            // a citizen born in December must get through.
+            HttpClient client = CreateClient();
+            var answers = NewApplicant();
+            answers["birthMonth"] = 12;
+
+            using HttpResponseMessage response = await Submit(client, answers);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Single(_middleware.Submitted);
+        }
+
+        [Fact]
+        public async Task V4ReplacementWithFalseAcknowledgement_Returns422AndNothingReachesTheMiddleware()
+        {
+            // The browser never posts false for a required checkbox; a crafted
+            // request does, and the acknowledgement must still be enforced.
+            UseReplacementV4Spec();
+            HttpClient client = CreateClient();
+            var answers = V4Replacement();
+            answers["acknowledgedPassCancellation"] = false;
+
+            using HttpResponseMessage response = await SubmitV4(client, answers);
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            Assert.Contains(
+                (await Payload(response)).EnumerateArray(),
+                e => e.GetProperty("field").GetString() == "acknowledgedPassCancellation");
+            Assert.Empty(_middleware.Submitted);
+        }
+
+        [Fact]
         public async Task AcknowledgedV4Replacement_IsSentAndAcknowledged()
         {
             UseReplacementV4Spec();
@@ -391,6 +425,11 @@ namespace Myss.Api.Tests
 
                         services.RemoveAll<IBusPassSubmissionProvider>();
                         services.AddSingleton<IBusPassSubmissionProvider>(_middleware);
+
+                        // The compiled defaults, so a 422 never reaches for a
+                        // content engine that is not running here.
+                        services.RemoveAll<IErrorMessageProvider>();
+                        services.AddSingleton<IErrorMessageProvider>(new FakeErrorMessageProvider());
                     });
                 })
                 .CreateClient();

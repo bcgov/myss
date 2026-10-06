@@ -6,13 +6,15 @@ import AnnouncementBanner from "@/widgets/layout/AnnouncementBanner";
 import { paths } from "@/routes/paths";
 import { useApiAuth } from "@/auth/useApiAuth";
 import { useIdleLogout } from "@/auth/useIdleLogout";
+import { useErrorMessageCatalogue } from "@/hooks/useErrorMessages";
 
 // Shared layout for every route: BC Gov design-system header, the site-wide
 // announcement banner, the routed page (<Outlet />), and the BC Gov footer.
-// Also mounts the two app-wide auth concerns: the API token bridge and the
-// idle-logout timer (RULE-IDA-07).
+// Also mounts the app-wide concerns: the API token bridge, the idle-logout
+// timer (RULE-IDA-07), and the error message catalogue every form reads.
 function App() {
     useApiAuth();
+    useErrorMessageCatalogue();
     const { warning: idleWarning, extendSession } = useIdleLogout();
     // The eligibility estimator has no footer, so hide
     // the shared BC Gov footer on that route only — every other page keeps it.
