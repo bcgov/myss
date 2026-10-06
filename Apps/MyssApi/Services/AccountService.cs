@@ -88,10 +88,15 @@ namespace Myss.Api.Services
                     $"You can have up to {MaxPhones} phone numbers, one of each type.")]);
             }
 
+            // The check above already guarantees this equals the list length.
+            // The loop bound still goes through Math.Min so it is bounded by
+            // construction, which is what the taint analysis can see.
+            int count = Math.Min(request.Phones.Count, MaxPhones);
+
             var errors = new List<ValidationErrorModel>();
             var phones = new List<MyssUserPhone>();
             var typesSeen = new HashSet<AccountPhoneType>();
-            for (int i = 0; i < request.Phones.Count; i++)
+            for (int i = 0; i < count; i++)
             {
                 PhoneInputModel input = request.Phones[i];
 
