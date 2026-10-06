@@ -7,6 +7,6 @@ import { AuthProvider as OidcAuthProvider } from "react-oidc-context";
 
 import { oidcConfig } from "./oidcConfig";
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     return <OidcAuthProvider {...oidcConfig}>{children}</OidcAuthProvider>;
 }

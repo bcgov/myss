@@ -34,6 +34,6 @@ test("provides accessible skip and accessibility links", async () => {
         .element(accessibilityLink)
         .toHaveAttribute(
             "href",
-            "http://www2.gov.bc.ca/gov/content/home/accessibility",
+            "https://www2.gov.bc.ca/gov/content/home/accessibility",
         );
 });

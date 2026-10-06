@@ -1,0 +1,20 @@
+/* Menu column beside the content, both stretched to the full height left
+   under the header. Narrow screens (and 200% zoom) stack the menu above the
+   content so the page keeps its full width; the mobile design is still to
+   come (MYSS-194). */
+.layout {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: 15rem minmax(0, 1fr);
+}
+
+.content {
+    background-color: var(--surface-color-background-white);
+    padding: var(--layout-padding-xlarge);
+}
+
+@media (max-width: 768px) {
+    .layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

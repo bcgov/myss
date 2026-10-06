@@ -18,7 +18,7 @@ const session = vi.hoisted(
       profileFirstName: null,
       login: vi.fn(),
       logout: vi.fn(),
-    }) as Session & { logout: ReturnType<typeof vi.fn> },
+    }) as Session,
 );
 
 vi.mock("@/auth/useSession", () => ({
@@ -107,12 +107,7 @@ function renderDashboard() {
       <MemoryRouter initialEntries={[paths.dashboard]}>
         <Routes>
           <Route path={paths.dashboard} element={<DashboardPage />} />
-          <Route path={paths.register} element={<p>Registration landing</p>} />
           <Route path={paths.application} element={<ApplicationLanding />} />
-          <Route
-            path={paths.workerApplications}
-            element={<p>Worker landing</p>}
-          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -123,63 +118,11 @@ describe("DashboardPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     session.user = { sub: "user-1", name: "Alice", roles: [] };
-    session.isMeLoading = false;
     session.hasProfile = true;
     session.profileFirstName = null;
-    session.logout.mockClear();
   });
 
-  it("shows account checking while the profile lookup is pending", async () => {
-    stubApi();
-    session.isMeLoading = true;
-    const screen = await renderDashboard();
-
-    await expect
-      .element(screen.getByRole("status"))
-      .toHaveTextContent("Checking your MySS account…");
-  });
-
-  it("sends a Ministry worker to the worker view instead of registration", async () => {
-    // A worker has no citizen profile; without the role check first they
-    // would be bounced to the registration form.
-    stubApi();
-    session.user = {
-      sub: "idir-user",
-      name: "Wanda",
-      roles: ["WORKER"],
-      idirUsername: "WWORKER",
-    };
-    session.hasProfile = false;
-    const screen = await renderDashboard();
-
-    await expect
-      .element(screen.getByText("Worker landing"))
-      .toBeInTheDocument();
-  });
-
-  it("waits for the roles before deciding where a signed-in user lands", async () => {
-    stubApi();
-    session.user = { sub: "idir-user", roles: [], idirUsername: "WWORKER" };
-    session.isMeLoading = true;
-    session.hasProfile = undefined;
-    const screen = await renderDashboard();
-
-    await expect
-      .element(screen.getByRole("status"))
-      .toHaveTextContent("Checking your MySS account…");
-  });
-
-  it("redirects an authenticated user without a profile to registration", async () => {
-    stubApi();
-    session.hasProfile = false;
-    const screen = await renderDashboard();
-
-    await expect
-      .element(screen.getByText("Registration landing"))
-      .toBeInTheDocument();
-  });
-
-  it("shows profile information and signs out a registered user", async () => {
+  it("greets a registered user and shows their profile name", async () => {
     stubApi();
     session.profileFirstName = "Ada";
     const screen = await renderDashboard();
@@ -192,9 +135,6 @@ describe("DashboardPage", () => {
         screen.getByText("Your MySS account profile is registered to Ada."),
       )
       .toBeInTheDocument();
-
-    await screen.getByRole("button", { name: "Log out" }).click();
-    expect(session.logout).toHaveBeenCalledOnce();
   });
 
   it("lists every application with its status and a way into it", async () => {

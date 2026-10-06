@@ -69,9 +69,27 @@ export default function RegistrationForm({
     // the messages on the fields, so there is nothing more to do here.
     void formRef.current?.submit().catch(() => undefined);
   }, []);
+  
+  // The dashboard decides whether to send a citizen here from the cached
+  // /me response, which stays fresh for minutes. Refresh it and wait for the
+  // new answer before navigating, or the freshly registered citizen is
+  // bounced straight back to this page.
+  useEffect(() => {
+    if (!submit.data) return;
+    let cancelled = false;
+    void queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY }).then(() => {
+      if (!cancelled) void navigate(paths.dashboard, { replace: true });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, queryClient, submit.data]);
 
   if (isPending) return <p>Loading form…</p>;
   if (error) return <p>Could not load the form: {error.message}</p>;
+
+  if (submit.data)
+    return <output>Registration complete. Loading your dashboard…</output>;
 
   return (
     <section className={styles.form}>

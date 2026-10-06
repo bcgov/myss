@@ -60,24 +60,14 @@ function formatValue(key: string, value: unknown): string {
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-  } catch {
-    // Fallback for non-secure contexts where the Clipboard API is blocked.
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    try {
-      document.execCommand("copy");
-    } finally {
-      document.body.removeChild(ta);
-    }
+  } catch (err) {
+    // The Clipboard API is unavailable outside secure contexts (https or
+    // localhost), which is where this diagnostics page always runs.
+    console.warn("Copy to clipboard failed", err);
   }
 }
 
-function RawView({ value }: { value: string }) {
+function RawView({ value }: Readonly<{ value: string }>) {
   if (!value) return <p className={styles.empty}>Not present on this token.</p>;
   return (
     <>
@@ -93,7 +83,7 @@ function RawView({ value }: { value: string }) {
   );
 }
 
-function ParsedView({ claims }: { claims: JwtClaims | null }) {
+function ParsedView({ claims }: Readonly<{ claims: JwtClaims | null }>) {
   if (!claims) {
     return (
       <p className={styles.empty}>

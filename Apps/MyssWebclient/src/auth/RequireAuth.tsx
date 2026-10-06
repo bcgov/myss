@@ -7,7 +7,7 @@ import { useSession } from "./useSession";
 import SignInChooser from "./SignInChooser";
 import { isLogoutInProgress } from "./siteMinderLogout";
 
-export default function RequireAuth({ children }: { children: ReactNode }) {
+export default function RequireAuth({ children }: Readonly<{ children: ReactNode }>) {
     const { isAuthenticated, isLoading } = useSession();
     const [signedOutSettled, setSignedOutSettled] = useState(false);
 

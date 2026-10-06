@@ -44,8 +44,10 @@ export function useSaveDraft(formSpecId: string | undefined) {
   return useMutation({
     mutationFn: (input: SaveDraftInput) => saveDraft(formSpecId!, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-draft", formSpecId] });
-      queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["admin-draft", formSpecId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
     },
   });
 }
@@ -57,8 +59,10 @@ export function usePublishForm(formSpecId: string | undefined) {
   return useMutation({
     mutationFn: () => publishForm(formSpecId!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-draft", formSpecId] });
-      queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["admin-draft", formSpecId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["admin-forms"] });
     },
   });
 }

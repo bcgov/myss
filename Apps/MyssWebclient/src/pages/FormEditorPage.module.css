@@ -1,4 +1,9 @@
 .modeBar {
+    /* Rendered as a fieldset: drop the browser's default box. */
+    border: 0;
+    padding: 0;
+    margin-inline: 0;
+    min-inline-size: auto;
     display: flex;
     gap: var(--layout-margin-small, 8px);
     margin-top: var(--layout-margin-large, 24px);

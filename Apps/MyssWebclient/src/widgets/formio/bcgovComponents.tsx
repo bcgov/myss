@@ -62,11 +62,52 @@ const renderBareWrapper = (
 ).prototype.render;
 
 /**
+ * A schema field read as text. Spec values arrive untyped: a string, number or
+ * boolean reads as its text; anything else (missing, an object) as `fallback`.
+ */
+function textOf(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return fallback;
+}
+
+/**
+ * The React subtree a Form.io component mounts inside its own markup. Owns the
+ * root so both component bases below create, re-render and release it the same
+ * way.
+ */
+class ReactMount {
+  private root?: Root;
+
+  constructor(host: HTMLElement, node: ReactNode) {
+    this.root = createRoot(host);
+    this.root.render(node);
+  }
+
+  /** Re-render into the root; a no-op once released. */
+  render(node: ReactNode): void {
+    this.root?.render(node);
+  }
+
+  /**
+   * Unmount on the next microtask: doing it synchronously inside Form.io's
+   * detach draws React's warning about unmounting while rendering. Idempotent.
+   */
+  release(): void {
+    const root = this.root;
+    this.root = undefined;
+    if (root) queueMicrotask(() => root.unmount());
+  }
+}
+
+/**
  * A Form.io display component whose body is a React subtree. Subclasses return
  * the node from `renderReact()`; this base handles the mount/unmount lifecycle.
  */
 abstract class ReactFormioComponent extends BaseComponent {
-  private reactRoot?: Root;
+  private mount?: ReactMount;
 
   /** A single container Form.io hands back to us in `attach`. */
   override render(): string {
@@ -76,18 +117,12 @@ abstract class ReactFormioComponent extends BaseComponent {
   override attach(element: HTMLElement): Promise<void> {
     this.loadRefs(element, { reactRoot: "single" });
     const host = this.refs.reactRoot;
-    if (host) {
-      this.reactRoot = createRoot(host);
-      this.reactRoot.render(this.renderReact());
-    }
+    if (host) this.mount = new ReactMount(host, this.renderReact());
     return super.attach(element);
   }
 
   override detach(): void {
-    // Defer unmount to avoid React warning about unmounting while rendering.
-    const root = this.reactRoot;
-    this.reactRoot = undefined;
-    if (root) queueMicrotask(() => root.unmount());
+    this.mount?.release();
     super.detach();
   }
 
@@ -119,12 +154,12 @@ class BcgovAccordionComponent extends ReactFormioComponent {
   }
 
   protected renderReact(): ReactNode {
-    const label = String(this.component.accordionLabel ?? "");
+    const label = textOf(this.component.accordionLabel);
     // accordionBody is HTML sourced from the form spec (CMS/Strapi). Sanitize
     // via Form.io's DOMPurify-backed Utils.sanitize before rendering, so spec
     // content can never inject scripts/handlers (defence-in-depth XSS guard).
     const body = Utils.sanitize(
-      String(this.component.accordionBody ?? ""),
+      textOf(this.component.accordionBody),
       this.options ?? {},
     );
     return (
@@ -180,14 +215,19 @@ interface RadioOption {
   children?: RadioOption[];
 }
 
+/** `setCustomValidity`'s argument as a list: an array as is, '' as none. */
+function asList(messages: unknown): unknown[] {
+  if (Array.isArray(messages)) return messages;
+  return messages ? [messages] : [];
+}
+
 /**
  * Pull the message to show out of whatever `setCustomValidity` was handed: it
  * takes `''` to clear, a bare string, a single `{ message, level }` object, or
  * an array of them. Returns "" when there is nothing to show.
  */
 function firstErrorMessage(messages: unknown): string {
-  const list = Array.isArray(messages) ? messages : messages ? [messages] : [];
-  for (const entry of list) {
+  for (const entry of asList(messages)) {
     if (typeof entry === "string" && entry) return entry;
     if (entry && typeof entry === "object") {
       const { message, level } = entry as {
@@ -210,7 +250,7 @@ function firstErrorMessage(messages: unknown): string {
 }
 
 class BcgovRadioComponent extends RadioBase {
-  private reactRoot?: Root;
+  private mount?: ReactMount;
 
   /** Latest Form.io validation message, mirrored into RadioGroup. */
   private errorMessage = "";
@@ -246,20 +286,14 @@ class BcgovRadioComponent extends RadioBase {
   override attach(element: HTMLElement): Promise<void> {
     this.loadRefs(element, { reactRoot: "single" });
     const host = this.refs.reactRoot;
-    if (host) {
-      this.reactRoot = createRoot(host);
-      this.renderGroup();
-    }
+    if (host) this.mount = new ReactMount(host, this.buildGroup());
     // Safe to chain even though we render no native inputs: the base looks them
     // up with querySelectorAll, so it iterates an empty list.
     return super.attach(element);
   }
 
   override detach(): void {
-    // Defer unmount to avoid React warning about unmounting while rendering.
-    const root = this.reactRoot;
-    this.reactRoot = undefined;
-    if (root) queueMicrotask(() => root.unmount());
+    this.mount?.release();
     super.detach();
   }
 
@@ -304,15 +338,15 @@ class BcgovRadioComponent extends RadioBase {
     return result;
   }
 
-  /**
-   * Suppress Form.io's own error DOM: the base wrapper still contains a message
-   * container, which would paint the message a second time below the group.
-   * react-aria links the group to its own message for screen readers.
-   */
-  override addMessages(): void {}
+  override addMessages(): void {
+    // Intentionally empty: suppress Form.io's own error DOM. The base wrapper
+    // still contains a message container, which would paint the message a
+    // second time below the group. react-aria links the group to its own
+    // message for screen readers.
+  }
 
   private renderGroup(): void {
-    this.reactRoot?.render(this.buildGroup());
+    this.mount?.render(this.buildGroup());
   }
 
   private componentOptions(): RadioOption[] {
@@ -362,9 +396,9 @@ class BcgovRadioComponent extends RadioBase {
     // hides the `[data-myss-required]` text visually. Same BCDS class, so it
     // looks the same.
     return (
-      <div className="myss-radio-field">
+<div className="myss-radio-field">
         <span id={labelId} className="bcds-react-aria-RadioGroup--label">
-          {String(this.component.label ?? "")}
+          {textOf(this.component.label)}
           {required && <span data-myss-required=""> (required)</span>}
         </span>
         <RadioGroup
@@ -392,12 +426,12 @@ class BcgovRadioComponent extends RadioBase {
           }}
         >
           {options.map((option) => {
-            const optionValue = String(option.value ?? "");
+            const optionValue = textOf(option.value);
             const children = option.children ?? [];
             if (!hasNestedOptions) {
               return (
                 <Radio key={optionValue} value={optionValue}>
-                  {String(option.label ?? "")}
+                  {textOf(option.label)}
                 </Radio>
               );
             }
@@ -406,13 +440,12 @@ class BcgovRadioComponent extends RadioBase {
 
             return (
               <div key={optionValue} data-myss-nested-option={optionValue}>
-                <Radio value={optionValue}>{String(option.label ?? "")}</Radio>
+                <Radio value={optionValue}>{textOf(option.label)}</Radio>
                 {isExpanded && (
                   <RadioGroup
-                    aria-label={String(
-                      option.childrenLabel ??
-                        option.label ??
-                        "Additional options",
+                    aria-label={textOf(
+                      option.childrenLabel,
+                      textOf(option.label, "Additional options"),
                     )}
                     orientation="vertical"
                     value={value}
@@ -428,7 +461,7 @@ class BcgovRadioComponent extends RadioBase {
                         data-myss-nested-option-child={String(child.value)}
                       >
                         <Radio value={String(child.value)}>
-                          {String(child.label ?? "")}
+                          {textOf(child.label)}
                         </Radio>
                       </div>
                     ))}
