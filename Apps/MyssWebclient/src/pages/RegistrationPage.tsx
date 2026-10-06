@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { Accordion, AccordionGroup, Button, InlineAlert } from "@bcgov/design-system-react-components";
-import type { ReactNode } from "react";
-import { Link, useNavigate } from "react-router";
 import { useSession } from "@/auth/useSession";
 import { paths } from "@/routes/paths";
 import RegistrationForm from "@/widgets/RegistrationForm";
@@ -60,52 +59,6 @@ export default function RegistrationPage() {
     // A BCeID token carries a BCeID GUID; a citizen registering without one
     // signed in with BC Services Card (IDIR users do not register).
     const signedInWith = user?.bceidGuid ? "BCeID" : "BC Services Card";
-
-    let body: ReactNode;
-    if (isLoading) {
-        body = (
-            <p role="status" aria-live="polite">
-                Checking your session…
-            </p>
-        );
-    } else if (isAuthenticated && (isMeLoading || hasProfile === undefined)) {
-        body = (
-            <p role="status" aria-live="polite">
-                Checking your MySS account…
-            </p>
-        );
-    } else if (isAuthenticated) {
-        body = (
-            <>
-                <p>Welcome{user?.name ? `, ${user.name}` : ""}.</p>
-                <RegistrationForm />
-            </>
-        );
-    } else {
-        body = (
-            <>
-                <p>
-                    Create a MySS account with your BC Services Card or BCeID.
-                </p>
-                <div className={styles.actions}>
-                    <Button
-                        variant="primary"
-                        size="large"
-                        onPress={() => login("bcServicesCard", paths.register)}
-                    >
-                        BC Services Card
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        size="large"
-                        onPress={() => login("bceid", paths.register)}
-                    >
-                        BCeID
-                    </Button>
-                </div>
-            </>
-        );
-    }
 
     return (
         <div className={styles.page}>
