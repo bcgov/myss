@@ -22,7 +22,7 @@ namespace Myss.Api.Controllers
     [Route("v{version:apiVersion}/account")]
     [ApiController]
     [Authorize(Policy = MyssPolicies.Client)]
-    public class AccountController : Controller
+    public class AccountController : ControllerBase
     {
         /// <summary>The caller has no registered profile, so has no account to show.</summary>
         public const string ProfileRequiredKeyword = "ACCOUNT.PROFILE_REQUIRED";
