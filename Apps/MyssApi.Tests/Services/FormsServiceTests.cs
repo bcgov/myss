@@ -275,6 +275,47 @@ namespace Myss.Api.Tests.Services
                 }
 
         [Fact]
+        public async Task Submit_RegistrationV1_IsRefusedAsARetiredVersion_AndNothingIsPersisted()
+        {
+            // The seeded v1: a first name only, which can never make a profile.
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec(
+                "registration",
+                1,
+                """{"components":[{ "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } }]}""");
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(1, """{"firstName":"Ada"}"""),
+                CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(nameof(FormSubmissionRequestModel.FormSpecVersion), error.Field);
+            Assert.Equal(ValidationKeywords.VersionUnknown, error.Keyword);
+            Assert.Empty(await db.FormSubmissions.ToListAsync());
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationV2_IsTheOldestVersionThatStillRegisters()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 2, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(2, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.Empty(result.Errors);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("Lovelace", profile.LastName);
+            Assert.Null(profile.Phone);
+        }
+
+        [Fact]
         public async Task Submit_RegistrationWithPickerDateTime_PersistsTheDatePortion()
         {
             using FormsDbContext db = NewDb();
@@ -333,6 +374,160 @@ namespace Myss.Api.Tests.Services
             Assert.Equal("augusta@example.com", profile.Email);
             Assert.Equal(new DateOnly(1815, 12, 10), profile.DateOfBirth);
             Assert.Equal(2, await db.FormSubmissions.CountAsync());
+        }
+
+        private const string RegistrationSpecV4 = """
+        {
+          "components": [
+            { "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } },
+            { "type": "textfield", "key": "lastName", "input": true, "validate": { "required": true } },
+            { "type": "email", "key": "email", "input": true, "validate": { "required": true } },
+            { "type": "phoneNumber", "key": "phone", "input": true, "validate": { "required": true } },
+            { "type": "datetime", "key": "dateOfBirth", "input": true, "validate": { "required": true } },
+            {
+              "type": "panel", "key": "aboutYou", "input": false,
+              "components": [
+                {
+                  "type": "bcgovRadio", "key": "gender", "input": true, "validate": { "required": true },
+                  "values": [ { "label": "Man/Boy", "value": "man" }, { "label": "Woman/Girl", "value": "woman" } ]
+                }
+              ]
+            },
+            { "type": "textfield", "key": "sin", "input": true, "properties": { "myssValidator": "sin" }, "validate": { "required": true } }
+          ]
+        }
+        """;
+
+        [Theory]
+        [InlineData("(250) 555-0100")]
+        [InlineData("250-555-0100")]
+        [InlineData("+1 250 555 0100")]
+        public async Task Submit_RegistrationV4_PersistsTheNormalizedPhoneAndTheGender(string phone)
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, $$"""{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"{{phone}}","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("2505550100", profile.Phone);
+            Assert.Equal("woman", profile.Gender);
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationOnAnEarlierVersion_KeepsThePhoneAndGenderV4Stored()
+        {
+            using FormsDbContext db = NewDb();
+            FormsService service = NewService(db);
+
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"2505550100","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            // An old tab still showing v3, which has no phone or gender field.
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Augusta","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"augusta@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("Augusta", profile.FirstName);
+            Assert.Equal("2505550100", profile.Phone);
+            Assert.Equal("woman", profile.Gender);
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationV4_OverAnExistingProfile_StoresThePhoneAndGender()
+        {
+            using FormsDbContext db = NewDb();
+            FormsService service = NewService(db);
+
+            // Registered on v3, which asks for neither.
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"(250) 555-0100","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("2505550100", profile.Phone);
+            Assert.Equal("woman", profile.Gender);
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationV4_Again_ReplacesThePhoneAndGender()
+        {
+            using FormsDbContext db = NewDb();
+            FormsService service = NewService(db);
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+
+            await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"2505550100","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"6045550199","dateOfBirth":"1815-12-10","gender":"man","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("6045550199", profile.Phone);
+            Assert.Equal("man", profile.Gender);
+        }
+
+        [Theory]
+        [InlineData("555-0100")]
+        [InlineData("+44 20 7946 0958")]
+        public async Task Submit_RegistrationWithAPhoneThatIsNotTenDigits_IsRefused(string phone)
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, $$"""{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"{{phone}}","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("phone", error.Field);
+            Assert.Equal(ValidationKeywords.PhoneInvalidFormat, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationWithAGenderTheSpecDoesNotOffer_IsRefused()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"2505550100","dateOfBirth":"1815-12-10","gender":"anything","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("gender", error.Field);
+            Assert.Equal(ValidationKeywords.RegistrationGenderUnknown, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
         }
 
         private static FormSubmissionRequestModel Request(int version, string answersJson)

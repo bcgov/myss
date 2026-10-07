@@ -354,6 +354,17 @@
 .formHost :global(.field-required)::after {
   content: none !important;
 }
+/* Same for the BC Gov radios' "(required)": hidden from sight only. The group
+   still reports itself required, and screen readers still read the text. */
+.formHost :global([data-myss-required]) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
 
 /* The radios render as the real BCDS RadioGroup, which sizes its label, options
    and error message from one token. The design wants 16px labels but a 14px error

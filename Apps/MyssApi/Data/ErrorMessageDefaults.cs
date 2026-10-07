@@ -44,6 +44,7 @@ namespace Myss.Api.Data
                 ["FORM.FIELD.MAX"] = "This number is too large.",
                 ["REGISTRATION.DOB.INVALID"] = "Enter a valid date of birth.",
                 ["REGISTRATION.DOB.FUTURE"] = "Date of birth cannot be in the future.",
+                ["REGISTRATION.GENDER.UNKNOWN"] = "Choose one of the listed options.",
                 ["BUSPASS.REQUEST.TYPE_INVALID"] = "Select a valid service type",
                 ["BUSPASS.IDENTITY.IDENTIFIER_REQUIRED"] = "A Social Insurance Number or bus pass account number is required",
                 ["BUSPASS.DOB.INVALID"] = "Enter a valid date of birth",

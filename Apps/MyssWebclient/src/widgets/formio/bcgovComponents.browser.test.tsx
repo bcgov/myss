@@ -93,3 +93,44 @@ describe("bcgovAccordion body sanitization", () => {
     expect(window.__xssFired).toBeUndefined();
   });
 });
+
+function radioSpec(required: boolean): FormType {
+  return {
+    display: "form",
+    components: [
+      {
+        type: "bcgovRadio",
+        key: "gender",
+        label: "Gender",
+        input: true,
+        values: [
+          { label: "Man/Boy", value: "man" },
+          { label: "Woman/Girl", value: "woman" },
+        ],
+        validate: { required },
+      },
+    ],
+  } as unknown as FormType;
+}
+
+describe("bcgovRadio required state", () => {
+  // Flat groups used to leave isRequired off so BCDS would not print
+  // "(required)"; assistive technology then heard the field as optional.
+  it("reports a required flat group as required, by name and by state", async () => {
+    const screen = await render(<Form src={radioSpec(true)} />);
+
+    const group = screen.getByRole("radiogroup", { name: "Gender (required)" });
+    await expect.element(group).toBeInTheDocument();
+    await expect.element(group).toHaveAttribute("aria-required", "true");
+    await expect.element(screen.getByText("(required)")).toBeVisible();
+  });
+
+  it("leaves an optional group unmarked", async () => {
+    const screen = await render(<Form src={radioSpec(false)} />);
+
+    const group = screen.getByRole("radiogroup", { name: "Gender" });
+    await expect.element(group).toBeInTheDocument();
+    await expect.element(group).not.toHaveAttribute("aria-required", "true");
+    expect(document.querySelector("[data-myss-required]")).toBeNull();
+  });
+});

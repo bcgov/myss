@@ -27,6 +27,7 @@ import {
 } from "@bcgov/design-system-react-components";
 
 import { BcgovAddressAutocompleteComponent } from "./addressAutocomplete";
+import "./bcgovComponents.css";
 import CheckboxField from "./CheckboxField";
 import {
   ReactMount,
@@ -130,13 +131,12 @@ class BcgovNumberComponent extends withBcgovField(stockComponent("number")) {
     props.description ??= textOf(component.placeholder) || undefined;
     const raw = this.dataValue;
     const validate = isRecord(component.validate) ? component.validate : {};
-    const integer = validate.integer === true;
-    const decimalLimit =
-      typeof component.decimalLimit === "number"
-        ? component.decimalLimit
-        : integer
-          ? 0
-          : 2;
+    // The spec's own limit if it sets one; otherwise none for a whole number
+    // and two (currency) for anything else.
+    let decimalLimit = validate.integer === true ? 0 : 2;
+    if (typeof component.decimalLimit === "number") {
+      decimalLimit = component.decimalLimit;
+    }
 
     return (
       <NumberField
@@ -323,74 +323,94 @@ class BcgovRadioComponent extends withBcgovField(stockComponent("radio")) {
       ? (this.selectedParent ?? this.parentValue(value))
       : value;
     const required = isRequired(this.component);
+    const labelId = `${this.id}-label`;
+
+    // The label is drawn here rather than through RadioGroup's `label` prop.
+    // BCDS appends "(required)" to that label as bare text whenever
+    // `isRequired` is set, which a page cannot style or hide. Owning it lets
+    // every group report `isRequired` (so assistive technology announces the
+    // field as required) while a page that marks required fields another way
+    // hides the `[data-myss-required]` text visually. Same BCDS class, so it
+    // looks the same. Every other prop comes from the shared field props
+    // (required, disabled, invalid, error, name), as for every other field.
+    const { label, ...groupProps } = props;
 
     return (
-      <RadioGroup
-        {...props}
-        orientation="vertical"
-        value={selectedParent}
-        onChange={(next: string) => {
-          const option = options.find(
-            (candidate) => String(candidate.value) === next,
-          );
-          if (!hasNestedOptions) {
-            this.updateValue(next, { modified: true });
-          } else if (option?.children?.length) {
-            this.updateValue("", { modified: true });
-            this.selectedParent = next;
-          } else {
-            this.selectedParent = next;
-            this.updateValue(next, { modified: true });
-          }
-          this.bcgovRerender();
-        }}
-      >
-        {options.map((option) => {
-          const optionValue = textOf(option.value);
-          const children = option.children ?? [];
-          if (!hasNestedOptions) {
-            return (
-              <Radio key={optionValue} value={optionValue}>
-                {textOf(option.label)}
-              </Radio>
+      <div className="myss-radio-field">
+        {label && (
+          <span id={labelId} className="bcds-react-aria-RadioGroup--label">
+            {label}
+            {required && <span data-myss-required=""> (required)</span>}
+          </span>
+        )}
+        <RadioGroup
+          {...groupProps}
+          aria-labelledby={label ? labelId : undefined}
+          orientation="vertical"
+          value={selectedParent}
+          onChange={(next: string) => {
+            const option = options.find(
+              (candidate) => String(candidate.value) === next,
             );
-          }
-          const isExpanded =
-            selectedParent === optionValue && children.length > 0;
+            if (!hasNestedOptions) {
+              this.updateValue(next, { modified: true });
+            } else if (option?.children?.length) {
+              this.updateValue("", { modified: true });
+              this.selectedParent = next;
+            } else {
+              this.selectedParent = next;
+              this.updateValue(next, { modified: true });
+            }
+            this.bcgovRerender();
+          }}
+        >
+          {options.map((option) => {
+            const optionValue = textOf(option.value);
+            const children = option.children ?? [];
+            if (!hasNestedOptions) {
+              return (
+                <Radio key={optionValue} value={optionValue}>
+                  {textOf(option.label)}
+                </Radio>
+              );
+            }
+            const isExpanded =
+              selectedParent === optionValue && children.length > 0;
 
-          return (
-            <div key={optionValue} data-myss-nested-option={optionValue}>
-              <Radio value={optionValue}>{textOf(option.label)}</Radio>
-              {isExpanded && (
-                <RadioGroup
-                  aria-label={textOf(
-                    option.childrenLabel,
-                    textOf(option.label, "Additional options"),
-                  )}
-                  orientation="vertical"
-                  value={value}
-                  isRequired={required}
-                  isDisabled={props.isDisabled}
-                  onChange={(next: string) => {
-                    this.bcgovCommit(next);
-                  }}
-                >
-                  {children.map((child) => (
-                    <div
-                      key={String(child.value)}
-                      data-myss-nested-option-child={String(child.value)}
-                    >
-                      <Radio value={String(child.value)}>
-                        {textOf(child.label)}
-                      </Radio>
-                    </div>
-                  ))}
-                </RadioGroup>
-              )}
-            </div>
-          );
-        })}
-      </RadioGroup>
+            return (
+              <div key={optionValue} data-myss-nested-option={optionValue}>
+                <Radio value={optionValue}>{textOf(option.label)}</Radio>
+                {isExpanded && (
+                  <RadioGroup
+                    aria-label={textOf(
+                      option.childrenLabel,
+                      textOf(option.label, "Additional options"),
+                    )}
+                    orientation="vertical"
+                    value={value}
+                    isRequired={required}
+                    isDisabled={props.isDisabled}
+                    onChange={(next: string) => {
+                      this.bcgovCommit(next);
+                    }}
+                  >
+                    {children.map((child) => (
+                      <div
+                        key={String(child.value)}
+                        data-myss-nested-option-child={String(child.value)}
+                      >
+                        <Radio value={String(child.value)}>
+                          {textOf(child.label)}
+                        </Radio>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+              </div>
+            );
+          })}
+        </RadioGroup>
+      </div>
     );
   }
 
