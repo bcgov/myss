@@ -1,10 +1,7 @@
+/// <reference types="node" />
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-
-// The shared vectors are the contract between this file and MyssApi's C#
-// rules: both suites read them, so a divergence is a failing test rather than
-// two systems disagreeing about a citizen's answer. See the file's header.
-import sharedMessages from "../../../../../Shared/validation/error-messages.json";
-import sharedVectors from "../../../../../Shared/validation/validation-vectors.json";
 
 import { setErrorCatalogue } from "@/lib/errorCatalogue";
 import {
@@ -28,10 +25,29 @@ interface ConfirmationVector {
   keyword?: string;
 }
 
-const vectors = sharedVectors as unknown as Record<
-  string,
-  Record<string, Vector[]>
->;
+// The shared vectors are the contract between this file and MyssApi's C#
+// rules: both suites read them, so a divergence is a failing test rather than
+// two systems disagreeing about a citizen's answer. See the file's header.
+//
+// They are read from disk rather than imported. The image build runs `tsc -b`
+// over this file from a context that holds only Apps/MyssWebclient, so an
+// import of a file outside it fails there. The MyssContent seed test reads its
+// shared file the same way.
+function readShared<T>(file: string): T {
+  const url = new URL(
+    `../../../../../Shared/validation/${file}`,
+    import.meta.url,
+  );
+  return JSON.parse(readFileSync(fileURLToPath(url), "utf8")) as T;
+}
+
+const sharedMessages = readShared<{
+  messages: { keyword: string; message: string }[];
+}>("error-messages.json");
+
+const vectors = readShared<Record<string, Record<string, Vector[]>>>(
+  "validation-vectors.json",
+);
 
 const context = { data: {}, component: {} };
 
@@ -184,11 +200,8 @@ describe("checkRule", () => {
 
 describe("DEFAULT_MESSAGES", () => {
   it("matches the shared error message catalogue word for word", () => {
-    const shared = sharedMessages as {
-      messages: { keyword: string; message: string }[];
-    };
     const byKeyword = new Map(
-      shared.messages.map((row) => [row.keyword, row.message]),
+      sharedMessages.messages.map((row) => [row.keyword, row.message]),
     );
     for (const [keyword, message] of Object.entries(DEFAULT_MESSAGES)) {
       expect(byKeyword.get(keyword), keyword).toBe(message);
