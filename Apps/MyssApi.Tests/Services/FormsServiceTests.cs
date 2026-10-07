@@ -461,7 +461,7 @@ namespace Myss.Api.Tests.Services
 
             ValidationErrorModel error = Assert.Single(result.Errors);
             Assert.Equal("phone", error.Field);
-            Assert.Equal(ValidationKeywords.RegistrationPhoneInvalid, error.Keyword);
+            Assert.Equal(ValidationKeywords.PhoneInvalidFormat, error.Keyword);
             Assert.Empty(await db.MyssUserProfiles.ToListAsync());
         }
 

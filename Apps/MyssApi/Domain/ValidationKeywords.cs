@@ -73,9 +73,6 @@ namespace Myss.Api.Domain
         /// <summary>A registration date of birth must not be in the future.</summary>
         public const string RegistrationDateOfBirthInFuture = "REGISTRATION.DOB.FUTURE";
 
-        /// <summary>A registration phone number is not a ten-digit North American number.</summary>
-        public const string RegistrationPhoneInvalid = "REGISTRATION.PHONE.INVALID";
-
         /// <summary>A registration gender is not one of the form's gender options.</summary>
         public const string RegistrationGenderUnknown = "REGISTRATION.GENDER.UNKNOWN";
     }

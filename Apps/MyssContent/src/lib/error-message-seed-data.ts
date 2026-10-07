@@ -97,6 +97,11 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
     note: "Registration: the date of birth is after today.",
   },
   {
+    keyword: "REGISTRATION.GENDER.UNKNOWN",
+    message: "Choose one of the listed options.",
+    note: "Registration: the gender is not one of the options the form offered.",
+  },
+  {
     keyword: "BUSPASS.REQUEST.TYPE_INVALID",
     message: "Select a valid service type",
     note: "Bus pass: the service type selector holds a value the form does not offer.",
