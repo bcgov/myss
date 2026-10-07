@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ASSET_COLUMNS,
   COUPLE_COLUMNS,
+  FAMILY_SIZES,
   INCOME_COLUMN_GROUPS,
   INCOME_COLUMNS,
   isNotApplicable,
@@ -25,6 +26,10 @@ describe("rate columns", () => {
       { group: "Income Assistance 65+", span: 3 },
       { group: "Disability Assistance", span: 4 },
     ]);
+  });
+
+  it("covers family sizes 1 to 7", () => {
+    expect(FAMILY_SIZES).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
   it("lists the four asset letters", () => {

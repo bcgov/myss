@@ -7,6 +7,9 @@ import type {
 // the same list. The letters match MyssApi's EligibilityRateColumns and
 // MyssContent's eligibility-rate-rules.ts.
 
+/** The family sizes a table has a row for; 7 also serves larger households. */
+export const FAMILY_SIZES: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
+
 /** The heading an income-limit column is shown under. */
 export type RateGroup =
   | "Income Assistance"

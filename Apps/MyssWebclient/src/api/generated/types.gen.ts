@@ -553,51 +553,67 @@ export type MyssApiModelsEligibilityAssetLimitsModel = {
     /**
      * Gets the asset ceiling for category A.
      */
-    a?: number;
+    a: number;
     /**
      * Gets the asset ceiling for category B.
      */
-    b?: number;
+    b: number;
     /**
      * Gets the asset ceiling for category C.
      */
-    c?: number;
+    c: number;
     /**
      * Gets the asset ceiling for category D.
      */
-    d?: number;
+    d: number;
 };
 
 /**
- * One family-size row of monthly income limits, by client type A-E
- * (MYSS-25: A couple/neither, B single/not-PWD, C couple/either,
- * D single/PWD, E couple/both).
+ * One family-size row of monthly income limits, by client type A–I.
+ * Dependants affect the family size only; PWD takes priority over 65+.
+ * The couple columns (A, C, D, F, H, I) hold 0 at family size 1.
  */
 export type MyssApiModelsEligibilityRateRowModel = {
     /**
      * Gets the family unit size (1-7; 7 is the cap).
      */
-    familySize?: number;
+    familySize: number;
     /**
-     * Gets the monthly income limit for client type A.
+     * Gets the limit for type A: a couple, both under 65, neither PWD.
      */
-    a?: number;
+    a: number;
     /**
-     * Gets the monthly income limit for client type B.
+     * Gets the limit for type B: a single adult, under 65, not PWD.
      */
-    b?: number;
+    b: number;
     /**
-     * Gets the monthly income limit for client type C.
+     * Gets the limit for type C: a couple, both 65 or older, neither PWD.
      */
-    c?: number;
+    c: number;
     /**
-     * Gets the monthly income limit for client type D.
+     * Gets the limit for type D: a couple, one 65 or older, neither PWD.
      */
-    d?: number;
+    d: number;
     /**
-     * Gets the monthly income limit for client type E.
+     * Gets the limit for type E: a single adult, 65 or older, not PWD.
      */
-    e?: number;
+    e: number;
+    /**
+     * Gets the limit for type F: a couple, one PWD, the other under 65 and not PWD.
+     */
+    f: number;
+    /**
+     * Gets the limit for type G: a single adult, PWD.
+     */
+    g: number;
+    /**
+     * Gets the limit for type H: a couple, both PWD.
+     */
+    h: number;
+    /**
+     * Gets the limit for type I: a couple, one PWD and the other 65 or older.
+     */
+    i: number;
 };
 
 /**
@@ -762,6 +778,20 @@ export type MyssApiModelsSaveDraftRequestModel = {
      * Gets or sets the human-readable title, or null to leave it unset.
      */
     title?: string | null;
+};
+
+/**
+ * An admin's save of the complete rate table. The server assigns the effective
+ * date (today in British Columbia), so the request carries none.
+ */
+export type MyssApiModelsSaveEligibilityRatesRequestModel = {
+    /**
+     * IReadOnlyList<EligibilityRateRowModel>
+     *
+     * Gets the monthly income-limit rows, one for each family size 1-7.
+     */
+    incomeRows: Array<MyssApiModelsEligibilityRateRowModel> | null;
+    assetLimits: MyssApiModelsEligibilityAssetLimitsModel;
 };
 
 /**
@@ -989,6 +1019,38 @@ export type GetEstimatorRatesResponses = {
 };
 
 export type GetEstimatorRatesResponse = GetEstimatorRatesResponses[keyof GetEstimatorRatesResponses];
+
+export type SaveEligibilityRatesData = {
+    /**
+     * The complete table: seven income rows and the four asset limits.
+     */
+    body?: MyssApiModelsSaveEligibilityRatesRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/EligibilityRates';
+};
+
+export type SaveEligibilityRatesErrors = {
+    /**
+     * Unprocessable Content
+     */
+    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+    /**
+     * Bad Gateway
+     */
+    502: unknown;
+};
+
+export type SaveEligibilityRatesError = SaveEligibilityRatesErrors[keyof SaveEligibilityRatesErrors];
+
+export type SaveEligibilityRatesResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiModelsEligibilityRatesModel;
+};
+
+export type SaveEligibilityRatesResponse = SaveEligibilityRatesResponses[keyof SaveEligibilityRatesResponses];
 
 export type GetFormSpecData = {
     body?: never;
