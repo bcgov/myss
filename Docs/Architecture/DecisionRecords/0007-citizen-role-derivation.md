@@ -52,8 +52,11 @@ claims, so the verdict is written back as claims by an idempotent
 scheme — real JWT, mock personas, Option 2's future cookie — and before
 authorization). `RequireRole` policies and `CurrentUserAccessor` stay
 untouched, identical under Option 1 (JWT) and Option 2 (BFF). Derivation keys on
-`identity_provider ∈ {bceidbasic, bcservicescard}` — never on
-`bceid_user_guid` presence, which Business BCeID tokens also carry. Cross-line
+`identity_provider ∈ {bceidbasic, bcservicescard}`, plus `bceidboth` when the
+token carries no `bceid_business_guid`, plus the integration's BC Services Card
+alias (`Oidc:BcServicesCardIdp`, default `Oidc:ClientId`, because CSS names that
+broker after the client id) — never on `bceid_user_guid` presence, which
+Business BCeID tokens also carry. Cross-line
 stripping (citizen IDP never keeps worker roles; IDIR never keeps CLIENT) is
 unconditional hardening. The derivation itself sits behind
 `Oidc:DeriveClientRoleFromIdp` (default true) as the escape hatch if IDIM
