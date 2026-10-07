@@ -260,14 +260,18 @@ shared user-secret store: see `Apps/IcmApi.Host/AGENTS.md`.
 `Shared/validation/validation-vectors.json` is the contract between the C# and
 TypeScript implementations of the same rules (SIN Luhn, email, confirmation match, phone,
 postal code, ISO date). It is **linked**, not copied, into `MyssApi.Tests.csproj` and
-imported by `MyssWebclient/src/widgets/formio/validationRules.unit.test.ts`; both suites
-read it, so a divergence is a failing test. Adding a case means both suites must handle
-it. Every value is synthetic — never add a real SIN, PHN or personal email. PHN vectors are
-deliberately absent pending verification of the mod-11 spec.
+read from disk by `MyssWebclient/src/widgets/formio/validationRules.unit.test.ts`; both
+suites read it, so a divergence is a failing test. The webclient test reads it with
+`node:fs` rather than importing it: the image build runs `tsc -b` over the test files
+from a context that holds only `Apps/MyssWebclient`, and an import of a file outside it
+fails there. Adding a case means both suites must handle it. Every value is synthetic —
+never add a real SIN, PHN or personal email. PHN vectors are deliberately absent pending
+verification of the mod-11 spec.
 
 `Shared/validation/error-messages.json` works the same way for error wording: linked
-into `MyssApi.Tests.csproj` and read from disk by the MyssContent seed test, so the
-compiled fallback and the Strapi seed cannot drift apart.
+into `MyssApi.Tests.csproj` and read from disk by the MyssContent seed test and the
+webclient test above, so the compiled fallback, the Strapi seed and the browser's
+compiled wording cannot drift apart.
 
 ## Conventions
 
