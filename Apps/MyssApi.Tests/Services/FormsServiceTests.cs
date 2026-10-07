@@ -445,6 +445,53 @@ namespace Myss.Api.Tests.Services
             Assert.Equal("woman", profile.Gender);
         }
 
+        [Fact]
+        public async Task Submit_RegistrationV4_OverAnExistingProfile_StoresThePhoneAndGender()
+        {
+            using FormsDbContext db = NewDb();
+            FormsService service = NewService(db);
+
+            // Registered on v3, which asks for neither.
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"(250) 555-0100","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("2505550100", profile.Phone);
+            Assert.Equal("woman", profile.Gender);
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationV4_Again_ReplacesThePhoneAndGender()
+        {
+            using FormsDbContext db = NewDb();
+            FormsService service = NewService(db);
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+
+            await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"2505550100","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(4, """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"6045550199","dateOfBirth":"1815-12-10","gender":"man","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("6045550199", profile.Phone);
+            Assert.Equal("man", profile.Gender);
+        }
+
         [Theory]
         [InlineData("555-0100")]
         [InlineData("+44 20 7946 0958")]

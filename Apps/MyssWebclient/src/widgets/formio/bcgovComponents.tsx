@@ -131,13 +131,12 @@ class BcgovNumberComponent extends withBcgovField(stockComponent("number")) {
     props.description ??= textOf(component.placeholder) || undefined;
     const raw = this.dataValue;
     const validate = isRecord(component.validate) ? component.validate : {};
-    const integer = validate.integer === true;
-    const decimalLimit =
-      typeof component.decimalLimit === "number"
-        ? component.decimalLimit
-        : integer
-          ? 0
-          : 2;
+    // The spec's own limit if it sets one; otherwise none for a whole number
+    // and two (currency) for anything else.
+    let decimalLimit = validate.integer === true ? 0 : 2;
+    if (typeof component.decimalLimit === "number") {
+      decimalLimit = component.decimalLimit;
+    }
 
     return (
       <NumberField

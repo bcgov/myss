@@ -252,28 +252,24 @@ namespace Myss.Api.Services
             string? message = null;
             List<string> keywords = [];
 
+            // No JsonException handling here: the only callers reach this after
+            // IsLifecycleRefusal, which has already parsed this same body as JSON
+            // (and returns false, never this path, for one that is not).
             if (!string.IsNullOrWhiteSpace(ex.Body))
             {
-                try
+                using JsonDocument doc = JsonDocument.Parse(ex.Body);
+                JsonElement root = doc.RootElement;
+                if (root.ValueKind == JsonValueKind.Object
+                    && root.TryGetProperty("error", out JsonElement error)
+                    && error.ValueKind == JsonValueKind.Object)
                 {
-                    using JsonDocument doc = JsonDocument.Parse(ex.Body);
-                    JsonElement root = doc.RootElement;
-                    if (root.ValueKind == JsonValueKind.Object
-                        && root.TryGetProperty("error", out JsonElement error)
-                        && error.ValueKind == JsonValueKind.Object)
+                    if (error.TryGetProperty("message", out JsonElement msg)
+                        && msg.ValueKind == JsonValueKind.String)
                     {
-                        if (error.TryGetProperty("message", out JsonElement msg)
-                            && msg.ValueKind == JsonValueKind.String)
-                        {
-                            message = msg.GetString();
-                        }
-
-                        keywords = ExtractRecognizedKeywords(error);
+                        message = msg.GetString();
                     }
-                }
-                catch (JsonException)
-                {
-                    // Non-JSON body - fall through to the generic refusal message.
+
+                    keywords = ExtractRecognizedKeywords(error);
                 }
             }
 
