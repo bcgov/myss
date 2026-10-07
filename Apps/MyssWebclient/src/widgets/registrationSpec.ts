@@ -64,15 +64,26 @@ function prefillValue(
       return identity.email;
     case "phoneNumber":
       return identity.phoneNumber && formatPhone(identity.phoneNumber);
-    case "birthdate":
+    case "birthdate": {
       // OIDC's birthdate is YYYY-MM-DD; anything else (a year only, say) is
-      // not a date the picker can show. Given as local midnight: a bare date
-      // is read as UTC midnight, which the picker shows as the day before
-      // anywhere west of Greenwich (1990-01-01 became 1989-12-31 in Pacific).
-      return identity.birthdate &&
-        /^\d{4}-\d{2}-\d{2}$/.test(identity.birthdate)
-        ? `${identity.birthdate}T00:00:00`
-        : undefined;
+      // not a date the picker can show. The shape is not enough: 1990-02-31
+      // fits it, the API would refuse it, and the field is locked, so the
+      // citizen could not fix it. A real date survives the round trip;
+      // JavaScript rolls an impossible one over (to 1990-03-03).
+      const value = identity.birthdate;
+      if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+      const parsed = new Date(`${value}T00:00:00Z`);
+      if (
+        Number.isNaN(parsed.getTime()) ||
+        !parsed.toISOString().startsWith(`${value}T`)
+      ) {
+        return undefined;
+      }
+      // Given as local midnight: a bare date is read as UTC midnight, which
+      // the picker shows as the day before anywhere west of Greenwich
+      // (1990-01-01 became 1989-12-31 in Pacific).
+      return `${value}T00:00:00`;
+    }
     case "gender": {
       const option = identity.gender
         ? GENDER_OPTION[identity.gender.toLowerCase()]

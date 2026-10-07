@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
+import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
 import type { IdentityDetails } from "./registrationSpec";
 import { registerBcgovComponents } from "./formio/bcgovComponents";
 
@@ -92,17 +93,38 @@ function renderForm(overrides: Partial<IdentityDetails> | null = {}) {
     const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false } },
     });
-    const screen = render(
+    const details = overrides === null ? {} : { ...identity, ...overrides };
+    // A fresh element each time: React skips re-rendering an identical one.
+    const tree = () => (
         <QueryClientProvider client={queryClient}>
             <RegistrationForm
-                identity={overrides === null ? {} : { ...identity, ...overrides }}
+                identity={details}
                 onRegistered={onRegistered}
                 onCancel={onCancel}
             />
-        </QueryClientProvider>,
+        </QueryClientProvider>
     );
-    return { screen, onRegistered, onCancel };
+    const screen = render(tree());
+    // The mocked useSubmitForm does not re-render when its state changes.
+    const rerender = async () => (await screen).rerender(tree());
+    return { screen, rerender, onRegistered, onCancel };
 }
+
+/** A mutation the API refuses with these field errors, as useSubmitForm reports it. */
+function refuseWith(errors: FormValidationError[]) {
+    formState.submit.mutate.mockImplementation(
+        (_input: unknown, callbacks?: { onError?: () => void }) => {
+            formState.submit.error = new SubmissionRejectedError(422, errors);
+            callbacks?.onError?.();
+        },
+    );
+}
+
+const sinRefused: FormValidationError = {
+    field: "sin",
+    keyword: "IDA.SIN.INVALID_CHECKSUM",
+    message: "That Social Insurance Number is not valid.",
+};
 
 describe("RegistrationForm", () => {
     beforeEach(() => {
@@ -222,6 +244,116 @@ describe("RegistrationForm", () => {
         await expect
             .element(screen.getByRole("button", { name: "Complete registration" }))
             .toBeEnabled();
+    });
+
+    it("sends one registration when Complete registration is pressed twice", async () => {
+        // The mocked mutation never settles and its isPending stays false, so
+        // only a guard that does not wait for a re-render stops the second one.
+        formState.spec.data = { version: 4, spec: specV4 };
+        const screen = await renderForm().screen;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        const complete = screen.getByRole("button", { name: "Complete registration" });
+        await complete.click();
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        await complete.click();
+
+        // Give a second Form.io submit time to arrive if it were going to.
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        expect(formState.submit.mutate).toHaveBeenCalledOnce();
+    });
+
+    it("lets the citizen try again after the API refused", async () => {
+        formState.spec.data = { version: 4, spec: specV4 };
+        formState.submit.mutate.mockImplementation(
+            (_input: unknown, callbacks?: { onError?: () => void }) => callbacks?.onError?.(),
+        );
+        const screen = await renderForm().screen;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        const complete = screen.getByRole("button", { name: "Complete registration" });
+        await complete.click();
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        await complete.click();
+
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledTimes(2));
+    });
+
+    it("puts the API's field errors on the field itself and focuses it", async () => {
+        formState.spec.data = { version: 4, spec: specV4 };
+        refuseWith([sinRefused]);
+        const { screen: pending, rerender } = renderForm();
+        const screen = await pending;
+
+        const sin = screen.getByRole("textbox", { name: /Social Insurance Number/ });
+        await sin.fill("050082833");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        await rerender();
+
+        // Focus goes to the first field in error, as in the other Form.io
+        // widgets; the message is in the summary and under the field.
+        await expect.element(sin).toHaveFocus();
+        await expect
+            .element(screen.getByRole("heading", { name: "There is a problem" }))
+            .toBeVisible();
+        await vi.waitFor(() =>
+            expect(screen.getByText(sinRefused.message).elements()).toHaveLength(2),
+        );
+    });
+
+    it("takes a field's API error off the field once it is changed", async () => {
+        formState.spec.data = { version: 4, spec: specV4 };
+        refuseWith([sinRefused]);
+        const { screen: pending, rerender } = renderForm();
+        const screen = await pending;
+
+        const sin = screen.getByRole("textbox", { name: /Social Insurance Number/ });
+        const complete = screen.getByRole("button", { name: "Complete registration" });
+        await sin.fill("050082833");
+        await complete.click();
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        await rerender();
+        await vi.waitFor(() =>
+            expect(screen.getByText(sinRefused.message).elements()).toHaveLength(2),
+        );
+
+        // Off the field at once; the summary keeps it until the next submit.
+        await sin.fill("046454286");
+        await vi.waitFor(() =>
+            expect(screen.getByText(sinRefused.message).elements()).toHaveLength(1),
+        );
+        await complete.click();
+
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledTimes(2));
+    });
+
+    it("leads from the summary to the radio group for an API error on gender", async () => {
+        formState.spec.data = { version: 4, spec: specV4 };
+        refuseWith([
+            {
+                field: "gender",
+                keyword: "REGISTRATION.GENDER.UNKNOWN",
+                message: "Choose one of the listed options.",
+            },
+        ]);
+        const { screen: pending, rerender } = renderForm({ gender: undefined });
+        const screen = await pending;
+
+        await screen.getByText("Woman/Girl").click();
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        await rerender();
+
+        // The radio inputs have generated names, so this is the case the
+        // summary's fallback to Form.io's component wrapper exists for.
+        await screen
+            .getByRole("button", { name: "Choose one of the listed options." })
+            .click();
+        await vi.waitFor(() =>
+            expect(document.activeElement?.getAttribute("type")).toBe("radio"),
+        );
     });
 
     it("does not submit while a required field is empty", async () => {

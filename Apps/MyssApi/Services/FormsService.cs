@@ -24,6 +24,12 @@ namespace Myss.Api.Services
     {
         private const string BusPassTemplateName = "bus-pass.odt";
 
+        /// <summary>
+        /// The oldest registration version a submission may claim. v1 predates the
+        /// fields a profile needs; see <see cref="SubmitAsync(string, FormSubmissionRequestModel, Func{JsonElement, IReadOnlyList{ValidationErrorModel}}?, CancellationToken)"/>.
+        /// </summary>
+        private const int MinimumRegistrationVersion = 2;
+
         private readonly ILogger<FormsService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly IFormSpecProvider _formSpecProvider;
@@ -312,10 +318,34 @@ namespace Myss.Api.Services
                 ]);
             }
 
+            // Registration v1 asked only for a first name, but a profile needs the
+            // last name, date of birth, email and SIN that v2 introduced, so a v1
+            // answer set can never become a profile. v1 is published and immutable
+            // and cannot be retired from Strapi, so it is refused here, the same
+            // way as an unknown version: that tells a stale tab to reload onto the
+            // current form instead of failing on fields the citizen was never shown.
+            if (IsRegistration(formSpecId) && request.FormSpecVersion < MinimumRegistrationVersion)
+            {
+                _logger.LogWarning(
+                    "Rejected registration on retired version {FormSpecVersion}; the minimum is {MinimumVersion}",
+                    request.FormSpecVersion,
+                    MinimumRegistrationVersion);
+
+                return FormSubmissionResultModel.Refused(
+                [
+                    new ValidationErrorModel
+                    {
+                        Field = nameof(FormSubmissionRequestModel.FormSpecVersion),
+                        Keyword = ValidationKeywords.VersionUnknown,
+                        Message = $"Version {request.FormSpecVersion} of this form is not available. Reload the form and try again.",
+                    },
+                ]);
+            }
+
             IReadOnlyList<ValidationErrorModel> errors =
                 FormSpecValidator.Validate(spec.Spec, request.Answers);
 
-            if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
+            if (IsRegistration(formSpecId))
             {
                 errors = [.. errors, .. ValidateRegistration(spec.Spec, request.Answers)];
             }
@@ -352,7 +382,7 @@ namespace Myss.Api.Services
             };
 
             _dbContext.FormSubmissions.Add(submission);
-            if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
+            if (IsRegistration(formSpecId))
             {
                 AddOrUpdateProfile(request.Answers);
             }
@@ -368,6 +398,9 @@ namespace Myss.Api.Services
             return FormSubmissionResultModel.Accepted(ToResponse(submission, spec: null));
         }
 
+        private static bool IsRegistration(string formSpecId) =>
+            string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase);
+
         private void AddOrUpdateProfile(JsonElement answers)
         {
             CurrentUser currentUser = _currentUserAccessor.User;
@@ -382,8 +415,8 @@ namespace Myss.Api.Services
             string email = answers.GetProperty("email").GetString()!;
             string sin = answers.GetProperty("sin").GetString()!;
 
-            // Optional at this layer: registration v3 and earlier did not ask for
-            // them, and a submission is validated against the version it claims.
+            // Optional at this layer: registration v2 and v3 did not ask for them,
+            // and a submission is validated against the version it claims.
             string? phone = OptionalString(answers, "phone") is { } rawPhone
                 && TryNormalizePhone(rawPhone, out string normalizedPhone)
                     ? normalizedPhone
@@ -418,8 +451,9 @@ namespace Myss.Api.Services
             profile.DateOfBirth = parsedDate;
             profile.Email = email;
             profile.Sin = sin;
-            // v1-v3 are still published and do not ask for these, so an absent
+            // v2 and v3 are still published and do not ask for these, so an absent
             // answer means "not on this form", not "cleared": keep what v4 stored.
+            // (v1 never gets this far; SubmitAsync refuses it.)
             if (phone is not null)
             {
                 profile.Phone = phone;

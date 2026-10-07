@@ -103,6 +103,16 @@ describe("prepareRegistrationSpec", () => {
       "phone",
     ],
     ["a year-only birthdate", { birthdate: "1990" }, "dateOfBirth"],
+    [
+      "a birthdate that is not a real day",
+      { birthdate: "1990-02-31" },
+      "dateOfBirth",
+    ],
+    [
+      "a birthdate in a month that does not exist",
+      { birthdate: "1990-13-01" },
+      "dateOfBirth",
+    ],
     ["an unknown gender", { gender: "unknown" }, "gender"],
   ])("does not fill or lock %s", (_case, identity, key) => {
     const prepared = prepareRegistrationSpec(spec, identity);

@@ -16,9 +16,16 @@ import { SubmissionRejectedError } from "@/api/forms";
  * over.
  */
 function focusField(field: string) {
-    const input = document.querySelector<HTMLElement>(
-        `[name="data[${CSS.escape(field)}]"]`,
-    );
+    // A custom component (the BC Gov radio group) renders React inputs whose
+    // names are generated, so fall back to Form.io's own wrapper, which always
+    // carries the component key as a class, and focus the first control in it.
+    const input =
+        document.querySelector<HTMLElement>(
+            `[name="data[${CSS.escape(field)}]"]`,
+        ) ??
+        document
+            .querySelector(`.formio-component-${CSS.escape(field)}`)
+            ?.querySelector<HTMLElement>("input, select, textarea, button");
     if (!input) return;
 
     input.focus();

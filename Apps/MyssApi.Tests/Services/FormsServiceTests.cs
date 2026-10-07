@@ -212,6 +212,47 @@ namespace Myss.Api.Tests.Services
                 }
 
         [Fact]
+        public async Task Submit_RegistrationV1_IsRefusedAsARetiredVersion_AndNothingIsPersisted()
+        {
+            // The seeded v1: a first name only, which can never make a profile.
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec(
+                "registration",
+                1,
+                """{"components":[{ "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } }]}""");
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(1, """{"firstName":"Ada"}"""),
+                CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(nameof(FormSubmissionRequestModel.FormSpecVersion), error.Field);
+            Assert.Equal(ValidationKeywords.VersionUnknown, error.Keyword);
+            Assert.Empty(await db.FormSubmissions.ToListAsync());
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationV2_IsTheOldestVersionThatStillRegisters()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 2, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(2, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.Empty(result.Errors);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal("Lovelace", profile.LastName);
+            Assert.Null(profile.Phone);
+        }
+
+        [Fact]
         public async Task Submit_RegistrationWithPickerDateTime_PersistsTheDatePortion()
         {
             using FormsDbContext db = NewDb();
