@@ -15,10 +15,73 @@ namespace Myss.Api.Tests.Services
     /// </summary>
     public class FormsServiceTests
     {
+        private const string SpecWithSin = """
+            {
+              "components": [
+                { "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } },
+                { "type": "textfield", "key": "sin", "input": true, "properties": { "myssValidator": "sin" } }
+              ]
+            }
+            """;
+
         private readonly FakeFormSpecProvider _provider = new();
         private readonly IPdfProvider _pdfProvider = new UnexpectedPdfProvider();
         private readonly FakeFormSpecAdminProvider _adminProvider = new();
         private readonly ITemplateProvider _templateProvider = new UnexpectedTemplateProvider();
+        private readonly FakeErrorMessageProvider _errorMessages = new();
+
+        [Fact]
+        public async Task Submit_RefusedAnswers_AreWordedFromTheCatalogue_KeywordByKeyword()
+        {
+            // The validator emits the compiled default; the wording the Service
+            // Designer published replaces it. The required failure has no
+            // catalogue row and keeps the validator's text.
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 1, SpecWithSin);
+            _errorMessages.Overrides[ValidationKeywords.SinInvalidChecksum] = "Authored SIN wording";
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "poc-test-form", Request(1, """{"sin":"050082830"}"""), CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            ValidationErrorModel sin = Assert.Single(result.Errors, e => e.Field == "sin");
+            Assert.Equal(ValidationKeywords.SinInvalidChecksum, sin.Keyword);
+            Assert.Equal("Authored SIN wording", sin.Message);
+            ValidationErrorModel required = Assert.Single(result.Errors, e => e.Field == "firstName");
+            Assert.Equal(ValidationKeywords.FieldRequired, required.Keyword);
+            Assert.Equal("This answer is required.", required.Message);
+            Assert.Equal(1, _errorMessages.Calls);
+        }
+
+        [Fact]
+        public async Task Submit_AcceptedAnswers_NeverReadTheCatalogue()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 1, SpecWithSin);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "poc-test-form", Request(1, """{"firstName":"Ada","sin":"050082833"}"""), CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(0, _errorMessages.Calls);
+        }
+
+        [Fact]
+        public async Task GetErrorMessages_ServesTheCatalogue()
+        {
+            using FormsDbContext db = NewDb();
+            _errorMessages.Overrides["NEW.KEYWORD.FROM_STRAPI"] = "Authored wording";
+            FormsService service = NewService(db);
+
+            IReadOnlyDictionary<string, string> catalogue = await service.GetErrorMessagesAsync(CancellationToken.None);
+
+            Assert.Equal("Authored wording", catalogue["NEW.KEYWORD.FROM_STRAPI"]);
+            Assert.Equal(
+                ErrorMessageDefaults.Messages[ValidationKeywords.SinWrongLength],
+                catalogue[ValidationKeywords.SinWrongLength]);
+        }
 
         [Fact]
         public async Task GetSubmission_FetchesArchivedVersion_NeverLatest()
@@ -441,7 +504,8 @@ namespace Myss.Api.Tests.Services
                 _pdfProvider,
                 _templateProvider,
                 _adminProvider,
-                currentUserAccessor ?? new StubCurrentUserAccessor("test-subject"));
+                currentUserAccessor ?? new StubCurrentUserAccessor("test-subject"),
+                _errorMessages);
         }
 
             private sealed class AnonymousCurrentUserAccessor : ICurrentUserAccessor

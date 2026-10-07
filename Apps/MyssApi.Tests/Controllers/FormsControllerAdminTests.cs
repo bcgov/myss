@@ -273,6 +273,9 @@ namespace Myss.Api.Tests.Controllers
             public Task<FormSpecModel?> GetLatestSpecAsync(string formSpecId, CancellationToken cancellationToken) =>
                 throw new NotSupportedException();
 
+            public Task<IReadOnlyDictionary<string, string>> GetErrorMessagesAsync(CancellationToken cancellationToken) =>
+                throw new NotSupportedException();
+
             public Task<FormSubmissionResultModel> SubmitAsync(string formSpecId, FormSubmissionRequestModel request, CancellationToken cancellationToken) =>
                 throw new NotSupportedException();
 

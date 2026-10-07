@@ -29,7 +29,9 @@ what is specific to the webclient. Full docs:
 ## Layout of `src/`
 
 `pages/` (routed screens + page-scoped logic) · `widgets/` (composed
-sections; `widgets/formio/` is the Form.io custom-component bridge) ·
+sections; `widgets/formio/` is the Form.io bridge: every stock input type
+is re-registered with a design system wrapper on the shared `bcgovField`
+base, plus the client half of the validation rule registry) ·
 `components/` (shared presentational leaves) · `hooks/` (`useX` naming)
 · `routes/paths.ts` (every URL) · `ui/` (global CSS layers) · `api/`
 (generated — regenerate with `npm run generate:schema`, never

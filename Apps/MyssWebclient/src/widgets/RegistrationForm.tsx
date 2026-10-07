@@ -10,6 +10,7 @@ import "./FormSpecWidget.css";
 import { SubmissionRejectedError } from "@/api/forms";
 import { ME_QUERY_KEY } from "@/auth/useMe";
 import SubmissionErrors from "@/components/SubmissionErrors";
+import { useClientValidation } from "@/hooks/useClientValidation";
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
 import {
   prepareRegistrationSpec,
@@ -55,6 +56,10 @@ export default function RegistrationForm({
         : [],
     [submit.error],
   );
+  // A submit Form.io blocks is listed in the same summary as one the API
+  // refuses; Form.io's own alert is switched off so nothing shows twice.
+  const clientValidation = useClientValidation();
+  const formOptions = useMemo(() => ({ noAlerts: true }), []);
 
   // Keyed on the individual values, not the identity object: the session
   // builds a new user object every render, and a new `src` makes Form.io
@@ -81,8 +86,8 @@ export default function RegistrationForm({
 
   const handleComplete = useCallback(() => {
     if (isSubmittingRef.current) return;
-    // Rejects when client-side validation fails; Form.io has already shown
-    // the messages on the fields, so there is nothing more to do here.
+    // Rejects when client-side validation fails; the messages are already on
+    // the fields and in the summary (onSubmitError), so nothing more to do.
     void formRef.current?.submit().catch(() => undefined);
   }, []);
 
@@ -154,16 +159,21 @@ export default function RegistrationForm({
   if (isPending) return <p>Loading form…</p>;
   if (error) return <p>Could not load the form: {error.message}</p>;
 
+  const summaryError = clientValidation.error ?? submit.error;
+
   return (
     <section className={styles.form}>
-      {submit.error && <SubmissionErrors error={submit.error} />}
+      {summaryError && <SubmissionErrors error={summaryError} />}
       <Form
         src={prepared ?? spec.spec}
+        options={formOptions}
         onFormReady={handleFormReady}
         onChange={handleChange}
+        onSubmitError={clientValidation.onSubmitError}
         onSubmit={(submission: { data: Record<string, unknown> }) => {
           if (isSubmittingRef.current) return;
           isSubmittingRef.current = true;
+          clientValidation.clear();
           submit.mutate(
             { formSpecVersion: spec.version, answers: submission.data },
             {

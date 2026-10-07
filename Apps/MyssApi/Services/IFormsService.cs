@@ -21,6 +21,15 @@ namespace Myss.Api.Services
         Task<FormSpecModel?> GetLatestSpecAsync(string formSpecId, CancellationToken cancellationToken);
 
         /// <summary>
+        /// Gets the error message catalogue: the citizen-facing wording for every
+        /// stable error keyword, as the content engine currently publishes it,
+        /// with the compiled defaults where it has no row or cannot be read.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The wording keyed by keyword; never null.</returns>
+        Task<IReadOnlyDictionary<string, string>> GetErrorMessagesAsync(CancellationToken cancellationToken);
+
+        /// <summary>
         /// Stores a submission with its version stamp.
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>

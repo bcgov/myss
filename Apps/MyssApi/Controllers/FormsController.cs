@@ -108,6 +108,32 @@ namespace Myss.Api.Controllers
         }
 
         /// <summary>
+        /// Returns the error message catalogue: the citizen-facing wording for
+        /// every stable error keyword, as published in the content engine.
+        /// Anonymous like the public bus pass spec: the catalogue is shared
+        /// content, not per-user data, and the public bus pass page reads it to
+        /// word the outcomes the API reports by keyword alone.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpGet("error-messages")]
+        [AllowAnonymous]
+        [Produces("application/json")]
+        [EndpointName("GetErrorMessages")]
+        [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyDictionary<string, string>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<BaseResponseModel<IReadOnlyDictionary<string, string>>>> GetErrorMessages(
+            CancellationToken cancellationToken
+        )
+        {
+            IReadOnlyDictionary<string, string> catalogue = await _formsService.GetErrorMessagesAsync(cancellationToken);
+
+            return new BaseResponseModel<IReadOnlyDictionary<string, string>>
+            {
+                Payload = catalogue,
+                DatetimeRequested = DateTime.Now,
+            };
+        }
+
+        /// <summary>
         /// Stores a submission stamped with the spec version it was rendered with.
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>

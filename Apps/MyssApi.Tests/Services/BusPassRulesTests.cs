@@ -1,13 +1,14 @@
 namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Services;
 
     /// <summary>
-    /// Tests for <see cref="BusPassRules"/>: the legacy form's second
-    /// validation pass, now run server-side.
+    /// Tests for <see cref="BusPassRules"/>: the cross-field rules the spec
+    /// cannot express, run server-side. Everything a single field declares,
+    /// the conditionally required fields included, is
+    /// <see cref="FormSpecValidator"/>'s job and is pinned there.
     /// </summary>
     public class BusPassRulesTests
     {
@@ -16,17 +17,13 @@ namespace Myss.Api.Tests.Services
         [Fact]
         public void CompleteNewApplicantAnswers_Pass()
         {
-            IReadOnlyList<ValidationErrorModel> errors = Validate(NewApplicant());
-
-            Assert.Empty(errors);
+            Assert.Empty(Validate(NewApplicant()));
         }
 
         [Fact]
         public void CompleteExistingClientAnswers_Pass()
         {
-            IReadOnlyList<ValidationErrorModel> errors = Validate(ExistingClient());
-
-            Assert.Empty(errors);
+            Assert.Empty(Validate(ExistingClient()));
         }
 
         [Fact]
@@ -121,15 +118,29 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void EmailVerificationNotMatchingEmail_IsRefused()
+        public void EmailVerificationNotMatchingEmail_IsRefused_ForFormsBeforeV6()
         {
+            // Up to v5 the spec checked the match only in browser script, so
+            // this is the server-side check for those versions.
             var answers = NewApplicant();
             answers["email"] = "ada@example.com";
             answers["emailVerification"] = "ada@exampel.com";
 
-            ValidationErrorModel error = Assert.Single(Validate(answers));
+            ValidationErrorModel error = Assert.Single(Validate(answers, formSpecVersion: 5));
             Assert.Equal("emailVerification", error.Field);
             Assert.Equal(BusPassErrorKeywords.EmailMismatch, error.Keyword);
+        }
+
+        [Fact]
+        public void EmailVerificationMismatch_IsTheSpecsJob_FromV6()
+        {
+            // v6 names the partner field (properties.myssMatches), so the spec
+            // validator reports the mismatch and this class must not do it twice.
+            var answers = NewApplicant();
+            answers["email"] = "ada@example.com";
+            answers["emailVerification"] = "ada@exampel.com";
+
+            Assert.Empty(Validate(answers, formSpecVersion: BusPassRules.SpecValidatesEmailMatchVersion));
         }
 
         [Fact]
@@ -139,34 +150,7 @@ namespace Myss.Api.Tests.Services
             answers["email"] = "ada@example.com";
             answers["emailVerification"] = "Ada@Example.com";
 
-            Assert.Empty(Validate(answers));
-        }
-
-        [Fact]
-        public void ExistingClientWithoutAReason_IsRefused()
-        {
-            // Conditionally required in the spec, which the spec validator
-            // exempts; the rule closes that gap.
-            var answers = ExistingClient();
-            answers.Remove("existingClientReason");
-
-            ValidationErrorModel error = Assert.Single(Validate(answers));
-            Assert.Equal("existingClientReason", error.Field);
-            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
-        }
-
-        [Fact]
-        public void NewApplicantWithoutCategoryOrAcknowledgement_ReportsBoth()
-        {
-            var answers = NewApplicant();
-            answers.Remove("eligibilityCategory");
-            answers["eligibilityAcknowledged"] = false;
-
-            IReadOnlyList<ValidationErrorModel> errors = Validate(answers);
-
-            Assert.Equal(2, errors.Count);
-            Assert.Contains(errors, e => e.Field == "eligibilityCategory");
-            Assert.Contains(errors, e => e.Field == "eligibilityAcknowledged");
+            Assert.Empty(Validate(answers, formSpecVersion: 5));
         }
 
         [Fact]
@@ -182,80 +166,76 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void V3NewApplicationWithoutEligibilityCategory_IsRefused()
+        public void MissingRequestType_IsTheSpecsJob()
         {
-            var answers = V3NewApplication();
-            answers.Remove("eligibilityCategory");
-
-            ValidationErrorModel error = Assert.Single(Validate(answers));
-
-            Assert.Equal("eligibilityCategory", error.Field);
-            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
-        }
-
-        [Fact]
-        public void V3NewApplicationWithoutAcknowledgement_IsRefused()
-        {
-            var answers = V3NewApplication();
-            answers.Remove("eligibilityAcknowledged");
-
-            ValidationErrorModel error = Assert.Single(Validate(answers));
-
-            Assert.Equal("eligibilityAcknowledged", error.Field);
-            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
-        }
-
-        [Fact]
-        public void V4ReplacementWithoutAcknowledgement_IsRefused()
-        {
-            ValidationErrorModel error = Assert.Single(
-                Validate(ReplacementAnswers(), requireReplacementAcknowledgement: true));
-
-            Assert.Equal(BusPassAnswers.AcknowledgedPassCancellation, error.Field);
-            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
-        }
-
-        [Fact]
-        public void V4ReplacementWithFalseAcknowledgement_IsRefused()
-        {
-            var answers = ReplacementAnswers();
-            answers[BusPassAnswers.AcknowledgedPassCancellation] = false;
-
-            ValidationErrorModel error = Assert.Single(
-                Validate(answers, requireReplacementAcknowledgement: true));
-
-            Assert.Equal(BusPassAnswers.AcknowledgedPassCancellation, error.Field);
-            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
-        }
-
-        [Fact]
-        public void V4ReplacementWithAcknowledgement_Passes()
-        {
-            var answers = ReplacementAnswers();
-            answers[BusPassAnswers.AcknowledgedPassCancellation] = true;
-
-            Assert.Empty(Validate(answers, requireReplacementAcknowledgement: true));
-        }
-
-        [Fact]
-        public void V3ReplacementWithoutAcknowledgement_RemainsCompatible()
-        {
-            Assert.Empty(Validate(ReplacementAnswers()));
-        }
-
-        [Fact]
-        public void DifferentMailingAddressWithMissingParts_ReportsEachPart()
-        {
+            // The selector is required by the spec; only a value the form does
+            // not offer is this class's business.
             var answers = NewApplicant();
-            answers["mailingAddressDifferent"] = "yes";
-            answers["mailingStreetAddress1"] = "PO Box 1";
+            answers.Remove("applicantCategory");
 
-            IReadOnlyList<ValidationErrorModel> errors = Validate(answers);
+            Assert.DoesNotContain(Validate(answers), e => e.Field == "serviceRequestType" || e.Field == "applicantCategory");
+        }
 
-            Assert.Equal(
-                ["mailingCity", "mailingProvince", "mailingPostalCode"],
-                errors.Select(e => e.Field).ToArray());
-            Assert.All(errors, e => Assert.Equal(ValidationKeywords.FieldRequired, e.Keyword));
+        [Fact]
+        public void LegacyCategoryTheFormDoesNotOffer_IsRefused()
+        {
+            // v1/v2 shape. Unrefused, the mapper would default it to a new
+            // application.
+            var answers = NewApplicant();
+            answers["applicantCategory"] = "bogus";
+
+            ValidationErrorModel error = Assert.Single(Validate(answers));
+            Assert.Equal("applicantCategory", error.Field);
+            Assert.Equal(BusPassErrorKeywords.RequestTypeInvalid, error.Keyword);
+        }
+
+        [Fact]
+        public void LegacyReasonTheFormDoesNotOffer_IsRefused()
+        {
+            var answers = ExistingClient();
+            answers["existingClientReason"] = "bogus";
+
+            ValidationErrorModel error = Assert.Single(Validate(answers));
+            Assert.Equal("existingClientReason", error.Field);
+            Assert.Equal(BusPassErrorKeywords.RequestTypeInvalid, error.Keyword);
+        }
+
+        [Fact]
+        public void LegacyExistingClientWithoutAReason_IsTheSpecsJob()
+        {
+            // The reason is required by the spec behind a conditional, which
+            // the spec validator reports; this class must not say it twice.
+            var answers = ExistingClient();
+            answers.Remove("existingClientReason");
+
+            Assert.Empty(Validate(answers));
+        }
+
+        [Fact]
+        public void ConditionallyRequiredFields_AreTheSpecsJob()
+        {
+            // Each of these is required by the spec behind a conditional, which
+            // the spec validator now evaluates; reporting them here again would
+            // list every one of them twice.
+            var existing = ExistingClient();
+            existing.Remove("existingClientReason");
+            Assert.Empty(Validate(existing));
+
+            var newApplicant = NewApplicant();
+            newApplicant.Remove("eligibilityCategory");
+            newApplicant["eligibilityAcknowledged"] = false;
+            Assert.Empty(Validate(newApplicant));
+
+            var mailing = NewApplicant();
+            mailing["mailingAddressDifferent"] = "yes";
+            mailing["mailingStreetAddress1"] = "PO Box 1";
+            Assert.Empty(Validate(mailing));
+
+            var replacement = ExistingClient();
+            replacement.Remove("applicantCategory");
+            replacement.Remove("existingClientReason");
+            replacement["serviceRequestType"] = "replacement";
+            Assert.Empty(Validate(replacement, formSpecVersion: 4));
         }
 
         [Fact]
@@ -269,15 +249,17 @@ namespace Myss.Api.Tests.Services
 
             IReadOnlyList<ValidationErrorModel> errors = Validate(answers);
 
-            Assert.True(errors.Count >= 5, $"expected at least 5 errors, got {errors.Count}");
+            Assert.Equal(
+                [BusPassErrorKeywords.IdentifierRequired, BusPassErrorKeywords.DateOfBirthInvalid, BusPassErrorKeywords.EmailRequiredForEmailContact],
+                errors.Select(e => e.Keyword).ToArray());
         }
 
         private static IReadOnlyList<ValidationErrorModel> Validate(
             Dictionary<string, object?> answers,
-            bool requireReplacementAcknowledgement = false)
+            int formSpecVersion = 0)
         {
             using JsonDocument doc = JsonSerializer.SerializeToDocument(answers);
-            return BusPassRules.Validate(doc.RootElement.Clone(), Today, requireReplacementAcknowledgement);
+            return BusPassRules.Validate(doc.RootElement.Clone(), Today, formSpecVersion);
         }
 
         private static Dictionary<string, object?> NewApplicant() => new()
@@ -308,17 +290,6 @@ namespace Myss.Api.Tests.Services
             var answers = NewApplicant();
             answers.Remove("applicantCategory");
             answers["serviceRequestType"] = "newApplication";
-            return answers;
-        }
-
-        // The v3/v4 answer shape is identical; only the acknowledgement
-        // requirement differs, driven by the version flag passed to Validate.
-        private static Dictionary<string, object?> ReplacementAnswers()
-        {
-            var answers = ExistingClient();
-            answers.Remove("applicantCategory");
-            answers.Remove("existingClientReason");
-            answers["serviceRequestType"] = "replacement";
             return answers;
         }
 

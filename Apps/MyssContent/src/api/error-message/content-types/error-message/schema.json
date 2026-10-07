@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "error_messages",
+  "info": {
+    "singularName": "error-message",
+    "pluralName": "error-messages",
+    "displayName": "Error Message",
+    "description": "Citizen-facing text for one stable error keyword (DOMAIN.CONTEXT.NAME). MyssApi words a refused submission from this catalogue keyword by keyword, and the browser reads the same catalogue for the outcomes it words itself. Edit the text and publish; no deploy is needed. The keyword is the contract with the code and must not change."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "keyword": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "regex": "^[A-Z0-9_]+(\\.[A-Z0-9_]+)+$"
+    },
+    "message": {
+      "type": "text",
+      "required": true
+    },
+    "note": {
+      "type": "text"
+    }
+  }
+}

@@ -8,6 +8,7 @@ import {
   busPassFormSpecV3,
   busPassFormSpecV4,
   busPassFormSpecV5,
+  busPassFormSpecV6,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   INCOME_ASSISTANCE_FORM_SPEC_ID,
@@ -359,7 +360,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
   });
 
-  it("seeds the bus pass with v1 through v5", () => {
+  it("seeds the bus pass with v1 through v6", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -370,6 +371,7 @@ describe("seeded forms collection", () => {
       { version: 3, spec: busPassFormSpecV3 },
       { version: 4, spec: busPassFormSpecV4 },
       { version: 5, spec: busPassFormSpecV5 },
+      { version: 6, spec: busPassFormSpecV6 },
     ]);
   });
 
@@ -523,5 +525,71 @@ describe("bus pass seed — v2 (server-side SIN validation)", () => {
 
   it("otherwise keeps the v1 component structure", () => {
     expect(keysOf(busPassFormSpecV2)).toEqual(keysOf(busPassFormSpecV1));
+  });
+});
+
+describe("bus pass seed — v6 (named validation rules)", () => {
+  const componentByKey = (spec: Json, key: string) => {
+    const found: Record<string, unknown>[] = [];
+    const walk = (nodes: unknown) => {
+      if (!Array.isArray(nodes)) return;
+      for (const node of nodes) {
+        if (typeof node !== "object" || node === null) continue;
+        const component = node as Record<string, unknown>;
+        if (component.key === key) found.push(component);
+        walk(component.components);
+        if (Array.isArray(component.columns)) {
+          for (const column of component.columns) {
+            walk((column as Record<string, unknown>).components);
+          }
+        }
+      }
+    };
+    walk((spec as Record<string, unknown>).components);
+    return found[0] as Record<string, unknown> & {
+      properties?: Record<string, unknown>;
+      errors?: Record<string, unknown>;
+      validate?: Record<string, unknown>;
+    };
+  };
+
+  it("names the phone and postal code rules the API and the browser both run", () => {
+    expect(componentByKey(busPassFormSpecV6, "phoneNumber").properties).toEqual({
+      myssValidator: "phone",
+    });
+    for (const key of ["postalCode", "mailingPostalCode"]) {
+      expect(componentByKey(busPassFormSpecV6, key).properties).toEqual({
+        myssValidator: "postalCode",
+      });
+    }
+  });
+
+  it("names the email verification's partner instead of checking it in browser script", () => {
+    const verification = componentByKey(busPassFormSpecV6, "emailVerification");
+    expect(verification.properties).toEqual({ myssMatches: "email" });
+    expect(verification.validate?.custom).toBeUndefined();
+    expect(verification.errors).toEqual({
+      matches: "The two email addresses do not match",
+    });
+  });
+
+  it("checks the birth day against its month and year, with per-rule wording", () => {
+    const birthDay = componentByKey(busPassFormSpecV6, "birthDay");
+    expect(birthDay.properties).toEqual({
+      myssValidator: "dateParts",
+      myssDateParts: { month: "birthMonth", year: "birthYear" },
+    });
+    expect(birthDay.errors).toEqual({
+      required: "A birth day is required",
+      dateParts: "Enter a valid date of birth",
+    });
+    // The catch-all message is gone: it would have worded the date rule too.
+    expect(birthDay.validate?.customMessage).toBeUndefined();
+  });
+
+  it("keeps the SIN rule from v5", () => {
+    expect(
+      componentByKey(busPassFormSpecV6, "socialInsuranceNumber").properties,
+    ).toEqual({ myssValidator: "sin" });
   });
 });

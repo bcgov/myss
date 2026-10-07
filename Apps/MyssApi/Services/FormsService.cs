@@ -37,6 +37,7 @@ namespace Myss.Api.Services
         private readonly ITemplateProvider _templateProvider;
         private readonly IFormSpecAdminProvider _formSpecAdminProvider;
         private readonly ICurrentUserAccessor _currentUserAccessor;
+        private readonly IErrorMessageProvider _errorMessageProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -47,6 +48,8 @@ namespace Myss.Api.Services
         /// <param name="pdfProvider">Injected PDF provider.</param>
         /// <param name="templateProvider">Injected template provider.</param>
         /// <param name="formSpecAdminProvider">Injected form-spec admin (write) provider.</param>
+        /// <param name="currentUserAccessor">Injected current user accessor.</param>
+        /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
         public FormsService(
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
@@ -54,7 +57,8 @@ namespace Myss.Api.Services
             IPdfProvider pdfProvider,
             ITemplateProvider templateProvider,
             IFormSpecAdminProvider formSpecAdminProvider,
-            ICurrentUserAccessor currentUserAccessor)
+            ICurrentUserAccessor currentUserAccessor,
+            IErrorMessageProvider errorMessageProvider)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -63,12 +67,19 @@ namespace Myss.Api.Services
             _templateProvider = templateProvider;
             _formSpecAdminProvider = formSpecAdminProvider;
             _currentUserAccessor = currentUserAccessor;
+            _errorMessageProvider = errorMessageProvider;
         }
 
         /// <inheritdoc/>
         public Task<FormSpecModel?> GetLatestSpecAsync(string formSpecId, CancellationToken cancellationToken)
         {
             return _formSpecProvider.GetLatestAsync(formSpecId, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<IReadOnlyDictionary<string, string>> GetErrorMessagesAsync(CancellationToken cancellationToken)
+        {
+            return _errorMessageProvider.GetMessagesAsync(cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -347,15 +358,18 @@ namespace Myss.Api.Services
 
             if (IsRegistration(formSpecId))
             {
-                errors = [.. errors, .. ValidateRegistration(spec.Spec, request.Answers)];
+                errors = FormSpecValidator.OnePerField([.. errors, .. ValidateRegistration(spec.Spec, request.Answers)]);
             }
 
             if (domainRules is not null)
             {
+                // The spec's failure for a field comes first; a domain rule adds
+                // a field's failure only when the spec found none, so the citizen
+                // reads one reason per field, as the form shows them.
                 IReadOnlyList<ValidationErrorModel> domainErrors = domainRules(request.Answers);
                 if (domainErrors.Count > 0)
                 {
-                    errors = [.. errors, .. domainErrors];
+                    errors = FormSpecValidator.OnePerField([.. errors, .. domainErrors]);
                 }
             }
 
@@ -369,7 +383,15 @@ namespace Myss.Api.Services
                     request.FormSpecVersion,
                     errors.Count);
 
-                return FormSubmissionResultModel.Refused(errors);
+                // The validators carry compiled default wording. The catalogue
+                // a Service Designer publishes in the content engine replaces
+                // it keyword by keyword, so what the citizen reads is authored
+                // content rather than code. Read only on this path: an accepted
+                // submission never needs it.
+                return FormSubmissionResultModel.Refused(
+                    ErrorMessageResolver.Resolve(
+                        errors,
+                        await _errorMessageProvider.GetMessagesAsync(cancellationToken)));
             }
 
             var submission = new FormSubmission
@@ -417,9 +439,11 @@ namespace Myss.Api.Services
 
             // Optional at this layer: registration v2 and v3 did not ask for them,
             // and a submission is validated against the version it claims.
+            // Stored as the ten digits, by the same rule FormSpecValidator has
+            // already held the answer to.
             string? phone = OptionalString(answers, "phone") is { } rawPhone
-                && TryNormalizePhone(rawPhone, out string normalizedPhone)
-                    ? normalizedPhone
+                && PhoneNumber.TryCreate(rawPhone) is { IsValid: true } validPhone
+                    ? validPhone.Value!.Digits
                     : null;
             string? gender = OptionalString(answers, "gender");
 
@@ -491,19 +515,10 @@ namespace Myss.Api.Services
                 });
             }
 
-            // Whether phone and gender are required is the spec's call, already
-            // enforced by FormSpecValidator. These only check a value that is there.
-            if (OptionalString(answers, "phone") is { } phone && !TryNormalizePhone(phone, out _))
-            {
-                errors.Add(new ValidationErrorModel
-                {
-                    Field = "phone",
-                    Keyword = ValidationKeywords.RegistrationPhoneInvalid,
-                    Message = "Enter a 10-digit phone number.",
-                });
-            }
-
-            // The options are authored in Strapi, so check against the spec the
+            // Whether gender is required is the spec's call, already enforced by
+            // FormSpecValidator, which also checks the phone (a phoneNumber field
+            // gets the PhoneNumber rule there). This only checks a gender that is
+            // there. The options are authored in Strapi, so check against the spec the
             // citizen was shown rather than a list held here.
             if (OptionalString(answers, "gender") is { } gender
                 && !ComponentOptionValues(spec, "gender").Contains(gender))
@@ -525,21 +540,6 @@ namespace Myss.Api.Services
                 && !string.IsNullOrWhiteSpace(value.GetString())
                     ? value.GetString()
                     : null;
-
-        /// <summary>
-        /// Reduces a phone number to its ten digits. Form.io's phoneNumber mask
-        /// submits "(250) 555-0100"; a leading North American "1" is dropped.
-        /// </summary>
-        private static bool TryNormalizePhone(string value, out string digits)
-        {
-            digits = new string(value.Where(char.IsAsciiDigit).ToArray());
-            if (digits.Length == 11 && digits[0] == '1')
-            {
-                digits = digits[1..];
-            }
-
-            return digits.Length == 10;
-        }
 
         /// <summary>
         /// The option values of the component keyed <paramref name="key"/>, found
