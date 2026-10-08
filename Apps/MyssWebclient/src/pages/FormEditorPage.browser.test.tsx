@@ -283,13 +283,17 @@ describe("FormEditorPage", () => {
     await expect.element(alert).toHaveTextContent("Could not load this form");
   });
 
-  it("shows each field's key read-only and editing a label updates the preview", async () => {
+  it("does not show field keys and editing a label updates the preview", async () => {
     mockGetDraft.mockResolvedValue(draft);
 
     const screen = await renderPage();
 
-    // The key is shown as plain text, not an editable field.
-    await expect.element(screen.getByText("fullName")).toBeVisible();
+    await expect
+      .element(screen.getByRole("textbox", { name: "Label for fullName" }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("fullName", { exact: true }))
+      .not.toBeInTheDocument();
 
     await screen
       .getByRole("textbox", { name: "Label for fullName" })

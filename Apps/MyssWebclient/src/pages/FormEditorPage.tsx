@@ -510,9 +510,6 @@ export default function FormEditorPage() {
                                         <div className={styles.editCell}>
                                             {editable ? (
                                                 <div className={styles.editControls}>
-                                                    <code className={styles.key}>
-                                                        {editable.key}
-                                                    </code>
                                                     <label
                                                         className={styles.labelField}
                                                     >
