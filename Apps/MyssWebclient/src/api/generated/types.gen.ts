@@ -173,6 +173,63 @@ export type MyssApiIntakeReviewApplicationSummaryModel = {
 };
 
 /**
+ * What Account Info shows the citizen (MYSS-271): case details, which come
+ * from ICM and MIS, beside the contact details MySS holds itself.
+ */
+export type MyssApiModelsAccountModel = {
+    /**
+     * Gets or sets the ICM case number, or null for a citizen with no case.
+     */
+    caseNumber?: string | null;
+    /**
+     * Gets or sets the client's full name, from the registration profile.
+     */
+    clientName: string | null;
+    /**
+     * IReadOnlyList<String>
+     *
+     * Gets or sets the names of the other people on the case. Empty when there are none.
+     */
+    familyMembers: Array<string> | null;
+    /**
+     * Gets or sets the email address from registration. Read-only here.
+     */
+    email: string | null;
+    /**
+     * IReadOnlyList<AccountPhoneModel>
+     *
+     * Gets or sets the citizen's phone numbers, in their chosen order.
+     */
+    phones: Array<MyssApiModelsAccountPhoneModel> | null;
+    /**
+     * IReadOnlyList<String>
+     *
+     * Gets or sets the mailing address, one line per entry. Empty when unknown.
+     */
+    mailingAddressLines: Array<string> | null;
+    /**
+     * Gets or sets a value indicating whether the citizen wants the monthly report reminder.
+     */
+    monthlyReportReminder?: boolean;
+};
+
+/**
+ * A stored phone number.
+ */
+export type MyssApiModelsAccountPhoneModel = {
+    /**
+     * Gets or sets the ten digits, formatting stripped.
+     */
+    number: string | null;
+    type?: MyssApiModelsAccountPhoneType;
+};
+
+/**
+ * The kinds of phone number ICM keeps for a contact.
+ */
+export type MyssApiModelsAccountPhoneType = 'Home' | 'Cell' | 'Work' | 'Message';
+
+/**
  * A stored attachment's metadata. The API doesn't return file content in
  * this story; the id is what a submission will reference later.
  */
@@ -227,6 +284,19 @@ export type MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel = {
  */
 export type MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel = {
     payload: MyssApiIntakeReviewApplicationModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<AccountModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssApiModelsBaseResponseModelMyssApiModelsAccountModel = {
+    payload: MyssApiModelsAccountModel;
     /**
      * Gets or sets the payload information.
      */
@@ -331,6 +401,26 @@ export type MyssApiModelsBaseResponseModelMyssApiModelsFormSubmissionResponseMod
  */
 export type MyssApiModelsBaseResponseModelMyssApiModelsPublishResultModel = {
     payload: MyssApiModelsPublishResultModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyDictionary`2>
+ *
+ * Represents the result of a request.
+ */
+export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString = {
+    /**
+     * IReadOnlyDictionary<String>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: {
+        [key: string]: string;
+    } | null;
     /**
      * Gets or sets the payload information.
      */
@@ -757,6 +847,21 @@ export type MyssApiModelsFormVersionSummaryModel = {
 };
 
 /**
+ * A phone number as entered. Both values are checked by the service, so a
+ * mistake comes back as a field error rather than a binding failure.
+ */
+export type MyssApiModelsPhoneInputModel = {
+    /**
+     * Gets or sets the number as typed, punctuation allowed.
+     */
+    number?: string | null;
+    /**
+     * Gets or sets the type: Home, Cell, Work or Message.
+     */
+    type?: string | null;
+};
+
+/**
  * The result of publishing a form: the version number that went live.
  */
 export type MyssApiModelsPublishResultModel = {
@@ -795,6 +900,31 @@ export type MyssApiModelsSaveEligibilityRatesRequestModel = {
 };
 
 /**
+ * The body of a notification preference update.
+ */
+export type MyssApiModelsUpdateNotificationPreferencesRequestModel = {
+    /**
+     * Gets or sets a value indicating whether the citizen wants the monthly report reminder.
+     * Required: a body without it is refused instead of read as false, which would turn the
+     * reminder off without the citizen asking.
+     */
+    monthlyReportReminder: boolean;
+};
+
+/**
+ * The body of a phone update: the whole list as the citizen left it, which
+ * replaces the stored one. An empty list removes every number.
+ */
+export type MyssApiModelsUpdatePhonesRequestModel = {
+    /**
+     * IReadOnlyList<PhoneInputModel>
+     *
+     * Gets or sets the phone numbers, in order.
+     */
+    phones: Array<MyssApiModelsPhoneInputModel> | null;
+};
+
+/**
  * One rejected value: which field, why, and what to tell the citizen.
  */
 export type MyssApiModelsValidationErrorModel = {
@@ -811,6 +941,91 @@ export type MyssApiModelsValidationErrorModel = {
      */
     message: string | null;
 };
+
+export type GetAccountData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/account';
+};
+
+export type GetAccountErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type GetAccountError = GetAccountErrors[keyof GetAccountErrors];
+
+export type GetAccountResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+};
+
+export type GetAccountResponse = GetAccountResponses[keyof GetAccountResponses];
+
+export type UpdateAccountPhonesData = {
+    /**
+     * The whole list as the citizen left it.
+     */
+    body?: MyssApiModelsUpdatePhonesRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/account/phones';
+};
+
+export type UpdateAccountPhonesErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Unprocessable Content
+     */
+    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+};
+
+export type UpdateAccountPhonesError = UpdateAccountPhonesErrors[keyof UpdateAccountPhonesErrors];
+
+export type UpdateAccountPhonesResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+};
+
+export type UpdateAccountPhonesResponse = UpdateAccountPhonesResponses[keyof UpdateAccountPhonesResponses];
+
+export type UpdateAccountNotificationPreferencesData = {
+    /**
+     * The preference.
+     */
+    body?: MyssApiModelsUpdateNotificationPreferencesRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/account/notification-preferences';
+};
+
+export type UpdateAccountNotificationPreferencesErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type UpdateAccountNotificationPreferencesError = UpdateAccountNotificationPreferencesErrors[keyof UpdateAccountNotificationPreferencesErrors];
+
+export type UpdateAccountNotificationPreferencesResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+};
+
+export type UpdateAccountNotificationPreferencesResponse = UpdateAccountNotificationPreferencesResponses[keyof UpdateAccountNotificationPreferencesResponses];
 
 export type ListAttachmentsData = {
     body?: never;
@@ -1081,6 +1296,22 @@ export type GetFormSpecResponses = {
 };
 
 export type GetFormSpecResponse = GetFormSpecResponses[keyof GetFormSpecResponses];
+
+export type GetErrorMessagesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/forms/error-messages';
+};
+
+export type GetErrorMessagesResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString;
+};
+
+export type GetErrorMessagesResponse = GetErrorMessagesResponses[keyof GetErrorMessagesResponses];
 
 export type ListFormSubmissionsData = {
     body?: never;

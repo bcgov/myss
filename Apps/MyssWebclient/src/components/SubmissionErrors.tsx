@@ -3,26 +3,45 @@ import { useEffect, useRef } from "react";
 import styles from "./SubmissionErrors.module.css";
 import { SubmissionRejectedError } from "@/api/forms";
 
+/** Whether an element can take focus the way a citizen would give it. */
+function isFocusable(element: HTMLElement): boolean {
+    return (
+        element.tabIndex >= 0 &&
+        !element.hidden &&
+        element.getAttribute("type") !== "hidden" &&
+        element.getAttribute("aria-hidden") !== "true"
+    );
+}
+
 /**
  * Moves focus to the input a validation error belongs to.
  *
- * Form.io names its inputs `data[<key>]`, and the API reports failures by
+ * Every field's input is named `data[<key>]`, and the API reports failures by
  * component key, so the two line up without the client needing to know
  * anything about Form.io's generated element ids (which are random per render
- * and therefore useless as anchor targets).
+ * and therefore useless as anchor targets). A design system select keeps that
+ * name on a hidden element and takes focus on its button, so when the named
+ * element cannot be focused the field's wrapper is searched for what can.
  *
  * A miss is deliberately silent: the message is already on screen, and a field
  * that cannot be focused, hidden by a conditional say, is not worth throwing
  * over.
  */
 function focusField(field: string) {
-    const input = document.querySelector<HTMLElement>(
-        `[name="data[${CSS.escape(field)}]"]`,
-    );
-    if (!input) return;
+    const key = CSS.escape(field);
+    const named = document.querySelector<HTMLElement>(`[name="data[${key}]"]`);
+    const target =
+        named && isFocusable(named)
+            ? named
+            : Array.from(
+                  document.querySelectorAll<HTMLElement>(
+                      `.formio-component-${key} :is(input, select, textarea, button)`,
+                  ),
+              ).find(isFocusable);
+    if (!target) return;
 
-    input.focus();
-    input.scrollIntoView({ block: "center", behavior: "smooth" });
+    target.focus();
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 /**
@@ -34,7 +53,7 @@ function focusField(field: string) {
  * to the heading when it appears, so a screen-reader user is told the
  * submission failed instead of being left at the submit button in silence.
  */
-export default function SubmissionErrors({ error }: { error: Error }) {
+export default function SubmissionErrors({ error }: Readonly<{ error: Error }>) {
     const headingRef = useRef<HTMLHeadingElement>(null);
     const errors = error instanceof SubmissionRejectedError ? error.errors : [];
 

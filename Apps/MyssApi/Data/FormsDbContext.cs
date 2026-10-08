@@ -57,9 +57,31 @@ namespace Myss.Api.Data
             profile.Property(p => p.DateOfBirth).HasColumnName("date_of_birth").IsRequired();
             profile.Property(p => p.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
             profile.Property(p => p.Sin).HasColumnName("sin").HasMaxLength(20).IsRequired();
+            profile.Property(p => p.Phone).HasColumnName("phone").HasMaxLength(10);
+            profile.Property(p => p.Gender).HasColumnName("gender").HasMaxLength(32);
             profile.Property(p => p.CreatedAt).HasColumnName("created_at");
             profile.Property(p => p.UpdatedAt).HasColumnName("updated_at");
             profile.HasIndex(p => p.Subject).IsUnique();
+            profile.Property(p => p.MonthlyReportReminder)
+                .HasColumnName("monthly_report_reminder")
+                .HasDefaultValue(false);
+            profile.HasMany(p => p.Phones)
+                .WithOne()
+                .HasForeignKey(p => p.ProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            var phone = modelBuilder.Entity<MyssUserPhone>();
+            phone.ToTable("myss_user_phones");
+            phone.HasKey(p => p.Id);
+            phone.Property(p => p.Id).HasColumnName("id");
+            phone.Property(p => p.ProfileId).HasColumnName("profile_id");
+            phone.Property(p => p.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(16);
+            phone.Property(p => p.Number).HasColumnName("number").HasMaxLength(10).IsRequired();
+            phone.Property(p => p.Position).HasColumnName("position");
+
+            // One number per type: ICM holds one home, cell, work and message
+            // number per contact, so the list stays something it can take.
+            phone.HasIndex(p => new { p.ProfileId, p.Type }).IsUnique();
 
             var dispatchEvent = modelBuilder.Entity<BusPassDispatchEvent>();
             dispatchEvent.ToTable("bus_pass_dispatch_events");

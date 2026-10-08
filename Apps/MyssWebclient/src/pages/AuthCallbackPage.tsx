@@ -14,7 +14,7 @@ export default function AuthCallbackPage() {
 
     useEffect(() => {
         if (!auth.isLoading && (auth.isAuthenticated || auth.error)) {
-            navigate(resolveReturnTo(auth.user?.state), { replace: true });
+            void navigate(resolveReturnTo(auth.user?.state), { replace: true });
         }
     }, [
         auth.isLoading,

@@ -11,6 +11,15 @@ export interface CurrentUser {
   roles: string[];
   bceidGuid?: string;
   idirUsername?: string;
+  // Identity details the registration form prefills from. Each is present only
+  // when the identity provider released the claim; BC Services Card can carry
+  // all of them, BCeID and IDIR typically only the names and email. They are a
+  // convenience for the citizen, not proof — the API stores what is submitted.
+  givenName?: string;
+  familyName?: string;
+  phoneNumber?: string;
+  birthdate?: string;
+  gender?: string;
 }
 
 // Shape of the OIDC id-token claims we read. Kept loose because BC Gov's
@@ -51,5 +60,12 @@ export function normalizeUser(profile: Claims): Omit<CurrentUser, "roles"> {
     bceidGuid:
       asString(profile.bceid_user_guid) ?? asString(profile.bceid_guid),
     idirUsername: asString(profile.idir_username),
+    givenName: asString(profile.given_name) ?? asString(profile.given_names),
+    familyName: asString(profile.family_name),
+    // Standard OIDC claim names; BC Services Card releases these only when the
+    // Keycloak client is configured for them.
+    phoneNumber: asString(profile.phone_number),
+    birthdate: asString(profile.birthdate),
+    gender: asString(profile.gender),
   };
 }

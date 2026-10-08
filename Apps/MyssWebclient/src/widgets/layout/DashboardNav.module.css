@@ -1,0 +1,51 @@
+.nav {
+    background-color: var(--surface-color-primary-default);
+    padding: var(--layout-padding-large) 0;
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.link {
+    align-items: center;
+    color: var(--typography-color-primary-invert);
+    display: flex;
+    font: var(--typography-regular-body);
+    gap: var(--layout-margin-medium);
+    padding: var(--layout-padding-small) var(--layout-padding-large);
+    text-decoration: none;
+}
+
+.link:hover {
+    background-color: var(--surface-color-primary-hover);
+    color: var(--typography-color-primary-invert);
+}
+
+/* The current section: a white tab with dark text, as in the design. */
+.link[aria-current="page"] {
+    background-color: var(--surface-color-secondary-default);
+    color: var(--typography-color-primary);
+}
+
+/* The default active-border blue is too close to the menu's dark blue to see
+   (WCAG 1.4.11 wants 3:1), so on the menu the ring is white, drawn inside
+   the link so the list never clips it. The selected item is white itself,
+   so it keeps the standard blue ring. */
+.link:focus-visible {
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-secondary-default);
+    outline-offset: calc(-1 * var(--layout-padding-xsmall));
+}
+
+.link[aria-current="page"]:focus-visible {
+    outline-color: var(--surface-color-border-active);
+}
+
+.icon {
+    flex: none;
+    height: 1.25rem;
+    width: 1.25rem;
+}

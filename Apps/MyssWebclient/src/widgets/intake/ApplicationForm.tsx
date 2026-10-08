@@ -3,7 +3,7 @@ import { Form } from "@formio/react";
 import type { FormType } from "@formio/react/lib/components/Form";
 import type { Webform } from "@formio/js";
 import {
-  type FormEvent,
+  type InputEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -17,6 +17,7 @@ import styles from "./ApplicationForm.module.css";
 
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
 import SubmissionErrors from "@/components/SubmissionErrors";
+import { useClientValidation } from "@/hooks/useClientValidation";
 import ReadOnlySpecForm from "@/widgets/ReadOnlySpecForm";
 import {
   ApplicationRequestError,
@@ -74,11 +75,11 @@ function SubmittedView({
   application,
   spec,
   announce,
-}: {
+}: Readonly<{
   application: ApplicationPayload;
   spec: FormType;
   announce: boolean;
-}) {
+}>) {
   const headingRef = useFocusOnMount(announce);
   const submittedAt = application.submittedAt
     ? new Date(application.submittedAt).toLocaleString()
@@ -112,11 +113,11 @@ function DraftForm({
   application,
   spec,
   onSubmitted,
-}: {
+}: Readonly<{
   application: ApplicationPayload;
   spec: FormType;
   onSubmitted: () => void;
-}) {
+}>) {
   const save = useSaveAnswers(application.id);
   const submit = useSubmitApplication(application.id);
   const { mutate: saveAnswers } = save;
@@ -127,6 +128,10 @@ function DraftForm({
   // discard anything typed since the click.
   const [initialSubmission] = useState(() => ({ data: application.answers }));
   const formOptions = useMemo(() => ({ noAlerts: true }), []);
+  // A submit Form.io blocks is listed in the same summary as one the API
+  // refuses (Form.io's own alert is already off).
+  const clientValidation = useClientValidation();
+  const { clear: clearClientValidation } = clientValidation;
   const formInstanceRef = useRef<Webform>(null);
   const displayedErrorRef = useRef<Error>(null);
   const validationErrors = useMemo(
@@ -144,7 +149,7 @@ function DraftForm({
   // A server error stays on a field until the user edits it. Form.io counts
   // outstanding server errors as invalid, so without this the next submit
   // would be refused client-side with the stale message still showing.
-  const handleInputCapture = useCallback((event: FormEvent<HTMLElement>) => {
+  const handleInputCapture = useCallback((event: InputEvent<HTMLElement>) => {
     const field = formFieldName(event.target);
     const form = formInstanceRef.current;
     const displayedError = displayedErrorRef.current;
@@ -192,6 +197,7 @@ function DraftForm({
   const handleSubmit = useCallback(
     (submission: FormSubmission) => {
       if (submit.isPending) return;
+      clearClientValidation();
       submitApplication(
         { version: application.version, answers: submission.data },
         {
@@ -203,7 +209,13 @@ function DraftForm({
         },
       );
     },
-    [application.version, onSubmitted, submit.isPending, submitApplication],
+    [
+      application.version,
+      clearClientValidation,
+      onSubmitted,
+      submit.isPending,
+      submitApplication,
+    ],
   );
 
   useEffect(() => {
@@ -246,11 +258,9 @@ function DraftForm({
     (save.error instanceof ApplicationRequestError &&
       save.error.keyword === INTAKE_KEYWORDS.notEditable);
   const otherSaveError =
-    save.error && !(save.error instanceof ApplicationRequestError)
-      ? save.error
-      : save.error instanceof ApplicationRequestError && !save.error.isConflict
-        ? save.error
-        : null;
+    save.error instanceof ApplicationRequestError && save.error.isConflict
+      ? null
+      : save.error;
 
   return (
     <section className={styles.formHost} onInputCapture={handleInputCapture}>
@@ -264,21 +274,26 @@ function DraftForm({
           Your answers could not be saved: {otherSaveError.message}
         </p>
       )}
-      {submit.error && !conflict && <SubmissionErrors error={submit.error} />}
+      {clientValidation.error ? (
+        <SubmissionErrors error={clientValidation.error} />
+      ) : (
+        submit.error && !conflict && <SubmissionErrors error={submit.error} />
+      )}
       {save.isSuccess && !save.isPending && (
-        <p role="status" className={styles.saved}>
+        <output className={styles.saved}>
           Saved{" "}
           {save.data.updatedAt
             ? `at ${new Date(save.data.updatedAt).toLocaleTimeString()}`
             : ""}
           . You can come back and finish this application later.
-        </p>
+        </output>
       )}
       <Form
         src={spec}
         submission={initialSubmission}
         options={formOptions}
         onFormReady={handleFormReady}
+        onSubmitError={clientValidation.onSubmitError}
         onSubmit={handleSubmit}
       />
       <div className={styles.actions}>
@@ -301,9 +316,9 @@ function DraftForm({
  */
 export default function ApplicationForm({
   applicationId,
-}: {
+}: Readonly<{
   applicationId: string;
-}) {
+}>) {
   const { data: application, error, isPending } = useApplication(applicationId);
   // The acknowledgement heading takes focus only when the submit happened in
   // this session; a later visit to a submitted application just renders it.

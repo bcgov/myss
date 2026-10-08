@@ -138,14 +138,14 @@ function toBool(value: unknown): boolean {
 
 /** Coerce a money answer to a non-negative number; blank/NaN/negative -> 0. */
 function toMoney(value: unknown): number {
-  const n = typeof value === "number" ? value : parseFloat(String(value));
+  const n = typeof value === "number" ? value : Number.parseFloat(String(value));
   if (!Number.isFinite(n) || n < 0) return 0;
   return n;
 }
 
 /** Coerce a count answer to a non-negative integer; blank/NaN/negative -> 0; truncates. */
 function toCount(value: unknown): number {
-  const n = typeof value === "number" ? value : parseFloat(String(value));
+  const n = typeof value === "number" ? value : Number.parseFloat(String(value));
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.trunc(n);
 }

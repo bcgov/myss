@@ -4,6 +4,7 @@ declare global {
             MYSS_API_URL?: string;
             OIDC_AUTHORITY?: string;
             OIDC_CLIENT_ID?: string;
+            CANADA_POST_API_KEY?: string;
         };
     }
 }
@@ -33,3 +34,11 @@ export const OIDC_CLIENT_ID: string =
     appConfig?.OIDC_CLIENT_ID ||
     import.meta.env.VITE_OIDC_CLIENT_ID ||
     "sdpr-my-ss-6498";
+
+// AddressComplete is called directly from the browser. This key is therefore
+// public by design and must be protected in Canada Post with allowed URLs and
+// a daily usage cap.
+export const CANADA_POST_API_KEY: string =
+    appConfig?.CANADA_POST_API_KEY ||
+    import.meta.env.VITE_CANADA_POST_API_KEY ||
+    "";

@@ -102,5 +102,46 @@ namespace Myss.Api.Tests
 
             Assert.Empty(RolesOf(principal));
         }
+
+        [Fact]
+        public async Task GrantsClientToABcServicesCardPrincipalNamedAfterTheClientId()
+        {
+            // With BcServicesCardIdp unset, the client id is the BC Services Card alias.
+            var principal = Authenticated(
+                new Claim(KeycloakClaims.IdentityProviderClaimType, "sdpr-my-ss-6498"));
+
+            await Transformation(
+                    new KeyValuePair<string, string?>("Oidc:ClientId", "sdpr-my-ss-6498"))
+                .TransformAsync(principal);
+
+            Assert.Equal([MyssRoles.Client], RolesOf(principal));
+        }
+
+        [Fact]
+        public async Task PrefersTheConfiguredBcServicesCardAliasOverTheClientId()
+        {
+            var principal = Authenticated(
+                new Claim(KeycloakClaims.IdentityProviderClaimType, "sdpr-my-ss-6498"));
+
+            await Transformation(
+                    new KeyValuePair<string, string?>("Oidc:ClientId", "sdpr-my-ss-6498"),
+                    new KeyValuePair<string, string?>(
+                        RoleCalculationClaimsTransformation.BcServicesCardIdpKey, "bcsc-alias"))
+                .TransformAsync(principal);
+
+            Assert.Empty(RolesOf(principal));
+        }
+
+        [Fact]
+        public async Task WithholdsClientFromABusinessBceidPrincipal()
+        {
+            var principal = Authenticated(
+                new Claim(KeycloakClaims.IdentityProviderClaimType, IdentityProviders.BceidBoth),
+                new Claim(KeycloakClaims.BceidBusinessGuidClaimType, "ABC123"));
+
+            await Transformation().TransformAsync(principal);
+
+            Assert.Empty(RolesOf(principal));
+        }
     }
 }

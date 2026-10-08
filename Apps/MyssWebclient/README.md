@@ -11,7 +11,9 @@ generated from the MySS API's OpenAPI document.
 
 - Install [Node.js](https://nodejs.org) (see `package.json` `engines`/Dockerfile for the version).
 - Run `npm install` to install dependencies.
-- Copy `.env.sample` to `.env` and set `VITE_MYSS_API_URL` to the MySS API base URL.
+- Copy `.env.sample` to `.env`, set `VITE_MYSS_API_URL` to the MySS API base URL,
+  and set `VITE_CANADA_POST_API_KEY` to a URL-restricted Canada Post
+  AddressComplete browser key.
 - Run `npm run dev` to start the dev server with hot reloading.
 
 ## API client generation
@@ -41,6 +43,8 @@ Configuration lives in `openapi-ts.config.ts`.
 ## Runtime configuration
 
 The build is environment-agnostic. At container startup `entrypoint.sh` writes
-`config.js` from the `MYSS_API_URL` environment variable; it lands on `window.APP_CONFIG`
-and is read by `src/constants.ts`. During local dev, `src/constants.ts` falls back to
-`import.meta.env.VITE_MYSS_API_URL`.
+`config.js` from the `MYSS_API_URL`, OIDC, and `CANADA_POST_API_KEY` environment
+variables; they land on `window.APP_CONFIG` and are read by `src/constants.ts`.
+During local dev, `src/constants.ts` falls back to the corresponding `VITE_*`
+variables. The Canada Post key is visible in the browser by design, so deployed
+keys must be restricted by valid URLs and a daily cap.

@@ -120,7 +120,7 @@ export function incomeLimitFor(
   const column = clientType.toLowerCase() as IncomeColumn;
   const limit = row[column];
   if (typeof limit !== "number") {
-    throw new Error(
+    throw new TypeError(
       `No income limit for client type ${clientType} at family size ${lookupSize}`,
     );
   }
@@ -139,7 +139,7 @@ function assetLimitCentsFor(
   const column = category.toLowerCase() as AssetColumn;
   const limit = rates.assetLimits[column];
   if (typeof limit !== "number") {
-    throw new Error(`No asset limit for category ${category}`);
+    throw new TypeError(`No asset limit for category ${category}`);
   }
   return toCents(limit);
 }

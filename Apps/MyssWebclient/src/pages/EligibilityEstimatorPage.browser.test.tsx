@@ -290,9 +290,15 @@ function option(screen: Screen, label: string | RegExp, index = 0) {
   return screen.getByText(matcher).nth(index);
 }
 
+/** A radio group's accessible name: its label, plus " (required)" when required. */
+function groupName(label: string): RegExp {
+  const escaped = label.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+  return new RegExp(String.raw`^${escaped}( \(required\))?$`);
+}
+
 /** Answers a question by clicking an option inside that question's radio group. */
 async function answer(screen: Screen, question: string, choice: string) {
-  const group = screen.getByRole("radiogroup", { name: question, exact: true });
+  const group = screen.getByRole("radiogroup", { name: groupName(question) });
   await group.getByText(choice, { exact: true }).click();
 }
 
@@ -628,7 +634,7 @@ test("shows the ineligible ($0) result with the hardship link when income exceed
   await answer(screen, AGE_LABEL, "No");
   await answer(screen, PWD_LABEL, "No");
   // Single type-B income limit is 1060 → 2000 is over the limit → ineligible.
-  await screen.getByLabelText("Your Monthly Income").fill("2000");
+  await screen.getByRole("textbox", { name: "Your Monthly Income" }).fill("2000");
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 
@@ -671,7 +677,7 @@ test("a couple who leaves the spouse-PWD question blank is blocked, not silently
 
   // Blocked INLINE on the spouse field (runtime-required), not via the old
   // page-level alert — and no estimate is produced.
-  const spousePwd = screen.getByRole("radiogroup", { name: SPOUSE_PWD_LABEL, exact: true });
+  const spousePwd = screen.getByRole("radiogroup", { name: groupName(SPOUSE_PWD_LABEL) });
   await expect.element(spousePwd.getByText("Please select an option.")).toBeVisible();
   expect(document.body.textContent).not.toContain("/ month");
 });
@@ -791,7 +797,7 @@ test("a couple who leaves the spouse age question blank is blocked, not silently
 
   // Required at runtime like the spouse PWD question: an inline error on the
   // spouse age question, and no estimate.
-  const spouseAge = screen.getByRole("radiogroup", { name: SPOUSE_AGE_LABEL, exact: true });
+  const spouseAge = screen.getByRole("radiogroup", { name: groupName(SPOUSE_AGE_LABEL) });
   await expect.element(spouseAge.getByText("Please select an option.")).toBeVisible();
   expect(document.body.textContent).not.toContain("/ month");
 });
@@ -844,7 +850,7 @@ test("editing a field after an estimate leaves the result on screen", async () =
   const screen = await renderPage();
   await reachCoupleEstimate(screen);
 
-  await screen.getByLabelText("Spouse's Monthly Income").fill("50");
+  await screen.getByRole("textbox", { name: "Spouse's Monthly Income" }).fill("50");
 
   // Still there — no clear-on-change flicker.
   await expect.element(screen.getByText(/\$2,766\.00/)).toBeVisible();

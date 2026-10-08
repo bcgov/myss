@@ -319,32 +319,61 @@
   color: var(--typography-color-secondary);
 }
 
-/* Money fields carry a "$" prefix (every number field except the dependent-
-   children count), drawn with a pseudo-element so no markup or re-seed is
-   needed. */
-.formHost :global(.formio-component-number:not(.formio-component-dependentChildren) [ref="element"]) {
+/* The number fields render as the BCDS NumberField. Money fields carry a "$"
+   prefix (every number field except the dependent-children count), drawn with a
+   pseudo-element so no markup or re-seed is needed. */
+.formHost
+  :global(
+    .formio-component-number:not(.formio-component-dependentChildren)
+      .bcds-react-aria-NumberField--InputContainer
+  ) {
   position: relative;
+  padding-left: 26px;
 }
-.formHost :global(.formio-component-number:not(.formio-component-dependentChildren) [ref="element"])::before {
+.formHost
+  :global(
+    .formio-component-number:not(.formio-component-dependentChildren)
+      .bcds-react-aria-NumberField--InputContainer
+  )::before {
   content: "$";
   position: absolute;
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
+  font-size: 12px;
   color: var(--typography-color-secondary);
   pointer-events: none;
-  z-index: 2;
-}
-.formHost :global(.formio-component-number:not(.formio-component-dependentChildren) input.form-control) {
-  padding-left: 26px;
 }
 
-/* Match design: BCDS TextField size="small" renders a
-   contained input (~600px in the 800px well), not the full column width that
-   Form.io's .form-control defaults to. Covers the dependent-children field and
-   all money fields; radios and the panel are unaffected. */
-.formHost :global(.formio-component-number input.form-control) {
+/* The design has no increment and decrement buttons. */
+.formHost :global(.formio-component-number .bcds-react-aria-NumberField--Button) {
+  display: none;
+}
+
+/* Match design: BCDS TextField size="small" renders a contained input (~600px
+   in the 800px well), not the full column width. Covers the dependent-children
+   field and all money fields; radios and the panel are unaffected. The height
+   and font rules need four classes: BCDS sets them with three and injects its
+   stylesheet after the built CSS, so a tie would go to BCDS in production. */
+.formHost :global(.formio-component-number .bcds-react-aria-NumberField) {
+  gap: 5px;
+}
+.formHost
+  :global(
+    .formio-component-number
+      .bcds-react-aria-NumberField
+      > .bcds-react-aria-NumberField--Group
+  ) {
   max-width: 600px;
+  height: 34px;
+}
+.formHost
+  :global(
+    .formio-component-number
+      .bcds-react-aria-NumberField
+      .bcds-react-aria-NumberField--Input
+  ) {
+  font-size: 14px;
 }
 
 /* Rely on the "*All fields are required." note; hide the per-field red stars. */
@@ -353,6 +382,17 @@
 }
 .formHost :global(.field-required)::after {
   content: none !important;
+}
+/* Same for the BC Gov radios' "(required)": hidden from sight only. The group
+   still reports itself required, and screen readers still read the text. */
+.formHost :global([data-myss-required]) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 /* The radios render as the real BCDS RadioGroup, which sizes its label, options
@@ -376,9 +416,8 @@
   margin-top: 0;
 }
 
-/* Type hierarchy for the fields Form.io still renders itself — the number
-   fields' labels and the section headings. (The radios draw their own labels now;
-   their scale is set in the RadioGroup block above.) All scoped to `.formHost` so
+/* Type hierarchy for the number fields' labels and the section headings. (The
+   radios' scale is set in the RadioGroup block above.) All scoped to `.formHost` so
    the shared theme is untouched; the section h2 is pinned here so the order also
    holds on mobile, where the theme drops a bare h2 to 18px. */
 .formHost :global(h2) {
@@ -394,59 +433,12 @@
   color: var(--typography-color-primary);
   padding-top: 0;
 }
-/* The line-height is as much the point as the size: unset, this falls back to
-   Bootstrap's `body { line-height: 1.42857143 }` — 22.9px on 16px text — where the
-   design's bold/body is 16/27.008. Still load-bearing after the radio swap: every
-   number field's question label is a .col-form-label. */
-.formHost :global(.col-form-label) {
+/* Number-field question labels. The BCDS NumberField label defaults to 14px
+   regular; the design's bold/body is 16/27.008. */
+.formHost :global(.bcds-react-aria-NumberField--Label) {
   font-size: 16px;
   line-height: 27.008px;
   font-weight: 700;
-}
-
-/* Submit button colour/size to match the design; myss-theme .btn-primary is
-   #1a5a96. The label is regular weight, not bold. The blanket question gap above
-   supplies its top margin. */
-.formHost :global(.formio-component-submit .btn-primary) {
-  background-color: var(--surface-color-primary-button-default);
-  border-color: var(--surface-color-primary-button-default);
-  font-size: 16px;
-  line-height: 27.008px;
-  font-weight: 400;
-}
-
-/* Form.io appends a Font Awesome spinner inside the button while submitting, and
-   never clears it when a submit is blocked by validation — that path emits no
-   submitDone/submitError. Not in the design, and wrong even when the icon font
-   loads, since no request is in flight. */
-.formHost :global(.formio-component-submit .button-icon-right) {
-  display: none;
-}
-
-/* A second, separate glyph: formio.form.min.css ships
-   `.submit-fail::after { content: "✗" }` and a `✓` twin, drawn as literal
-   characters on the button itself rather than as a child element. The class is
-   added on a blocked submit and only removed once the form validates, so the ✗
-   sits beside "Get Estimate" until then. Not in the design. */
-.formHost :global(.formio-component-submit .submit-fail)::after,
-.formHost :global(.formio-component-submit .submit-success)::after {
-  content: none;
-}
-
-/* Form.io's "correct all errors before submitting" message. The design shows
-   errors inline per field only, but it has no error summary either, so this is
-   the only non-field-level cue that a submit failed — hide it visually, keep it
-   for screen readers. */
-.formHost :global(.formio-component-submit [ref="buttonMessageContainer"]) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 
 /* Inline "not eligible" warning (BC Gov InlineAlert) sits below the form. The

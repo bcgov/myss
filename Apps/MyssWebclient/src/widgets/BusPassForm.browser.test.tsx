@@ -246,7 +246,16 @@ const refused: Answer = {
   },
 };
 
-function stubApi(answer: Answer, spec: unknown = currentSpecV1) {
+/**
+ * The error message catalogue the stubbed API serves: empty by default, so the
+ * page words every outcome from its compiled fallback; null answers 500, the
+ * way an unreachable content engine would surface through the API.
+ */
+function stubApi(
+  answer: Answer,
+  spec: unknown = currentSpecV1,
+  catalogue: Record<string, string> | null = {},
+) {
   const posts: Array<{ url: string; body: unknown }> = [];
   vi.spyOn(window, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
@@ -255,6 +264,14 @@ function stubApi(answer: Answer, spec: unknown = currentSpecV1) {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
+    }
+    if (url.endsWith("/v1/forms/error-messages")) {
+      return catalogue === null
+        ? new Response("", { status: 500 })
+        : new Response(JSON.stringify({ payload: catalogue }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
     }
     if (url.endsWith("/v1/bus-pass/submissions") && init?.method === "POST") {
       posts.push({ url, body: JSON.parse(String(init.body)) });
@@ -408,7 +425,12 @@ test("shows replacement cost information, requires acknowledgement, and submits 
     .toBeVisible();
   expect(posts).toHaveLength(0);
 
-  await acknowledgement.click();
+  // The design system checkbox keeps its input visually hidden under the
+  // label, which is the surface a citizen clicks.
+  await screen
+    .getByText(/I acknowledge that my lost\/stolen bus pass will be cancelled/)
+    .click();
+  await expect.element(acknowledgement).toBeChecked();
   await screen.getByRole("button", { name: "Submit" }).click();
 
   await expect
@@ -500,6 +522,55 @@ test("a rejection from the ministry shows the keyword text and the error code", 
   await expect.element(screen.getByText("NO_MATCH")).toBeVisible();
   await expect
     .element(screen.getByRole("button", { name: "Start a new request" }))
+    .toBeVisible();
+});
+
+test("a rejection is worded from the catalogue when it has the keyword", async () => {
+  stubApi(rejected, currentSpecV1, {
+    "BUSPASS.SUBMIT.REJECTED": "Catalogue wording for a declined request.",
+  });
+  const screen = await renderForm();
+
+  await fillAndSubmit(screen);
+
+  await expect
+    .element(screen.getByRole("heading", { name: "Request not accepted" }))
+    .toBeVisible();
+  await expect
+    .element(screen.getByText("Catalogue wording for a declined request."))
+    .toBeVisible();
+  await expect
+    .element(screen.getByText(/could not accept this request/))
+    .not.toBeInTheDocument();
+});
+
+test("a rejection keeps the compiled wording when the catalogue cannot be read", async () => {
+  stubApi(rejected, currentSpecV1, null);
+  const screen = await renderForm();
+
+  await fillAndSubmit(screen);
+
+  await expect
+    .element(screen.getByRole("heading", { name: "Request not accepted" }))
+    .toBeVisible();
+  await expect
+    .element(screen.getByText(/could not accept this request/))
+    .toBeVisible();
+});
+
+test("a throttled request is worded from the catalogue when it has the keyword", async () => {
+  stubApi(throttled, currentSpecV1, {
+    "BUSPASS.SUBMIT.RATE_LIMITED": "Catalogue wording for a throttled request.",
+  });
+  const screen = await renderForm();
+
+  await fillAndSubmit(screen);
+
+  await expect
+    .element(screen.getByRole("heading", { name: "Too many requests" }))
+    .toBeVisible();
+  await expect
+    .element(screen.getByText("Catalogue wording for a throttled request."))
     .toBeVisible();
 });
 

@@ -16,7 +16,7 @@ function formatDate(value: string | null | undefined): string {
 export default function ApplicationsList() {
   const { data: applications, error, isPending } = useApplications();
 
-  if (isPending) return <p role="status">Loading your applications…</p>;
+  if (isPending) return <output>Loading your applications…</output>;
   if (error) {
     return (
       <p role="alert">Could not load your applications: {error.message}</p>

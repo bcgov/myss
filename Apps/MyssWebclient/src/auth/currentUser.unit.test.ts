@@ -77,6 +77,32 @@ describe("normalizeUser", () => {
     ).toBe("AJONES");
   });
 
+  it("surfaces the identity details the registration form prefills from", () => {
+    const user = normalizeUser({
+      sub: "x",
+      given_names: "GATEWAY Carlos",
+      family_name: "ELEVEN",
+      phone_number: "+1 250 555 0100",
+      birthdate: "1990-01-01",
+      gender: "female",
+    });
+
+    expect(user.givenName).toBe("GATEWAY Carlos");
+    expect(user.familyName).toBe("ELEVEN");
+    expect(user.phoneNumber).toBe("+1 250 555 0100");
+    expect(user.birthdate).toBe("1990-01-01");
+    expect(user.gender).toBe("female");
+  });
+
+  it("prefers the singular given_name and leaves absent details undefined", () => {
+    const user = normalizeUser({ sub: "x", given_name: "Alice" });
+
+    expect(user.givenName).toBe("Alice");
+    expect(user.phoneNumber).toBeUndefined();
+    expect(user.birthdate).toBeUndefined();
+    expect(user.gender).toBeUndefined();
+  });
+
   // Roles are deliberately NOT normalized here: they come server-computed
   // from GET /v1/auth/me (see useSession + ADR-0007), never from token claims.
   it("exposes no roles field", () => {

@@ -92,7 +92,8 @@ function isScreenFail(answers: Record<string, unknown>): boolean {
  * with dependants → "Single parent", else "Single".
  */
 function householdTypeLabel(answers: Record<string, unknown>): string {
-  const status = String(answers.relationshipStatus ?? "");
+  const status =
+    typeof answers.relationshipStatus === "string" ? answers.relationshipStatus : "";
   if (status === "married") return "Married";
   if (status === "marriagelike") return "Marriage-like";
   const deps = Number(answers.dependentChildren ?? 0);
@@ -117,10 +118,10 @@ function RatesLink() {
 function YourInformation({
   result,
   answers,
-}: {
+}: Readonly<{
   result: EligibilityResult;
   answers: Record<string, unknown>;
-}) {
+}>) {
   return (
     <div className={styles.yourInfo}>
       <h3 className={styles.infoHeading}>Your information</h3>
@@ -146,6 +147,119 @@ function YourInformation({
         </div>
       </dl>
     </div>
+  );
+}
+
+/** The estimate card and prose for a finished outcome, one branch per kind. */
+function EstimateOutcome({
+  outcome,
+}: Readonly<{ outcome: Exclude<Outcome, { kind: "incomplete" }> }>) {
+  if (outcome.kind === "prescreen") {
+    return (
+      <>
+        <div className={styles.estimateCard}>
+          <h3 className={styles.estimateHeading}>
+            You may not be eligible for assistance
+          </h3>
+          <p className={styles.estimateLede}>{PENDING.preCheckFailLede}</p>
+        </div>
+
+        <h2 className={styles.subHeading}>Not eligible but still in need?</h2>
+        <p className={styles.prose}>{PENDING.preCheckFailBody}</p>
+        <p className={styles.prose}>
+          You may be able to receive hardship assistance, depending on your
+          circumstances.{" "}
+          <a
+            className={styles.inlineLink}
+            href={PENDING.hardshipUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Contact us to find out more about this kind of support.
+          </a>
+        </p>
+      </>
+    );
+  }
+  if (outcome.result.eligible) {
+    return (
+      <>
+        <div className={styles.estimateCard}>
+          <h3 className={styles.estimateHeading}>
+            You may be eligible for assistance
+          </h3>
+          <p className={styles.estimateLede}>
+            Based on the information you provided, the estimated amount is:
+          </p>
+          <p className={styles.estimateAmount}>
+            {moneyCents.format(outcome.result.estimatedAmount)}{" "}
+            <span className={styles.perMonth}>/ month</span>
+          </p>
+          <p className={styles.estimateCaveat}>
+            <SvgExclamationCircleIcon />
+            This is only an estimate. The actual amount may be different.
+          </p>
+        </div>
+
+        <h2 className={styles.subHeading}>How your estimate was calculated</h2>
+        <p className={styles.prose}>
+          The estimated amount is based on your household information and the{" "}
+          <RatesLink /> for support and shelter allowance.
+        </p>
+
+        <YourInformation
+          result={outcome.result}
+          answers={outcome.answers}
+        />
+      </>
+    );
+  }
+  return (
+      <>
+        <div className={styles.estimateCard}>
+          <h3 className={styles.estimateHeading}>
+            You may not be eligible for assistance
+          </h3>
+          <p className={styles.estimateLede}>
+            Based on the information you provided, the estimated amount is:
+          </p>
+          <p className={styles.estimateAmount}>
+            {moneyWhole.format(0)}{" "}
+            <span className={styles.perMonth}>/ month</span>
+          </p>
+          <p className={styles.estimateCaveat}>
+            <SvgExclamationCircleIcon />
+            This is only an estimate. The actual amount may be different.
+          </p>
+        </div>
+
+        <h2 className={styles.subHeading}>Not eligible but still in need?</h2>
+        <p className={styles.prose}>
+          You may be able to receive hardship assistance, depending on your
+          circumstances.{" "}
+          <a
+            className={styles.inlineLink}
+            href={PENDING.hardshipUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Contact us to find out more about this kind of support.
+          </a>
+        </p>
+
+        <h2 className={styles.subHeading}>Why is my estimate $0?</h2>
+        <p className={styles.prose}>
+          The estimated amount is based on your household information and the{" "}
+          <RatesLink /> for support and shelter allowance. Based on the
+          information you provided, your estimated monthly assistance amount
+          is $0.
+        </p>
+
+        <YourInformation
+          result={outcome.result}
+          answers={outcome.answers}
+        />
+      </>
   );
 }
 
@@ -222,11 +336,11 @@ export default function EligibilityEstimatorPage() {
       const partner = instance.getComponent?.(key);
       if (!partner?.component) continue;
       partner.component.validate = {
-        ...(partner.component.validate ?? {}),
+        ...partner.component.validate,
         required: true,
       };
       partner.component.errors = {
-        ...(partner.component.errors ?? {}),
+        ...partner.component.errors,
         required: "Please select an option.",
       };
     }
@@ -373,9 +487,7 @@ export default function EligibilityEstimatorPage() {
 
       {/* Rendered unconditionally and filled later: a live region that appears
           in the same commit as its text is announced unreliably. */}
-      <div role="status" className={styles.visuallyHidden}>
-        {blockedMessage}
-      </div>
+      <output className={styles.visuallyHidden}>{blockedMessage}</output>
 
       {/* Inline "not eligible" warning. Shows as soon as either question is
           answered "No"; the rest of the form stays hidden in that state, so this
@@ -434,107 +546,7 @@ export default function EligibilityEstimatorPage() {
             Your eligibility estimate
           </h2>
 
-          {outcome.kind === "prescreen" ? (
-            <>
-              <div className={styles.estimateCard}>
-                <h3 className={styles.estimateHeading}>
-                  You may not be eligible for assistance
-                </h3>
-                <p className={styles.estimateLede}>{PENDING.preCheckFailLede}</p>
-              </div>
-
-              <h2 className={styles.subHeading}>Not eligible but still in need?</h2>
-              <p className={styles.prose}>{PENDING.preCheckFailBody}</p>
-              <p className={styles.prose}>
-                You may be able to receive hardship assistance, depending on your
-                circumstances.{" "}
-                <a
-                  className={styles.inlineLink}
-                  href={PENDING.hardshipUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Contact us to find out more about this kind of support.
-                </a>
-              </p>
-            </>
-          ) : outcome.result.eligible ? (
-            <>
-              <div className={styles.estimateCard}>
-                <h3 className={styles.estimateHeading}>
-                  You may be eligible for assistance
-                </h3>
-                <p className={styles.estimateLede}>
-                  Based on the information you provided, the estimated amount is:
-                </p>
-                <p className={styles.estimateAmount}>
-                  {moneyCents.format(outcome.result.estimatedAmount)}{" "}
-                  <span className={styles.perMonth}>/ month</span>
-                </p>
-                <p className={styles.estimateCaveat}>
-                  <SvgExclamationCircleIcon />
-                  This is only an estimate. The actual amount may be different.
-                </p>
-              </div>
-
-              <h2 className={styles.subHeading}>How your estimate was calculated</h2>
-              <p className={styles.prose}>
-                The estimated amount is based on your household information and the{" "}
-                <RatesLink /> for support and shelter allowance.
-              </p>
-
-              <YourInformation
-                result={outcome.result}
-                answers={outcome.answers}
-              />
-            </>
-          ) : (
-            <>
-              <div className={styles.estimateCard}>
-                <h3 className={styles.estimateHeading}>
-                  You may not be eligible for assistance
-                </h3>
-                <p className={styles.estimateLede}>
-                  Based on the information you provided, the estimated amount is:
-                </p>
-                <p className={styles.estimateAmount}>
-                  {moneyWhole.format(0)}{" "}
-                  <span className={styles.perMonth}>/ month</span>
-                </p>
-                <p className={styles.estimateCaveat}>
-                  <SvgExclamationCircleIcon />
-                  This is only an estimate. The actual amount may be different.
-                </p>
-              </div>
-
-              <h2 className={styles.subHeading}>Not eligible but still in need?</h2>
-              <p className={styles.prose}>
-                You may be able to receive hardship assistance, depending on your
-                circumstances.{" "}
-                <a
-                  className={styles.inlineLink}
-                  href={PENDING.hardshipUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Contact us to find out more about this kind of support.
-                </a>
-              </p>
-
-              <h2 className={styles.subHeading}>Why is my estimate $0?</h2>
-              <p className={styles.prose}>
-                The estimated amount is based on your household information and the{" "}
-                <RatesLink /> for support and shelter allowance. Based on the
-                information you provided, your estimated monthly assistance amount
-                is $0.
-              </p>
-
-              <YourInformation
-                result={outcome.result}
-                answers={outcome.answers}
-              />
-            </>
-          )}
+          <EstimateOutcome outcome={outcome} />
         </section>
       )}
     </div>

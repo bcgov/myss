@@ -7,4 +7,6 @@
 //
 // During local development with `vite dev`, this file is served as-is and
 // src/constants.ts falls back to import.meta.env.VITE_* (loaded from .env).
-window.APP_CONFIG = {};
+window.APP_CONFIG = {
+  CANADA_POST_API_KEY: "",
+};

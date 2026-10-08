@@ -27,6 +27,20 @@ main {
     }
 }
 
+/* The dashboard frame owns its own layout: full width, no page padding, so
+   the menu sits flush against the left edge (MYSS-194). Stays a flex box so
+   the frame can stretch to the bottom of the viewport. */
+main.main--dashboard {
+    display: flex;
+    max-width: none;
+    padding: 0;
+}
+
+/* Header actions (Sign out) sit at the far right of the header row. */
+.app-header-actions {
+    margin-left: auto;
+}
+
 /* Match the footer's inner content width to the home page's 900px sections
    (BCDS defaults both to 1100px). Selector chain matches BCDS's own rule
    specificity, since a single-class override loses to it. The home page

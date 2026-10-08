@@ -3,6 +3,12 @@
 export const paths = {
   home: "/",
   dashboard: "/dashboard",
+  // Dashboard sections (MYSS-194). Placeholders until each feature is built;
+  // see routes/dashboardSections.ts for the navigation menu.
+  notifications: "/notifications",
+  messages: "/messages",
+  serviceRequests: "/service-requests",
+  accountInfo: "/account",
   eligibilityEstimator: "/eligibility-estimator",
   busPass: "/buspass",
   // In-app sign-in chooser (Option 1) and the OIDC redirect target.

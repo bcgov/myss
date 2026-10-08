@@ -203,6 +203,33 @@ test("shows the reasons the API refused the submission", async () => {
     .toBeVisible();
 });
 
+test("shows a server error on a field the citizen left empty", async () => {
+  // Form.io's own onSubmit resets empty fields before the API's errors are
+  // applied; the message must still reach the field, not just the summary.
+  stubFormApi({
+    rejectWith: [
+      {
+        field: "lastName",
+        keyword: "FORM.FIELD.REQUIRED",
+        message: "Enter a last name.",
+      },
+    ],
+  });
+  const screen = await renderForm();
+
+  await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  await expect
+    .element(screen.getByRole("button", { name: "Enter a last name." }))
+    .toBeVisible();
+  await vi.waitFor(() => {
+    expect(
+      document.querySelector(".formio-component-lastName")?.textContent,
+    ).toContain("Enter a last name.");
+  });
+});
+
 test("moves focus to the field an error belongs to", async () => {
   stubFormApi({
     rejectWith: [
@@ -265,7 +292,9 @@ test("clears each matching server error when the user edits its field", async ()
     .toHaveValue("Hopper");
 });
 
-test("uses the bus pass SIN validation message for SIN errors", async () => {
+test("shows the API's wording for a SIN error as it arrives", async () => {
+  // The API's message is the catalogue's (or the form's own) wording already;
+  // the browser no longer rewrites it.
   stubFormApi({
     formSpecId: "bc-bus-pass",
     spec: busPassSpecV2,
@@ -284,7 +313,13 @@ test("uses the bus pass SIN validation message for SIN errors", async () => {
     .fill("046454286");
   await screen.getByRole("button", { name: "Submit" }).click();
 
-  await expect.element(screen.getByText("SIN must be valid")).toBeVisible();
+  // Inline on the field, and in the summary.
+  await expect
+    .element(screen.getByText("The SIN is invalid.").first())
+    .toBeVisible();
+  await expect
+    .element(screen.getByRole("button", { name: "The SIN is invalid." }))
+    .toBeVisible();
 });
 
 test("preserves API messages for bus pass errors that are not SIN checksum errors", async () => {

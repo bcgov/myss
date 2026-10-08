@@ -341,7 +341,8 @@ namespace Myss.Api.Tests.Services
                 new UnexpectedPdfProvider(),
                 new UnexpectedTemplateProvider(),
                 new FakeFormSpecAdminProvider(),
-                new StubCurrentUserAccessor("test-subject"));
+                new StubCurrentUserAccessor("test-subject"),
+                new FakeErrorMessageProvider());
 
             return new BusPassSubmissionService(
                 NullLogger<BusPassSubmissionService>.Instance,

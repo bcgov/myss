@@ -76,7 +76,12 @@ namespace Myss.Api
             services.AddScoped<IFormsService, FormsService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
 
-            // Eligibility Estimator (Option B): the browser computes the estimate;
+            // Account Info. The case details are placeholders until
+            // ICM and MIS PORTALSERVICES are connected; swap the provider then.
+            services.AddScoped<IAccountService, AccountService>();
+            services.AddSingleton<ICaseAccountProvider, PlaceholderCaseAccountProvider>();
+
+            // Eligibility Estimator: the browser computes the estimate;
             // MyssApi serves the Form.io spec and the rate table anonymously (see
             // EligibilityEstimatorController). The rate provider reads Strapi and
             // falls back to the compiled table; the result is cached so the
@@ -90,6 +95,14 @@ namespace Myss.Api
             services.AddHttpClient<IEligibilityRateAdminProvider, StrapiEligibilityRateAdminProvider>(
                 client => client.Timeout = TimeSpan.FromSeconds(10));
             services.AddScoped<IEligibilityRatesService, EligibilityRatesService>();
+
+            // The error message catalogue: the wording a refused submission carries,
+            // published in Strapi and overlaid on the compiled defaults. Same
+            // read-only token, cache and short timeout as the rate table's read
+            // client above, so a Strapi outage costs a refused submission its
+            // authored wording and nothing more.
+            services.AddHttpClient<IErrorMessageProvider, StrapiErrorMessageProvider>(
+                client => client.Timeout = TimeSpan.FromSeconds(5));
 
             // Configure the attachments module: validate -> quarantined row ->
             // ClamAV scan -> object store -> release. Protected behind

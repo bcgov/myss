@@ -114,6 +114,41 @@ namespace Myss.Api.Migrations
                     b.ToTable("form_submissions", "forms");
                 });
 
+            modelBuilder.Entity("Myss.Api.Data.MyssUserPhone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("number");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("profile_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId", "Type")
+                        .IsUnique();
+
+                    b.ToTable("myss_user_phones", "forms");
+                });
+
             modelBuilder.Entity("Myss.Api.Data.MyssUserProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -141,11 +176,27 @@ namespace Myss.Api.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("first_name");
 
+                    b.Property<string>("Gender")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("gender");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("last_name");
+
+                    b.Property<bool>("MonthlyReportReminder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("monthly_report_reminder");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("phone");
 
                     b.Property<string>("Sin")
                         .IsRequired()
@@ -178,6 +229,20 @@ namespace Myss.Api.Migrations
                         .HasForeignKey("SubmissionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Myss.Api.Data.MyssUserPhone", b =>
+                {
+                    b.HasOne("Myss.Api.Data.MyssUserProfile", null)
+                        .WithMany("Phones")
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Myss.Api.Data.MyssUserProfile", b =>
+                {
+                    b.Navigation("Phones");
                 });
 #pragma warning restore 612, 618
         }
