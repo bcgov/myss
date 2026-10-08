@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { userEvent } from "@vitest/browser/context";
 import { render } from "vitest-browser-react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
@@ -577,7 +578,14 @@ test("shows the ineligible ($0) result with the hardship link when income exceed
   await option(screen, "Single and Never Married").click();
   await option(screen, /^No$/, 2).click(); // pwd = No
   // Single type-B income limit is 1060 → 2000 is over the limit → ineligible.
-  await screen.getByRole("textbox", { name: "Your Monthly Income" }).fill("2000");
+  const income = screen.getByRole("textbox", { name: "Your Monthly Income" });
+  await income.fill("2000");
+  // Leave the field and see the value held before estimating. Under a loaded
+  // full run, clicking straight after the fill could estimate on an empty
+  // income and show the eligible result, so this test timed out waiting for
+  // the ineligible one.
+  await userEvent.tab();
+  await expect.element(income).toHaveValue("2000");
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 
