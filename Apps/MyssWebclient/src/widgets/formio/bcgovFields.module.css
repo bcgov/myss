@@ -1,0 +1,21 @@
+/*
+ * The little that the design system components do not draw themselves. The
+ * checkbox has no error slot of its own, so its message is rendered beside it
+ * in the same voice as the other fields' messages.
+ */
+
+.checkboxField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-margin-xsmall);
+}
+
+.fieldError {
+  margin: 0;
+  color: var(--typography-color-danger);
+  font-size: var(--typography-font-size-small-body);
+}
+
+.submitButton {
+  margin-top: var(--layout-margin-medium);
+}

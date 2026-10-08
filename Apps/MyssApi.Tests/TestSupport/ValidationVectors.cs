@@ -41,6 +41,43 @@ namespace Myss.Api.Tests.TestSupport
         /// <returns>Every invalid case.</returns>
         public static IReadOnlyList<Vector> Invalid(string rule) => Read(rule, "invalid");
 
+        /// <summary>A day/month/year group case for the dateParts rule.</summary>
+        /// <param name="Day">The day as typed.</param>
+        /// <param name="Month">The month as typed.</param>
+        /// <param name="Year">The year as typed.</param>
+        /// <param name="Keyword">The expected failure keyword, if any.</param>
+        public record DatePartsVector(string Day, string Month, string Year, string? Keyword);
+
+        /// <summary>Gets the dateParts cases.</summary>
+        /// <param name="section">"valid", "invalid" or "incomplete".</param>
+        /// <returns>Every case in that section.</returns>
+        public static IReadOnlyList<DatePartsVector> DateParts(string section)
+        {
+            List<DatePartsVector> vectors = [];
+            foreach (JsonElement item in Document.RootElement
+                .GetProperty("dateParts").GetProperty(section).EnumerateArray())
+            {
+                vectors.Add(new DatePartsVector(
+                    item.GetProperty("day").GetString()!,
+                    item.GetProperty("month").GetString()!,
+                    item.GetProperty("year").GetString()!,
+                    item.TryGetProperty("keyword", out JsonElement k) ? k.GetString() : null));
+            }
+
+            return vectors;
+        }
+
+        /// <summary>Wraps the dateParts vectors as xUnit theory data.</summary>
+        /// <param name="vectors">The cases.</param>
+        /// <returns>One object array per case: day, month, year, keyword or "".</returns>
+        public static IEnumerable<object[]> AsTheoryData(IReadOnlyList<DatePartsVector> vectors)
+        {
+            foreach (DatePartsVector vector in vectors)
+            {
+                yield return [vector.Day, vector.Month, vector.Year, vector.Keyword ?? string.Empty];
+            }
+        }
+
         /// <summary>Gets the confirmation cases.</summary>
         /// <param name="section">Either "matching" or "mismatching".</param>
         /// <returns>Every case in that section.</returns>

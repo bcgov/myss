@@ -94,6 +94,11 @@ namespace Myss.Api.Tests.TestSupport
 
                     services.RemoveAll<IFormSpecProvider>();
                     services.AddSingleton<IFormSpecProvider>(provider);
+
+                    // The compiled defaults, so a refused save or submit never
+                    // reaches for a content engine that is not running here.
+                    services.RemoveAll<IErrorMessageProvider>();
+                    services.AddSingleton<IErrorMessageProvider>(new FakeErrorMessageProvider());
                 });
             });
             _client = _factory.CreateClient();

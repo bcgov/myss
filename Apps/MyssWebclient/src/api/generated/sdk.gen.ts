@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptApplicationData, AcceptApplicationErrors, AcceptApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, DenyApplicationData, DenyApplicationErrors, DenyApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormDraftData, GetFormDraftErrors, GetFormDraftResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetReviewApplicationData, GetReviewApplicationErrors, GetReviewApplicationResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormsData, ListFormsErrors, ListFormsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, ListReviewApplicationsData, ListReviewApplicationsResponses, PublishFormData, PublishFormErrors, PublishFormResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SaveFormDraftData, SaveFormDraftErrors, SaveFormDraftResponses, StartApplicationReviewData, StartApplicationReviewErrors, StartApplicationReviewResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
+import type { AcceptApplicationData, AcceptApplicationErrors, AcceptApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, DenyApplicationData, DenyApplicationErrors, DenyApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormDraftData, GetFormDraftErrors, GetFormDraftResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetReviewApplicationData, GetReviewApplicationErrors, GetReviewApplicationResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormsData, ListFormsErrors, ListFormsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, ListReviewApplicationsData, ListReviewApplicationsResponses, PublishFormData, PublishFormErrors, PublishFormResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SaveFormDraftData, SaveFormDraftErrors, SaveFormDraftResponses, StartApplicationReviewData, StartApplicationReviewErrors, StartApplicationReviewResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -89,6 +89,15 @@ export const getEstimatorRates = <ThrowOnError extends boolean = false>(options?
  * Returns the latest published spec for a form (content-engine proxy).
  */
 export const getFormSpec = <ThrowOnError extends boolean = false>(options: Options<GetFormSpecData, ThrowOnError>) => (options.client ?? client).get<GetFormSpecResponses, GetFormSpecErrors, ThrowOnError>({ url: '/v1/forms/{formSpecId}/spec', ...options });
+
+/**
+ * Returns the error message catalogue: the citizen-facing wording for
+ * every stable error keyword, as published in the content engine.
+ * Anonymous like the public bus pass spec: the catalogue is shared
+ * content, not per-user data, and the public bus pass page reads it to
+ * word the outcomes the API reports by keyword alone.
+ */
+export const getErrorMessages = <ThrowOnError extends boolean = false>(options?: Options<GetErrorMessagesData, ThrowOnError>) => (options?.client ?? client).get<GetErrorMessagesResponses, unknown, ThrowOnError>({ url: '/v1/forms/error-messages', ...options });
 
 /**
  * Lists a form's submissions, newest first (metadata only).

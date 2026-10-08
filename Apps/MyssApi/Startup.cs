@@ -90,6 +90,14 @@ namespace Myss.Api
             services.AddHttpClient<IEligibilityRateProvider, StrapiEligibilityRateProvider>(
                 client => client.Timeout = TimeSpan.FromSeconds(5));
 
+            // The error message catalogue: the wording a refused submission carries,
+            // published in Strapi and overlaid on the compiled defaults. Same
+            // read-only token, cache and short timeout as the rate table, so a
+            // Strapi outage costs a refused submission its authored wording and
+            // nothing more.
+            services.AddHttpClient<IErrorMessageProvider, StrapiErrorMessageProvider>(
+                client => client.Timeout = TimeSpan.FromSeconds(5));
+
             // Configure the attachments module: validate -> quarantined row ->
             // ClamAV scan -> object store -> release. Protected behind
             // authentication (see AttachmentsController [Authorize]).

@@ -3,17 +3,14 @@ namespace Myss.Api.Domain
     using System.Linq;
 
     /// <summary>
-    /// A ten-digit North American phone number: area code, exchange and line,
-    /// shown to the citizen as <c>(250) 555-0123</c>.
+    /// A North American phone number: ten digits once formatting is stripped,
+    /// with an optional leading country code of 1.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The same branded-constructor pattern as <see cref="Sin"/>: the only way
-    /// to obtain a value is <see cref="TryCreate"/>, so an unvalidated number
-    /// cannot be stored. The Ministry format is <c>(area code) ###-####</c>
-    /// (MYSS-271), so the stored form is the ten digits and the punctuation is
-    /// presentation.
-    /// </para>
+    /// The C# half of the branded-constructor pattern (see <see cref="Sin"/>).
+    /// The TypeScript mirror is the <c>phone</c> rule in the webclient's
+    /// <c>validationRules.ts</c>; both are driven by the <c>phone</c> vectors
+    /// in <c>Shared/validation/validation-vectors.json</c>.
     /// <para>
     /// <b>PII.</b> Like <see cref="Sin"/>, <see cref="object.ToString"/> is not
     /// overridden, so a number does not reach a log by accident.
@@ -25,35 +22,32 @@ namespace Myss.Api.Domain
 
         private PhoneNumber(string digits) => Digits = digits;
 
-        /// <summary>Gets the ten digits, formatting stripped.</summary>
+        /// <summary>Gets the ten digits, formatting and country code stripped.</summary>
         public string Digits { get; }
 
         /// <summary>
-        /// Validates a candidate number, ignoring the punctuation people type
-        /// around one.
+        /// Validates a candidate phone number, stripping any formatting first.
         /// </summary>
-        /// <param name="raw">The value as entered: <c>(250) 555-0123</c>, <c>250-555-0123</c>, <c>2505550123</c>.</param>
+        /// <param name="raw">The value as submitted, possibly masked as "(250) 555-0199".</param>
         /// <returns>A result carrying the validated number, or a failure keyword.</returns>
         public static DomainValidationResult<PhoneNumber> TryCreate(string? raw)
         {
-            string value = raw ?? string.Empty;
+            // Masking is presentation: the mask characters never reach the check.
+            string digits = new([.. (raw ?? string.Empty).Where(char.IsAsciiDigit)]);
 
-            // Unlike the SIN, only the usual punctuation is skipped. A letter
-            // or an extension is a different number, not a formatted one, so
-            // it is refused rather than silently dropped.
-            bool onlyDigitsAndPunctuation = value.All(c => char.IsAsciiDigit(c) || IsFormatting(c));
-            string digits = new([.. value.Where(char.IsAsciiDigit)]);
+            if (digits.Length == RequiredDigits + 1 && digits[0] == '1')
+            {
+                digits = digits[1..];
+            }
 
-            if (!onlyDigitsAndPunctuation || digits.Length != RequiredDigits)
+            if (digits.Length != RequiredDigits)
             {
                 return DomainValidationResult<PhoneNumber>.Fail(
                     ValidationKeywords.PhoneInvalidFormat,
-                    "Enter a 10-digit phone number with the area code, like (250) 555-0123.");
+                    "Enter a 10-digit phone number, for example 250 555 0199.");
             }
 
             return DomainValidationResult<PhoneNumber>.Ok(new PhoneNumber(digits));
         }
-
-        private static bool IsFormatting(char c) => c is ' ' or '(' or ')' or '-' or '.';
     }
 }

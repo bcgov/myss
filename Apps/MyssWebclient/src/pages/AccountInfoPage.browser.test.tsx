@@ -273,7 +273,7 @@ describe("AccountInfoPage", () => {
           payload: [
             {
               field: "phones[0].number",
-              keyword: "ACCOUNT.PHONE.INVALID_FORMAT",
+              keyword: "IDA.PHONE.INVALID_FORMAT",
               message: "That number was refused upstream.",
             },
           ],

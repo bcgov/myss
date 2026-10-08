@@ -22,11 +22,14 @@ const session = vi.hoisted(
 vi.mock("@/auth/useSession", () => ({
   useSession: () => session,
 }));
-// The token bridge and idle timer are app-wide side effects with their own
-// tests; here they only need to be inert.
+// The token bridge, idle timer and error message catalogue are app-wide side
+// effects with their own tests; here they only need to be inert.
 vi.mock("@/auth/useApiAuth", () => ({ useApiAuth: () => undefined }));
 vi.mock("@/auth/useIdleLogout", () => ({
   useIdleLogout: () => ({ warning: false, extendSession: vi.fn() }),
+}));
+vi.mock("@/hooks/useErrorMessages", () => ({
+  useErrorMessageCatalogue: () => undefined,
 }));
 
 import App from "./App";

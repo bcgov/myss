@@ -30,6 +30,18 @@ namespace Myss.Api.Data
         public required string Sin { get; set; }
 
         /// <summary>
+        /// Gets or sets the submitted phone number, ten digits with no punctuation.
+        /// Null for profiles registered before registration v4 asked for it.
+        /// </summary>
+        public string? Phone { get; set; }
+
+        /// <summary>
+        /// Gets or sets the submitted gender, as the option value of the registration
+        /// form's gender field. Null for profiles registered before registration v4.
+        /// </summary>
+        public string? Gender { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether the citizen wants a reminder when the
         /// online monthly report opens. Stored only: nothing sends it yet (MYSS-271).
         /// </summary>

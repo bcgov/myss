@@ -14,21 +14,26 @@ namespace Myss.Api.Tests
     /// </summary>
     public class RoleCalculatorTests
     {
+        private const string ClientId = "sdpr-my-ss-6498";
+
         private static string[] Calculate(
             string? idp,
             string[]? tokenRoles = null,
-            bool derive = true)
+            bool derive = true,
+            bool businessGuid = false,
+            string? bcServicesCardIdp = null)
         {
             var token = new TokenIdentity
             {
                 IdentityProvider = idp,
                 Roles = tokenRoles ?? [],
+                HasBceidBusinessGuid = businessGuid,
             };
 
             return
             [
                 .. RoleCalculator
-                    .Calculate(token, MyssAccountSnapshot.Empty, derive)
+                    .Calculate(token, MyssAccountSnapshot.Empty, derive, bcServicesCardIdp)
                     .Order(),
             ];
         }
@@ -43,6 +48,43 @@ namespace Myss.Api.Tests
         public void BcServicesCardSignInGrantsClient()
         {
             Assert.Equal([MyssRoles.Client], Calculate(IdentityProviders.BcServicesCard));
+        }
+
+        [Fact]
+        public void BceidBothSignInWithoutBusinessGuidGrantsClient()
+        {
+            // The dev integration enables bceidboth, not bceidbasic (token seen 2026-09-09).
+            Assert.Equal([MyssRoles.Client], Calculate(IdentityProviders.BceidBoth));
+        }
+
+        [Fact]
+        public void BceidBothSignInWithBusinessGuidGetsNoCitizenRole()
+        {
+            // RULE-IDA-08: the same broker also admits Business BCeID; its GUID marks it.
+            Assert.Empty(Calculate(IdentityProviders.BceidBoth, businessGuid: true));
+        }
+
+        [Fact]
+        public void ConfiguredBcServicesCardAliasGrantsClient()
+        {
+            // CSS brokers BC Services Card per integration under the client id.
+            Assert.Equal(
+                [MyssRoles.Client],
+                Calculate(ClientId, bcServicesCardIdp: ClientId));
+        }
+
+        [Fact]
+        public void ConfiguredBcServicesCardAliasStripsWorkerRoles()
+        {
+            Assert.Equal(
+                [MyssRoles.Client],
+                Calculate(ClientId, [MyssRoles.Worker], bcServicesCardIdp: ClientId));
+        }
+
+        [Fact]
+        public void ClientIdIsNotACitizenIdpWhenNoBcServicesCardAliasIsConfigured()
+        {
+            Assert.Empty(Calculate(ClientId));
         }
 
         [Fact]
@@ -132,6 +174,7 @@ namespace Myss.Api.Tests
                     new(KeycloakClaims.IdentityProviderClaimType, IdentityProviders.BceidBasic),
                     new(KeycloakClaims.RolesClaimType, MyssRoles.Worker),
                     new(KeycloakClaims.RolesClaimType, MyssRoles.Worker),
+                    new(KeycloakClaims.BceidBusinessGuidClaimType, "ABC123"),
                 },
                 "test",
                 "sub",
@@ -141,6 +184,7 @@ namespace Myss.Api.Tests
 
             Assert.Equal(IdentityProviders.BceidBasic, token.IdentityProvider);
             Assert.Equal([MyssRoles.Worker], token.Roles.Distinct().ToArray());
+            Assert.True(token.HasBceidBusinessGuid);
         }
     }
 }

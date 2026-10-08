@@ -1,42 +1,50 @@
 namespace Myss.Api.Tests.Domain
 {
     using Myss.Api.Domain;
+    using Myss.Api.Tests.TestSupport;
 
     /// <summary>
-    /// Tests for <see cref="PhoneNumber"/>. Every number is in the 555-01xx
-    /// range reserved for fiction.
+    /// Tests for <see cref="PhoneNumber"/>, driven by the shared vectors so the
+    /// browser's <c>phone</c> rule is held to exactly the same set.
     /// </summary>
     public class PhoneNumberTests
     {
+        public static IEnumerable<object[]> ValidVectors =>
+            ValidationVectors.AsTheoryData(ValidationVectors.Valid("phone"));
+
+        public static IEnumerable<object[]> InvalidVectors =>
+            ValidationVectors.AsTheoryData(ValidationVectors.Invalid("phone"));
+
         [Theory]
-        [InlineData("(250) 555-0123")]
-        [InlineData("250-555-0123")]
-        [InlineData("250.555.0123")]
-        [InlineData("2505550123")]
-        [InlineData(" 250 555 0123 ")]
-        public void TryCreate_AcceptsTheUsualWaysOfWritingANumber(string value)
+        [MemberData(nameof(ValidVectors))]
+        public void TryCreate_AcceptsEveryValidVector(string value, string _)
         {
             DomainValidationResult<PhoneNumber> result = PhoneNumber.TryCreate(value);
 
             Assert.True(result.IsValid, $"Expected \"{value}\" to be accepted but got {result.Keyword}");
-            Assert.Equal("2505550123", result.Value!.Digits);
+            Assert.Equal(10, result.Value!.Digits.Length);
         }
 
         [Theory]
-        [InlineData(null)]
-        [InlineData("")]
-        [InlineData("555-0123")]
-        [InlineData("1 250 555 0123")]
-        [InlineData("250-555-01234")]
-        [InlineData("250-555-0123 ext 4")]
-        [InlineData("+1 250 555 0123")]
-        [InlineData("250-CALL-NOW")]
-        public void TryCreate_RefusesAnythingButTenDigits(string? value)
+        [MemberData(nameof(InvalidVectors))]
+        public void TryCreate_RejectsEveryInvalidVector_WithTheExpectedKeyword(string value, string expectedKeyword)
         {
             DomainValidationResult<PhoneNumber> result = PhoneNumber.TryCreate(value);
 
             Assert.False(result.IsValid, $"Expected \"{value}\" to be rejected");
-            Assert.Equal(ValidationKeywords.PhoneInvalidFormat, result.Keyword);
+            Assert.Equal(expectedKeyword, result.Keyword);
+        }
+
+        [Fact]
+        public void TryCreate_DropsTheCountryCode()
+        {
+            Assert.Equal("2505550199", PhoneNumber.TryCreate("1 (250) 555-0199").Value!.Digits);
+        }
+
+        [Fact]
+        public void TryCreate_RejectsNull()
+        {
+            Assert.False(PhoneNumber.TryCreate(null).IsValid);
         }
     }
 }

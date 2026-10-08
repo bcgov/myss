@@ -583,6 +583,14 @@ describe("FormEditorPage build mode", () => {
     });
     remove.click();
 
+    // The builder rebuilds its canvas asynchronously after a removal; the save
+    // must read the spec after that, not race it.
+    await vi.waitFor(() => {
+      expect(
+        document.querySelector('[class~="formio-component-fullName"]'),
+      ).toBeNull();
+    });
+
     await screen.getByRole("button", { name: "Save draft" }).click();
     await expect.element(screen.getByText("Draft saved.")).toBeVisible();
 
@@ -612,6 +620,35 @@ describe("FormEditorPage build mode", () => {
     expect(conditional?.conditional).toEqual({
       json: { "===": [{ var: "data.fullName" }, "reveal"] },
     });
+  });
+
+  it("saves the builder's live schema when the save follows the edit at once", async () => {
+    // The builder announces an edit only after its canvas rebuild settles. A
+    // save clicked straight after the edit must still send the edited spec.
+    mockGetDraft.mockResolvedValue(draft);
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+
+    const remove = await vi.waitFor(() => {
+      const found = document
+        .querySelector('[class~="formio-component-fullName"]')
+        ?.closest(".builder-component")
+        ?.querySelector<HTMLElement>('[ref="removeComponent"]');
+      expect(found, "no remove control on the component").toBeTruthy();
+      return found!;
+    });
+    remove.click();
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await expect.element(screen.getByText("Draft saved.")).toBeVisible();
+
+    const [, input] = mockSaveDraft.mock.calls[0];
+    const keys = ((input.spec.components ?? []) as { key?: unknown }[]).map(
+      (c) => c.key,
+    );
+    expect(keys).not.toContain("fullName");
+    expect(keys).toContain("conditionalField");
   });
 
   it("drops a property whose value equals Form.io's default", () => {

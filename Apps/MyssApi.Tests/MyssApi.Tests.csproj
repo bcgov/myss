@@ -43,6 +43,28 @@
   </ItemGroup>
 
   <!--
+    The error message catalogue is the contract between the compiled fallback
+    (Data/ErrorMessageDefaults.cs) and the Strapi seed in MyssContent. Linked
+    for the same reason as the vectors above.
+  -->
+  <ItemGroup>
+    <Content Include="..\..\Shared\validation\error-messages.json"
+             Link="error-messages.json"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!--
+    The bus pass form specs as Strapi seeds them, every version. Linked so the
+    validator and the bus pass rules are tested against the forms citizens are
+    actually served, not only against hand-written stand-ins.
+  -->
+  <ItemGroup>
+    <Content Include="..\MyssContent\src\lib\bus-pass-specs\*.json"
+             Link="bus-pass-specs\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!--
     The bus pass request sample is the contract between this API's middleware
     provider and IcmApi.Host. Linked for the same reason as the vectors above.
   -->
