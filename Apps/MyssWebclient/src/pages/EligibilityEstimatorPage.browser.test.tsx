@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "vitest-browser-react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
@@ -300,6 +301,25 @@ function groupName(label: string): RegExp {
 async function answer(screen: Screen, question: string, choice: string) {
   const group = screen.getByRole("radiogroup", { name: groupName(question) });
   await group.getByText(choice, { exact: true }).click();
+}
+
+/**
+ * Types a number and leaves the field, so the value is committed to the form.
+ * Retries because Form.io's validation pass, which runs shortly after each
+ * answer, redraws the field and drops text typed but not yet committed.
+ */
+async function enterNumber(screen: Screen, label: string, value: string) {
+  const field = screen.getByRole("textbox", { name: label });
+  await expect
+    .poll(
+      async () => {
+        await field.fill(value);
+        await userEvent.tab();
+        return (field.element() as HTMLInputElement).value;
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(value);
 }
 
 // The spec references the custom bcgovAccordion type; register it once so
@@ -634,7 +654,7 @@ test("shows the ineligible ($0) result with the hardship link when income exceed
   await answer(screen, AGE_LABEL, "No");
   await answer(screen, PWD_LABEL, "No");
   // Single type-B income limit is 1060 → 2000 is over the limit → ineligible.
-  await screen.getByRole("textbox", { name: "Your Monthly Income" }).fill("2000");
+  await enterNumber(screen, "Your Monthly Income", "2000");
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 

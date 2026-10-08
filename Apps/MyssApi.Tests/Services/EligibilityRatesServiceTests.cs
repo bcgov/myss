@@ -92,8 +92,9 @@ namespace Myss.Api.Tests.Services
         [Theory]
         [InlineData("2026-10-03T05:30:00Z", "2026-10-02")] // 22:30 PDT the evening before
         [InlineData("2026-10-03T07:00:00Z", "2026-10-03")] // midnight PDT
-        [InlineData("2026-12-01T07:30:00Z", "2026-11-30")] // 23:30 PST
-        [InlineData("2026-12-01T08:00:00Z", "2026-12-01")] // midnight PST
+        // BC stays on UTC-7 from 2026, so the UTC-8 (PST) cases use the winter before.
+        [InlineData("2025-12-01T07:30:00Z", "2025-11-30")] // 23:30 PST
+        [InlineData("2025-12-01T08:00:00Z", "2025-12-01")] // midnight PST
         public async Task TheEffectiveDate_IsTodayInBritishColumbia(string utcNow, string expected)
         {
             _clock = new FakeTimeProvider(DateTimeOffset.Parse(utcNow, System.Globalization.CultureInfo.InvariantCulture));
