@@ -11,6 +11,10 @@ namespace Myss.Api.Domain
     /// The TypeScript mirror is the <c>phone</c> rule in the webclient's
     /// <c>validationRules.ts</c>; both are driven by the <c>phone</c> vectors
     /// in <c>Shared/validation/validation-vectors.json</c>.
+    /// <para>
+    /// <b>PII.</b> Like <see cref="Sin"/>, <see cref="object.ToString"/> is not
+    /// overridden, so a number does not reach a log by accident.
+    /// </para>
     /// </remarks>
     public sealed class PhoneNumber
     {

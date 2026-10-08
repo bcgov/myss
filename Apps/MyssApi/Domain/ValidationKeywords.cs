@@ -75,5 +75,14 @@ namespace Myss.Api.Domain
 
         /// <summary>A registration gender is not one of the form's gender options.</summary>
         public const string RegistrationGenderUnknown = "REGISTRATION.GENDER.UNKNOWN";
+
+        /// <summary>A phone type is not one of Home, Cell, Work or Message.</summary>
+        public const string PhoneTypeUnknown = "ACCOUNT.PHONE.TYPE_UNKNOWN";
+
+        /// <summary>Two phone numbers were given the same type.</summary>
+        public const string PhoneTypeDuplicate = "ACCOUNT.PHONE.DUPLICATE_TYPE";
+
+        /// <summary>More phone numbers were sent than there are phone types.</summary>
+        public const string PhoneTooMany = "ACCOUNT.PHONE.TOO_MANY";
     }
 }

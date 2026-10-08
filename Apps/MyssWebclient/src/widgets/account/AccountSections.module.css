@@ -1,0 +1,10 @@
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.section h2,
+.section p {
+    margin: 0;
+}

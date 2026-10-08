@@ -102,6 +102,21 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
     note: "Registration: the gender is not one of the options the form offered.",
   },
   {
+    keyword: "ACCOUNT.PHONE.TYPE_UNKNOWN",
+    message: "Choose a phone type: home, cell, work or message.",
+    note: "Account info: a phone number's type is not one of Home, Cell, Work or Message.",
+  },
+  {
+    keyword: "ACCOUNT.PHONE.DUPLICATE_TYPE",
+    message: "You can have one phone number of each type. Choose a different type.",
+    note: "Account info: two phone numbers were given the same type.",
+  },
+  {
+    keyword: "ACCOUNT.PHONE.TOO_MANY",
+    message: "You can have up to 4 phone numbers, one of each type.",
+    note: "Account info: more phone numbers were sent than there are phone types.",
+  },
+  {
     keyword: "BUSPASS.REQUEST.TYPE_INVALID",
     message: "Select a valid service type",
     note: "Bus pass: the service type selector holds a value the form does not offer.",
