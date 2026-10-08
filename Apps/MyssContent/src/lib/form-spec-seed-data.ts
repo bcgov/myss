@@ -1468,6 +1468,238 @@ export const eligibilityEstimatorSpecV4: Json = {
 };
 
 // ---------------------------------------------------------------------------
+// Estimator spec v5
+// ---------------------------------------------------------------------------
+//
+// Adds two yes/no questions on top of v4; v4 stays seeded and immutable.
+//
+//   1. `age65`, the key person's age, first after the status question.
+//   2. `partnerAge65`, the spouse's age, right after the relationship question
+//      and shown only for a couple, so like `partnerPwd` it is not required.
+//
+// Their answers select the 65+ client types. Everything else is v4 unchanged.
+export const eligibilityEstimatorSpecV5: Json = {
+  display: "form",
+  components: [
+    {
+      type: "bcgovRadio",
+      key: "residesInBc",
+      label: "Do you currently reside in British Columbia?",
+      input: true,
+      values: yesNoValues,
+      // The gates match the literal "true"/"false".
+      dataType: "string",
+      validate: { required: true },
+    },
+    {
+      type: "bcgovRadio",
+      key: "hasEligibleStatus",
+      label: "Do you have a status that allows you to live in Canada?",
+      input: true,
+      values: yesNoValues,
+      dataType: "string",
+      validate: { required: true },
+      conditional: q1YesConditional,
+    },
+    {
+      // Custom BC Gov component — the collapsible help. Non-data; label + body
+      // carried as component props.
+      type: "bcgovAccordion",
+      key: "statusHelp",
+      input: false,
+      accordionLabel:
+        'What does "status that allows you to live in Canada" mean?',
+      // Copy lives here for now; it is destined for the estimator-content type.
+      accordionBody: [
+        "<p>To be eligible for assistance, your status must meet the citizenship and residency requirements.</p>",
+        "<p>This includes:</p>",
+        "<ul>",
+        "<li>Canadian citizens</li>",
+        "<li>Permanent residents</li>",
+        "<li>Protected persons or refugees</li>",
+        "<li>Refugee claimants</li>",
+        "<li>People with a Temporary Resident Permit</li>",
+        "<li>Certain other qualifying statuses</li>",
+        "</ul>",
+        "<p>If you do not have legal status in Canada, talk to a lawyer before you apply for benefits. If you get benefits that you do not qualify for, you may have to pay the money back.</p>",
+        '<p>Learn more about <a href="https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/eligibility/citizenship-requirements" target="_blank" rel="noopener noreferrer">residence requirements for income assistance</a></p>',
+      ].join(""),
+      conditional: q1YesConditional,
+    },
+    {
+      type: "bcgovRadio",
+      key: "age65",
+      label: "Are you 65 years of age or older?",
+      input: true,
+      values: yesNoValues,
+      validate: { required: true },
+      errors: { required: "Please select an option." },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "bcgovRadio",
+      key: "relationshipStatus",
+      label: "What is your relationship status?",
+      input: true,
+      values: [
+        { label: "Single and Never Married", value: "single" },
+        { label: "Married", value: "married" },
+        { label: "Marriage-Like Relationship", value: "marriagelike" },
+        { label: "Divorced", value: "divorced" },
+        { label: "Separated", value: "separated" },
+        { label: "Widowed", value: "widowed" },
+      ],
+      validate: { required: true },
+      errors: { required: "Please select your relationship status." },
+      conditional: hasStatusConditional,
+    },
+    {
+      // Advanced-conditional, so never server-required, like partnerPwd.
+      type: "bcgovRadio",
+      key: "partnerAge65",
+      label: "Is your spouse 65 years of age or older?",
+      input: true,
+      values: yesNoValues,
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "dependentChildren",
+      label: "How many dependent children under the age of 19 live with you?",
+      description:
+        "The estimate is based on a maximum family size of 7 people. Adding more than 7 family members will not change the estimated benefit amount.",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "bcgovRadio",
+      key: "pwd",
+      label:
+        "Do you plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      validate: { required: true },
+      errors: { required: "Please select an option." },
+      conditional: hasStatusConditional,
+    },
+    {
+      // Advanced-conditional, so never server-required. Transitively hidden
+      // when the status question is "No", which hides and clears
+      // relationshipStatus.
+      type: "bcgovRadio",
+      key: "partnerPwd",
+      label:
+        "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      conditional: partneredConditional,
+    },
+    {
+      type: "content",
+      key: "assetsSectionHeading",
+      input: false,
+      html: "<h2>Do you have assets or receive income?</h2>",
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "number",
+      key: "monthlyIncome",
+      label: "Your Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "number",
+      key: "vehicleValueMinusTransportation",
+      label:
+        "What is the value of your primary vehicle minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "number",
+      key: "vehicleValue",
+      label:
+        "What is the value of all your additional vehicles minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "number",
+      key: "assetValue",
+      label:
+        "What is the total value of your assets not listed above (property, investments, cash or savings)?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "content",
+      key: "spouseSectionHeading",
+      input: false,
+      html: "<h2>Does your spouse have assets or receive income?</h2>",
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerMonthlyIncome",
+      label: "Spouse's Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerVehicleValueMinusTransportation",
+      label:
+        "What is the value of your spouse's primary vehicle minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerVehicleValue",
+      label:
+        "What is the value of all your spouse's additional vehicles minus any amount owing?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "partnerAssetValue",
+      label:
+        "What is the total value of your spouse's assets not listed above (property, investments, cash or savings)?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Get Estimate",
+      input: true,
+      conditional: hasStatusConditional,
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Everything the bootstrap hook seeds
 // ---------------------------------------------------------------------------
 
@@ -1511,6 +1743,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 2, spec: eligibilityEstimatorSpecV2 },
       { version: 3, spec: eligibilityEstimatorSpecV3 },
       { version: 4, spec: eligibilityEstimatorSpecV4 },
+      { version: 5, spec: eligibilityEstimatorSpecV5 },
     ],
   },
   {

@@ -1,63 +1,45 @@
 import { describe, expect, it } from "vitest";
 
+import { evaluateRateCreate } from "./eligibility-rate-rules";
 import {
   ELIGIBILITY_RATE_EFFECTIVE_DATE,
-  eligibilityRateAugust2023,
+  eligibilityRateOctober2026,
   seededRates,
 } from "./eligibility-rate-seed-data";
 
 /**
- * The rate table is served from Strapi and read by MyssApi; the citizen never
- * sees this file. But its numbers are load-bearing: they MUST stay identical to
- * MyssApi's compiled fallback (`FddRateData.August2023`) and reproduce the
- * MYSS-25 vectors, so the key values are pinned here. Letter meanings (MYSS-25):
- * A = couple neither PWD, B = single not PWD, C = couple either PWD,
- * D = single PWD, E = couple both PWD.
+ * The rate table is served from Strapi and read by MyssApi; its numbers MUST stay
+ * identical to MyssApi's compiled fallback (`FddRateData`), so they are pinned
+ * here. Client types A-I are listed in eligibility-rate-seed-data.ts.
  */
 describe("eligibility rate seed", () => {
-  const table = eligibilityRateAugust2023;
-  const byFamilySize = (n: number) =>
-    table.incomeRows.find((row) => row.familySize === n)!;
+  const table = eligibilityRateOctober2026;
 
-  it("seeds exactly one dated rate table, effective 2023-08-01", () => {
+  it("seeds exactly one dated rate table", () => {
     expect(seededRates).toEqual([table]);
     expect(table.effectiveDate).toBe(ELIGIBILITY_RATE_EFFECTIVE_DATE);
-    expect(table.effectiveDate).not.toBe("");
+    expect(table.effectiveDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("has seven contiguous family-size rows, 1 through 7", () => {
-    expect(table.incomeRows.map((row) => row.familySize)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-  });
-
-  it("reassigns the family-size-1 row to the single types B and D (MYSS-25)", () => {
-    expect(byFamilySize(1)).toEqual({ familySize: 1, a: 0, b: 1060, c: 0, d: 1535.5, e: 0 });
-  });
-
-  it("carries the MYSS-25 column-C (+165) and column-E (+113.50) values", () => {
-    // fs3: C 2320.50 -> 2485.50, E 2847.50 -> 2961.00
-    expect(byFamilySize(3).c).toBe(2485.5);
-    expect(byFamilySize(3).e).toBe(2961);
-    // fs7 (cap): C 2520.50 -> 2685.50, E 3047.50 -> 3161.00
-    expect(byFamilySize(7).c).toBe(2685.5);
-    expect(byFamilySize(7).e).toBe(3161);
-    // A/B/D at sizes 2-7 are unchanged (spot-check fs2)
-    expect(byFamilySize(2).a).toBe(1650);
-    expect(byFamilySize(2).b).toBe(1405);
-    expect(byFamilySize(2).d).toBe(1880.5);
+  it("holds the nine-type income limits", () => {
+    expect(table.incomeRows).toEqual([
+      { familySize: 1, a: 0, b: 1060, c: 0, d: 0, e: 1360, f: 0, g: 1535.5, h: 0, i: 0 },
+      { familySize: 2, a: 1650, b: 1405, c: 2200, d: 1950, e: 1705, f: 2290.5, g: 1880.5, h: 2766, i: 2590.5 },
+      { familySize: 3, a: 1845, b: 1500, c: 2395, d: 2145, e: 1800, f: 2485.5, g: 1975.5, h: 2961, i: 2785.5 },
+      { familySize: 4, a: 1895, b: 1550, c: 2445, d: 2195, e: 1850, f: 2535.5, g: 2025.5, h: 3011, i: 2835.5 },
+      { familySize: 5, a: 1945, b: 1600, c: 2495, d: 2245, e: 1900, f: 2585.5, g: 2075.5, h: 3061, i: 2885.5 },
+      { familySize: 6, a: 1995, b: 1650, c: 2545, d: 2295, e: 1950, f: 2635.5, g: 2125.5, h: 3111, i: 2935.5 },
+      { familySize: 7, a: 2045, b: 1700, c: 2595, d: 2345, e: 2000, f: 2685.5, g: 2175.5, h: 3161, i: 2985.5 },
+    ]);
   });
 
   it("keeps the asset ceilings A $5k / B $10k / C $100k / D $200k", () => {
     expect(table.assetLimits).toEqual({ a: 5000, b: 10000, c: 100000, d: 200000 });
   });
 
-  it("never lets an income or asset limit go negative", () => {
-    for (const row of table.incomeRows) {
-      for (const v of [row.a, row.b, row.c, row.d, row.e]) {
-        expect(v).toBeGreaterThanOrEqual(0);
-      }
-    }
-    for (const v of Object.values(table.assetLimits)) {
-      expect(v).toBeGreaterThanOrEqual(0);
+  it("passes the eligibility-rate value rules, so the lifecycle accepts the seeded values", () => {
+    for (const seeded of seededRates) {
+      expect(evaluateRateCreate({ ...seeded, documentId: null }, [])).toEqual([]);
     }
   });
 });

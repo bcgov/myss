@@ -33,6 +33,7 @@ describe("mapAnswersToEstimate", () => {
     const request = mapAnswersToEstimate({
       relationshipStatus: "single",
       partnerPwd: "true",
+      partnerAge65: "true",
       partnerMonthlyIncome: 5000,
       partnerVehicleValueMinusTransportation: 4000,
       partnerVehicleValue: 3000,
@@ -46,6 +47,7 @@ describe("mapAnswersToEstimate", () => {
     });
 
     expect(request.spousePwd).toBe(false);
+    expect(request.spouseSenior).toBe(false);
     expect(request.spouseMonthlyIncome).toBe(0);
     // Spouse assets are NOT summed in for a Single household.
     expect(request.primaryVehicleValue).toBe(10);
@@ -65,6 +67,42 @@ describe("mapAnswersToEstimate", () => {
       mapAnswersToEstimate({ relationshipStatus: "married", partnerPwd: "true" })
         .spousePwd,
     ).toBe(true);
+  });
+
+  it("reads the age answers: the applicant's always, the spouse's for a couple", () => {
+    expect(mapAnswersToEstimate({ age65: "true" }).applicantSenior).toBe(true);
+    expect(mapAnswersToEstimate({ age65: true }).applicantSenior).toBe(true);
+    expect(mapAnswersToEstimate({ age65: "false" }).applicantSenior).toBe(false);
+    expect(mapAnswersToEstimate({}).applicantSenior).toBe(false);
+
+    for (const status of ["married", "marriagelike"]) {
+      expect(
+        mapAnswersToEstimate({ relationshipStatus: status, partnerAge65: "true" })
+          .spouseSenior,
+      ).toBe(true);
+      expect(
+        mapAnswersToEstimate({ relationshipStatus: status, partnerAge65: true })
+          .spouseSenior,
+      ).toBe(true);
+      expect(
+        mapAnswersToEstimate({ relationshipStatus: status, partnerAge65: "false" })
+          .spouseSenior,
+      ).toBe(false);
+    }
+  });
+
+  it("keeps the age and PWD answers apart", () => {
+    const request = mapAnswersToEstimate({
+      relationshipStatus: "married",
+      age65: "true",
+      pwd: "false",
+      partnerAge65: "false",
+      partnerPwd: "true",
+    });
+    expect(request.applicantSenior).toBe(true);
+    expect(request.applicantPwd).toBe(false);
+    expect(request.spouseSenior).toBe(false);
+    expect(request.spousePwd).toBe(true);
   });
 
   it("clamps negative and blank money answers to 0", () => {
@@ -172,27 +210,49 @@ describe("screenPreCheck", () => {
 });
 
 describe("missingRequiredCoupleAnswers", () => {
-  it("requires partnerPwd for a couple who left it unanswered", () => {
+  it("reports both spouse questions for a couple who answered neither", () => {
     for (const status of ["married", "marriagelike"]) {
       expect(missingRequiredCoupleAnswers({ relationshipStatus: status })).toEqual([
         "partnerPwd",
+        "partnerAge65",
       ]);
-      // Empty string / null are "unanswered" too, not "No".
-      expect(
-        missingRequiredCoupleAnswers({ relationshipStatus: status, partnerPwd: "" }),
-      ).toEqual(["partnerPwd"]);
-      expect(
-        missingRequiredCoupleAnswers({ relationshipStatus: status, partnerPwd: null }),
-      ).toEqual(["partnerPwd"]);
     }
   });
 
-  it("is satisfied once a couple answers partnerPwd either way", () => {
+  it("requires partnerPwd for a couple who left it unanswered", () => {
+    for (const status of ["married", "marriagelike"]) {
+      const answered = { relationshipStatus: status, partnerAge65: "false" };
+      expect(missingRequiredCoupleAnswers(answered)).toEqual(["partnerPwd"]);
+      // Empty string / null are "unanswered" too, not "No".
+      expect(missingRequiredCoupleAnswers({ ...answered, partnerPwd: "" })).toEqual([
+        "partnerPwd",
+      ]);
+      expect(missingRequiredCoupleAnswers({ ...answered, partnerPwd: null })).toEqual([
+        "partnerPwd",
+      ]);
+    }
+  });
+
+  it("requires partnerAge65 for a couple who left it unanswered", () => {
+    for (const status of ["married", "marriagelike"]) {
+      const answered = { relationshipStatus: status, partnerPwd: "false" };
+      expect(missingRequiredCoupleAnswers(answered)).toEqual(["partnerAge65"]);
+      expect(missingRequiredCoupleAnswers({ ...answered, partnerAge65: "" })).toEqual([
+        "partnerAge65",
+      ]);
+      expect(missingRequiredCoupleAnswers({ ...answered, partnerAge65: null })).toEqual([
+        "partnerAge65",
+      ]);
+    }
+  });
+
+  it("is satisfied once a couple answers both spouse questions either way", () => {
     for (const value of ["true", "false", true, false]) {
       expect(
         missingRequiredCoupleAnswers({
           relationshipStatus: "married",
           partnerPwd: value,
+          partnerAge65: value,
         }),
       ).toEqual([]);
     }

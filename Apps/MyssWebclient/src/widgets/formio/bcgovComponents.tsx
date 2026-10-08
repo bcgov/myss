@@ -492,16 +492,19 @@ class BcgovButtonComponent extends withBcgovField(stockComponent("button")) {
   protected renderReact(): ReactNode {
     const component = this.component;
     const action = textOf(component.action) || "submit";
+    // The margin goes on a wrapper: a className on the Button replaces the
+    // design system's own classes instead of adding to them.
     return (
-      <Button
-        variant={action === "submit" ? "primary" : "secondary"}
-        type="button"
-        isDisabled={this.disabled || this.options.readOnly === true}
-        className={styles.submitButton}
-        onPress={() => this.bcgovClick()}
-      >
-        {textOf(component.label) || this.t("submit")}
-      </Button>
+      <div className={styles.submitButton}>
+        <Button
+          variant={action === "submit" ? "primary" : "secondary"}
+          type="button"
+          isDisabled={this.disabled || this.options.readOnly === true}
+          onPress={() => this.bcgovClick()}
+        >
+          {textOf(component.label) || this.t("submit")}
+        </Button>
+      </div>
     );
   }
 

@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { acceptApplication, createApplication, denyApplication, getApplication, getBusPassSubmissionPdf, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormDraft, getFormSpec, getFormSubmission, getMe, getPlaceholder, getReviewApplication, listApplications, listAttachments, listForms, listFormSubmissions, listReviewApplications, type Options, publishForm, saveApplicationAnswers, saveFormDraft, startApplicationReview, submitApplication, submitBusPass, submitForm, uploadAttachment } from '../sdk.gen';
-import type { AcceptApplicationData, AcceptApplicationError, AcceptApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, DenyApplicationData, DenyApplicationError, DenyApplicationResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfError, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormDraftData, GetFormDraftError, GetFormDraftResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetFormSubmissionData, GetFormSubmissionError, GetFormSubmissionResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetReviewApplicationData, GetReviewApplicationError, GetReviewApplicationResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, ListFormsData, ListFormsResponse, ListFormSubmissionsData, ListFormSubmissionsResponse, ListReviewApplicationsData, ListReviewApplicationsResponse, PublishFormData, PublishFormError, PublishFormResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SaveFormDraftData, SaveFormDraftError, SaveFormDraftResponse, StartApplicationReviewData, StartApplicationReviewError, StartApplicationReviewResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
+import { acceptApplication, createApplication, denyApplication, getAccount, getApplication, getBusPassSubmissionPdf, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormDraft, getFormSpec, getFormSubmission, getMe, getPlaceholder, getReviewApplication, listApplications, listAttachments, listForms, listFormSubmissions, listReviewApplications, type Options, publishForm, saveApplicationAnswers, saveEligibilityRates, saveFormDraft, startApplicationReview, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment } from '../sdk.gen';
+import type { AcceptApplicationData, AcceptApplicationError, AcceptApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, DenyApplicationData, DenyApplicationError, DenyApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfError, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormDraftData, GetFormDraftError, GetFormDraftResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetFormSubmissionData, GetFormSubmissionError, GetFormSubmissionResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetReviewApplicationData, GetReviewApplicationError, GetReviewApplicationResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, ListFormsData, ListFormsResponse, ListFormSubmissionsData, ListFormSubmissionsResponse, ListReviewApplicationsData, ListReviewApplicationsResponse, PublishFormData, PublishFormError, PublishFormResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SaveEligibilityRatesData, SaveEligibilityRatesError, SaveEligibilityRatesResponse, SaveFormDraftData, SaveFormDraftError, SaveFormDraftResponse, StartApplicationReviewData, StartApplicationReviewError, StartApplicationReviewResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -37,6 +37,58 @@ const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions
         params.query = options.query;
     }
     return [params];
+};
+
+export const getAccountQueryKey = (options?: Options<GetAccountData>) => createQueryKey('getAccount', options);
+
+/**
+ * Returns the caller's account.
+ */
+export const getAccountOptions = (options?: Options<GetAccountData>) => queryOptions<GetAccountResponse, GetAccountError, GetAccountResponse, ReturnType<typeof getAccountQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getAccount({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getAccountQueryKey(options)
+});
+
+/**
+ * Replaces the caller's phone numbers. Nothing is saved unless every number passes.
+ */
+export const updateAccountPhonesMutation = (options?: Partial<Options<UpdateAccountPhonesData>>): UseMutationOptions<UpdateAccountPhonesResponse, UpdateAccountPhonesError, Options<UpdateAccountPhonesData>> => {
+    const mutationOptions: UseMutationOptions<UpdateAccountPhonesResponse, UpdateAccountPhonesError, Options<UpdateAccountPhonesData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await updateAccountPhones({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Saves the caller's notification preference.
+ */
+export const updateAccountNotificationPreferencesMutation = (options?: Partial<Options<UpdateAccountNotificationPreferencesData>>): UseMutationOptions<UpdateAccountNotificationPreferencesResponse, UpdateAccountNotificationPreferencesError, Options<UpdateAccountNotificationPreferencesData>> => {
+    const mutationOptions: UseMutationOptions<UpdateAccountNotificationPreferencesResponse, UpdateAccountNotificationPreferencesError, Options<UpdateAccountNotificationPreferencesData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await updateAccountNotificationPreferences({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
 };
 
 export const listAttachmentsQueryKey = (options?: Options<ListAttachmentsData>) => createQueryKey('listAttachments', options);
@@ -192,6 +244,23 @@ export const getEstimatorRatesOptions = (options?: Options<GetEstimatorRatesData
     },
     queryKey: getEstimatorRatesQueryKey(options)
 });
+
+/**
+ * Saves a complete rate table as the table effective today, and publishes it.
+ */
+export const saveEligibilityRatesMutation = (options?: Partial<Options<SaveEligibilityRatesData>>): UseMutationOptions<SaveEligibilityRatesResponse, SaveEligibilityRatesError, Options<SaveEligibilityRatesData>> => {
+    const mutationOptions: UseMutationOptions<SaveEligibilityRatesResponse, SaveEligibilityRatesError, Options<SaveEligibilityRatesData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await saveEligibilityRates({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 export const getFormSpecQueryKey = (options: Options<GetFormSpecData>) => createQueryKey('getFormSpec', options);
 

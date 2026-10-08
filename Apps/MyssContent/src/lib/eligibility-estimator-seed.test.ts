@@ -7,6 +7,7 @@ import {
   eligibilityEstimatorSpecV2,
   eligibilityEstimatorSpecV3,
   eligibilityEstimatorSpecV4,
+  eligibilityEstimatorSpecV5,
   seededForms,
   type Json,
 } from "./form-spec-seed-data";
@@ -86,7 +87,7 @@ const MONEY_FIELDS = [
 describe("eligibility estimator seed", () => {
   const spec = eligibilityEstimatorSpecV1;
 
-  it("is registered in seededForms with published v1, v2, v3 and v4", () => {
+  it("is registered in seededForms with published v1 to v5", () => {
     const estimator = seededForms.find(
       (form) => form.formSpecId === ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     );
@@ -97,6 +98,7 @@ describe("eligibility estimator seed", () => {
       { version: 2, spec: eligibilityEstimatorSpecV2 },
       { version: 3, spec: eligibilityEstimatorSpecV3 },
       { version: 4, spec: eligibilityEstimatorSpecV4 },
+      { version: 5, spec: eligibilityEstimatorSpecV5 },
     ]);
   });
 
@@ -542,5 +544,94 @@ describe("eligibility estimator seed — v4 (residency hard gate + BC Gov radios
     for (const key of MONEY_FIELDS) {
       expect(componentByKey(v4, key).validate?.min).toBe(0);
     }
+  });
+});
+
+describe("eligibility estimator seed — v5 (age questions)", () => {
+  const v4 = eligibilityEstimatorSpecV4;
+  const v5 = eligibilityEstimatorSpecV5;
+
+  const HAS_STATUS = { show: true, when: "hasEligibleStatus", eq: "true" };
+  const PARTNERED = {
+    in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]],
+  };
+  const AGE_FIELDS = ["age65", "partnerAge65"] as const;
+
+  it("has unique component keys", () => {
+    const keys = keysOf(v5);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("is v4 plus exactly the two age questions", () => {
+    const others = componentsOf(v5).filter(
+      (component) => component.key !== "age65" && component.key !== "partnerAge65",
+    );
+    expect({ ...(v5 as object), components: others }).toEqual(v4);
+    expect(componentsOf(v5)).toHaveLength(componentsOf(v4).length + 2);
+  });
+
+  it("defines each age question exactly", () => {
+    const yesNo = [
+      { label: "Yes", value: "true" },
+      { label: "No", value: "false" },
+    ];
+    expect(componentByKey(v5, "age65")).toEqual({
+      type: "bcgovRadio",
+      key: "age65",
+      label: "Are you 65 years of age or older?",
+      input: true,
+      values: yesNo,
+      validate: { required: true },
+      errors: { required: "Please select an option." },
+      conditional: HAS_STATUS,
+    });
+    expect(componentByKey(v5, "partnerAge65")).toEqual({
+      type: "bcgovRadio",
+      key: "partnerAge65",
+      label: "Is your spouse 65 years of age or older?",
+      input: true,
+      values: yesNo,
+      conditional: { json: PARTNERED },
+    });
+  });
+
+  it("asks the key person's age first after the status question, before relationship status", () => {
+    const keys = keysOf(v5);
+    expect(keys.indexOf("age65")).toBe(keys.indexOf("statusHelp") + 1);
+    expect(keys.indexOf("age65")).toBe(keys.indexOf("relationshipStatus") - 1);
+  });
+
+  it("asks the spouse's age directly after relationship status", () => {
+    const keys = keysOf(v5);
+    expect(keys.indexOf("partnerAge65")).toBe(keys.indexOf("relationshipStatus") + 1);
+  });
+
+  it("makes both age questions BC Gov radios with 'true'/'false' values", () => {
+    for (const key of AGE_FIELDS) {
+      const field = componentByKey(v5, key);
+      expect(field.type).toBe("bcgovRadio");
+      expect(field.input).toBe(true);
+      expect((field.values as Array<{ value: string }>).map((o) => o.value)).toEqual([
+        "true",
+        "false",
+      ]);
+    }
+  });
+
+  it("requires the key person's age and shows it once Q2 = Yes", () => {
+    const field = componentByKey(v5, "age65");
+    expect((field as { label?: unknown }).label).toBe("Are you 65 years of age or older?");
+    expect(field.validate?.required).toBe(true);
+    expect(field.conditional).toEqual(HAS_STATUS);
+  });
+
+  it("shows the spouse's age only for a couple and never marks it server-side required", () => {
+    const field = componentByKey(v5, "partnerAge65");
+    expect((field as { label?: unknown }).label).toBe(
+      "Is your spouse 65 years of age or older?",
+    );
+    expect(field.conditional?.when).toBeUndefined();
+    expect(field.conditional?.json).toEqual(PARTNERED);
+    expect(field.validate?.required).toBeUndefined();
   });
 });
