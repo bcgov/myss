@@ -47,6 +47,24 @@ namespace Myss.Api.Data
         /// </summary>
         public bool MonthlyReportReminder { get; set; }
 
+        /// <summary>
+        /// Gets or sets the salted hash of the citizen's 4-digit PIN, stored in
+        /// <c>taapcd_aae_passcode</c> (MYSS-258). Null until a PIN is set; only
+        /// Basic BCeID users have one. Never the PIN itself.
+        /// </summary>
+        public string? PinHash { get; set; }
+
+        /// <summary>
+        /// Gets or sets how many wrong current PINs were given in a row while
+        /// changing it. Reset by a correct one and when a lockout starts.
+        /// </summary>
+        public int PinFailedAttempts { get; set; }
+
+        /// <summary>
+        /// Gets or sets when the PIN lockout ends, or null when it is not locked.
+        /// </summary>
+        public DateTimeOffset? PinLockedUntil { get; set; }
+
         /// <summary>Gets or sets the citizen's phone numbers, in their chosen order.</summary>
         public List<MyssUserPhone> Phones { get; set; } = [];
 

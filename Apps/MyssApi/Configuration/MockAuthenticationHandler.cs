@@ -62,6 +62,13 @@ namespace Myss.Api.Configuration
                     [],
                     BceidGuid: "44444444-4444-4444-4444-444444444444",
                     IdentityProvider: IdentityProviders.BceidBasic),
+
+                // A BC Services Card citizen: CLIENT from the calculator like
+                // "bceid", but no BCeID GUID, so no PIN (MYSS-258).
+                ["bcsc"] = new(
+                    "mock-bcsc",
+                    [],
+                    IdentityProvider: IdentityProviders.BcServicesCard),
             };
 
         private readonly string defaultPersona;

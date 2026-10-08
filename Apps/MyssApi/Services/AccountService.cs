@@ -7,6 +7,7 @@ namespace Myss.Api.Services
     using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging;
+    using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
     using Myss.Api.Domain;
     using Myss.Api.Models;
@@ -25,11 +26,20 @@ namespace Myss.Api.Services
         /// </summary>
         public const int MaxPhones = 4;
 
+        /// <summary>
+        /// How many times a PIN save is tried when another request changed the
+        /// PIN columns between its read and its write. Each try reads afresh.
+        /// </summary>
+        private const int MaxPinSaveTries = 3;
+
         private readonly ILogger<AccountService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly ICaseAccountProvider _caseAccountProvider;
         private readonly ICurrentUserAccessor _currentUserAccessor;
         private readonly TimeProvider _timeProvider;
+        private readonly IPinHasher _pinHasher;
+        private readonly PinLockoutConfig _pinLockout;
+        private readonly IErrorMessageProvider _errorMessageProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AccountService"/> class.
@@ -39,18 +49,27 @@ namespace Myss.Api.Services
         /// <param name="caseAccountProvider">The case details source.</param>
         /// <param name="currentUserAccessor">The caller accessor.</param>
         /// <param name="timeProvider">The clock.</param>
+        /// <param name="pinHasher">The PIN hasher.</param>
+        /// <param name="pinLockout">How many wrong PINs lock Change PIN, and for how long.</param>
+        /// <param name="errorMessageProvider">The error message catalogue.</param>
         public AccountService(
             ILogger<AccountService> logger,
             FormsDbContext dbContext,
             ICaseAccountProvider caseAccountProvider,
             ICurrentUserAccessor currentUserAccessor,
-            TimeProvider timeProvider)
+            TimeProvider timeProvider,
+            IPinHasher pinHasher,
+            PinLockoutConfig pinLockout,
+            IErrorMessageProvider errorMessageProvider)
         {
             _logger = logger;
             _dbContext = dbContext;
             _caseAccountProvider = caseAccountProvider;
             _currentUserAccessor = currentUserAccessor;
             _timeProvider = timeProvider;
+            _pinHasher = pinHasher;
+            _pinLockout = pinLockout;
+            _errorMessageProvider = errorMessageProvider;
         }
 
         /// <inheritdoc/>
@@ -82,10 +101,11 @@ namespace Myss.Api.Services
             // body from setting how much work the loop does.
             if (request.Phones.Count > MaxPhones)
             {
-                return AccountResultModel.Invalid([Error(
+                ValidationErrorModel tooMany = Error(
                     "phones",
                     ValidationKeywords.PhoneTooMany,
-                    $"You can have up to {MaxPhones} phone numbers, one of each type.")]);
+                    $"You can have up to {MaxPhones} phone numbers, one of each type.");
+                return await InvalidAsync([tooMany], cancellationToken);
             }
 
             // The check above already guarantees this equals the list length.
@@ -146,7 +166,7 @@ namespace Myss.Api.Services
 
             if (errors.Count > 0)
             {
-                return AccountResultModel.Invalid(errors);
+                return await InvalidAsync(errors, cancellationToken);
             }
 
             // The list replaces the stored one. Added explicitly: a row whose
@@ -180,6 +200,142 @@ namespace Myss.Api.Services
             return AccountResultModel.Ok(await ToModelAsync(profile, cancellationToken));
         }
 
+        /// <inheritdoc/>
+        public async Task<AccountResultModel> SavePinAsync(SavePinRequestModel request, CancellationToken cancellationToken)
+        {
+            // The PIN columns are concurrency tokens, so a write only lands if
+            // they are as this request read them. Without that, two first PINs
+            // made at once would each report success while one overwrote the
+            // other, and wrong guesses sent at once would each count from the
+            // same number and never reach the lockout. A request that loses
+            // the race starts again from what the winner wrote.
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    AccountResultModel result = await TrySavePinAsync(request, cancellationToken);
+                    return result.Outcome == AccountOutcome.Invalid
+                        ? await InvalidAsync(result.Errors, cancellationToken)
+                        : result;
+                }
+                catch (DbUpdateConcurrencyException) when (attempt < MaxPinSaveTries)
+                {
+                    _dbContext.ChangeTracker.Clear();
+                }
+            }
+        }
+
+        private async Task<AccountResultModel> TrySavePinAsync(SavePinRequestModel request, CancellationToken cancellationToken)
+        {
+            MyssUserProfile? profile = await FindOwnProfileAsync(track: true, cancellationToken);
+            if (profile is null)
+            {
+                return AccountResultModel.ProfileRequired();
+            }
+
+            if (!UsesPin(_currentUserAccessor.User))
+            {
+                return AccountResultModel.PinNotAvailable();
+            }
+
+            // Checked before anything else, the current PIN included, so a
+            // locked account cannot be used to keep guessing.
+            DateTimeOffset now = _timeProvider.GetUtcNow();
+            if (profile.PinLockedUntil is { } lockedUntil && lockedUntil > now)
+            {
+                return AccountResultModel.PinLocked(lockedUntil);
+            }
+
+            bool isChange = profile.PinHash is not null;
+            var errors = new List<ValidationErrorModel>();
+
+            DomainValidationResult<Pin> current = Pin.TryCreate(request.CurrentPin);
+            if (isChange && !current.IsValid)
+            {
+                errors.Add(Error("currentPin", current.Keyword!, current.Message!));
+            }
+
+            DomainValidationResult<Pin> newPin = Pin.TryCreate(request.NewPin);
+            if (!newPin.IsValid)
+            {
+                errors.Add(Error("newPin", newPin.Keyword!, newPin.Message!));
+            }
+            else if (!string.Equals(request.ConfirmPin, newPin.Value!.Digits, StringComparison.Ordinal))
+            {
+                errors.Add(Error("confirmPin", ValidationKeywords.PinMismatch, "The two PINs do not match."));
+            }
+
+            // A malformed request is not a guess, so it does not count as an attempt.
+            if (errors.Count > 0)
+            {
+                return AccountResultModel.Invalid(errors);
+            }
+
+            if (isChange && !_pinHasher.Verify(profile.PinHash!, current.Value!, out _))
+            {
+                return await RecordWrongPinAsync(profile, now, cancellationToken);
+            }
+
+            profile.PinHash = _pinHasher.Hash(newPin.Value!);
+            profile.PinFailedAttempts = 0;
+            profile.PinLockedUntil = null;
+            profile.UpdatedAt = now;
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("{PinAction} the PIN for profile {ProfileId}", isChange ? "Changed" : "Created", profile.Id);
+            return AccountResultModel.Ok(await ToModelAsync(profile, cancellationToken));
+        }
+
+        /// <summary>Only a Basic BCeID sign-in uses a PIN (MYSS-258).</summary>
+        private static bool UsesPin(CurrentUser user) => !string.IsNullOrWhiteSpace(user.BceidGuid);
+
+        private async Task<AccountResultModel> RecordWrongPinAsync(
+            MyssUserProfile profile,
+            DateTimeOffset now,
+            CancellationToken cancellationToken)
+        {
+            profile.PinFailedAttempts++;
+            if (profile.PinFailedAttempts >= _pinLockout.MaxAttempts)
+            {
+                // The count starts again once the lockout ends.
+                DateTimeOffset lockedUntil = now + _pinLockout.Lockout;
+                profile.PinFailedAttempts = 0;
+                profile.PinLockedUntil = lockedUntil;
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                _logger.LogWarning(
+                    "Locked the PIN for profile {ProfileId} until {LockedUntil} after {MaxAttempts} wrong attempts",
+                    profile.Id,
+                    lockedUntil,
+                    _pinLockout.MaxAttempts);
+                return AccountResultModel.PinLocked(lockedUntil);
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation(
+                "Wrong current PIN for profile {ProfileId} ({FailedAttempts} of {MaxAttempts})",
+                profile.Id,
+                profile.PinFailedAttempts,
+                _pinLockout.MaxAttempts);
+            return AccountResultModel.Invalid([Error(
+                "currentPin",
+                ValidationKeywords.PinIncorrect,
+                "The current PIN is not correct.")]);
+        }
+
+        /// <summary>
+        /// Refuses with the catalogue's wording for each keyword, as the forms
+        /// path does, so a Service Designer's edit reaches Account Info too.
+        /// </summary>
+        private async Task<AccountResultModel> InvalidAsync(
+            IReadOnlyList<ValidationErrorModel> errors,
+            CancellationToken cancellationToken)
+        {
+            return AccountResultModel.Invalid(ErrorMessageResolver.Resolve(
+                errors,
+                await _errorMessageProvider.GetMessagesAsync(cancellationToken)));
+        }
+
         private static ValidationErrorModel Error(string field, string keyword, string message)
         {
             return new ValidationErrorModel { Field = field, Keyword = keyword, Message = message };
@@ -200,7 +356,18 @@ namespace Myss.Api.Services
                     .ToList(),
                 MailingAddressLines = caseDetails.MailingAddressLines,
                 MonthlyReportReminder = profile.MonthlyReportReminder,
+                PinStatus = PinStatus(profile),
             };
+        }
+
+        private AccountPinStatus PinStatus(MyssUserProfile profile)
+        {
+            if (!UsesPin(_currentUserAccessor.User))
+            {
+                return AccountPinStatus.NotApplicable;
+            }
+
+            return profile.PinHash is null ? AccountPinStatus.NotSet : AccountPinStatus.Set;
         }
 
         private Task<MyssUserProfile?> FindOwnProfileAsync(bool track, CancellationToken cancellationToken)

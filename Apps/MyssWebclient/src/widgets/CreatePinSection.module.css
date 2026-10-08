@@ -1,0 +1,19 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-margin-small);
+  margin-top: var(--layout-margin-large);
+}
+
+.section h2,
+.section p {
+  margin: 0;
+}
+
+/* The same readable width as the Form.io inputs above it. */
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-margin-medium);
+  max-width: 24rem;
+}

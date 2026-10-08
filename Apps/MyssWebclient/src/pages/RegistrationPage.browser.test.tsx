@@ -29,11 +29,13 @@ vi.mock("@/auth/useSession", () => ({
 vi.mock("@/widgets/RegistrationForm", () => ({
     default: (props: {
         identity: { givenName?: string };
+        requirePin?: boolean;
         onRegistered: () => void;
         onCancel: () => void;
     }) => (
         <div>
             <p>Registration form for {props.identity.givenName ?? "nobody"}</p>
+            <p>{props.requirePin ? "Asks for a PIN" : "No PIN"}</p>
             <button type="button" onClick={props.onRegistered}>
                 Simulate registered
             </button>
@@ -120,6 +122,33 @@ describe("RegistrationPage", () => {
         await expect
             .element(screen.getByText(/You’re signed in with your BCeID\./))
             .toBeInTheDocument();
+    });
+
+    it("asks a BCeID citizen for a PIN and confirms it was created", async () => {
+        session.isAuthenticated = true;
+        session.hasProfile = false;
+        session.user = { sub: "new-user", bceidGuid: "guid-1", roles: [] };
+        const screen = await renderRegistration();
+
+        await expect.element(screen.getByText("Asks for a PIN")).toBeInTheDocument();
+        await screen.getByRole("button", { name: "Simulate registered" }).click();
+
+        await expect.element(screen.getByText("Your PIN has been created.")).toBeInTheDocument();
+    });
+
+    it("does not ask a BC Services Card citizen for a PIN", async () => {
+        session.isAuthenticated = true;
+        session.hasProfile = false;
+        session.user = { sub: "new-user", roles: [] };
+        const screen = await renderRegistration();
+
+        await expect.element(screen.getByText("No PIN")).toBeInTheDocument();
+        await screen.getByRole("button", { name: "Simulate registered" }).click();
+
+        await expect
+            .element(screen.getByRole("heading", { level: 1, name: "Account registration complete" }))
+            .toBeInTheDocument();
+        await expect.element(screen.getByText("Your PIN has been created.")).not.toBeInTheDocument();
     });
 
     it("signs the user out when they cancel registration", async () => {

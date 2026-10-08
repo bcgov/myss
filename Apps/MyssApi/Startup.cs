@@ -81,6 +81,10 @@ namespace Myss.Api
             services.AddScoped<IAccountService, AccountService>();
             services.AddSingleton<ICaseAccountProvider, PlaceholderCaseAccountProvider>();
 
+            // The PIN (MYSS-258): set at registration, changed on Account Info.
+            // Only its salted hash is stored. The lockout is bound below.
+            services.AddSingleton<IPinHasher, PinHasher>();
+
             // Eligibility Estimator (Option B): the browser computes the estimate;
             // MyssApi serves the Form.io spec and the rate table anonymously (see
             // EligibilityEstimatorController). The rate provider reads Strapi and
@@ -214,6 +218,13 @@ namespace Myss.Api
             configuration.GetSection("BusPass:SubmitRateLimit").Bind(rateLimit);
             BusPassRateLimit.Validate(rateLimit);
             services.AddRateLimiter(options => BusPassRateLimit.Configure(options, rateLimit));
+
+            // Wrong current PINs lock Change PIN for a while (MYSS-258); counted per
+            // account in the database, not by the rate limiter, which is per instance.
+            PinLockoutConfig pinLockout = new();
+            configuration.GetSection("Account:PinLockout").Bind(pinLockout);
+            PinLockoutConfig.Validate(pinLockout);
+            services.AddSingleton(pinLockout);
 
             // CORS services are required by the inline UseCors policy in
             // StartupConfiguration.UseHttp, which is driven by the AllowOrigins config.
