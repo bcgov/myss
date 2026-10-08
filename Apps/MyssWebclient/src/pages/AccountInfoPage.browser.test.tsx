@@ -8,9 +8,10 @@ import type { AccountPayload, PhoneInput } from "@/api/account";
 import { phoneDigits } from "@/lib/phone";
 import AccountInfoPage from "./AccountInfoPage";
 
-// Account Info (MYSS-271) against a stand-in for the account API that keeps
-// state: reads serve the account, writes change it the way the API does.
-// Phone numbers are in the 555-01xx range reserved for fiction.
+// Account Info (MYSS-271, PIN management MYSS-258) against a stand-in for the
+// account API that keeps state: reads serve the account, writes change it the
+// way the API does. Phone numbers are in the 555-01xx range reserved for
+// fiction.
 
 function account(overrides: Partial<AccountPayload> = {}): AccountPayload {
   return {
@@ -21,6 +22,7 @@ function account(overrides: Partial<AccountPayload> = {}): AccountPayload {
     phones: [{ number: "2505550123", type: "Home" }],
     mailingAddressLines: ["MAILING_ADDRESS_PLACEHOLDER"],
     monthlyReportReminder: false,
+    pinStatus: "Set",
     ...overrides,
   };
 }
@@ -53,7 +55,7 @@ function stubApi(stub: Stub) {
         ? json(stub.read.status, stub.read.body)
         : json(200, { payload: stub.account });
     }
-    const route = /\/v1\/account\/(phones|notification-preferences)$/.exec(
+    const route = /\/v1\/account\/(phones|notification-preferences|pin)$/.exec(
       url,
     )?.[1];
     if (route && method === "PUT") {
@@ -64,16 +66,20 @@ function stubApi(stub: Stub) {
         stub.nextWrite = undefined;
         return json(answer.status, answer.body);
       }
-      stub.account =
-        route === "phones"
-          ? {
-              ...stub.account,
-              phones: (body.phones as PhoneInput[]).map((phone) => ({
-                number: phoneDigits(phone.number)!,
-                type: phone.type,
-              })),
-            }
-          : { ...stub.account, ...body };
+      if (route === "phones") {
+        stub.account = {
+          ...stub.account,
+          phones: (body.phones as PhoneInput[]).map((phone) => ({
+            number: phoneDigits(phone.number)!,
+            type: phone.type,
+          })),
+        };
+      } else if (route === "pin") {
+        // The PIN itself is never in a response; only that one is set.
+        stub.account = { ...stub.account, pinStatus: "Set" };
+      } else {
+        stub.account = { ...stub.account, ...body };
+      }
       return json(200, { payload: stub.account });
     }
     throw new Error(`Unexpected fetch in test: ${method} ${url}`);
@@ -380,5 +386,183 @@ describe("AccountInfoPage", () => {
     await expect
       .element(screen.getByRole("alert"))
       .toHaveTextContent("Could not load your account");
+  });
+});
+
+describe("PIN management", () => {
+  // Masked inputs have no textbox role; their labels end in "(required)".
+  const pinInput = (
+    screen: Awaited<ReturnType<typeof renderPage>>,
+    label: string,
+  ) => screen.getByLabelText(new RegExp(`^${label}`));
+
+  it("is not shown to a citizen whose sign-in has no PIN", async () => {
+    stubApi({ account: account({ pinStatus: "NotApplicable" }) });
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByRole("heading", { name: "Contact Information" }))
+      .toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "PIN management" }).query(),
+    ).toBeNull();
+  });
+
+  it("changes the PIN with the current one, then closes and confirms", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Change my PIN" }).click();
+    await userEvent.fill(pinInput(screen, "Current PIN"), "4821");
+    await userEvent.fill(pinInput(screen, "New PIN"), "7350");
+    await userEvent.fill(pinInput(screen, "Confirm New PIN"), "7350");
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByText("Your PIN has been changed."))
+      .toBeVisible();
+    expect(writes).toEqual([
+      {
+        route: "pin",
+        body: { currentPin: "4821", newPin: "7350", confirmPin: "7350" },
+      },
+    ]);
+    expect(
+      screen.getByRole("form", { name: "Change your PIN" }).query(),
+    ).toBeNull();
+    await expect
+      .element(screen.getByRole("button", { name: "Change my PIN" }))
+      .toHaveFocus();
+  });
+
+  it("lets a BCeID citizen without a PIN create one, with no current PIN", async () => {
+    const writes = stubApi({ account: account({ pinStatus: "NotSet" }) });
+    const screen = await renderPage();
+
+    expect(screen.getByRole("button", { name: "Reset PIN" }).query()).toBeNull();
+    await screen.getByRole("button", { name: "Create a PIN" }).click();
+    expect(pinInput(screen, "Current PIN").query()).toBeNull();
+    await userEvent.fill(pinInput(screen, "New PIN"), "4821");
+    await userEvent.fill(pinInput(screen, "Confirm New PIN"), "4821");
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByText("Your PIN has been created."))
+      .toBeVisible();
+    expect(writes).toEqual([
+      { route: "pin", body: { newPin: "4821", confirmPin: "4821" } },
+    ]);
+    await expect
+      .element(screen.getByRole("button", { name: "Change my PIN" }))
+      .toBeVisible();
+  });
+
+  it("refuses a new PIN that is not confirmed, before sending it", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Change my PIN" }).click();
+    await userEvent.fill(pinInput(screen, "Current PIN"), "4821");
+    await userEvent.fill(pinInput(screen, "New PIN"), "7350");
+    await userEvent.fill(pinInput(screen, "Confirm New PIN"), "7351");
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent("Confirm New PIN: The two PINs do not match.");
+    expect(writes).toEqual([]);
+  });
+
+  it("refuses a PIN that is not four digits, and leads from the summary to it", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Change my PIN" }).click();
+    await userEvent.fill(pinInput(screen, "Current PIN"), "4821");
+    await userEvent.fill(pinInput(screen, "New PIN"), "73a");
+    await userEvent.fill(pinInput(screen, "Confirm New PIN"), "73a");
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    const link = screen.getByRole("button", {
+      name: "New PIN: Enter a 4-digit PIN using numbers only.",
+    });
+    await link.click();
+    await expect.element(pinInput(screen, "New PIN")).toHaveFocus();
+    expect(writes).toEqual([]);
+  });
+
+  it("shows a wrong current PIN on its field and clears it", async () => {
+    stubApi({
+      account: account(),
+      nextWrite: {
+        status: 422,
+        body: {
+          payload: [
+            {
+              field: "currentPin",
+              keyword: "ACCOUNT.PIN.INCORRECT",
+              message: "The current PIN is not correct.",
+            },
+          ],
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Change my PIN" }).click();
+    await userEvent.fill(pinInput(screen, "Current PIN"), "0000");
+    await userEvent.fill(pinInput(screen, "New PIN"), "7350");
+    await userEvent.fill(pinInput(screen, "Confirm New PIN"), "7350");
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent("Current PIN: The current PIN is not correct.");
+    await expect.element(pinInput(screen, "Current PIN")).toHaveValue("");
+  });
+
+  it("says how long to wait once too many wrong PINs lock it", async () => {
+    stubApi({
+      account: account(),
+      nextWrite: {
+        status: 429,
+        body: {
+          title: "Too many incorrect PINs.",
+          detail:
+            "You entered an incorrect PIN too many times. Try again in 15 minutes.",
+          keyword: "ACCOUNT.PIN.LOCKED",
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Change my PIN" }).click();
+    await userEvent.fill(pinInput(screen, "Current PIN"), "0000");
+    await userEvent.fill(pinInput(screen, "New PIN"), "7350");
+    await userEvent.fill(pinInput(screen, "Confirm New PIN"), "7350");
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(
+        "You entered an incorrect PIN too many times. Try again in 15 minutes.",
+      );
+    await expect
+      .element(screen.getByRole("button", { name: "Save" }))
+      .toBeDisabled();
+  });
+
+  it("closes without saving on Cancel", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Change my PIN" }).click();
+    await userEvent.fill(pinInput(screen, "Current PIN"), "4821");
+    await screen.getByRole("button", { name: "Cancel" }).click();
+
+    await expect
+      .element(screen.getByRole("button", { name: "Change my PIN" }))
+      .toBeVisible();
+    expect(writes).toEqual([]);
   });
 });

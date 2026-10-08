@@ -2,16 +2,24 @@ import { Button } from "@bcgov/design-system-react-components";
 import type { Webform } from "@formio/js";
 import { Form } from "@formio/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import "@formio/js/dist/formio.form.min.css";
 import "./FormSpecWidget.css";
 
-import { SubmissionRejectedError } from "@/api/forms";
+import {
+  SubmissionRejectedError,
+  type FormValidationError,
+} from "@/api/forms";
 import { ME_QUERY_KEY } from "@/auth/useMe";
 import SubmissionErrors from "@/components/SubmissionErrors";
 import { useClientValidation } from "@/hooks/useClientValidation";
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
+import {
+  checkNewPin,
+  REGISTRATION_PIN_FIELDS as PIN_FIELDS,
+} from "@/lib/pin";
+import CreatePinSection from "./CreatePinSection";
 import {
   prepareRegistrationSpec,
   type IdentityDetails,
@@ -20,9 +28,26 @@ import styles from "./RegistrationForm.module.css";
 
 const FORM_SPEC_ID = "registration";
 
+function isPinField(field: string): boolean {
+  return field === PIN_FIELDS.pin || field === PIN_FIELDS.confirmation;
+}
+
+function byField(errors: readonly FormValidationError[]): Record<string, string> {
+  return Object.fromEntries(errors.map((error) => [error.field, error.message]));
+}
+
+function checkRegistrationPin(pin: string, confirmation: string) {
+  return checkNewPin(pin, confirmation, PIN_FIELDS);
+}
+
 interface RegistrationFormProps {
   /** What the sign-in identity knows about the citizen, used to prefill. */
   identity: IdentityDetails;
+  /**
+   * Whether the citizen creates a PIN as part of registering: Basic BCeID
+   * users do (MYSS-258), BC Services Card users do not.
+   */
+  requirePin?: boolean;
   /** Called once the API has accepted the registration. */
   onRegistered: () => void;
   onCancel: () => void;
@@ -35,6 +60,7 @@ interface RegistrationFormProps {
  */
 export default function RegistrationForm({
   identity,
+  requirePin = false,
   onRegistered,
   onCancel,
 }: RegistrationFormProps) {
@@ -61,6 +87,21 @@ export default function RegistrationForm({
   const clientValidation = useClientValidation();
   const formOptions = useMemo(() => ({ noAlerts: true }), []);
 
+  // The PIN lives outside the Form.io form (registration answers are stored
+  // as submitted) and is sent beside the answers. The ref is what the submit
+  // handlers read: Form.io can hold on to an earlier render's onSubmit.
+  const [pin, setPin] = useState("");
+  const [pinConfirmation, setPinConfirmation] = useState("");
+  const pinRef = useRef({ pin: "", confirmation: "" });
+  // What the PIN fields show now: cleared field by field as the citizen edits.
+  const [pinErrors, setPinErrors] = useState<Record<string, string>>({});
+  // What the summary lists for the last attempt. A snapshot, so editing a
+  // field does not rebuild the summary and pull focus back to it.
+  const [pinAttemptErrors, setPinAttemptErrors] = useState<
+    FormValidationError[]
+  >([]);
+  const { reset: resetSubmit } = submit;
+
   // Keyed on the individual values, not the identity object: the session
   // builds a new user object every render, and a new `src` makes Form.io
   // rebuild the form and drop whatever the citizen has typed.
@@ -86,9 +127,38 @@ export default function RegistrationForm({
 
   const handleComplete = useCallback(() => {
     if (isSubmittingRef.current) return;
+    // A new attempt: the last refusal's summary gives way to this one's.
+    resetSubmit();
+    if (requirePin) {
+      const found = checkRegistrationPin(
+        pinRef.current.pin,
+        pinRef.current.confirmation,
+      );
+      setPinAttemptErrors(found);
+      setPinErrors(byField(found));
+    }
     // Rejects when client-side validation fails; the messages are already on
     // the fields and in the summary (onSubmitError), so nothing more to do.
     void formRef.current?.submit().catch(() => undefined);
+  }, [requirePin, resetSubmit]);
+
+  const handlePinChange = useCallback((value: string) => {
+    pinRef.current.pin = value;
+    setPin(value);
+    // The confirmation's mismatch depends on this value too.
+    setPinErrors({});
+  }, []);
+
+  const handlePinConfirmationChange = useCallback((value: string) => {
+    pinRef.current.confirmation = value;
+    setPinConfirmation(value);
+    setPinErrors((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([field]) => field !== PIN_FIELDS.confirmation,
+        ),
+      ),
+    );
   }, []);
 
   // Put the API's field errors (date of birth, phone, gender...) on the fields
@@ -107,11 +177,15 @@ export default function RegistrationForm({
     }
     displayedErrorRef.current = submit.error;
 
-    const formioErrors = validationErrors.map((validationError) => ({
-      level: "error",
-      message: validationError.message,
-      path: validationError.field,
-    }));
+    // The PIN's errors go on the PIN fields (onError), not into Form.io,
+    // which has no component by those names.
+    const formioErrors = validationErrors
+      .filter((validationError) => !isPinField(validationError.field))
+      .map((validationError) => ({
+        level: "error",
+        message: validationError.message,
+        path: validationError.field,
+      }));
 
     form.clearServerErrors();
     form.setServerErrors({ details: formioErrors });
@@ -119,7 +193,13 @@ export default function RegistrationForm({
     form.emit("cancelSubmit");
 
     const first = validationErrors[0]?.field;
-    if (first) form.focusOnComponent(first);
+    if (first && isPinField(first)) {
+      document
+        .querySelector<HTMLInputElement>(`[name="data[${CSS.escape(first)}]"]`)
+        ?.focus();
+    } else if (first) {
+      form.focusOnComponent(first);
+    }
   }, [submit.error, validationErrors]);
 
   // Take a server error off its field as soon as the citizen changes that
@@ -156,10 +236,25 @@ export default function RegistrationForm({
     [],
   );
 
+  // One summary for every reason the attempt failed: Form.io's own checks
+  // and the PIN's together, or else what the API refused.
+  const summaryError = useMemo(() => {
+    if (clientValidation.error) {
+      return pinAttemptErrors.length > 0
+        ? new SubmissionRejectedError(0, [
+            ...clientValidation.error.errors,
+            ...pinAttemptErrors,
+          ])
+        : clientValidation.error;
+    }
+    if (submit.error) return submit.error;
+    return pinAttemptErrors.length > 0
+      ? new SubmissionRejectedError(0, pinAttemptErrors)
+      : null;
+  }, [clientValidation.error, submit.error, pinAttemptErrors]);
+
   if (isPending) return <p>Loading form…</p>;
   if (error) return <p>Could not load the form: {error.message}</p>;
-
-  const summaryError = clientValidation.error ?? submit.error;
 
   return (
     <section className={styles.form}>
@@ -172,10 +267,27 @@ export default function RegistrationForm({
         onSubmitError={clientValidation.onSubmitError}
         onSubmit={(submission: { data: Record<string, unknown> }) => {
           if (isSubmittingRef.current) return;
-          isSubmittingRef.current = true;
           clientValidation.clear();
+          const { pin: enteredPin, confirmation } = pinRef.current;
+          // The form is valid but the PIN is not: its errors are already on
+          // the fields and in the summary (handleComplete).
+          if (
+            requirePin &&
+            checkRegistrationPin(enteredPin, confirmation).length > 0
+          ) {
+            formRef.current?.emit("cancelSubmit");
+            return;
+          }
+          isSubmittingRef.current = true;
+          setPinAttemptErrors([]);
           submit.mutate(
-            { formSpecVersion: spec.version, answers: submission.data },
+            {
+              formSpecVersion: spec.version,
+              answers: submission.data,
+              ...(requirePin
+                ? { pin: enteredPin, pinConfirmation: confirmation }
+                : {}),
+            },
             {
               onSuccess: () => {
                 isSubmittingRef.current = false;
@@ -184,15 +296,31 @@ export default function RegistrationForm({
                 onRegistered();
                 void queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
               },
-              onError: () => {
+              onError: (submitError) => {
                 // Released so the citizen can fix the answers and try again.
                 isSubmittingRef.current = false;
                 formRef.current?.emit("cancelSubmit");
+                if (submitError instanceof SubmissionRejectedError) {
+                  setPinErrors(
+                    byField(
+                      submitError.errors.filter((e) => isPinField(e.field)),
+                    ),
+                  );
+                }
               },
             },
           );
         }}
       />
+      {requirePin && (
+        <CreatePinSection
+          pin={pin}
+          confirmation={pinConfirmation}
+          onPinChange={handlePinChange}
+          onConfirmationChange={handlePinConfirmationChange}
+          errors={pinErrors}
+        />
+      )}
       <div className={styles.actions}>
         <Button variant="secondary" onPress={onCancel}>
           Cancel

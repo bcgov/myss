@@ -99,6 +99,23 @@
     ]
   },
 
+  "pin": {
+    "valid": [
+      { "value": "0000", "note": "leading zeros are part of the PIN" },
+      { "value": "1234" },
+      { "value": "9876" }
+    ],
+    "invalid": [
+      { "value": "", "keyword": "IDA.PIN.INVALID_FORMAT" },
+      { "value": "123", "keyword": "IDA.PIN.INVALID_FORMAT", "note": "3 digits" },
+      { "value": "12345", "keyword": "IDA.PIN.INVALID_FORMAT", "note": "5 digits" },
+      { "value": "12a4", "keyword": "IDA.PIN.INVALID_FORMAT", "note": "a letter" },
+      { "value": "12 34", "keyword": "IDA.PIN.INVALID_FORMAT", "note": "nothing is stripped: a PIN is typed, not pasted" },
+      { "value": " 1234", "keyword": "IDA.PIN.INVALID_FORMAT", "note": "not even surrounding whitespace" },
+      { "value": "\uff11\uff12\uff13\uff14", "keyword": "IDA.PIN.INVALID_FORMAT", "note": "full-width digits are not ASCII digits" }
+    ]
+  },
+
   "postalCode": {
     "valid": [
       { "value": "V8V 1X4" },

@@ -356,7 +356,8 @@ namespace Myss.Api.Tests.Services
             new UnexpectedTemplateProvider(),
             _admin,
             new StubCurrentUserAccessor("test-subject"),
-            new FakeErrorMessageProvider());
+            new FakeErrorMessageProvider(),
+            new PinHasher());
 
         private static JsonElement Spec(string json) => JsonDocument.Parse(json).RootElement.Clone();
 

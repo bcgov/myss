@@ -22,6 +22,7 @@ namespace Myss.Api.Tests
         private const string Account = "/v1/account";
         private const string Phones = "/v1/account/phones";
         private const string Preferences = "/v1/account/notification-preferences";
+        private const string PinPath = "/v1/account/pin";
 
         private readonly WebApplicationFactory<Startup> _factory;
 
@@ -259,6 +260,102 @@ namespace Myss.Api.Tests
 
             Assert.Equal(HttpStatusCode.OK, off.StatusCode);
             Assert.False((await GetAccount(host, "alice")).GetProperty("monthlyReportReminder").GetBoolean());
+        }
+
+        [Fact]
+        public async Task ABceidCitizenWithoutAPinIsOfferedOne_AndCanCreateIt()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            Assert.Equal("NotSet", (await GetAccount(host, "alice")).GetProperty("pinStatus").GetString());
+
+            using HttpResponseMessage response = await PutPin(host, "alice", new { newPin = "4821", confirmPin = "4821" });
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.DoesNotContain("4821", body, StringComparison.Ordinal);
+            using JsonDocument json = JsonDocument.Parse(body);
+            Assert.Equal("Set", json.RootElement.GetProperty("payload").GetProperty("pinStatus").GetString());
+        }
+
+        [Fact]
+        public async Task ChangingAPinNeedsTheCurrentOne()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            await PutPin(host, "alice", new { newPin = "4821", confirmPin = "4821" });
+
+            using HttpResponseMessage wrong = await PutPin(host, "alice", new { currentPin = "0000", newPin = "7350", confirmPin = "7350" });
+            using HttpResponseMessage right = await PutPin(host, "alice", new { currentPin = "4821", newPin = "7350", confirmPin = "7350" });
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, wrong.StatusCode);
+            using JsonDocument body = await Json(wrong);
+            JsonElement error = Assert.Single(body.RootElement.GetProperty("payload").EnumerateArray());
+            Assert.Equal("currentPin", error.GetProperty("field").GetString());
+            Assert.Equal(ValidationKeywords.PinIncorrect, error.GetProperty("keyword").GetString());
+            Assert.Equal(HttpStatusCode.OK, right.StatusCode);
+        }
+
+        [Fact]
+        public async Task RefusesANewPinThatIsNotConfirmed()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+
+            using HttpResponseMessage response = await PutPin(host, "alice", new { newPin = "4821", confirmPin = "4822" });
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            using JsonDocument body = await Json(response);
+            JsonElement error = Assert.Single(body.RootElement.GetProperty("payload").EnumerateArray());
+            Assert.Equal("confirmPin", error.GetProperty("field").GetString());
+            Assert.Equal(ValidationKeywords.PinMismatch, error.GetProperty("keyword").GetString());
+            Assert.Equal("NotSet", (await GetAccount(host, "alice")).GetProperty("pinStatus").GetString());
+        }
+
+        [Fact]
+        public async Task ThreeWrongPinsInARowLockChangePin()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            await PutPin(host, "alice", new { newPin = "4821", confirmPin = "4821" });
+            var guess = new { currentPin = "0000", newPin = "7350", confirmPin = "7350" };
+            (await PutPin(host, "alice", guess)).Dispose();
+            (await PutPin(host, "alice", guess)).Dispose();
+
+            using HttpResponseMessage third = await PutPin(host, "alice", guess);
+            using HttpResponseMessage rightPinWhileLocked = await PutPin(
+                host, "alice", new { currentPin = "4821", newPin = "7350", confirmPin = "7350" });
+
+            Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+            Assert.NotNull(third.Headers.RetryAfter);
+            using JsonDocument body = await Json(third);
+            Assert.Equal(AccountController.PinLockedKeyword, body.RootElement.GetProperty("keyword").GetString());
+            Assert.Contains("15 minutes", body.RootElement.GetProperty("detail").GetString(), StringComparison.Ordinal);
+            Assert.Equal(HttpStatusCode.TooManyRequests, rightPinWhileLocked.StatusCode);
+        }
+
+        [Fact]
+        public async Task ABcServicesCardCitizenHasNoPin()
+        {
+            using IntakeTestHost host = NewHost(registered: ["bcsc"]);
+            Assert.Equal("NotApplicable", (await GetAccount(host, "bcsc")).GetProperty("pinStatus").GetString());
+
+            using HttpResponseMessage response = await PutPin(host, "bcsc", new { newPin = "4821", confirmPin = "4821" });
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            using JsonDocument body = await Json(response);
+            Assert.Equal(ValidationKeywords.PinNotAvailable, body.RootElement.GetProperty("keyword").GetString());
+        }
+
+        [Fact]
+        public async Task AWorkerCannotSetAPin()
+        {
+            using IntakeTestHost host = NewHost(registered: ["worker"]);
+
+            using HttpResponseMessage response = await PutPin(host, "worker", new { newPin = "4821", confirmPin = "4821" });
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
+        private static Task<HttpResponseMessage> PutPin(IntakeTestHost host, string persona, object body)
+        {
+            return host.Send(persona, HttpMethod.Put, PinPath, JsonContent.Create(body));
         }
 
         private static async Task<JsonDocument> Json(HttpResponseMessage response)

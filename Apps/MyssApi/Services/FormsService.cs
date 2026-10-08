@@ -38,6 +38,7 @@ namespace Myss.Api.Services
         private readonly IFormSpecAdminProvider _formSpecAdminProvider;
         private readonly ICurrentUserAccessor _currentUserAccessor;
         private readonly IErrorMessageProvider _errorMessageProvider;
+        private readonly IPinHasher _pinHasher;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -50,6 +51,7 @@ namespace Myss.Api.Services
         /// <param name="formSpecAdminProvider">Injected form-spec admin (write) provider.</param>
         /// <param name="currentUserAccessor">Injected current user accessor.</param>
         /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
+        /// <param name="pinHasher">Injected PIN hasher, for the PIN set at registration.</param>
         public FormsService(
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
@@ -58,7 +60,8 @@ namespace Myss.Api.Services
             ITemplateProvider templateProvider,
             IFormSpecAdminProvider formSpecAdminProvider,
             ICurrentUserAccessor currentUserAccessor,
-            IErrorMessageProvider errorMessageProvider)
+            IErrorMessageProvider errorMessageProvider,
+            IPinHasher pinHasher)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -68,6 +71,7 @@ namespace Myss.Api.Services
             _formSpecAdminProvider = formSpecAdminProvider;
             _currentUserAccessor = currentUserAccessor;
             _errorMessageProvider = errorMessageProvider;
+            _pinHasher = pinHasher;
         }
 
         /// <inheritdoc/>
@@ -352,9 +356,13 @@ namespace Myss.Api.Services
             IReadOnlyList<ValidationErrorModel> errors =
                 FormSpecValidator.Validate(spec.Spec, request.Answers);
 
+            Pin? registrationPin = null;
             if (IsRegistration(formSpecId))
             {
-                errors = FormSpecValidator.OnePerField([.. errors, .. ValidateRegistration(spec.Spec, request.Answers)]);
+                (IReadOnlyList<ValidationErrorModel> pinErrors, registrationPin) =
+                    await ValidateRegistrationPinAsync(request, cancellationToken);
+                errors = FormSpecValidator.OnePerField(
+                    [.. errors, .. ValidateRegistration(spec.Spec, request.Answers), .. pinErrors]);
             }
 
             if (domainRules is not null)
@@ -402,7 +410,7 @@ namespace Myss.Api.Services
             _dbContext.FormSubmissions.Add(submission);
             if (IsRegistration(formSpecId))
             {
-                AddOrUpdateProfile(request.Answers);
+                AddOrUpdateProfile(request.Answers, registrationPin is null ? null : _pinHasher.Hash(registrationPin));
             }
             await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -419,7 +427,7 @@ namespace Myss.Api.Services
         private static bool IsRegistration(string formSpecId) =>
             string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase);
 
-        private void AddOrUpdateProfile(JsonElement answers)
+        private void AddOrUpdateProfile(JsonElement answers, string? pinHash)
         {
             CurrentUser currentUser = _currentUserAccessor.User;
             if (!currentUser.IsAuthenticated || string.IsNullOrWhiteSpace(currentUser.Subject))
@@ -460,6 +468,7 @@ namespace Myss.Api.Services
                     Sin = sin,
                     Phone = phone,
                     Gender = gender,
+                    PinHash = pinHash,
                     CreatedAt = DateTimeOffset.UtcNow,
                     UpdatedAt = DateTimeOffset.UtcNow,
                 });
@@ -484,8 +493,60 @@ namespace Myss.Api.Services
                 profile.Gender = gender;
             }
 
+            // Only ever null here when the profile already has a PIN (see
+            // ValidateRegistrationPinAsync), which this must not replace.
+            if (pinHash is not null)
+            {
+                profile.PinHash = pinHash;
+            }
+
             profile.UpdatedAt = DateTimeOffset.UtcNow;
         }
+
+        /// <summary>
+        /// The registration PIN (MYSS-258, RULE-IDA-01): required of a Basic BCeID
+        /// citizen who has none yet, four digits, typed twice the same. A sign-in
+        /// that does not use a PIN may not send one. A profile that already has a
+        /// PIN keeps it: registering again is not a way round Change PIN, which
+        /// asks for the current one.
+        /// </summary>
+        private async Task<(IReadOnlyList<ValidationErrorModel> Errors, Pin? Pin)> ValidateRegistrationPinAsync(
+            FormSubmissionRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            CurrentUser user = _currentUserAccessor.User;
+            bool supplied = request.Pin is not null || request.PinConfirmation is not null;
+
+            if (string.IsNullOrWhiteSpace(user.BceidGuid))
+            {
+                return supplied
+                    ? ([PinError("pin", ValidationKeywords.PinNotAvailable, "A PIN is only used when you sign in with Basic BCeID.")], null)
+                    : ([], null);
+            }
+
+            bool alreadySet = await _dbContext.MyssUserProfiles
+                .AnyAsync(p => p.Subject == user.Subject && p.PinHash != null, cancellationToken);
+            if (alreadySet)
+            {
+                return ([], null);
+            }
+
+            DomainValidationResult<Pin> pin = Pin.TryCreate(request.Pin);
+            if (!pin.IsValid)
+            {
+                return ([PinError("pin", pin.Keyword!, pin.Message!)], null);
+            }
+
+            if (!string.Equals(request.PinConfirmation, pin.Value!.Digits, StringComparison.Ordinal))
+            {
+                return ([PinError("pinConfirmation", ValidationKeywords.PinMismatch, "The two PINs do not match.")], null);
+            }
+
+            return ([], pin.Value);
+        }
+
+        private static ValidationErrorModel PinError(string field, string keyword, string message) =>
+            new() { Field = field, Keyword = keyword, Message = message };
 
         private static IReadOnlyList<ValidationErrorModel> ValidateRegistration(JsonElement spec, JsonElement answers)
         {

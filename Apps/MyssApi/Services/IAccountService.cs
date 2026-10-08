@@ -34,5 +34,14 @@ namespace Myss.Api.Services
         Task<AccountResultModel> UpdateNotificationPreferencesAsync(
             UpdateNotificationPreferencesRequestModel request,
             CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Changes the caller's PIN, or creates it when they have none (MYSS-258).
+        /// A change needs the current PIN; wrong ones in a row lock it for a while.
+        /// </summary>
+        /// <param name="request">The current PIN, when there is one, and the new one twice.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Ok, ProfileRequired, PinNotAvailable, PinLocked or Invalid; nothing is saved unless all pass.</returns>
+        Task<AccountResultModel> SavePinAsync(SavePinRequestModel request, CancellationToken cancellationToken);
     }
 }

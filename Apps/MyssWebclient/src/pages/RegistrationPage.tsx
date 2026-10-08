@@ -11,7 +11,7 @@ import styles from "./RegistrationPage.module.css";
  * Shown in place of the form once the API accepts the registration. The
  * heading takes focus so a screen-reader user hears that the page changed.
  */
-function RegistrationComplete() {
+function RegistrationComplete({ pinCreated }: Readonly<{ pinCreated: boolean }>) {
     const navigate = useNavigate();
     const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -29,6 +29,14 @@ function RegistrationComplete() {
                 role="status"
                 title="Your account is being prepared. This should take less than 5 minutes."
             />
+            {pinCreated && (
+                // MYSS-258 AC7: the citizen is told the PIN was created.
+                <InlineAlert
+                    variant="success"
+                    title="Your PIN has been created."
+                    description="You will need it when you apply for services and sign documents in My Self Serve."
+                />
+            )}
             <p>Please try signing in again shortly. Thank you for your patience.</p>
             <div>
                 <Button variant="secondary" onPress={() => navigate(paths.home)}>
@@ -54,7 +62,11 @@ export default function RegistrationPage() {
         }
     }, [hasProfile, isAuthenticated, isMeLoading, navigate, registered]);
 
-    if (registered) return <RegistrationComplete />;
+    // Only Basic BCeID users create a PIN (MYSS-258); BC Services Card users
+    // do not have one.
+    const requirePin = Boolean(user?.bceidGuid);
+
+    if (registered) return <RegistrationComplete pinCreated={requirePin} />;
 
     // A BCeID token carries a BCeID GUID; a citizen registering without one
     // signed in with BC Services Card (IDIR users do not register).
@@ -92,6 +104,7 @@ export default function RegistrationPage() {
                 <h1 className={styles.title}>Create your MySS account</h1>
                 <RegistrationForm
                     identity={user ?? {}}
+                    requirePin={requirePin}
                     onRegistered={handleRegistered}
                     onCancel={logout}
                 />

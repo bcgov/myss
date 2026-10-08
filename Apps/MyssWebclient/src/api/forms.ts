@@ -223,9 +223,21 @@ export async function getSubmission(
 }
 
 /** Stores a submission stamped with the spec version it was rendered with. */
+/**
+ * A submission. `pin` and `pinConfirmation` are registration only (MYSS-258)
+ * and travel beside the answers, never inside them: the API stores answers as
+ * submitted and keeps only the PIN's salted hash.
+ */
+export interface FormSubmissionInput {
+  formSpecVersion: number;
+  answers: Record<string, unknown>;
+  pin?: string;
+  pinConfirmation?: string;
+}
+
 export async function submitForm(
   formSpecId: string,
-  input: { formSpecVersion: number; answers: Record<string, unknown> },
+  input: FormSubmissionInput,
 ): Promise<FormSubmissionPayload> {
   const res = await fetch(`${API_URL}/v1/forms/${formSpecId}/submissions`, {
     method: "POST",

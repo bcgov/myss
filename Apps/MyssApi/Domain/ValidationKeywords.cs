@@ -84,5 +84,17 @@ namespace Myss.Api.Domain
 
         /// <summary>More phone numbers were sent than there are phone types.</summary>
         public const string PhoneTooMany = "ACCOUNT.PHONE.TOO_MANY";
+
+        /// <summary>A PIN is not exactly four numeric digits.</summary>
+        public const string PinInvalidFormat = "IDA.PIN.INVALID_FORMAT";
+
+        /// <summary>A PIN and its confirmation do not match.</summary>
+        public const string PinMismatch = "IDA.PIN.MISMATCH";
+
+        /// <summary>The current PIN given to change it is not the stored one.</summary>
+        public const string PinIncorrect = "ACCOUNT.PIN.INCORRECT";
+
+        /// <summary>A PIN was sent for a sign-in that does not use one (only Basic BCeID does).</summary>
+        public const string PinNotAvailable = "ACCOUNT.PIN.NOT_AVAILABLE";
     }
 }

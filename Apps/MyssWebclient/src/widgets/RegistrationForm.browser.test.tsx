@@ -17,6 +17,10 @@ const formState = vi.hoisted(() => ({
         error: null as Error | null,
         isPending: false,
         mutate: vi.fn(),
+        // As the real mutation's reset: the last refusal is forgotten.
+        reset: vi.fn(() => {
+            formState.submit.error = null;
+        }),
     },
 }));
 
@@ -87,7 +91,10 @@ const identity: IdentityDetails = {
     gender: "female",
 };
 
-function renderForm(overrides: Partial<IdentityDetails> | null = {}) {
+function renderForm(
+    overrides: Partial<IdentityDetails> | null = {},
+    { requirePin = false }: { requirePin?: boolean } = {},
+) {
     const onRegistered = vi.fn();
     const onCancel = vi.fn();
     const queryClient = new QueryClient({
@@ -99,6 +106,7 @@ function renderForm(overrides: Partial<IdentityDetails> | null = {}) {
         <QueryClientProvider client={queryClient}>
             <RegistrationForm
                 identity={details}
+                requirePin={requirePin}
                 onRegistered={onRegistered}
                 onCancel={onCancel}
             />
@@ -113,9 +121,10 @@ function renderForm(overrides: Partial<IdentityDetails> | null = {}) {
 /** A mutation the API refuses with these field errors, as useSubmitForm reports it. */
 function refuseWith(errors: FormValidationError[]) {
     formState.submit.mutate.mockImplementation(
-        (_input: unknown, callbacks?: { onError?: () => void }) => {
-            formState.submit.error = new SubmissionRejectedError(422, errors);
-            callbacks?.onError?.();
+        (_input: unknown, callbacks?: { onError?: (error: Error) => void }) => {
+            const error = new SubmissionRejectedError(422, errors);
+            formState.submit.error = error;
+            callbacks?.onError?.(error);
         },
     );
 }
@@ -135,6 +144,7 @@ describe("RegistrationForm", () => {
         formState.submit.error = null;
         formState.submit.isPending = false;
         formState.submit.mutate.mockReset();
+        formState.submit.reset.mockClear();
     });
 
     it("shows loading while the registration spec is fetched", async () => {
@@ -366,5 +376,159 @@ describe("RegistrationForm", () => {
         // Give Form.io's validation pass time to run and refuse.
         await new Promise((resolve) => setTimeout(resolve, 300));
         expect(formState.submit.mutate).not.toHaveBeenCalled();
+    });
+});
+
+describe("RegistrationForm PIN (MYSS-258)", () => {
+    beforeEach(() => {
+        formState.spec.data = { version: 4, spec: specV4 };
+        formState.spec.error = null;
+        formState.spec.isPending = false;
+        formState.submit.error = null;
+        formState.submit.isPending = false;
+        formState.submit.mutate.mockReset();
+        formState.submit.reset.mockClear();
+    });
+
+    // Masked inputs have no textbox role; their labels end in "(required)".
+    type Screen = Awaited<ReturnType<typeof renderForm>["screen"]>;
+    const pinInput = (screen: Screen) => screen.getByLabelText(/^Type in a PIN/);
+    const confirmInput = (screen: Screen) => screen.getByLabelText(/^Re-type in the PIN/);
+
+    function sentInput() {
+        return formState.submit.mutate.mock.calls[0][0] as {
+            answers: Record<string, unknown>;
+            pin?: string;
+            pinConfirmation?: string;
+        };
+    }
+
+    it("is not asked of a citizen whose sign-in has no PIN", async () => {
+        formState.submit.mutate.mockImplementation(
+            (_input: unknown, callbacks?: { onSuccess?: () => void }) => callbacks?.onSuccess?.(),
+        );
+        const screen = await renderForm().screen;
+
+        expect(
+            screen.getByRole("heading", { name: /Create your Personal Identification Number/ }).query(),
+        ).toBeNull();
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        expect(sentInput()).not.toHaveProperty("pin");
+        expect(sentInput()).not.toHaveProperty("pinConfirmation");
+    });
+
+    it("asks a BCeID citizen for a 4-digit PIN, twice", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        await expect
+            .element(screen.getByRole("heading", { name: "Create your Personal Identification Number (PIN)" }))
+            .toBeVisible();
+        await expect.element(screen.getByText("To protect your identity, create a 4-digit PIN.")).toBeVisible();
+        await expect.element(pinInput(screen)).toHaveAttribute("type", "password");
+        await expect.element(pinInput(screen)).toHaveAttribute("inputmode", "numeric");
+        await expect.element(confirmInput(screen)).toBeVisible();
+    });
+
+    it("sends the PIN beside the answers, never inside them", async () => {
+        formState.submit.mutate.mockImplementation(
+            (_input: unknown, callbacks?: { onSuccess?: () => void }) => callbacks?.onSuccess?.(),
+        );
+        const { screen: pending, onRegistered } = renderForm({}, { requirePin: true });
+        const screen = await pending;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await pinInput(screen).fill("4821");
+        await confirmInput(screen).fill("4821");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        expect(sentInput().pin).toBe("4821");
+        expect(sentInput().pinConfirmation).toBe("4821");
+        expect(JSON.stringify(sentInput().answers)).not.toContain("4821");
+        expect(onRegistered).toHaveBeenCalledOnce();
+    });
+
+    it("does not send a PIN that is not typed twice the same", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await pinInput(screen).fill("4821");
+        await confirmInput(screen).fill("4812");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await expect
+            .element(screen.getByRole("heading", { name: "There is a problem" }))
+            .toBeVisible();
+        // In the summary and under the field.
+        await vi.waitFor(() =>
+            expect(screen.getByText("The two PINs do not match.").elements()).toHaveLength(2),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        expect(formState.submit.mutate).not.toHaveBeenCalled();
+    });
+
+    it("lists the form's problems and the PIN's in one summary", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        // The SIN is required and left empty; the PIN is too short.
+        await pinInput(screen).fill("48");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        const summary = screen.getByRole("alert");
+        await expect.element(summary).toHaveTextContent(/Social Insurance Number/);
+        await expect.element(summary).toHaveTextContent("Enter a 4-digit PIN using numbers only.");
+        expect(formState.submit.mutate).not.toHaveBeenCalled();
+    });
+
+    it("leads from the summary to the PIN field", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await screen
+            .getByRole("alert")
+            .getByRole("button", { name: "Enter a 4-digit PIN using numbers only." })
+            .click();
+        await expect.element(pinInput(screen)).toHaveFocus();
+    });
+
+    it("takes the PIN's error off once it is changed", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await pinInput(screen).fill("4821");
+        await confirmInput(screen).fill("4812");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+        await expect.element(confirmInput(screen)).toHaveAttribute("aria-invalid", "true");
+
+        await confirmInput(screen).fill("4821");
+
+        await expect.element(confirmInput(screen)).not.toHaveAttribute("aria-invalid");
+    });
+
+    it("puts the API's PIN error on the PIN field and focuses it", async () => {
+        refuseWith([
+            {
+                field: "pinConfirmation",
+                keyword: "IDA.PIN.MISMATCH",
+                message: "The two PINs do not match.",
+            },
+        ]);
+        const { screen: pending, rerender } = renderForm({}, { requirePin: true });
+        const screen = await pending;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await pinInput(screen).fill("4821");
+        await confirmInput(screen).fill("4821");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        await rerender();
+
+        await expect.element(confirmInput(screen)).toHaveFocus();
+        await expect.element(confirmInput(screen)).toHaveAttribute("aria-invalid", "true");
     });
 });

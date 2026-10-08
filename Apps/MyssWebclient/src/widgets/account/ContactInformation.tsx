@@ -21,6 +21,7 @@ import {
   type PhoneType,
 } from "@/lib/phone";
 import styles from "./ContactInformation.module.css";
+import FieldErrorSummary from "./FieldErrorSummary";
 
 // Contact Information on Account Info (MYSS-271). Read-only until the citizen
 // chooses Edit; then the phone numbers can be changed, added and removed.
@@ -194,8 +195,9 @@ export default function ContactInformation({
           aria-label="Edit phone numbers"
         >
           {Object.keys(errors).length > 0 && (
-            <ErrorSummary
+            <FieldErrorSummary
               errors={errors}
+              fieldName={fieldName}
               headingRef={summaryRef}
               onSelect={focusField}
             />
@@ -306,43 +308,6 @@ function fieldName(field: string): string {
   return index === undefined
     ? "Phone numbers"
     : `Phone number ${Number(index) + 1}`;
-}
-
-/**
- * Every reason the save was refused, at the top of the form, each one a button
- * that moves focus to its field (Docs/accessibility.md, error summaries). The
- * same messages also sit on the fields themselves. Buttons, not links: they
- * move focus within the page rather than navigate.
- */
-function ErrorSummary({
-  errors,
-  headingRef,
-  onSelect,
-}: Readonly<{
-  errors: FieldErrors;
-  headingRef: React.RefObject<HTMLHeadingElement | null>;
-  onSelect: (field: string) => void;
-}>) {
-  return (
-    <div className={styles.summary} role="alert">
-      <h3 ref={headingRef} tabIndex={-1} className={styles.summaryHeading}>
-        There is a problem
-      </h3>
-      <ul className={styles.summaryList}>
-        {Object.entries(errors).map(([field, message]) => (
-          <li key={field}>
-            <button
-              type="button"
-              className={styles.summaryLink}
-              onClick={() => onSelect(field)}
-            >
-              {fieldName(field)}: {message}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
 }
 
 function PhoneList({ account }: Readonly<{ account: AccountPayload }>) {
