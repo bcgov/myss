@@ -491,6 +491,23 @@ describe("PIN management", () => {
     expect(writes).toEqual([]);
   });
 
+  it("refuses a PIN that is too long rather than cutting it short", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Change my PIN" }).click();
+    await userEvent.fill(pinInput(screen, "Current PIN"), "4821");
+    await userEvent.fill(pinInput(screen, "New PIN"), "73501");
+    await userEvent.fill(pinInput(screen, "Confirm New PIN"), "73501");
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect.element(pinInput(screen, "New PIN")).toHaveValue("73501");
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent("New PIN: Enter a 4-digit PIN using numbers only.");
+    expect(writes).toEqual([]);
+  });
+
   it("shows a wrong current PIN on its field and clears it", async () => {
     stubApi({
       account: account(),

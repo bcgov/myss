@@ -68,9 +68,12 @@ namespace Myss.Api.Data
 
             // The column takes the data dictionary's name (MYSS-258). 256 leaves
             // room for a later hash format; today's is 84 characters.
-            profile.Property(p => p.PinHash).HasColumnName("taapcd_aae_passcode").HasMaxLength(256);
-            profile.Property(p => p.PinFailedAttempts).HasColumnName("pin_failed_attempts");
-            profile.Property(p => p.PinLockedUntil).HasColumnName("pin_locked_until");
+            // The PIN columns are concurrency tokens: a save that read them
+            // before another request changed them fails rather than overwrites
+            // (AccountService.SavePinAsync tries again from a fresh read).
+            profile.Property(p => p.PinHash).HasColumnName("taapcd_aae_passcode").HasMaxLength(256).IsConcurrencyToken();
+            profile.Property(p => p.PinFailedAttempts).HasColumnName("pin_failed_attempts").IsConcurrencyToken();
+            profile.Property(p => p.PinLockedUntil).HasColumnName("pin_locked_until").IsConcurrencyToken();
             profile.HasMany(p => p.Phones)
                 .WithOne()
                 .HasForeignKey(p => p.ProfileId)

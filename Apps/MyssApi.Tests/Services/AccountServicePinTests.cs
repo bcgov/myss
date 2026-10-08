@@ -20,7 +20,8 @@ namespace Myss.Api.Tests.Services
         private const string BceidGuid = "55555555-5555-5555-5555-555555555555";
 
         private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 10, 8, 12, 0, 0, TimeSpan.Zero));
-        private readonly PinHasher _hasher = new();
+        private readonly InterruptiblePinHasher _hasher = new();
+        private readonly FakeErrorMessageProvider _messages = new();
         private readonly DbContextOptions<FormsDbContext> _options = new DbContextOptionsBuilder<FormsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -230,6 +231,47 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task ARefusalUsesTheCataloguesWording()
+        {
+            await Seed(pin: "4821");
+            _messages.Overrides[ValidationKeywords.PinIncorrect] = "That is not your PIN.";
+
+            AccountResultModel result = await Save(current: "0000", next: "7350", confirm: "7350");
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(ValidationKeywords.PinIncorrect, error.Keyword);
+            Assert.Equal("That is not your PIN.", error.Message);
+        }
+
+        [Fact]
+        public async Task OfTwoFirstPinsMadeAtOnce_OnlyOneSucceeds()
+        {
+            await Seed(pin: null);
+
+            // The other request saves its PIN between this one's read and write.
+            _hasher.BeforeNextCall = () => SetStoredPin("1111");
+            AccountResultModel result = await Save(current: null, next: "4821", confirm: "4821");
+
+            // This one starts again, finds a PIN now set, and so needs the current one.
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("currentPin", error.Field);
+            Assert.True(await StoredPinIs("1111"));
+        }
+
+        [Fact]
+        public async Task WrongPinsSentAtOnceAreAllCounted()
+        {
+            await Seed(pin: "4821");
+
+            // Another wrong guess is counted between this one's read and write.
+            _hasher.BeforeNextCall = () => CountWrongGuess();
+            AccountResultModel result = await Save(current: "0000", next: "7350", confirm: "7350");
+
+            Assert.Equal(AccountOutcome.Invalid, result.Outcome);
+            Assert.Equal(2, (await Profile()).PinFailedAttempts);
+        }
+
+        [Fact]
         public void ALockoutThatCouldNeverHappenOrNeverEndIsRefusedAtStartup()
         {
             Assert.Throws<InvalidOperationException>(() => PinLockoutConfig.Validate(new PinLockoutConfig { MaxAttempts = 0 }));
@@ -266,7 +308,8 @@ namespace Myss.Api.Tests.Services
             new StubCurrentUserAccessor(Subject, bceidGuid),
             _clock,
             _hasher,
-            lockout);
+            lockout,
+            _messages);
 
         private async Task Seed(string? pin)
         {
@@ -287,6 +330,20 @@ namespace Myss.Api.Tests.Services
             await db.SaveChangesAsync();
         }
 
+        private void SetStoredPin(string pin)
+        {
+            using var db = new InMemoryFormsDbContext(_options);
+            db.MyssUserProfiles.Single(p => p.Subject == Subject).PinHash = new PinHasher().Hash(Pin.TryCreate(pin).Value!);
+            db.SaveChanges();
+        }
+
+        private void CountWrongGuess()
+        {
+            using var db = new InMemoryFormsDbContext(_options);
+            db.MyssUserProfiles.Single(p => p.Subject == Subject).PinFailedAttempts++;
+            db.SaveChanges();
+        }
+
         private async Task<MyssUserProfile> Profile()
         {
             using var db = new InMemoryFormsDbContext(_options);
@@ -297,6 +354,37 @@ namespace Myss.Api.Tests.Services
         {
             MyssUserProfile profile = await Profile();
             return profile.PinHash is not null && _hasher.Verify(profile.PinHash, Pin.TryCreate(pin).Value!, out _);
+        }
+
+        /// <summary>
+        /// The real hasher, with a way to let another request write between a
+        /// save's read of the profile and its write: hashing or verifying is
+        /// the step in between.
+        /// </summary>
+        private sealed class InterruptiblePinHasher : IPinHasher
+        {
+            private readonly PinHasher _inner = new();
+
+            public Action? BeforeNextCall { get; set; }
+
+            public string Hash(Pin pin)
+            {
+                Interrupt();
+                return _inner.Hash(pin);
+            }
+
+            public bool Verify(string storedHash, Pin pin, out string? upgradedHash)
+            {
+                Interrupt();
+                return _inner.Verify(storedHash, pin, out upgradedHash);
+            }
+
+            private void Interrupt()
+            {
+                Action? interrupt = BeforeNextCall;
+                BeforeNextCall = null;
+                interrupt?.Invoke();
+            }
         }
     }
 }

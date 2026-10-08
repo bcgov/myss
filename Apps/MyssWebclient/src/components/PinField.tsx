@@ -1,8 +1,9 @@
 import { TextField } from "@bcgov/design-system-react-components";
 
 // One 4-digit PIN input (MYSS-258), the same at registration and on Account
-// Info: masked, a numeric keypad on a phone, and no more than four characters.
-// The checks themselves are in lib/pin; this only collects the digits.
+// Info: masked, with a numeric keypad on a phone. There is no maxLength: it
+// would cut a pasted "12345" to "1234" and send a PIN the citizen never chose,
+// so an overlong PIN reaches lib/pin's checks and is refused there instead.
 
 interface PinFieldProps {
   label: string;
@@ -29,7 +30,6 @@ export default function PinField({
       name={name}
       type="password"
       inputMode="numeric"
-      maxLength={4}
       autoComplete={autoComplete}
       isRequired
       // The errors are ours (lib/pin and the API), not the browser's.

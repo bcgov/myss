@@ -26,6 +26,12 @@ namespace Myss.Api.Services
         /// </summary>
         public const int MaxPhones = 4;
 
+        /// <summary>
+        /// How many times a PIN save is tried when another request changed the
+        /// PIN columns between its read and its write. Each try reads afresh.
+        /// </summary>
+        private const int MaxPinSaveTries = 3;
+
         private readonly ILogger<AccountService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly ICaseAccountProvider _caseAccountProvider;
@@ -33,6 +39,7 @@ namespace Myss.Api.Services
         private readonly TimeProvider _timeProvider;
         private readonly IPinHasher _pinHasher;
         private readonly PinLockoutConfig _pinLockout;
+        private readonly IErrorMessageProvider _errorMessageProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AccountService"/> class.
@@ -44,6 +51,7 @@ namespace Myss.Api.Services
         /// <param name="timeProvider">The clock.</param>
         /// <param name="pinHasher">The PIN hasher.</param>
         /// <param name="pinLockout">How many wrong PINs lock Change PIN, and for how long.</param>
+        /// <param name="errorMessageProvider">The error message catalogue.</param>
         public AccountService(
             ILogger<AccountService> logger,
             FormsDbContext dbContext,
@@ -51,7 +59,8 @@ namespace Myss.Api.Services
             ICurrentUserAccessor currentUserAccessor,
             TimeProvider timeProvider,
             IPinHasher pinHasher,
-            PinLockoutConfig pinLockout)
+            PinLockoutConfig pinLockout,
+            IErrorMessageProvider errorMessageProvider)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -60,6 +69,7 @@ namespace Myss.Api.Services
             _timeProvider = timeProvider;
             _pinHasher = pinHasher;
             _pinLockout = pinLockout;
+            _errorMessageProvider = errorMessageProvider;
         }
 
         /// <inheritdoc/>
@@ -91,10 +101,11 @@ namespace Myss.Api.Services
             // body from setting how much work the loop does.
             if (request.Phones.Count > MaxPhones)
             {
-                return AccountResultModel.Invalid([Error(
+                ValidationErrorModel tooMany = Error(
                     "phones",
                     ValidationKeywords.PhoneTooMany,
-                    $"You can have up to {MaxPhones} phone numbers, one of each type.")]);
+                    $"You can have up to {MaxPhones} phone numbers, one of each type.");
+                return await InvalidAsync([tooMany], cancellationToken);
             }
 
             // The check above already guarantees this equals the list length.
@@ -155,7 +166,7 @@ namespace Myss.Api.Services
 
             if (errors.Count > 0)
             {
-                return AccountResultModel.Invalid(errors);
+                return await InvalidAsync(errors, cancellationToken);
             }
 
             // The list replaces the stored one. Added explicitly: a row whose
@@ -191,6 +202,30 @@ namespace Myss.Api.Services
 
         /// <inheritdoc/>
         public async Task<AccountResultModel> SavePinAsync(SavePinRequestModel request, CancellationToken cancellationToken)
+        {
+            // The PIN columns are concurrency tokens, so a write only lands if
+            // they are as this request read them. Without that, two first PINs
+            // made at once would each report success while one overwrote the
+            // other, and wrong guesses sent at once would each count from the
+            // same number and never reach the lockout. A request that loses
+            // the race starts again from what the winner wrote.
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    AccountResultModel result = await TrySavePinAsync(request, cancellationToken);
+                    return result.Outcome == AccountOutcome.Invalid
+                        ? await InvalidAsync(result.Errors, cancellationToken)
+                        : result;
+                }
+                catch (DbUpdateConcurrencyException) when (attempt < MaxPinSaveTries)
+                {
+                    _dbContext.ChangeTracker.Clear();
+                }
+            }
+        }
+
+        private async Task<AccountResultModel> TrySavePinAsync(SavePinRequestModel request, CancellationToken cancellationToken)
         {
             MyssUserProfile? profile = await FindOwnProfileAsync(track: true, cancellationToken);
             if (profile is null)
@@ -286,6 +321,19 @@ namespace Myss.Api.Services
                 "currentPin",
                 ValidationKeywords.PinIncorrect,
                 "The current PIN is not correct.")]);
+        }
+
+        /// <summary>
+        /// Refuses with the catalogue's wording for each keyword, as the forms
+        /// path does, so a Service Designer's edit reaches Account Info too.
+        /// </summary>
+        private async Task<AccountResultModel> InvalidAsync(
+            IReadOnlyList<ValidationErrorModel> errors,
+            CancellationToken cancellationToken)
+        {
+            return AccountResultModel.Invalid(ErrorMessageResolver.Resolve(
+                errors,
+                await _errorMessageProvider.GetMessagesAsync(cancellationToken)));
         }
 
         private static ValidationErrorModel Error(string field, string keyword, string message)

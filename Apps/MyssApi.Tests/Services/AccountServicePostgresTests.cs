@@ -75,7 +75,8 @@ namespace Myss.Api.Tests.Services
                 new StubCurrentUserAccessor(subject),
                 TimeProvider.System,
                 new PinHasher(),
-                new PinLockoutConfig());
+                new PinLockoutConfig(),
+                new FakeErrorMessageProvider());
             return await service.UpdatePhonesAsync(
                 new UpdatePhonesRequestModel
                 {
