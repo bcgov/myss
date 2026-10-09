@@ -1,0 +1,10 @@
+/*
+ * bcgovRadio draws its own label beside the BCDS RadioGroup (see buildGroup in
+ * bcgovComponents.tsx), so it restores the gap RadioGroup puts between its own
+ * label and options.
+ */
+.myss-radio-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}

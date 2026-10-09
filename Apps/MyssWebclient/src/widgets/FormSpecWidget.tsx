@@ -14,11 +14,9 @@ import "@formio/js/dist/formio.form.min.css";
 import "./FormSpecWidget.css";
 
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
+import SubmissionErrors from "@/components/SubmissionErrors";
+import { useClientValidation } from "@/hooks/useClientValidation";
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
-
-const BUS_PASS_FORM_SPEC_ID = "bc-bus-pass";
-const SIN_FIELD = "socialInsuranceNumber";
-const SIN_ERROR_MESSAGE = "SIN must be valid";
 
 interface FormSpecWidgetProps {
   formSpecId: string;
@@ -28,16 +26,6 @@ interface FormSpecWidgetProps {
 
 interface FormSubmission {
   data: Record<string, unknown>;
-}
-
-function isSinError(error: FormValidationError) {
-  return error.field === SIN_FIELD && error.keyword.startsWith("IDA.SIN.");
-}
-
-function formSpecErrorMessage(formSpecId: string, error: FormValidationError) {
-  return formSpecId === BUS_PASS_FORM_SPEC_ID && isSinError(error)
-    ? SIN_ERROR_MESSAGE
-    : error.message;
 }
 
 function firstErrorField(
@@ -72,6 +60,10 @@ export default function FormSpecWidget({
   const { data: spec, error, isPending } = useFormSpec(formSpecId);
   const submit = useSubmitForm(formSpecId);
   const { mutate: submitForm } = submit;
+  // A submit Form.io blocks is listed in the same summary as one the API
+  // refuses; Form.io's own alert is switched off so nothing shows twice.
+  const clientValidation = useClientValidation();
+  const { clear: clearClientValidation } = clientValidation;
   const formElementRef = useRef<HTMLElement>(null);
   const formInstanceRef = useRef<Webform>(null);
   const displayedErrorRef = useRef<Error>(null);
@@ -113,12 +105,13 @@ export default function FormSpecWidget({
     (submission: FormSubmission) => {
       if (spec === undefined) return;
 
+      clearClientValidation();
       submitForm({
         formSpecVersion: spec.version,
         answers: submission.data,
       });
     },
-    [spec, submitForm],
+    [clearClientValidation, spec, submitForm],
   );
 
   useEffect(() => {
@@ -132,9 +125,11 @@ export default function FormSpecWidget({
     }
     displayedErrorRef.current = submit.error;
 
+    // The API's wording is the authored and catalogue wording already; it is
+    // shown as it arrives.
     const formioErrors = validationErrors.map((validationError) => ({
       level: "error",
-      message: formSpecErrorMessage(formSpecId, validationError),
+      message: validationError.message,
       path: validationError.field,
     }));
 
@@ -145,7 +140,7 @@ export default function FormSpecWidget({
 
     const field = firstErrorField(formElementRef.current, validationErrors);
     if (field) form.focusOnComponent(field);
-  }, [formSpecId, submit.error, validationErrors]);
+  }, [submit.error, validationErrors]);
 
   if (isPending) return <p>Loading form…</p>;
   if (error) return <p>Could not load the form: {error.message}</p>;
@@ -178,16 +173,21 @@ export default function FormSpecWidget({
           {spec.title ?? spec.formSpecId} <small>(spec v{spec.version})</small>
         </h3>
       )}
-      {submit.error &&
+      {clientValidation.error ? (
+        <SubmissionErrors error={clientValidation.error} />
+      ) : (
+        submit.error &&
         (renderSubmissionError ? (
           renderSubmissionError(submit.error)
         ) : (
           <p role="alert">Submission failed: {submit.error.message}</p>
-        ))}
+        ))
+      )}
       <Form
         src={spec.spec}
         options={formOptions}
         onFormReady={handleFormReady}
+        onSubmitError={clientValidation.onSubmitError}
         onSubmit={handleSubmit}
       />
     </section>

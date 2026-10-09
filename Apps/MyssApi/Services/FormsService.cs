@@ -24,6 +24,12 @@ namespace Myss.Api.Services
     {
         private const string BusPassTemplateName = "bus-pass.odt";
 
+        /// <summary>
+        /// The oldest registration version a submission may claim. v1 predates the
+        /// fields a profile needs; see <see cref="SubmitAsync(string, FormSubmissionRequestModel, Func{JsonElement, IReadOnlyList{ValidationErrorModel}}?, CancellationToken)"/>.
+        /// </summary>
+        private const int MinimumRegistrationVersion = 2;
+
         private readonly ILogger<FormsService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly IFormSpecProvider _formSpecProvider;
@@ -31,6 +37,7 @@ namespace Myss.Api.Services
         private readonly ITemplateProvider _templateProvider;
         private readonly IFormSpecAdminProvider _formSpecAdminProvider;
         private readonly ICurrentUserAccessor _currentUserAccessor;
+        private readonly IErrorMessageProvider _errorMessageProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -41,6 +48,8 @@ namespace Myss.Api.Services
         /// <param name="pdfProvider">Injected PDF provider.</param>
         /// <param name="templateProvider">Injected template provider.</param>
         /// <param name="formSpecAdminProvider">Injected form-spec admin (write) provider.</param>
+        /// <param name="currentUserAccessor">Injected current user accessor.</param>
+        /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
         public FormsService(
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
@@ -48,7 +57,8 @@ namespace Myss.Api.Services
             IPdfProvider pdfProvider,
             ITemplateProvider templateProvider,
             IFormSpecAdminProvider formSpecAdminProvider,
-            ICurrentUserAccessor currentUserAccessor)
+            ICurrentUserAccessor currentUserAccessor,
+            IErrorMessageProvider errorMessageProvider)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -57,12 +67,19 @@ namespace Myss.Api.Services
             _templateProvider = templateProvider;
             _formSpecAdminProvider = formSpecAdminProvider;
             _currentUserAccessor = currentUserAccessor;
+            _errorMessageProvider = errorMessageProvider;
         }
 
         /// <inheritdoc/>
         public Task<FormSpecModel?> GetLatestSpecAsync(string formSpecId, CancellationToken cancellationToken)
         {
             return _formSpecProvider.GetLatestAsync(formSpecId, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<IReadOnlyDictionary<string, string>> GetErrorMessagesAsync(CancellationToken cancellationToken)
+        {
+            return _errorMessageProvider.GetMessagesAsync(cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -235,28 +252,24 @@ namespace Myss.Api.Services
             string? message = null;
             List<string> keywords = [];
 
+            // No JsonException handling here: the only callers reach this after
+            // IsLifecycleRefusal, which has already parsed this same body as JSON
+            // (and returns false, never this path, for one that is not).
             if (!string.IsNullOrWhiteSpace(ex.Body))
             {
-                try
+                using JsonDocument doc = JsonDocument.Parse(ex.Body);
+                JsonElement root = doc.RootElement;
+                if (root.ValueKind == JsonValueKind.Object
+                    && root.TryGetProperty("error", out JsonElement error)
+                    && error.ValueKind == JsonValueKind.Object)
                 {
-                    using JsonDocument doc = JsonDocument.Parse(ex.Body);
-                    JsonElement root = doc.RootElement;
-                    if (root.ValueKind == JsonValueKind.Object
-                        && root.TryGetProperty("error", out JsonElement error)
-                        && error.ValueKind == JsonValueKind.Object)
+                    if (error.TryGetProperty("message", out JsonElement msg)
+                        && msg.ValueKind == JsonValueKind.String)
                     {
-                        if (error.TryGetProperty("message", out JsonElement msg)
-                            && msg.ValueKind == JsonValueKind.String)
-                        {
-                            message = msg.GetString();
-                        }
-
-                        keywords = ExtractRecognizedKeywords(error);
+                        message = msg.GetString();
                     }
-                }
-                catch (JsonException)
-                {
-                    // Non-JSON body - fall through to the generic refusal message.
+
+                    keywords = ExtractRecognizedKeywords(error);
                 }
             }
 
@@ -312,20 +325,47 @@ namespace Myss.Api.Services
                 ]);
             }
 
+            // Registration v1 asked only for a first name, but a profile needs the
+            // last name, date of birth, email and SIN that v2 introduced, so a v1
+            // answer set can never become a profile. v1 is published and immutable
+            // and cannot be retired from Strapi, so it is refused here, the same
+            // way as an unknown version: that tells a stale tab to reload onto the
+            // current form instead of failing on fields the citizen was never shown.
+            if (IsRegistration(formSpecId) && request.FormSpecVersion < MinimumRegistrationVersion)
+            {
+                _logger.LogWarning(
+                    "Rejected registration on retired version {FormSpecVersion}; the minimum is {MinimumVersion}",
+                    request.FormSpecVersion,
+                    MinimumRegistrationVersion);
+
+                return FormSubmissionResultModel.Refused(
+                [
+                    new ValidationErrorModel
+                    {
+                        Field = nameof(FormSubmissionRequestModel.FormSpecVersion),
+                        Keyword = ValidationKeywords.VersionUnknown,
+                        Message = $"Version {request.FormSpecVersion} of this form is not available. Reload the form and try again.",
+                    },
+                ]);
+            }
+
             IReadOnlyList<ValidationErrorModel> errors =
                 FormSpecValidator.Validate(spec.Spec, request.Answers);
 
-            if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
+            if (IsRegistration(formSpecId))
             {
-                errors = [.. errors, .. ValidateRegistration(request.Answers)];
+                errors = FormSpecValidator.OnePerField([.. errors, .. ValidateRegistration(spec.Spec, request.Answers)]);
             }
 
             if (domainRules is not null)
             {
+                // The spec's failure for a field comes first; a domain rule adds
+                // a field's failure only when the spec found none, so the citizen
+                // reads one reason per field, as the form shows them.
                 IReadOnlyList<ValidationErrorModel> domainErrors = domainRules(request.Answers);
                 if (domainErrors.Count > 0)
                 {
-                    errors = [.. errors, .. domainErrors];
+                    errors = FormSpecValidator.OnePerField([.. errors, .. domainErrors]);
                 }
             }
 
@@ -339,7 +379,15 @@ namespace Myss.Api.Services
                     request.FormSpecVersion,
                     errors.Count);
 
-                return FormSubmissionResultModel.Refused(errors);
+                // The validators carry compiled default wording. The catalogue
+                // a Service Designer publishes in the content engine replaces
+                // it keyword by keyword, so what the citizen reads is authored
+                // content rather than code. Read only on this path: an accepted
+                // submission never needs it.
+                return FormSubmissionResultModel.Refused(
+                    ErrorMessageResolver.Resolve(
+                        errors,
+                        await _errorMessageProvider.GetMessagesAsync(cancellationToken)));
             }
 
             var submission = new FormSubmission
@@ -352,7 +400,7 @@ namespace Myss.Api.Services
             };
 
             _dbContext.FormSubmissions.Add(submission);
-            if (string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase))
+            if (IsRegistration(formSpecId))
             {
                 AddOrUpdateProfile(request.Answers);
             }
@@ -368,6 +416,9 @@ namespace Myss.Api.Services
             return FormSubmissionResultModel.Accepted(ToResponse(submission, spec: null));
         }
 
+        private static bool IsRegistration(string formSpecId) =>
+            string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase);
+
         private void AddOrUpdateProfile(JsonElement answers)
         {
             CurrentUser currentUser = _currentUserAccessor.User;
@@ -381,6 +432,16 @@ namespace Myss.Api.Services
             string dateOfBirth = answers.GetProperty("dateOfBirth").GetString()!;
             string email = answers.GetProperty("email").GetString()!;
             string sin = answers.GetProperty("sin").GetString()!;
+
+            // Optional at this layer: registration v2 and v3 did not ask for them,
+            // and a submission is validated against the version it claims.
+            // Stored as the ten digits, by the same rule FormSpecValidator has
+            // already held the answer to.
+            string? phone = OptionalString(answers, "phone") is { } rawPhone
+                && PhoneNumber.TryCreate(rawPhone) is { IsValid: true } validPhone
+                    ? validPhone.Value!.Digits
+                    : null;
+            string? gender = OptionalString(answers, "gender");
 
             _ = TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate);
 
@@ -397,6 +458,8 @@ namespace Myss.Api.Services
                     DateOfBirth = parsedDate,
                     Email = email,
                     Sin = sin,
+                    Phone = phone,
+                    Gender = gender,
                     CreatedAt = DateTimeOffset.UtcNow,
                     UpdatedAt = DateTimeOffset.UtcNow,
                 });
@@ -408,42 +471,115 @@ namespace Myss.Api.Services
             profile.DateOfBirth = parsedDate;
             profile.Email = email;
             profile.Sin = sin;
+            // v2 and v3 are still published and do not ask for these, so an absent
+            // answer means "not on this form", not "cleared": keep what v4 stored.
+            // (v1 never gets this far; SubmitAsync refuses it.)
+            if (phone is not null)
+            {
+                profile.Phone = phone;
+            }
+
+            if (gender is not null)
+            {
+                profile.Gender = gender;
+            }
+
             profile.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        private static IReadOnlyList<ValidationErrorModel> ValidateRegistration(JsonElement answers)
+        private static IReadOnlyList<ValidationErrorModel> ValidateRegistration(JsonElement spec, JsonElement answers)
         {
-            string? dateOfBirth = answers.TryGetProperty("dateOfBirth", out JsonElement value) && value.ValueKind == JsonValueKind.String
-                ? value.GetString()
-                : null;
+            List<ValidationErrorModel> errors = [];
+            string? dateOfBirth = OptionalString(answers, "dateOfBirth");
 
             if (!TryParseRegistrationDate(dateOfBirth ?? string.Empty, out DateOnly parsedDate))
             {
-                return
-                [
-                    new ValidationErrorModel
-                    {
-                        Field = "dateOfBirth",
-                        Keyword = ValidationKeywords.RegistrationDateOfBirthInvalid,
-                        Message = "Enter a valid date of birth.",
-                    },
-                ];
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = "dateOfBirth",
+                    Keyword = ValidationKeywords.RegistrationDateOfBirthInvalid,
+                    Message = "Enter a valid date of birth.",
+                });
             }
-
-            if (parsedDate > DateOnly.FromDateTime(DateTime.UtcNow))
+            else if (parsedDate > DateOnly.FromDateTime(DateTime.UtcNow))
             {
-                return
-                [
-                    new ValidationErrorModel
-                    {
-                        Field = "dateOfBirth",
-                        Keyword = ValidationKeywords.RegistrationDateOfBirthInFuture,
-                        Message = "Date of birth cannot be in the future.",
-                    },
-                ];
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = "dateOfBirth",
+                    Keyword = ValidationKeywords.RegistrationDateOfBirthInFuture,
+                    Message = "Date of birth cannot be in the future.",
+                });
             }
 
-            return [];
+            // Whether gender is required is the spec's call, already enforced by
+            // FormSpecValidator, which also checks the phone (a phoneNumber field
+            // gets the PhoneNumber rule there). This only checks a gender that is
+            // there. The options are authored in Strapi, so check against the spec the
+            // citizen was shown rather than a list held here.
+            if (OptionalString(answers, "gender") is { } gender
+                && !ComponentOptionValues(spec, "gender").Contains(gender))
+            {
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = "gender",
+                    Keyword = ValidationKeywords.RegistrationGenderUnknown,
+                    Message = "Choose one of the listed options.",
+                });
+            }
+
+            return errors;
+        }
+
+        private static string? OptionalString(JsonElement answers, string key) =>
+            answers.TryGetProperty(key, out JsonElement value)
+                && value.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(value.GetString())
+                    ? value.GetString()
+                    : null;
+
+        /// <summary>
+        /// The option values of the component keyed <paramref name="key"/>, found
+        /// at any depth (a panel holds its fields). Empty when there is no such
+        /// component, so an answer for it cannot match.
+        /// </summary>
+        private static HashSet<string> ComponentOptionValues(JsonElement node, string key)
+        {
+            HashSet<string> values = [];
+            if (node.ValueKind != JsonValueKind.Object
+                || !node.TryGetProperty("components", out JsonElement components)
+                || components.ValueKind != JsonValueKind.Array)
+            {
+                return values;
+            }
+
+            foreach (JsonElement component in components.EnumerateArray())
+            {
+                if (component.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if (component.TryGetProperty("key", out JsonElement k)
+                    && k.ValueKind == JsonValueKind.String
+                    && k.GetString() == key
+                    && component.TryGetProperty("values", out JsonElement options)
+                    && options.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (JsonElement option in options.EnumerateArray())
+                    {
+                        if (option.ValueKind == JsonValueKind.Object
+                            && option.TryGetProperty("value", out JsonElement v)
+                            && v.ValueKind == JsonValueKind.String)
+                        {
+                            values.Add(v.GetString()!);
+                        }
+                    }
+                }
+
+                values.UnionWith(ComponentOptionValues(component, key));
+            }
+
+            return values;
         }
 
         private static bool TryParseRegistrationDate(string value, out DateOnly date)

@@ -4,6 +4,7 @@ import App from "@/App";
 import HomePage from "@/pages/HomePage";
 import DashboardPage from "@/pages/DashboardPage";
 import DashboardLayout from "@/pages/DashboardLayout";
+import AccountInfoPage from "@/pages/AccountInfoPage";
 import UnderDevelopmentPage from "@/pages/UnderDevelopmentPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
@@ -121,10 +122,7 @@ export const router = createBrowserRouter([
             path: paths.serviceRequests,
             element: <UnderDevelopmentPage title="Service Requests" />,
           },
-          {
-            path: paths.accountInfo,
-            element: <UnderDevelopmentPage title="Account Info" />,
-          },
+          { path: paths.accountInfo, element: <AccountInfoPage /> },
         ],
       },
 

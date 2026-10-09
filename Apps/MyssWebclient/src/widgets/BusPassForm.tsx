@@ -1,6 +1,6 @@
 import { Button } from "@bcgov/design-system-react-components";
 import { Form } from "@formio/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import "@formio/js/dist/formio.form.min.css";
 import "./FormSpecWidget.css";
@@ -13,13 +13,20 @@ import {
 } from "@/api/busPass";
 import SubmissionErrors from "@/components/SubmissionErrors";
 import { useSubmitBusPass } from "@/hooks/useBusPass";
+import { useClientValidation } from "@/hooks/useClientValidation";
+import {
+  errorMessageFor,
+  useErrorMessages,
+  type ErrorMessageCatalogue,
+} from "@/hooks/useErrorMessages";
 import { useFormSpec } from "@/hooks/usePocForm";
 
 const FORM_SPEC_ID = "bc-bus-pass";
 
-// Display text for each outcome keyword the API can return. Interim: the
-// handbook has these resolving from the content engine by key, so the keyword
-// stays the contract and only the wording here is provisional.
+// Fallback text for each outcome keyword the API can return. The wording the
+// citizen reads comes from the error message catalogue the Service Designer
+// publishes in the content engine (useErrorMessages); these are what the page
+// shows until it loads, or when it cannot be read. The keyword is the contract.
 const KEYWORD_MESSAGES: Record<string, string> = {
   [BUS_PASS_KEYWORDS.rejected]:
     "The BC Bus Pass Program could not accept this request. Check that the details you entered match what the ministry has on file, or contact the program for help.",
@@ -60,9 +67,11 @@ function useFocusOnMount() {
 /** The ministry answered: the request was accepted, or it was declined. */
 function SubmissionOutcome({
   result,
+  catalogue,
   onStartAgain,
 }: Readonly<{
   result: BusPassSubmissionPayload;
+  catalogue: ErrorMessageCatalogue | undefined;
   onStartAgain: () => void;
 }>) {
   const headingRef = useFocusOnMount();
@@ -89,8 +98,11 @@ function SubmissionOutcome({
     );
   }
 
-  const message =
-    (result.keyword && KEYWORD_MESSAGES[result.keyword]) ?? FALLBACK_REJECTED;
+  const message = errorMessageFor(
+    catalogue,
+    result.keyword,
+    (result.keyword && KEYWORD_MESSAGES[result.keyword]) ?? FALLBACK_REJECTED,
+  );
 
   return (
     <section
@@ -137,16 +149,25 @@ function SubmissionOutcome({
  * request); when it provably never arrived, this sits above the form so they
  * can try again. A throttled request reads the same way as the second case.
  */
-function unavailableCopy(error: BusPassUnavailableError): {
+function unavailableCopy(
+  error: BusPassUnavailableError,
+  catalogue: ErrorMessageCatalogue | undefined,
+): {
   heading: string;
   message: string;
 } {
   if (error.keyword === BUS_PASS_KEYWORDS.rateLimited) {
     return {
       heading: "Too many requests",
-      message: KEYWORD_MESSAGES[BUS_PASS_KEYWORDS.rateLimited],
+      message: errorMessageFor(
+        catalogue,
+        BUS_PASS_KEYWORDS.rateLimited,
+        KEYWORD_MESSAGES[BUS_PASS_KEYWORDS.rateLimited],
+      ),
     };
   }
+  // One keyword, two texts: which one depends on the API's verdict, so these
+  // stay here rather than in the catalogue (see the shared catalogue's header).
   if (error.mayHaveReachedIcm) {
     return { heading: "Request saved", message: MESSAGE_MAY_HAVE_REACHED };
   }
@@ -155,9 +176,13 @@ function unavailableCopy(error: BusPassUnavailableError): {
 
 function SubmissionUnavailable({
   error,
-}: Readonly<{ error: BusPassUnavailableError }>) {
+  catalogue,
+}: Readonly<{
+  error: BusPassUnavailableError;
+  catalogue: ErrorMessageCatalogue | undefined;
+}>) {
   const headingRef = useFocusOnMount();
-  const { heading, message } = unavailableCopy(error);
+  const { heading, message } = unavailableCopy(error, catalogue);
 
   return (
     <section className={`${styles.outcome} ${styles.unavailable}`} role="alert">
@@ -185,7 +210,14 @@ function SubmissionUnavailable({
  */
 export default function BusPassForm() {
   const { data: spec, error, isPending } = useFormSpec(FORM_SPEC_ID);
+  // Never awaited: the outcomes fall back to the compiled wording until the
+  // catalogue arrives, and a failed read is not a reason to withhold the form.
+  const { data: catalogue } = useErrorMessages();
   const submit = useSubmitBusPass();
+  // A submit Form.io blocks is listed in the same summary as one the API
+  // refuses; Form.io's own alert is switched off so nothing shows twice.
+  const clientValidation = useClientValidation();
+  const formOptions = useMemo(() => ({ noAlerts: true }), []);
 
   // Form.io disables its submit button when clicked and re-enables it only
   // when told the submit finished. With an in-memory spec nobody tells it,
@@ -201,6 +233,7 @@ export default function BusPassForm() {
     return (
       <SubmissionOutcome
         result={submit.data}
+        catalogue={catalogue}
         onStartAgain={() => submit.reset()}
       />
     );
@@ -215,19 +248,24 @@ export default function BusPassForm() {
     unavailable.mayHaveReachedIcm &&
     unavailable.keyword !== BUS_PASS_KEYWORDS.rateLimited
   ) {
-    return <SubmissionUnavailable error={unavailable} />;
+    return <SubmissionUnavailable error={unavailable} catalogue={catalogue} />;
   }
+
+  // The newest failure first: a blocked submit outranks an API refusal from
+  // an earlier attempt, which the next successful submit replaces anyway.
+  const summaryError = clientValidation.error ?? submit.error;
 
   return (
     <section className={styles.formHost}>
-      {submit.error &&
-        (unavailable ? (
-          <SubmissionUnavailable error={unavailable} />
+      {summaryError &&
+        (unavailable && !clientValidation.error ? (
+          <SubmissionUnavailable error={unavailable} catalogue={catalogue} />
         ) : (
-          <SubmissionErrors error={submit.error} />
+          <SubmissionErrors error={summaryError} />
         ))}
       <Form
         src={spec.spec}
+        options={formOptions}
         onFormReady={(instance) => {
           const form = instance as unknown as FormInstance;
           formRef.current = form;
@@ -241,8 +279,10 @@ export default function BusPassForm() {
             }
           });
         }}
+        onSubmitError={clientValidation.onSubmitError}
         onSubmit={(submission: { data: Record<string, unknown> }) => {
           if (submit.isPending) return;
+          clientValidation.clear();
           submit.mutate(
             {
               formSpecVersion: spec.version,

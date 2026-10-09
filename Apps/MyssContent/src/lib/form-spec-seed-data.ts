@@ -48,7 +48,13 @@ export const busPassFormSpecV4 = busPassFormSpecV4Json as unknown as Json;
 /** The BC Bus Pass form spec with Canada Post address autocomplete. */
 export const busPassFormSpecV5 = busPassFormSpecV5Json as unknown as Json;
 
-/** The BC Bus Pass form spec with legacy MySS phone validation. */
+/**
+ * Bus pass v6: the standard validation rules named on the form. Phone and
+ * postal code fields carry `properties.myssValidator`, the email verification
+ * names its partner with `properties.myssMatches` instead of browser script,
+ * and the birth day checks the day/month/year group with `dateParts`. The
+ * wording for each rule is authored per field in `errors`.
+ */
 export const busPassFormSpecV6 = busPassFormSpecV6Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
@@ -240,6 +246,138 @@ export const registrationFormSpecV3: Json = {
       action: "submit",
       label: "Submit",
       input: true,
+    },
+  ],
+};
+
+/**
+ * Registration v4: the "Create your MySS account" design. Adds phone and
+ * gender, groups the page into review / additional information / consent, and
+ * moves the SIN help into a BC Gov accordion.
+ *
+ * `properties.myssPrefill` names the sign-in identity attribute the webclient
+ * fills the field from; `myssPrefillLock: "true"` makes the field read-only,
+ * but only when the identity provider actually supplied a value, so a missing
+ * claim never leaves a required field the citizen cannot fill. Email is
+ * prefilled but stays editable.
+ *
+ * No submit button: the webclient renders BC Gov Design System Cancel and
+ * "Complete registration" buttons and submits the form through Form.io's API.
+ */
+export const registrationFormSpecV4: Json = {
+  display: "form",
+  components: [
+    {
+      type: "content",
+      key: "reviewHeading",
+      input: false,
+      html: "<h2>Review your information</h2>",
+    },
+    {
+      type: "content",
+      key: "reviewIntro",
+      input: false,
+      html: "<p>We have pre-filled the information provided by the government ID you used to sign in. If any of this information is wrong, update it with that provider before you register your account.</p>",
+    },
+    {
+      type: "textfield",
+      key: "firstName",
+      label: "First name",
+      input: true,
+      validate: { required: true },
+      properties: { myssPrefill: "givenName", myssPrefillLock: "true" },
+    },
+    {
+      type: "textfield",
+      key: "lastName",
+      label: "Last name",
+      input: true,
+      validate: { required: true },
+      properties: { myssPrefill: "familyName", myssPrefillLock: "true" },
+    },
+    {
+      type: "email",
+      key: "email",
+      label: "Email",
+      input: true,
+      validate: { required: true },
+      properties: { myssPrefill: "email" },
+    },
+    {
+      type: "phoneNumber",
+      key: "phone",
+      label: "Phone number",
+      input: true,
+      inputMask: "999-999-9999",
+      validate: { required: true },
+      properties: { myssPrefill: "phoneNumber", myssPrefillLock: "true" },
+    },
+    {
+      type: "datetime",
+      key: "dateOfBirth",
+      label: "Date of birth",
+      input: true,
+      format: "yyyy-MM-dd",
+      enableDate: true,
+      enableTime: false,
+      validate: { required: true },
+      properties: { myssPrefill: "birthdate", myssPrefillLock: "true" },
+    },
+    {
+      type: "bcgovRadio",
+      key: "gender",
+      label: "Gender",
+      input: true,
+      values: [
+        { label: "Man/Boy", value: "man" },
+        { label: "Non-Binary", value: "nonBinary" },
+        { label: "Woman/Girl", value: "woman" },
+      ],
+      validate: { required: true },
+      properties: { myssPrefill: "gender", myssPrefillLock: "true" },
+    },
+    {
+      type: "content",
+      key: "additionalHeading",
+      input: false,
+      html: "<h2>Provide additional information</h2>",
+    },
+    {
+      type: "textfield",
+      key: "sin",
+      label: "Social Insurance Number (SIN)",
+      placeholder: "Enter your 9-digit SIN",
+      input: true,
+      validate: { required: true },
+      properties: { myssValidator: "sin" },
+    },
+    {
+      type: "bcgovAccordion",
+      key: "sinHelp",
+      input: false,
+      accordionLabel: "Why do we need your SIN?",
+      accordionBody:
+        "<p>We use your SIN to confirm your identity and to match your MySS account to your Ministry records.</p>",
+    },
+    {
+      type: "content",
+      key: "sinMissing",
+      input: false,
+      html: "<p>If you do not have a Social Insurance Number (SIN) contact the Ministry at 1-866-866-0800 for assistance.</p>",
+    },
+    {
+      type: "content",
+      key: "consentHeading",
+      input: false,
+      html: "<h2>Registration consent</h2>",
+    },
+    {
+      type: "checkbox",
+      key: "consent",
+      label:
+        'I agree to the <a href="https://myselfserve.gov.bc.ca/terms" target="_blank" rel="noopener noreferrer">Terms of Use</a> and <a href="https://www2.gov.bc.ca/gov/content/home/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.',
+      input: true,
+      validate: { required: true },
     },
   ],
 };
@@ -1352,6 +1490,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 1, spec: registrationFormSpecV1 },
       { version: 2, spec: registrationFormSpecV2 },
       { version: 3, spec: registrationFormSpecV3 },
+      { version: 4, spec: registrationFormSpecV4 },
     ],
   },
   {

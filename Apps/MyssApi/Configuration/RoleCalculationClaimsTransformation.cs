@@ -48,7 +48,14 @@ namespace Myss.Api.Configuration
         /// </summary>
         public const string DeriveSwitchKey = "Oidc:DeriveClientRoleFromIdp";
 
+        /// <summary>
+        /// The <c>identity_provider</c> alias of this integration's BC Services Card broker.
+        /// Unset defaults to <c>Oidc:ClientId</c>, the name CSS gives that broker.
+        /// </summary>
+        public const string BcServicesCardIdpKey = "Oidc:BcServicesCardIdp";
+
         private readonly bool deriveCitizenRoleFromIdp;
+        private readonly string? bcServicesCardIdp;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RoleCalculationClaimsTransformation"/> class.
@@ -58,6 +65,8 @@ namespace Myss.Api.Configuration
         {
             this.deriveCitizenRoleFromIdp =
                 configuration.GetValue<bool?>(DeriveSwitchKey) ?? true;
+            this.bcServicesCardIdp =
+                configuration[BcServicesCardIdpKey] ?? configuration["Oidc:ClientId"];
         }
 
         /// <inheritdoc/>
@@ -71,7 +80,8 @@ namespace Myss.Api.Configuration
             IReadOnlySet<string> effective = RoleCalculator.Calculate(
                 TokenIdentity.FromPrincipal(principal),
                 MyssAccountSnapshot.Empty,
-                this.deriveCitizenRoleFromIdp);
+                this.deriveCitizenRoleFromIdp,
+                this.bcServicesCardIdp);
 
             foreach (Claim stale in identity
                 .FindAll(KeycloakClaims.RolesClaimType)

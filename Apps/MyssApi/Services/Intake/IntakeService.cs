@@ -32,6 +32,7 @@ namespace Myss.Api.Intake
         private readonly IUserProfileService _userProfileService;
         private readonly ICurrentUserAccessor _currentUserAccessor;
         private readonly TimeProvider _timeProvider;
+        private readonly IErrorMessageProvider _errorMessageProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="IntakeService"/> class.
@@ -43,6 +44,7 @@ namespace Myss.Api.Intake
         /// <param name="userProfileService">Injected registration-profile service.</param>
         /// <param name="currentUserAccessor">Injected current user accessor.</param>
         /// <param name="timeProvider">Injected time provider.</param>
+        /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
         public IntakeService(
             ILogger<IntakeService> logger,
             IntakeDbContext dbContext,
@@ -50,7 +52,8 @@ namespace Myss.Api.Intake
             IFormSpecProvider formSpecProvider,
             IUserProfileService userProfileService,
             ICurrentUserAccessor currentUserAccessor,
-            TimeProvider timeProvider)
+            TimeProvider timeProvider,
+            IErrorMessageProvider errorMessageProvider)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -59,6 +62,7 @@ namespace Myss.Api.Intake
             _userProfileService = userProfileService;
             _currentUserAccessor = currentUserAccessor;
             _timeProvider = timeProvider;
+            _errorMessageProvider = errorMessageProvider;
         }
 
         /// <inheritdoc/>
@@ -164,16 +168,18 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.SpecUnavailable();
             }
 
-            // A draft is allowed to be incomplete: the required-field check is
-            // submit's. Unknown keys and wrong types are still refused, so the
-            // working copy never holds what the form could not have produced.
+            // A draft is allowed to be incomplete, and half-typed: the required
+            // and format checks are submit's. Unknown keys and wrong types are
+            // still refused, so the working copy never holds what the form
+            // could not have produced.
             IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator
                 .Validate(spec.Spec, request.Answers)
-                .Where(e => !string.Equals(e.Keyword, ValidationKeywords.FieldRequired, StringComparison.Ordinal))
+                .Where(e => string.Equals(e.Keyword, ValidationKeywords.FieldUnknown, StringComparison.Ordinal)
+                    || string.Equals(e.Keyword, ValidationKeywords.FieldWrongType, StringComparison.Ordinal))
                 .ToList();
             if (errors.Count > 0)
             {
-                return IntakeResultModel.Invalid(errors);
+                return IntakeResultModel.Invalid(await this.WordAsync(errors, cancellationToken));
             }
 
             row.Answers = JsonDocument.Parse(request.Answers.GetRawText());
@@ -234,7 +240,7 @@ namespace Myss.Api.Intake
                     "Refused submit of application {ApplicationId}: {ErrorCount} validation error(s)",
                     id,
                     errors.Count);
-                return IntakeResultModel.Invalid(errors);
+                return IntakeResultModel.Invalid(await this.WordAsync(errors, cancellationToken));
             }
 
             // One write. The row is not touched: the answers that count from
@@ -267,6 +273,20 @@ namespace Myss.Api.Intake
 
             ApplicationState submitted = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
             return IntakeResultModel.Ok(ToModel(row, submitted, spec: null));
+        }
+
+        /// <summary>
+        /// Swaps the validators' compiled default wording for the catalogue the
+        /// content engine publishes, keyword by keyword. Read only on a refused
+        /// path: an accepted save or submit never needs it.
+        /// </summary>
+        private async Task<IReadOnlyList<ValidationErrorModel>> WordAsync(
+            IReadOnlyList<ValidationErrorModel> errors,
+            CancellationToken cancellationToken)
+        {
+            return ErrorMessageResolver.Resolve(
+                errors,
+                await _errorMessageProvider.GetMessagesAsync(cancellationToken));
         }
 
         private string RequireSubject()

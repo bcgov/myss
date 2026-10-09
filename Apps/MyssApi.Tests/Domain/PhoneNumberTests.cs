@@ -3,6 +3,10 @@ namespace Myss.Api.Tests.Domain
     using Myss.Api.Domain;
     using Myss.Api.Tests.TestSupport;
 
+    /// <summary>
+    /// Tests for <see cref="PhoneNumber"/>, driven by the shared vectors so the
+    /// browser's <c>phone</c> rule is held to exactly the same set.
+    /// </summary>
     public class PhoneNumberTests
     {
         public static IEnumerable<object[]> ValidVectors =>
@@ -13,7 +17,7 @@ namespace Myss.Api.Tests.Domain
 
         [Theory]
         [MemberData(nameof(ValidVectors))]
-        public void TryCreate_AcceptsValidPhoneNumbers(string value, string _)
+        public void TryCreate_AcceptsEveryValidVector(string value, string _)
         {
             DomainValidationResult<PhoneNumber> result = PhoneNumber.TryCreate(value);
 
@@ -23,13 +27,18 @@ namespace Myss.Api.Tests.Domain
 
         [Theory]
         [MemberData(nameof(InvalidVectors))]
-        public void TryCreate_RejectsInvalidPhoneNumbers(string value, string expectedKeyword)
+        public void TryCreate_RejectsEveryInvalidVector_WithTheExpectedKeyword(string value, string expectedKeyword)
         {
             DomainValidationResult<PhoneNumber> result = PhoneNumber.TryCreate(value);
 
             Assert.False(result.IsValid, $"Expected \"{value}\" to be rejected");
             Assert.Equal(expectedKeyword, result.Keyword);
-            Assert.Equal("Phone number is invalid", result.Message);
+        }
+
+        [Fact]
+        public void TryCreate_DropsTheCountryCode()
+        {
+            Assert.Equal("2505550199", PhoneNumber.TryCreate("1 (250) 555-0199").Value!.Digits);
         }
 
         [Fact]
@@ -52,5 +61,3 @@ namespace Myss.Api.Tests.Domain
             Assert.NotEmpty(ValidationVectors.Valid("phone"));
             Assert.NotEmpty(ValidationVectors.Invalid("phone"));
         }
-    }
-}

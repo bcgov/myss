@@ -21,6 +21,7 @@ import {
   REGISTRATION_FORM_SPEC_TITLE,
   registrationFormSpecV2,
   registrationFormSpecV3,
+  registrationFormSpecV4,
   seededForms,
   seededFormSpecs,
   testFormSpecV1,
@@ -28,6 +29,7 @@ import {
   testFormSpecV3,
   type Json,
 } from "./form-spec-seed-data";
+import { validateFormSpec } from "./form-spec-rules";
 
 /**
  * These tests assert the invariants that the Phase 0.3 publish-time lifecycle
@@ -50,7 +52,11 @@ interface Component {
   readonly placeholder?: unknown;
   readonly validateOn?: unknown;
   readonly conditional?: { readonly when?: unknown };
-  readonly properties?: { readonly myssValidator?: unknown };
+  readonly properties?: {
+    readonly myssValidator?: unknown;
+    readonly myssPrefill?: unknown;
+    readonly myssPrefillLock?: unknown;
+  };
   readonly validate?: {
     readonly customMessage?: unknown;
     readonly pattern?: unknown;
@@ -202,14 +208,16 @@ describe("seeded forms collection", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("seeds the registration form with all three versions", () => {
+  it("seeds the registration form with all four versions", () => {
     const registration = seededForms.find(
       (form) => form.formSpecId === REGISTRATION_FORM_SPEC_ID,
     );
     expect(registration?.title).toBe(REGISTRATION_FORM_SPEC_TITLE);
-    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3]);
+    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
     expect(registration?.versions[1]?.spec).toBe(registrationFormSpecV2);
     expect(registration?.versions[2]?.spec).toBe(registrationFormSpecV3);
+    // The API serves the highest published version, so v4 is what citizens see.
+    expect(registration?.versions[3]?.spec).toBe(registrationFormSpecV4);
   });
 
   it("requires registration consent", () => {
@@ -229,6 +237,74 @@ describe("seeded forms collection", () => {
     expect(sin.type).toBe("textfield");
     expect(sin.properties?.myssValidator).toBe("sin");
     expect(email.type).toBe("email");
+  });
+
+  describe("registration v4", () => {
+    it("passes the lifecycle's structural rules", () => {
+      expect(validateFormSpec(registrationFormSpecV4)).toEqual([]);
+    });
+
+    it("keeps every v3 field and adds phone and gender", () => {
+      const v3 = keysOf(registrationFormSpecV3).filter((k) => k !== "submit");
+      const v4 = keysOf(registrationFormSpecV4);
+
+      expect(v4).toEqual(expect.arrayContaining(v3));
+      expect(v4).toContain("phone");
+      expect(v4).toContain("gender");
+    });
+
+    // The webclient renders its own BC Gov buttons; a spec submit button
+    // would be stripped anyway, so it should not be authored.
+    it("has no submit button", () => {
+      expect(
+        allComponents(registrationFormSpecV4).some((c) => c.type === "button"),
+      ).toBe(false);
+    });
+
+    // A contract with MyssApi: FormsService checks a submitted gender against
+    // these option values, and the webclient maps the identity claim to them.
+    it("offers the gender options as a BC Gov radio", () => {
+      const gender = componentByKey(registrationFormSpecV4, "gender");
+
+      expect(gender.type).toBe("bcgovRadio");
+      expect(gender.values).toEqual([
+        { label: "Man/Boy", value: "man" },
+        { label: "Non-Binary", value: "nonBinary" },
+        { label: "Woman/Girl", value: "woman" },
+      ]);
+    });
+
+    // Misspelled markers fail silently (Form.io ignores unknown properties), so
+    // assert the literal strings the webclient's prefill reads.
+    it.each([
+      ["firstName", "givenName", "true"],
+      ["lastName", "familyName", "true"],
+      ["email", "email", undefined],
+      ["phone", "phoneNumber", "true"],
+      ["dateOfBirth", "birthdate", "true"],
+      ["gender", "gender", "true"],
+    ])("prefills %s from %s (lock: %s)", (key, attribute, lock) => {
+      const component = componentByKey(registrationFormSpecV4, key);
+
+      expect(component.properties?.myssPrefill).toBe(attribute);
+      expect(component.properties?.myssPrefillLock).toBe(lock);
+    });
+
+    it("keeps the SIN validator and the consent links", () => {
+      const sin = componentByKey(registrationFormSpecV4, "sin");
+      const consent = componentByKey(registrationFormSpecV4, "consent");
+
+      expect(sin.properties?.myssValidator).toBe("sin");
+      expect(componentByKey(registrationFormSpecV4, "sinHelp").type).toBe(
+        "bcgovAccordion",
+      );
+      expect(consent.type).toBe("checkbox");
+      expect(consent.validate?.required).toBe(true);
+      expect(consent.label).toContain("https://myselfserve.gov.bc.ca/terms");
+      expect(consent.label).toContain(
+        "https://www2.gov.bc.ca/gov/content/home/privacy",
+      );
+    });
   });
 
   it("keeps the POC form's versions as the existing seededFormSpecs list", () => {
@@ -492,5 +568,71 @@ describe("bus pass seed — v2 (server-side SIN validation)", () => {
 
   it("otherwise keeps the v1 component structure", () => {
     expect(keysOf(busPassFormSpecV2)).toEqual(keysOf(busPassFormSpecV1));
+  });
+});
+
+describe("bus pass seed — v6 (named validation rules)", () => {
+  const componentByKey = (spec: Json, key: string) => {
+    const found: Record<string, unknown>[] = [];
+    const walk = (nodes: unknown) => {
+      if (!Array.isArray(nodes)) return;
+      for (const node of nodes) {
+        if (typeof node !== "object" || node === null) continue;
+        const component = node as Record<string, unknown>;
+        if (component.key === key) found.push(component);
+        walk(component.components);
+        if (Array.isArray(component.columns)) {
+          for (const column of component.columns) {
+            walk((column as Record<string, unknown>).components);
+          }
+        }
+      }
+    };
+    walk((spec as Record<string, unknown>).components);
+    return found[0] as Record<string, unknown> & {
+      properties?: Record<string, unknown>;
+      errors?: Record<string, unknown>;
+      validate?: Record<string, unknown>;
+    };
+  };
+
+  it("names the phone and postal code rules the API and the browser both run", () => {
+    expect(componentByKey(busPassFormSpecV6, "phoneNumber").properties).toEqual({
+      myssValidator: "phone",
+    });
+    for (const key of ["postalCode", "mailingPostalCode"]) {
+      expect(componentByKey(busPassFormSpecV6, key).properties).toEqual({
+        myssValidator: "postalCode",
+      });
+    }
+  });
+
+  it("names the email verification's partner instead of checking it in browser script", () => {
+    const verification = componentByKey(busPassFormSpecV6, "emailVerification");
+    expect(verification.properties).toEqual({ myssMatches: "email" });
+    expect(verification.validate?.custom).toBeUndefined();
+    expect(verification.errors).toEqual({
+      matches: "The two email addresses do not match",
+    });
+  });
+
+  it("checks the birth day against its month and year, with per-rule wording", () => {
+    const birthDay = componentByKey(busPassFormSpecV6, "birthDay");
+    expect(birthDay.properties).toEqual({
+      myssValidator: "dateParts",
+      myssDateParts: { month: "birthMonth", year: "birthYear" },
+    });
+    expect(birthDay.errors).toEqual({
+      required: "A birth day is required",
+      dateParts: "Enter a valid date of birth",
+    });
+    // The catch-all message is gone: it would have worded the date rule too.
+    expect(birthDay.validate?.customMessage).toBeUndefined();
+  });
+
+  it("keeps the SIN rule from v5", () => {
+    expect(
+      componentByKey(busPassFormSpecV6, "socialInsuranceNumber").properties,
+    ).toEqual({ myssValidator: "sin" });
   });
 });

@@ -168,5 +168,78 @@
         "keyword": "IDA.EMAIL.MISMATCH"
       }
     ]
+  },
+
+  "phone": {
+    "valid": [
+      { "value": "2505550199", "note": "plain 10 digits" },
+      { "value": "(250) 555-0199", "note": "as the form's input mask writes it" },
+      { "value": "250 555 0199" },
+      { "value": "1 250 555 0199", "note": "a leading country code 1 is accepted and dropped" },
+      { "value": "  250-555-0199  ", "note": "surrounding whitespace is trimmed" }
+    ],
+    "invalid": [
+      { "value": "250555019", "keyword": "IDA.PHONE.INVALID_FORMAT", "note": "9 digits" },
+      { "value": "25055501999", "keyword": "IDA.PHONE.INVALID_FORMAT", "note": "11 digits not starting with 1" },
+      { "value": "(250) 555-____", "keyword": "IDA.PHONE.INVALID_FORMAT", "note": "an incomplete mask" },
+      { "value": "", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "abcdefghij", "keyword": "IDA.PHONE.INVALID_FORMAT" }
+    ]
+  },
+
+  "postalCode": {
+    "valid": [
+      { "value": "V8V 1X4" },
+      { "value": "V8V1X4", "note": "the space is optional" },
+      { "value": "v8v 1x4", "note": "lower case is accepted" },
+      { "value": "  V8V 1X4  ", "note": "surrounding whitespace is trimmed" }
+    ],
+    "invalid": [
+      { "value": "V8V 1X", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "one character short" },
+      { "value": "V8V  1X4", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "two spaces" },
+      { "value": "12345", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "a US zip code" },
+      { "value": "V8V-1X4", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "a hyphen is not the standard separator" },
+      { "value": "V٨V 1X4", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "a digit from another script; .NET's \\d would accept it, JavaScript's does not" },
+      { "value": "", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT" }
+    ]
+  },
+
+  "date": {
+    "valid": [
+      { "value": "2000-02-29", "note": "a leap day" },
+      { "value": "1950-12-10" },
+      { "value": "2024-01-01T00:00:00Z", "note": "a datetime; only the date portion is checked" },
+      { "value": "2024-01-01T08:00:00-08:00" }
+    ],
+    "invalid": [
+      { "value": "2001-02-29", "keyword": "FORM.DATE.INVALID", "note": "not a leap year" },
+      { "value": "2024-13-01", "keyword": "FORM.DATE.INVALID", "note": "month 13" },
+      { "value": "2024-04-31", "keyword": "FORM.DATE.INVALID", "note": "April has 30 days" },
+      { "value": "10/12/1950", "keyword": "FORM.DATE.INVALID", "note": "not ISO; ambiguous between day-first and month-first" },
+      { "value": "٢٠٢٠-٠١-٠١", "keyword": "FORM.DATE.INVALID", "note": "digits from another script; .NET's \\d would match them and then fail to parse" },
+      { "value": "", "keyword": "FORM.DATE.INVALID" },
+      { "value": "yesterday", "keyword": "FORM.DATE.INVALID" }
+    ]
+  },
+
+  "dateParts": {
+    "$comment": "The day/month/year group rule, on the day field. Each case is the three parts as typed; `incomplete` cases have a part the rule leaves to the required or pattern rule, so they produce no failure.",
+    "valid": [
+      { "day": "29", "month": "02", "year": "2000", "note": "a leap day" },
+      { "day": "1", "month": "1", "year": "2024", "note": "unpadded parts" },
+      { "day": "31", "month": "12", "year": "1950" }
+    ],
+    "invalid": [
+      { "day": "31", "month": "02", "year": "2001", "keyword": "FORM.DATE.INVALID", "note": "not a leap year" },
+      { "day": "0", "month": "01", "year": "2024", "keyword": "FORM.DATE.INVALID" },
+      { "day": "100", "month": "01", "year": "2024", "keyword": "FORM.DATE.INVALID", "note": "a three-digit day is a bad day, not a non-number to ignore" },
+      { "day": "1", "month": "13", "year": "2024", "keyword": "FORM.DATE.INVALID" },
+      { "day": "1", "month": "1", "year": "0", "keyword": "FORM.DATE.INVALID" }
+    ],
+    "incomplete": [
+      { "day": "31", "month": "", "year": "2001", "note": "a missing month is the required rule's business" },
+      { "day": "ab", "month": "01", "year": "2024", "note": "a non-numeric day is the pattern rule's business" },
+      { "day": "1", "month": "01", "year": "20245", "note": "a five-digit year is not a part at all" }
+    ]
   }
 }

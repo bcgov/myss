@@ -577,7 +577,7 @@ test("shows the ineligible ($0) result with the hardship link when income exceed
   await option(screen, "Single and Never Married").click();
   await option(screen, /^No$/, 2).click(); // pwd = No
   // Single type-B income limit is 1060 → 2000 is over the limit → ineligible.
-  await screen.getByLabelText("Your Monthly Income").fill("2000");
+  await screen.getByRole("textbox", { name: "Your Monthly Income" }).fill("2000");
 
   await screen.getByRole("button", { name: "Get Estimate" }).click();
 
@@ -676,7 +676,7 @@ test("editing a field after an estimate leaves the result on screen", async () =
   const screen = await renderPage();
   await reachCoupleEstimate(screen);
 
-  await screen.getByLabelText("Spouse's Monthly Income").fill("50");
+  await screen.getByRole("textbox", { name: "Spouse's Monthly Income" }).fill("50");
 
   // Still there — no clear-on-change flicker.
   await expect.element(screen.getByText(/\$2,766\.00/)).toBeVisible();
