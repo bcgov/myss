@@ -331,15 +331,10 @@
               "label": "Phone number",
               "validate": {
                 "required": true,
-                "pattern": "^\\(?([2-9][0-9][0-9])\\)?[\\s.-]?([0-9]{3})[\\s.-]?([0-9]{4})$",
                 "customMessage": "Phone number is invalid"
               },
-              "inputMask": "(999) 999-9999",
               "placeholder": "(999) 999-9999",
               "validateOn": "blur",
-              "errors": {
-                "phone": "Phone number is invalid"
-              },
               "properties": {
                 "myssValidator": "phone"
               }

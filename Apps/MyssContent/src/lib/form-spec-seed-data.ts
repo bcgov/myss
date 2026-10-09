@@ -58,7 +58,7 @@ export const busPassFormSpecV5 = busPassFormSpecV5Json as unknown as Json;
  */
 export const busPassFormSpecV6 = busPassFormSpecV6Json as unknown as Json;
 
-/** The BC Bus Pass form spec with the legacy phone pattern. */
+/** The BC Bus Pass v7 form spec with the shared phone rule. */
 export const busPassFormSpecV7 = busPassFormSpecV7Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
@@ -384,6 +384,21 @@ export const registrationFormSpecV4: Json = {
       validate: { required: true },
     },
   ],
+};
+
+/** Registration v5 shares the phone rule with the other forms. */
+export const registrationFormSpecV5: Json = structuredClone(registrationFormSpecV4);
+const registrationPhoneV5 = (registrationFormSpecV5 as { components: Record<string, Json>[] })
+  .components.find((component) => component.key === "phone");
+if (!registrationPhoneV5) throw new Error("Registration v4 has no phone field");
+delete registrationPhoneV5.inputMask;
+registrationPhoneV5.type = "textfield";
+registrationPhoneV5.placeholder = "(250) 555-0199";
+registrationPhoneV5.validateOn = "blur";
+registrationPhoneV5.validate = { required: true, customMessage: "Phone number is invalid" };
+registrationPhoneV5.properties = {
+  ...(registrationPhoneV5.properties as Record<string, Json>),
+  myssValidator: "phone",
 };
 
 // POC test form. v1 is seeded so a fresh database has a working form;
@@ -1495,6 +1510,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 2, spec: registrationFormSpecV2 },
       { version: 3, spec: registrationFormSpecV3 },
       { version: 4, spec: registrationFormSpecV4 },
+      { version: 5, spec: registrationFormSpecV5 },
     ],
   },
   {

@@ -169,8 +169,14 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void V7_AppliesTheBusPassPhonePatternBeforeDispatch()
+        public void V6AndV7_UseTheSharedPhoneRuleBeforeDispatch()
         {
+            var earlierVersion = NewApplicant(6);
+            earlierVersion["phoneNumber"] = "1 (250) 555-0199";
+            ValidationErrorModel earlierError = Assert.Single(Run(6, earlierVersion));
+            Assert.Equal(ValidationKeywords.PhoneInvalidFormat, earlierError.Keyword);
+            Assert.Equal("Phone number is invalid", earlierError.Message);
+
             foreach (string accepted in new[] { "2501550199", "(250) 055-0199" })
             {
                 var answers = NewApplicant(7);
@@ -178,13 +184,13 @@ namespace Myss.Api.Tests.Services
                 Assert.Empty(Run(7, answers));
             }
 
-            foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12" })
+            foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12", "25055501999", "" })
             {
                 var answers = NewApplicant(7);
                 answers["phoneNumber"] = refused;
                 ValidationErrorModel error = Assert.Single(Run(7, answers));
                 Assert.Equal("phoneNumber", error.Field);
-                Assert.Equal(ValidationKeywords.FieldPattern, error.Keyword);
+                Assert.Equal(refused == "" ? ValidationKeywords.FieldRequired : ValidationKeywords.PhoneInvalidFormat, error.Keyword);
                 Assert.Equal("Phone number is invalid", error.Message);
             }
         }

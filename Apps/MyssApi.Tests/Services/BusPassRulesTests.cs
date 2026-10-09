@@ -1,7 +1,6 @@
 namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Services;
 
@@ -116,48 +115,6 @@ namespace Myss.Api.Tests.Services
             answers.Remove("email");
 
             Assert.Empty(Validate(answers));
-        }
-
-        [Theory]
-        [InlineData("2501550199", true)]
-        [InlineData("(250) 055-0199", true)]
-        [InlineData("(250 555-0199", true)]
-        [InlineData("1505550199", false)]
-        [InlineData("1 (250) 555-0199", false)]
-        [InlineData("(250) 555-0199 x12", false)]
-        [InlineData("2505550199\n", false)]
-        [InlineData("", false)]
-        [InlineData("1505550199", false, 6)]
-        [InlineData("1505550199", false, 8)]
-        public void BusPassSubmissions_EnforceTheLegacyPhoneRule(string phone, bool valid, int formSpecVersion = 7)
-        {
-            var answers = NewApplicant();
-            answers["phoneNumber"] = phone;
-
-            IReadOnlyList<ValidationErrorModel> errors = Validate(answers, formSpecVersion);
-
-            if (valid)
-            {
-                Assert.Empty(errors);
-            }
-            else
-            {
-                ValidationErrorModel error = Assert.Single(errors);
-                Assert.Equal("phoneNumber", error.Field);
-                Assert.Equal(ValidationKeywords.PhoneInvalidFormat, error.Keyword);
-                Assert.Equal("Phone number is invalid", error.Message);
-            }
-        }
-
-        [Fact]
-        public void MissingPhone_IsRejectedEvenWithoutASpecRule()
-        {
-            var answers = NewApplicant();
-            answers.Remove("phoneNumber");
-
-            Assert.Equal(
-                ValidationKeywords.PhoneInvalidFormat,
-                Assert.Single(Validate(answers)).Keyword);
         }
 
         [Fact]
@@ -293,7 +250,7 @@ namespace Myss.Api.Tests.Services
             IReadOnlyList<ValidationErrorModel> errors = Validate(answers);
 
             Assert.Equal(
-                [BusPassErrorKeywords.IdentifierRequired, BusPassErrorKeywords.DateOfBirthInvalid, ValidationKeywords.PhoneInvalidFormat, BusPassErrorKeywords.EmailRequiredForEmailContact],
+                [BusPassErrorKeywords.IdentifierRequired, BusPassErrorKeywords.DateOfBirthInvalid, BusPassErrorKeywords.EmailRequiredForEmailContact],
                 errors.Select(e => e.Keyword).ToArray());
         }
 

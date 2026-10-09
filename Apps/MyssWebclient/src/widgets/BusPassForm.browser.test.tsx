@@ -185,14 +185,11 @@ const phoneSpecV7 = {
         key: "phoneNumber",
         label: "Phone number",
         input: true,
-        inputMask: "(999) 999-9999",
         placeholder: "(999) 999-9999",
         validateOn: "blur",
         properties: { myssValidator: "phone" },
         validate: {
           required: true,
-          pattern:
-            "^\\(?([2-9][0-9][0-9])\\)?[\\s.-]?([0-9]{3})[\\s.-]?([0-9]{4})$",
           customMessage: "Phone number is invalid",
         },
       },
@@ -365,6 +362,7 @@ test("phone errors appear inline on blur and clear after correction", async () =
     .toBeVisible();
 
   await phone.fill("2505550199");
+  await expect.element(phone).toHaveValue("2505550199");
   await firstName.click();
   await expect
     .element(screen.getByText("Phone number is invalid"))
@@ -375,6 +373,13 @@ test("phone errors appear inline on blur and clear after correction", async () =
   await expect
     .element(screen.getByText("Phone number is invalid"))
     .not.toBeInTheDocument();
+
+  await phone.fill("25055501999");
+  await expect.element(phone).toHaveValue("25055501999");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid").first())
+    .toBeVisible();
 
   await phone.fill("");
   await firstName.click();

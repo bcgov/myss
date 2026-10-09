@@ -19,6 +19,7 @@
     "    why still produces different messages for a citizen.",
     "",
     "SOURCE OF THE RULES",
+    "  Phone format follows the legacy MySS regex verbatim.",
     "  SIN Luhn mod-10 and email format are ported from",
     "  myss-api/app/domains/registration/validators.py (BR-D1-02, BR-D1-07).",
     "  PHN mod-11 is deliberately ABSENT: that implementation includes the position-0",
@@ -144,19 +145,23 @@
       { "value": "2505550199", "note": "plain 10 digits" },
       {
         "value": "(250) 555-0199",
-        "note": "as the form's input mask writes it"
+        "note": "parenthesized area code"
       },
       { "value": "250 555 0199" },
-      {
-        "value": "1 250 555 0199",
-        "note": "a leading country code 1 is accepted and dropped"
-      },
-      {
-        "value": "  250-555-0199  ",
-        "note": "surrounding whitespace is trimmed"
-      }
+      { "value": "250.555.0199" },
+      { "value": "2501550199", "note": "exchange 1 is permitted" },
+      { "value": "(250) 055-0199", "note": "exchange 0 is permitted" },
+      { "value": "(250 555-0199", "note": "legacy regex permits unmatched parentheses" },
+      { "value": "250) 555-0199" },
+      { "value": "250\t555\t0199", "note": "whitespace separators include tabs" }
     ],
     "invalid": [
+      { "value": "1505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "0505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "1 250 555 0199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "+1 250 555 0199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "  250-555-0199  ", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "2505550199\n", "keyword": "IDA.PHONE.INVALID_FORMAT" },
       {
         "value": "250555019",
         "keyword": "IDA.PHONE.INVALID_FORMAT",
@@ -172,6 +177,8 @@
         "keyword": "IDA.PHONE.INVALID_FORMAT",
         "note": "an incomplete mask"
       },
+      { "value": "250-555-0199 x12", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "abc2505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
       { "value": "", "keyword": "IDA.PHONE.INVALID_FORMAT" },
       { "value": "abcdefghij", "keyword": "IDA.PHONE.INVALID_FORMAT" }
     ]

@@ -7,6 +7,7 @@ import {
 } from "@bcgov/design-system-react-components";
 import { useEffect, useRef, useState } from "react";
 
+import PhoneInput from "@/components/PhoneInput";
 import {
   AccountRequestError,
   useUpdatePhones,
@@ -20,6 +21,7 @@ import {
   phoneTypeLabel,
   type PhoneType,
 } from "@/lib/phone";
+import { catalogueMessage } from "@/lib/errorCatalogue";
 import styles from "./ContactInformation.module.css";
 
 // Contact Information on Account Info (MYSS-271). Read-only until the citizen
@@ -45,7 +47,8 @@ function validate(rows: readonly PhoneRow[]): FieldErrors {
   const seen = new Set<PhoneType>();
   rows.forEach((row, i) => {
     if (phoneDigits(row.number) === null) {
-      errors[`phones[${i}].number`] = PHONE_FORMAT_MESSAGE;
+      errors[`phones[${i}].number`] =
+        catalogueMessage("IDA.PHONE.INVALID_FORMAT") ?? PHONE_FORMAT_MESSAGE;
     }
     if (row.type === null) {
       errors[`phones[${i}].type`] =
@@ -153,7 +156,9 @@ export default function ContactInformation({
               Object.fromEntries(
                 error.errors.map((fieldError) => [
                   fieldError.field,
-                  fieldError.message,
+                  fieldError.keyword === "IDA.PHONE.INVALID_FORMAT"
+                    ? catalogueMessage(fieldError.keyword) ?? fieldError.message
+                    : fieldError.message,
                 ]),
               ),
             );
@@ -213,10 +218,8 @@ export default function ContactInformation({
                   className={styles.number}
                   data-field={`phones[${i}].number`}
                 >
-                  <TextField
+                  <PhoneInput
                     label="Phone Number"
-                    type="tel"
-                    autoComplete="tel-national"
                     value={row.number}
                     onChange={(number) => updateRow(row.key, { number })}
                     isInvalid={Boolean(errors[`phones[${i}].number`])}
@@ -357,7 +360,7 @@ function PhoneList({ account }: Readonly<{ account: AccountPayload }>) {
       className={styles.phoneRow}
     >
       <div className={styles.number}>
-        <TextField
+        <PhoneInput
           label="Phone Number"
           value={formatPhone(phone.number)}
           isReadOnly

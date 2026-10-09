@@ -34,7 +34,7 @@ namespace Myss.Api.Data
                 ["IDA.SIN.INVALID_CHECKSUM"] = "That Social Insurance Number is not valid. Check the digits and try again.",
                 ["IDA.EMAIL.INVALID_FORMAT"] = "Enter an email address in the format name@example.com.",
                 ["IDA.EMAIL.MISMATCH"] = "The two email addresses do not match.",
-                ["IDA.PHONE.INVALID_FORMAT"] = "Enter a 10-digit phone number, for example 250 555 0199.",
+                ["IDA.PHONE.INVALID_FORMAT"] = "Phone number is invalid",
                 ["IDA.POSTAL_CODE.INVALID_FORMAT"] = "Enter a postal code in the format A1A 1A1.",
                 ["FORM.DATE.INVALID"] = "Enter a valid date.",
                 ["FORM.FIELD.PATTERN"] = "This answer is not in the expected format.",

@@ -11,7 +11,7 @@ describe("phoneDigits", () => {
     ["250-555-0123"],
     ["250.555.0123"],
     ["2505550123"],
-    [" 250 555 0123 "],
+    ["(250 555-0123"],
   ])("accepts %j", (input) => {
     expect(phoneDigits(input)).toBe("2505550123");
   });
@@ -24,6 +24,9 @@ describe("phoneDigits", () => {
     ["250-555-0123 ext 4"],
     ["+1 250 555 0123"],
     ["250-CALL-NOW"],
+    [" 250 555 0123 "],
+    ["1505550123"],
+    ["2505550123\n"],
   ])("refuses %j", (input) => {
     expect(phoneDigits(input)).toBeNull();
   });

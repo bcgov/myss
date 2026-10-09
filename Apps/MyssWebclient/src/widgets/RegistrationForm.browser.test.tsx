@@ -80,6 +80,28 @@ const specV4 = {
     ],
 };
 
+const specV5 = {
+    ...specV4,
+    components: [
+        ...specV4.components.slice(0, 3),
+        {
+            type: "textfield",
+            key: "phone",
+            label: "Phone number",
+            input: true,
+            placeholder: "(250) 555-0199",
+            validateOn: "blur",
+            validate: { required: true, customMessage: "Phone number is invalid" },
+            properties: {
+                myssValidator: "phone",
+                myssPrefill: "phoneNumber",
+                myssPrefillLock: "true",
+            },
+        },
+        ...specV4.components.slice(3),
+    ],
+};
+
 const identity: IdentityDetails = {
     givenName: "Jane",
     familyName: "Johnson",
@@ -177,6 +199,37 @@ describe("RegistrationForm", () => {
 
         await expect.element(screen.getByRole("textbox", { name: /First name/ })).toBeEnabled();
         await expect.element(screen.getByRole("radio", { name: "Man/Boy" })).toBeEnabled();
+    });
+
+    it("validates a v5 phone on blur without masking an overlong number", async () => {
+        formState.spec.data = { version: 5, spec: specV5 };
+        const screen = await renderForm({ phoneNumber: "+1 250 555 0199" }).screen;
+        const phone = screen.getByRole("textbox", { name: "Phone number" });
+        const email = screen.getByRole("textbox", { name: /Email/ });
+
+        await expect.element(phone).toBeEnabled();
+        await expect.element(phone).toHaveValue("");
+        await phone.fill("25055501999");
+        await expect.element(phone).toHaveValue("25055501999");
+        await email.click();
+        await expect.element(screen.getByText("Phone number is invalid").first()).toBeVisible();
+
+        await phone.fill("(250) 555-0199");
+        await email.click();
+        await expect.element(screen.getByText("Phone number is invalid")).not.toBeInTheDocument();
+
+        await phone.fill("");
+        await email.click();
+        await expect.element(screen.getByText("Phone number is invalid").first()).toBeVisible();
+    });
+
+    it("locks a valid v5 phone supplied by the identity", async () => {
+        formState.spec.data = { version: 5, spec: specV5 };
+        const screen = await renderForm({ phoneNumber: "250 555 0199" }).screen;
+        const phone = screen.getByRole("textbox", { name: "Phone number" });
+
+        await expect.element(phone).toHaveValue("(250) 555-0199");
+        await expect.element(phone).toBeDisabled();
     });
 
     // v3, the version published today, still carries its own Form.io submit

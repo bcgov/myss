@@ -22,6 +22,7 @@ import {
   registrationFormSpecV2,
   registrationFormSpecV3,
   registrationFormSpecV4,
+  registrationFormSpecV5,
   seededForms,
   seededFormSpecs,
   testFormSpecV1,
@@ -208,16 +209,37 @@ describe("seeded forms collection", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("seeds the registration form with all four versions", () => {
+  it("seeds the registration form with all five versions", () => {
     const registration = seededForms.find(
       (form) => form.formSpecId === REGISTRATION_FORM_SPEC_ID,
     );
     expect(registration?.title).toBe(REGISTRATION_FORM_SPEC_TITLE);
-    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
+    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5]);
     expect(registration?.versions[1]?.spec).toBe(registrationFormSpecV2);
     expect(registration?.versions[2]?.spec).toBe(registrationFormSpecV3);
-    // The API serves the highest published version, so v4 is what citizens see.
     expect(registration?.versions[3]?.spec).toBe(registrationFormSpecV4);
+    expect(registration?.versions[4]?.spec).toBe(registrationFormSpecV5);
+  });
+
+  it("keeps registration v4 immutable and uses the shared phone rule in v5", () => {
+    const oldPhone = componentByKey(registrationFormSpecV4, "phone");
+    const phone = componentByKey(registrationFormSpecV5, "phone");
+
+    expect(validateFormSpec(registrationFormSpecV5)).toEqual([]);
+    expect(oldPhone.type).toBe("phoneNumber");
+    expect(oldPhone.inputMask).toBe("999-999-9999");
+    expect(oldPhone.properties?.myssValidator).toBeUndefined();
+    expect(phone.type).toBe("textfield");
+    expect(phone.inputMask).toBeUndefined();
+    expect(phone.validate?.pattern).toBeUndefined();
+    expect(phone.validate?.required).toBe(true);
+    expect(phone.validate?.customMessage).toBe("Phone number is invalid");
+    expect(phone.validateOn).toBe("blur");
+    expect(phone.properties).toEqual({
+      myssPrefill: "phoneNumber",
+      myssPrefillLock: "true",
+      myssValidator: "phone",
+    });
   });
 
   it("requires registration consent", () => {
@@ -497,7 +519,7 @@ describe("seeded forms collection", () => {
     expect(phoneNumber.placeholder).toBe("(999) 999-9999");
   });
 
-  it("validates the v7 phone field on blur with the legacy MySS rule", () => {
+  it("uses the shared phone rule without a second v7 pattern or mask", () => {
     const oldPhone = componentByKey(busPassFormSpecV6, "phoneNumber");
     const phone = componentByKey(busPassFormSpecV7, "phoneNumber");
 
@@ -506,26 +528,9 @@ describe("seeded forms collection", () => {
     expect(phone.validateOn).toBe("blur");
     expect(phone.validate?.required).toBe(true);
     expect(phone.validate?.customMessage).toBe("Phone number is invalid");
-    expect(phone.validate?.pattern).toBe(
-      String.raw`^\(?([2-9][0-9][0-9])\)?[\s.-]?([0-9]{3})[\s.-]?([0-9]{4})$`,
-    );
-    expect(phone.inputMask).toBe(oldPhone.inputMask);
+    expect(phone.validate?.pattern).toBeUndefined();
+    expect(phone.inputMask).toBeUndefined();
     expect(phone.placeholder).toBe(oldPhone.placeholder);
-
-    const pattern = new RegExp(String(phone.validate?.pattern));
-    for (const value of [
-      "2505550199",
-      "(250) 555-0199",
-      "2501550199",
-      "(250 555-0199",
-    ]) {
-      expect(pattern.test(value), `Expected ${value} to be valid`).toBe(true);
-    }
-    for (const value of ["1505550199", "12505550199", "(250) 555-0199 x12"]) {
-      expect(pattern.test(value), `Expected ${value} to be invalid`).toBe(
-        false,
-      );
-    }
   });
 
   it("gives every seeded form at least one version, each a valid Form.io form", () => {
