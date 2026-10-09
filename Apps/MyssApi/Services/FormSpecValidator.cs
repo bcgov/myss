@@ -21,7 +21,8 @@ namespace Myss.Api.Services
     /// checked in order:</para>
     /// <list type="number">
     /// <item><description>An explicit marker in the component's
-    /// <c>properties</c> map: <c>{ "myssValidator": "sin" }</c>. Form.io's
+    /// <c>properties</c> map: <c>{ "myssValidator": "sin" }</c> or
+    /// <c>{ "myssValidator": "phone" }</c>. Form.io's
     /// <c>properties</c> is free-form key-value, so this is authored as
     /// ordinary content on an ordinary textfield — no code, no deployment.
     /// A confirmation field adds <c>{ "myssMatches": "contactEmail" }</c>.</description></item>
@@ -285,6 +286,15 @@ namespace Myss.Api.Services
                     if (!sin.IsValid)
                     {
                         errors.Add(Error(key, sin.Keyword!, sin.Message!));
+                    }
+
+                    break;
+
+                case "phone":
+                    DomainValidationResult<PhoneNumber> phone = PhoneNumber.TryCreate(raw);
+                    if (!phone.IsValid)
+                    {
+                        errors.Add(Error(key, phone.Keyword!, phone.Message!));
                     }
 
                     break;

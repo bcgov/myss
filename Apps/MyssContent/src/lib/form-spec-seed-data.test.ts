@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,6 +9,7 @@ import {
   busPassFormSpecV3,
   busPassFormSpecV4,
   busPassFormSpecV5,
+  busPassFormSpecV6,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   INCOME_ASSISTANCE_FORM_SPEC_ID,
@@ -46,6 +48,7 @@ interface Component {
   readonly values?: unknown;
   readonly inputMask?: unknown;
   readonly placeholder?: unknown;
+  readonly validateOn?: unknown;
   readonly conditional?: { readonly when?: unknown };
   readonly properties?: { readonly myssValidator?: unknown };
   readonly validate?: {
@@ -283,7 +286,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
   });
 
-  it("seeds the bus pass with v1 through v5", () => {
+  it("seeds the bus pass with v1 through v6", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -294,6 +297,7 @@ describe("seeded forms collection", () => {
       { version: 3, spec: busPassFormSpecV3 },
       { version: 4, spec: busPassFormSpecV4 },
       { version: 5, spec: busPassFormSpecV5 },
+      { version: 6, spec: busPassFormSpecV6 },
     ]);
   });
 
@@ -414,6 +418,47 @@ describe("seeded forms collection", () => {
 
     expect(phoneNumber.inputMask).toBe("(999) 999-9999");
     expect(phoneNumber.placeholder).toBe("(999) 999-9999");
+  });
+
+  it("validates the v6 phone field on blur with the legacy MySS rule", () => {
+    const oldPhone = componentByKey(busPassFormSpecV5, "phoneNumber");
+    const phone = componentByKey(busPassFormSpecV6, "phoneNumber");
+    const vectors = JSON.parse(
+      readFileSync(
+        new URL(
+          "../../../../Shared/validation/validation-vectors.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as {
+      phone: {
+        valid: { value: string }[];
+        invalid: { value: string; keyword: string }[];
+      };
+    };
+
+    expect(oldPhone.properties?.myssValidator).toBeUndefined();
+    expect(phone.properties?.myssValidator).toBe("phone");
+    expect(phone.validateOn).toBe("blur");
+    expect(phone.validate?.required).toBe(true);
+    expect(phone.validate?.customMessage).toBe("Phone number is invalid");
+    expect(phone.validate?.pattern).toBe(
+      String.raw`^\(?([2-9][0-9][0-9])\)?[\s.-]?([0-9]{3})[\s.-]?([0-9]{4})$`,
+    );
+    expect(phone.inputMask).toBe(oldPhone.inputMask);
+    expect(phone.placeholder).toBe(oldPhone.placeholder);
+
+    const pattern = new RegExp(String(phone.validate?.pattern));
+    for (const { value } of vectors.phone.valid) {
+      expect(pattern.test(value), `Expected ${value} to be valid`).toBe(true);
+    }
+    for (const { value, keyword } of vectors.phone.invalid) {
+      expect(keyword).toBe("IDA.PHONE.INVALID_FORMAT");
+      expect(pattern.test(value), `Expected ${value} to be invalid`).toBe(
+        false,
+      );
+    }
   });
 
   it("gives every seeded form at least one version, each a valid Form.io form", () => {

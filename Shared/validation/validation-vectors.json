@@ -19,6 +19,7 @@
     "    why still produces different messages for a citizen.",
     "",
     "SOURCE OF THE RULES",
+    "  Phone format follows the legacy MySS regex verbatim.",
     "  SIN Luhn mod-10 and email format are ported from",
     "  myss-api/app/domains/registration/validators.py (BR-D1-02, BR-D1-07).",
     "  PHN mod-11 is deliberately ABSENT: that implementation includes the position-0",
@@ -32,20 +33,73 @@
       { "value": "050082833", "note": "plain 9 digits" },
       { "value": "222289779", "note": "plain 9 digits" },
       { "value": "147711949", "note": "plain 9 digits" },
-      { "value": "050 082 833", "note": "space-separated, as a citizen would paste it" },
+      {
+        "value": "050 082 833",
+        "note": "space-separated, as a citizen would paste it"
+      },
       { "value": "050-082-833", "note": "hyphen-separated" },
       { "value": "  050082833  ", "note": "surrounding whitespace is trimmed" }
     ],
     "invalid": [
-      { "value": "050082830", "keyword": "IDA.SIN.INVALID_CHECKSUM", "note": "valid shape, fails Luhn" },
+      {
+        "value": "050082830",
+        "keyword": "IDA.SIN.INVALID_CHECKSUM",
+        "note": "valid shape, fails Luhn"
+      },
       { "value": "222289770", "keyword": "IDA.SIN.INVALID_CHECKSUM" },
       { "value": "147711940", "keyword": "IDA.SIN.INVALID_CHECKSUM" },
-      { "value": "000000000", "keyword": "IDA.SIN.INVALID_CHECKSUM", "note": "passes Luhn arithmetically; rejected explicitly" },
-      { "value": "05008283", "keyword": "IDA.SIN.WRONG_LENGTH", "note": "8 digits" },
-      { "value": "0500828333", "keyword": "IDA.SIN.WRONG_LENGTH", "note": "10 digits" },
+      {
+        "value": "000000000",
+        "keyword": "IDA.SIN.INVALID_CHECKSUM",
+        "note": "passes Luhn arithmetically; rejected explicitly"
+      },
+      {
+        "value": "05008283",
+        "keyword": "IDA.SIN.WRONG_LENGTH",
+        "note": "8 digits"
+      },
+      {
+        "value": "0500828333",
+        "keyword": "IDA.SIN.WRONG_LENGTH",
+        "note": "10 digits"
+      },
       { "value": "", "keyword": "IDA.SIN.WRONG_LENGTH" },
-      { "value": "05008283A", "keyword": "IDA.SIN.WRONG_LENGTH", "note": "non-digits are stripped, leaving 8" },
+      {
+        "value": "05008283A",
+        "keyword": "IDA.SIN.WRONG_LENGTH",
+        "note": "non-digits are stripped, leaving 8"
+      },
       { "value": "abcdefghi", "keyword": "IDA.SIN.WRONG_LENGTH" }
+    ]
+  },
+
+  "phone": {
+    "valid": [
+      { "value": "2505550199" },
+      { "value": "(250) 555-0199" },
+      { "value": "250.555.0199" },
+      { "value": "2501550199" },
+      { "value": "(250) 055-0199", "note": "legacy regex permits exchange 0" },
+      {
+        "value": "(250 555-0199",
+        "note": "legacy regex permits unmatched parentheses"
+      },
+      { "value": "250) 555-0199" },
+      { "value": "250\t555\t0199" }
+    ],
+    "invalid": [
+      { "value": "1505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "0505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "250555019", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "12505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "(250) 555-0199 x12", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "(250) 55_-____", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      {
+        "value": "2505550199\n",
+        "keyword": "IDA.PHONE.INVALID_FORMAT",
+        "note": "trailing newline"
+      },
+      { "value": "", "keyword": "IDA.PHONE.INVALID_FORMAT" }
     ]
   },
 
@@ -53,17 +107,31 @@
     "valid": [
       { "value": "ada@example.com" },
       { "value": "ada.lovelace@example.gov.bc.ca" },
-      { "value": "ada+forms@example.com", "note": "plus addressing is legitimate and commonly used" },
+      {
+        "value": "ada+forms@example.com",
+        "note": "plus addressing is legitimate and commonly used"
+      },
       { "value": "a@b.co" },
-      { "value": "  ada@example.com  ", "note": "surrounding whitespace is trimmed" }
+      {
+        "value": "  ada@example.com  ",
+        "note": "surrounding whitespace is trimmed"
+      }
     ],
     "invalid": [
       { "value": "ada", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "no @" },
       { "value": "ada@", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
       { "value": "@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
-      { "value": "ada@example", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "no dot in the domain" },
+      {
+        "value": "ada@example",
+        "keyword": "IDA.EMAIL.INVALID_FORMAT",
+        "note": "no dot in the domain"
+      },
       { "value": "ada@@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
-      { "value": "ada lovelace@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "internal space" },
+      {
+        "value": "ada lovelace@example.com",
+        "keyword": "IDA.EMAIL.INVALID_FORMAT",
+        "note": "internal space"
+      },
       { "value": "ada@exa mple.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
       { "value": "", "keyword": "IDA.EMAIL.INVALID_FORMAT" }
     ]
@@ -72,13 +140,33 @@
   "emailConfirmation": {
     "matching": [
       { "value": "ada@example.com", "confirmation": "ada@example.com" },
-      { "value": "ada@example.com", "confirmation": "  ada@example.com  ", "note": "trimmed before comparison" },
-      { "value": "Ada@Example.com", "confirmation": "ada@example.com", "note": "case-insensitive: mail domains are, and citizens retype inconsistently" }
+      {
+        "value": "ada@example.com",
+        "confirmation": "  ada@example.com  ",
+        "note": "trimmed before comparison"
+      },
+      {
+        "value": "Ada@Example.com",
+        "confirmation": "ada@example.com",
+        "note": "case-insensitive: mail domains are, and citizens retype inconsistently"
+      }
     ],
     "mismatching": [
-      { "value": "ada@example.com", "confirmation": "ada@exampel.com", "keyword": "IDA.EMAIL.MISMATCH" },
-      { "value": "ada@example.com", "confirmation": "", "keyword": "IDA.EMAIL.MISMATCH" },
-      { "value": "ada@example.com", "confirmation": "grace@example.com", "keyword": "IDA.EMAIL.MISMATCH" }
+      {
+        "value": "ada@example.com",
+        "confirmation": "ada@exampel.com",
+        "keyword": "IDA.EMAIL.MISMATCH"
+      },
+      {
+        "value": "ada@example.com",
+        "confirmation": "",
+        "keyword": "IDA.EMAIL.MISMATCH"
+      },
+      {
+        "value": "ada@example.com",
+        "confirmation": "grace@example.com",
+        "keyword": "IDA.EMAIL.MISMATCH"
+      }
     ]
   }
 }

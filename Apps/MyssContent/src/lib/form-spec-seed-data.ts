@@ -17,6 +17,7 @@ import busPassFormSpecV2Json from "./bus-pass-specs/bus-pass-form-v2.json";
 import busPassFormSpecV3Json from "./bus-pass-specs/bus-pass-form-v3.json";
 import busPassFormSpecV4Json from "./bus-pass-specs/bus-pass-form-v4.json";
 import busPassFormSpecV5Json from "./bus-pass-specs/bus-pass-form-v5.json";
+import busPassFormSpecV6Json from "./bus-pass-specs/bus-pass-form-v6.json";
 
 export type Json =
   | string
@@ -46,6 +47,9 @@ export const busPassFormSpecV4 = busPassFormSpecV4Json as unknown as Json;
 
 /** The BC Bus Pass form spec with Canada Post address autocomplete. */
 export const busPassFormSpecV5 = busPassFormSpecV5Json as unknown as Json;
+
+/** The BC Bus Pass form spec with legacy MySS phone validation. */
+export const busPassFormSpecV6 = busPassFormSpecV6Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -1379,6 +1383,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 3, spec: busPassFormSpecV3 },
       { version: 4, spec: busPassFormSpecV4 },
       { version: 5, spec: busPassFormSpecV5 },
+      { version: 6, spec: busPassFormSpecV6 },
     ],
   },
 ];

@@ -37,6 +37,9 @@ namespace Myss.Api.Domain
         /// <summary>A SIN failed the Luhn mod-10 check.</summary>
         public const string SinInvalidChecksum = "IDA.SIN.INVALID_CHECKSUM";
 
+        /// <summary>A phone number does not match the legacy MySS phone format.</summary>
+        public const string PhoneInvalidFormat = "IDA.PHONE.INVALID_FORMAT";
+
         /// <summary>An email address is not a recognisable address.</summary>
         public const string EmailInvalidFormat = "IDA.EMAIL.INVALID_FORMAT";
 

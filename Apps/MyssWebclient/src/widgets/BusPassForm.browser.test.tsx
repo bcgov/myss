@@ -173,6 +173,46 @@ const currentSpecV4 = {
   },
 };
 
+const phoneSpecV6 = {
+  formSpecId: "bc-bus-pass",
+  version: 6,
+  title: "BC Bus Pass",
+  spec: {
+    display: "form",
+    components: [
+      {
+        type: "textfield",
+        key: "phoneNumber",
+        label: "Phone number",
+        input: true,
+        inputMask: "(999) 999-9999",
+        placeholder: "(999) 999-9999",
+        validateOn: "blur",
+        properties: { myssValidator: "phone" },
+        validate: {
+          required: true,
+          pattern:
+            "^\\(?([2-9][0-9][0-9])\\)?[\\s.-]?([0-9]{3})[\\s.-]?([0-9]{4})$",
+          customMessage: "Phone number is invalid",
+        },
+      },
+      {
+        type: "textfield",
+        key: "firstName",
+        label: "First name",
+        input: true,
+      },
+      {
+        type: "button",
+        key: "submit",
+        action: "submit",
+        label: "Submit",
+        input: true,
+      },
+    ],
+  },
+};
+
 type Answer = { status: number; body: unknown };
 
 const accepted: Answer = {
@@ -293,6 +333,37 @@ async function fillAndSubmit(screen: Awaited<ReturnType<typeof renderForm>>) {
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+test("phone errors appear inline on blur and clear after correction", async () => {
+  stubApi(accepted, phoneSpecV6);
+  const screen = await renderForm();
+  const phone = screen.getByRole("textbox", { name: "Phone number" });
+  const firstName = screen.getByRole("textbox", { name: "First name" });
+
+  await phone.fill("1234567890");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid").first())
+    .toBeVisible();
+
+  await phone.fill("2505550199");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid"))
+    .not.toBeInTheDocument();
+
+  await phone.fill("2501550199");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid"))
+    .not.toBeInTheDocument();
+
+  await phone.fill("");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid").first())
+    .toBeVisible();
 });
 
 test("posts to the bus pass endpoint with the rendered version and shows the reference number", async () => {
