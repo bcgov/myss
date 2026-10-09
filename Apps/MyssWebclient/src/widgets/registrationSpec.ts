@@ -1,4 +1,5 @@
 import type { CurrentUser } from "@/auth/currentUser";
+import { formatPhone as displayPhone, phoneDigits } from "@/lib/phone";
 
 // Prepares the Strapi registration spec for rendering: fills fields from the
 // sign-in identity and drops the spec's own submit button, because the widget
@@ -33,12 +34,10 @@ function isRecord(value: unknown): value is Component {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** "+1 (250) 555-0100" → "250-555-0100"; undefined unless ten NANP digits. */
+/** Formats a valid phone claim; an invalid one must stay editable. */
 export function formatPhone(raw: string): string | undefined {
-  let digits = raw.replace(/\D/g, "");
-  if (digits.length === 11 && digits.startsWith("1")) digits = digits.slice(1);
-  if (digits.length !== 10) return undefined;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  const digits = phoneDigits(raw);
+  return digits === null ? undefined : displayPhone(digits);
 }
 
 function optionValues(component: Component): string[] {

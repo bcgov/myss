@@ -9,6 +9,7 @@ import {
   busPassFormSpecV4,
   busPassFormSpecV5,
   busPassFormSpecV6,
+  busPassFormSpecV7,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   INCOME_ASSISTANCE_FORM_SPEC_ID,
@@ -21,6 +22,7 @@ import {
   registrationFormSpecV2,
   registrationFormSpecV3,
   registrationFormSpecV4,
+  registrationFormSpecV5,
   seededForms,
   seededFormSpecs,
   testFormSpecV1,
@@ -49,6 +51,7 @@ interface Component {
   readonly values?: unknown;
   readonly inputMask?: unknown;
   readonly placeholder?: unknown;
+  readonly validateOn?: unknown;
   readonly conditional?: { readonly when?: unknown };
   readonly properties?: {
     readonly myssValidator?: unknown;
@@ -206,16 +209,37 @@ describe("seeded forms collection", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("seeds the registration form with all four versions", () => {
+  it("seeds the registration form with all five versions", () => {
     const registration = seededForms.find(
       (form) => form.formSpecId === REGISTRATION_FORM_SPEC_ID,
     );
     expect(registration?.title).toBe(REGISTRATION_FORM_SPEC_TITLE);
-    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
+    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5]);
     expect(registration?.versions[1]?.spec).toBe(registrationFormSpecV2);
     expect(registration?.versions[2]?.spec).toBe(registrationFormSpecV3);
-    // The API serves the highest published version, so v4 is what citizens see.
     expect(registration?.versions[3]?.spec).toBe(registrationFormSpecV4);
+    expect(registration?.versions[4]?.spec).toBe(registrationFormSpecV5);
+  });
+
+  it("keeps registration v4 immutable and uses the shared phone rule in v5", () => {
+    const oldPhone = componentByKey(registrationFormSpecV4, "phone");
+    const phone = componentByKey(registrationFormSpecV5, "phone");
+
+    expect(validateFormSpec(registrationFormSpecV5)).toEqual([]);
+    expect(oldPhone.type).toBe("phoneNumber");
+    expect(oldPhone.inputMask).toBe("999-999-9999");
+    expect(oldPhone.properties?.myssValidator).toBeUndefined();
+    expect(phone.type).toBe("textfield");
+    expect(phone.inputMask).toBeUndefined();
+    expect(phone.validate?.pattern).toBeUndefined();
+    expect(phone.validate?.required).toBe(true);
+    expect(phone.validate?.customMessage).toBe("Phone number is invalid");
+    expect(phone.validateOn).toBe("blur");
+    expect(phone.properties).toEqual({
+      myssPrefill: "phoneNumber",
+      myssPrefillLock: "true",
+      myssValidator: "phone",
+    });
   });
 
   it("requires registration consent", () => {
@@ -360,7 +384,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
   });
 
-  it("seeds the bus pass with v1 through v6", () => {
+  it("seeds the bus pass with v1 through v7", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -372,6 +396,7 @@ describe("seeded forms collection", () => {
       { version: 4, spec: busPassFormSpecV4 },
       { version: 5, spec: busPassFormSpecV5 },
       { version: 6, spec: busPassFormSpecV6 },
+      { version: 7, spec: busPassFormSpecV7 },
     ]);
   });
 
@@ -494,6 +519,20 @@ describe("seeded forms collection", () => {
     expect(phoneNumber.placeholder).toBe("(999) 999-9999");
   });
 
+  it("uses the shared phone rule without a second v7 pattern or mask", () => {
+    const oldPhone = componentByKey(busPassFormSpecV6, "phoneNumber");
+    const phone = componentByKey(busPassFormSpecV7, "phoneNumber");
+
+    expect(oldPhone.validate?.pattern).toBeUndefined();
+    expect(phone.properties?.myssValidator).toBe("phone");
+    expect(phone.validateOn).toBe("blur");
+    expect(phone.validate?.required).toBe(true);
+    expect(phone.validate?.customMessage).toBe("Phone number is invalid");
+    expect(phone.validate?.pattern).toBeUndefined();
+    expect(phone.inputMask).toBeUndefined();
+    expect(phone.placeholder).toBe(oldPhone.placeholder);
+  });
+
   it("gives every seeded form at least one version, each a valid Form.io form", () => {
     for (const form of seededForms) {
       expect(form.versions.length).toBeGreaterThan(0);
@@ -554,9 +593,11 @@ describe("bus pass seed — v6 (named validation rules)", () => {
   };
 
   it("names the phone and postal code rules the API and the browser both run", () => {
-    expect(componentByKey(busPassFormSpecV6, "phoneNumber").properties).toEqual({
-      myssValidator: "phone",
-    });
+    expect(componentByKey(busPassFormSpecV6, "phoneNumber").properties).toEqual(
+      {
+        myssValidator: "phone",
+      },
+    );
     for (const key of ["postalCode", "mailingPostalCode"]) {
       expect(componentByKey(busPassFormSpecV6, key).properties).toEqual({
         myssValidator: "postalCode",

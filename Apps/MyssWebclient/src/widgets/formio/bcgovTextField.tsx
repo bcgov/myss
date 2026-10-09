@@ -7,6 +7,8 @@
 import type { ReactNode } from "react";
 import { TextArea, TextField } from "@bcgov/design-system-react-components";
 
+import PhoneInput from "@/components/PhoneInput";
+
 import {
   stockComponent,
   textOf,
@@ -36,12 +38,21 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
       // form put there ("dd", "(999) 999-9999") is shown as the description
       // when the field has none of its own.
       props.description ??= textOf(component.placeholder) || undefined;
-      const mask = textOf(component.inputMask) || undefined;
+      const isPhone = (component.properties as Record<string, unknown> | undefined)
+        ?.myssValidator === "phone";
+      const mask = isPhone ? undefined : textOf(component.inputMask) || undefined;
       const value = textOf(this.dataValue);
       const autoComplete = textOf(component.autocomplete) || undefined;
       const onChange = (next: string) => {
         this.bcgovCommit(applyInputMask(next, mask));
       };
+      const onBlur =
+        isPhone && component.validateOn === "blur"
+          ? () => {
+              this.bcgovErrorsUnlocked = true;
+              this.checkComponentValidity(this.rootValue, true);
+            }
+          : undefined;
 
       // The design system fields take no placeholder: a format hint belongs
       // in the description, where it stays visible once the field is filled.
@@ -56,6 +67,18 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
         );
       }
 
+      if (isPhone) {
+        return (
+          <PhoneInput
+            {...props}
+            value={value}
+            autoComplete={autoComplete || undefined}
+            onChange={onChange}
+            onBlur={onBlur}
+          />
+        );
+      }
+
       return (
         <TextField
           {...props}
@@ -64,6 +87,7 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
           value={value}
           autoComplete={autoComplete}
           onChange={onChange}
+          onBlur={onBlur}
         />
       );
     }

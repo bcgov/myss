@@ -19,6 +19,7 @@
     "    why still produces different messages for a citizen.",
     "",
     "SOURCE OF THE RULES",
+    "  Phone format follows the legacy MySS regex verbatim.",
     "  SIN Luhn mod-10 and email format are ported from",
     "  myss-api/app/domains/registration/validators.py (BR-D1-02, BR-D1-07).",
     "  PHN mod-11 is deliberately ABSENT: that implementation includes the position-0",
@@ -32,19 +33,42 @@
       { "value": "050082833", "note": "plain 9 digits" },
       { "value": "222289779", "note": "plain 9 digits" },
       { "value": "147711949", "note": "plain 9 digits" },
-      { "value": "050 082 833", "note": "space-separated, as a citizen would paste it" },
+      {
+        "value": "050 082 833",
+        "note": "space-separated, as a citizen would paste it"
+      },
       { "value": "050-082-833", "note": "hyphen-separated" },
       { "value": "  050082833  ", "note": "surrounding whitespace is trimmed" }
     ],
     "invalid": [
-      { "value": "050082830", "keyword": "IDA.SIN.INVALID_CHECKSUM", "note": "valid shape, fails Luhn" },
+      {
+        "value": "050082830",
+        "keyword": "IDA.SIN.INVALID_CHECKSUM",
+        "note": "valid shape, fails Luhn"
+      },
       { "value": "222289770", "keyword": "IDA.SIN.INVALID_CHECKSUM" },
       { "value": "147711940", "keyword": "IDA.SIN.INVALID_CHECKSUM" },
-      { "value": "000000000", "keyword": "IDA.SIN.INVALID_CHECKSUM", "note": "passes Luhn arithmetically; rejected explicitly" },
-      { "value": "05008283", "keyword": "IDA.SIN.WRONG_LENGTH", "note": "8 digits" },
-      { "value": "0500828333", "keyword": "IDA.SIN.WRONG_LENGTH", "note": "10 digits" },
+      {
+        "value": "000000000",
+        "keyword": "IDA.SIN.INVALID_CHECKSUM",
+        "note": "passes Luhn arithmetically; rejected explicitly"
+      },
+      {
+        "value": "05008283",
+        "keyword": "IDA.SIN.WRONG_LENGTH",
+        "note": "8 digits"
+      },
+      {
+        "value": "0500828333",
+        "keyword": "IDA.SIN.WRONG_LENGTH",
+        "note": "10 digits"
+      },
       { "value": "", "keyword": "IDA.SIN.WRONG_LENGTH" },
-      { "value": "05008283A", "keyword": "IDA.SIN.WRONG_LENGTH", "note": "non-digits are stripped, leaving 8" },
+      {
+        "value": "05008283A",
+        "keyword": "IDA.SIN.WRONG_LENGTH",
+        "note": "non-digits are stripped, leaving 8"
+      },
       { "value": "abcdefghi", "keyword": "IDA.SIN.WRONG_LENGTH" }
     ]
   },
@@ -53,17 +77,31 @@
     "valid": [
       { "value": "ada@example.com" },
       { "value": "ada.lovelace@example.gov.bc.ca" },
-      { "value": "ada+forms@example.com", "note": "plus addressing is legitimate and commonly used" },
+      {
+        "value": "ada+forms@example.com",
+        "note": "plus addressing is legitimate and commonly used"
+      },
       { "value": "a@b.co" },
-      { "value": "  ada@example.com  ", "note": "surrounding whitespace is trimmed" }
+      {
+        "value": "  ada@example.com  ",
+        "note": "surrounding whitespace is trimmed"
+      }
     ],
     "invalid": [
       { "value": "ada", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "no @" },
       { "value": "ada@", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
       { "value": "@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
-      { "value": "ada@example", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "no dot in the domain" },
+      {
+        "value": "ada@example",
+        "keyword": "IDA.EMAIL.INVALID_FORMAT",
+        "note": "no dot in the domain"
+      },
       { "value": "ada@@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
-      { "value": "ada lovelace@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "internal space" },
+      {
+        "value": "ada lovelace@example.com",
+        "keyword": "IDA.EMAIL.INVALID_FORMAT",
+        "note": "internal space"
+      },
       { "value": "ada@exa mple.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
       { "value": "", "keyword": "IDA.EMAIL.INVALID_FORMAT" }
     ]
@@ -72,28 +110,75 @@
   "emailConfirmation": {
     "matching": [
       { "value": "ada@example.com", "confirmation": "ada@example.com" },
-      { "value": "ada@example.com", "confirmation": "  ada@example.com  ", "note": "trimmed before comparison" },
-      { "value": "Ada@Example.com", "confirmation": "ada@example.com", "note": "case-insensitive: mail domains are, and citizens retype inconsistently" }
+      {
+        "value": "ada@example.com",
+        "confirmation": "  ada@example.com  ",
+        "note": "trimmed before comparison"
+      },
+      {
+        "value": "Ada@Example.com",
+        "confirmation": "ada@example.com",
+        "note": "case-insensitive: mail domains are, and citizens retype inconsistently"
+      }
     ],
     "mismatching": [
-      { "value": "ada@example.com", "confirmation": "ada@exampel.com", "keyword": "IDA.EMAIL.MISMATCH" },
-      { "value": "ada@example.com", "confirmation": "", "keyword": "IDA.EMAIL.MISMATCH" },
-      { "value": "ada@example.com", "confirmation": "grace@example.com", "keyword": "IDA.EMAIL.MISMATCH" }
+      {
+        "value": "ada@example.com",
+        "confirmation": "ada@exampel.com",
+        "keyword": "IDA.EMAIL.MISMATCH"
+      },
+      {
+        "value": "ada@example.com",
+        "confirmation": "",
+        "keyword": "IDA.EMAIL.MISMATCH"
+      },
+      {
+        "value": "ada@example.com",
+        "confirmation": "grace@example.com",
+        "keyword": "IDA.EMAIL.MISMATCH"
+      }
     ]
   },
 
   "phone": {
     "valid": [
       { "value": "2505550199", "note": "plain 10 digits" },
-      { "value": "(250) 555-0199", "note": "as the form's input mask writes it" },
+      {
+        "value": "(250) 555-0199",
+        "note": "parenthesized area code"
+      },
       { "value": "250 555 0199" },
-      { "value": "1 250 555 0199", "note": "a leading country code 1 is accepted and dropped" },
-      { "value": "  250-555-0199  ", "note": "surrounding whitespace is trimmed" }
+      { "value": "250.555.0199" },
+      { "value": "2501550199", "note": "exchange 1 is permitted" },
+      { "value": "(250) 055-0199", "note": "exchange 0 is permitted" },
+      { "value": "(250 555-0199", "note": "legacy regex permits unmatched parentheses" },
+      { "value": "250) 555-0199" },
+      { "value": "250\t555\t0199", "note": "whitespace separators include tabs" }
     ],
     "invalid": [
-      { "value": "250555019", "keyword": "IDA.PHONE.INVALID_FORMAT", "note": "9 digits" },
-      { "value": "25055501999", "keyword": "IDA.PHONE.INVALID_FORMAT", "note": "11 digits not starting with 1" },
-      { "value": "(250) 555-____", "keyword": "IDA.PHONE.INVALID_FORMAT", "note": "an incomplete mask" },
+      { "value": "1505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "0505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "1 250 555 0199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "+1 250 555 0199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "  250-555-0199  ", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "2505550199\n", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      {
+        "value": "250555019",
+        "keyword": "IDA.PHONE.INVALID_FORMAT",
+        "note": "9 digits"
+      },
+      {
+        "value": "25055501999",
+        "keyword": "IDA.PHONE.INVALID_FORMAT",
+        "note": "11 digits not starting with 1"
+      },
+      {
+        "value": "(250) 555-____",
+        "keyword": "IDA.PHONE.INVALID_FORMAT",
+        "note": "an incomplete mask"
+      },
+      { "value": "250-555-0199 x12", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "abc2505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
       { "value": "", "keyword": "IDA.PHONE.INVALID_FORMAT" },
       { "value": "abcdefghij", "keyword": "IDA.PHONE.INVALID_FORMAT" }
     ]
@@ -107,11 +192,31 @@
       { "value": "  V8V 1X4  ", "note": "surrounding whitespace is trimmed" }
     ],
     "invalid": [
-      { "value": "V8V 1X", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "one character short" },
-      { "value": "V8V  1X4", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "two spaces" },
-      { "value": "12345", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "a US zip code" },
-      { "value": "V8V-1X4", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "a hyphen is not the standard separator" },
-      { "value": "V٨V 1X4", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT", "note": "a digit from another script; .NET's \\d would accept it, JavaScript's does not" },
+      {
+        "value": "V8V 1X",
+        "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT",
+        "note": "one character short"
+      },
+      {
+        "value": "V8V  1X4",
+        "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT",
+        "note": "two spaces"
+      },
+      {
+        "value": "12345",
+        "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT",
+        "note": "a US zip code"
+      },
+      {
+        "value": "V8V-1X4",
+        "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT",
+        "note": "a hyphen is not the standard separator"
+      },
+      {
+        "value": "V٨V 1X4",
+        "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT",
+        "note": "a digit from another script; .NET's \\d would accept it, JavaScript's does not"
+      },
       { "value": "", "keyword": "IDA.POSTAL_CODE.INVALID_FORMAT" }
     ]
   },
@@ -120,15 +225,38 @@
     "valid": [
       { "value": "2000-02-29", "note": "a leap day" },
       { "value": "1950-12-10" },
-      { "value": "2024-01-01T00:00:00Z", "note": "a datetime; only the date portion is checked" },
+      {
+        "value": "2024-01-01T00:00:00Z",
+        "note": "a datetime; only the date portion is checked"
+      },
       { "value": "2024-01-01T08:00:00-08:00" }
     ],
     "invalid": [
-      { "value": "2001-02-29", "keyword": "FORM.DATE.INVALID", "note": "not a leap year" },
-      { "value": "2024-13-01", "keyword": "FORM.DATE.INVALID", "note": "month 13" },
-      { "value": "2024-04-31", "keyword": "FORM.DATE.INVALID", "note": "April has 30 days" },
-      { "value": "10/12/1950", "keyword": "FORM.DATE.INVALID", "note": "not ISO; ambiguous between day-first and month-first" },
-      { "value": "٢٠٢٠-٠١-٠١", "keyword": "FORM.DATE.INVALID", "note": "digits from another script; .NET's \\d would match them and then fail to parse" },
+      {
+        "value": "2001-02-29",
+        "keyword": "FORM.DATE.INVALID",
+        "note": "not a leap year"
+      },
+      {
+        "value": "2024-13-01",
+        "keyword": "FORM.DATE.INVALID",
+        "note": "month 13"
+      },
+      {
+        "value": "2024-04-31",
+        "keyword": "FORM.DATE.INVALID",
+        "note": "April has 30 days"
+      },
+      {
+        "value": "10/12/1950",
+        "keyword": "FORM.DATE.INVALID",
+        "note": "not ISO; ambiguous between day-first and month-first"
+      },
+      {
+        "value": "٢٠٢٠-٠١-٠١",
+        "keyword": "FORM.DATE.INVALID",
+        "note": "digits from another script; .NET's \\d would match them and then fail to parse"
+      },
       { "value": "", "keyword": "FORM.DATE.INVALID" },
       { "value": "yesterday", "keyword": "FORM.DATE.INVALID" }
     ]
@@ -142,16 +270,53 @@
       { "day": "31", "month": "12", "year": "1950" }
     ],
     "invalid": [
-      { "day": "31", "month": "02", "year": "2001", "keyword": "FORM.DATE.INVALID", "note": "not a leap year" },
-      { "day": "0", "month": "01", "year": "2024", "keyword": "FORM.DATE.INVALID" },
-      { "day": "100", "month": "01", "year": "2024", "keyword": "FORM.DATE.INVALID", "note": "a three-digit day is a bad day, not a non-number to ignore" },
-      { "day": "1", "month": "13", "year": "2024", "keyword": "FORM.DATE.INVALID" },
+      {
+        "day": "31",
+        "month": "02",
+        "year": "2001",
+        "keyword": "FORM.DATE.INVALID",
+        "note": "not a leap year"
+      },
+      {
+        "day": "0",
+        "month": "01",
+        "year": "2024",
+        "keyword": "FORM.DATE.INVALID"
+      },
+      {
+        "day": "100",
+        "month": "01",
+        "year": "2024",
+        "keyword": "FORM.DATE.INVALID",
+        "note": "a three-digit day is a bad day, not a non-number to ignore"
+      },
+      {
+        "day": "1",
+        "month": "13",
+        "year": "2024",
+        "keyword": "FORM.DATE.INVALID"
+      },
       { "day": "1", "month": "1", "year": "0", "keyword": "FORM.DATE.INVALID" }
     ],
     "incomplete": [
-      { "day": "31", "month": "", "year": "2001", "note": "a missing month is the required rule's business" },
-      { "day": "ab", "month": "01", "year": "2024", "note": "a non-numeric day is the pattern rule's business" },
-      { "day": "1", "month": "01", "year": "20245", "note": "a five-digit year is not a part at all" }
+      {
+        "day": "31",
+        "month": "",
+        "year": "2001",
+        "note": "a missing month is the required rule's business"
+      },
+      {
+        "day": "ab",
+        "month": "01",
+        "year": "2024",
+        "note": "a non-numeric day is the pattern rule's business"
+      },
+      {
+        "day": "1",
+        "month": "01",
+        "year": "20245",
+        "note": "a five-digit year is not a part at all"
+      }
     ]
   }
 }

@@ -18,6 +18,7 @@ import busPassFormSpecV3Json from "./bus-pass-specs/bus-pass-form-v3.json";
 import busPassFormSpecV4Json from "./bus-pass-specs/bus-pass-form-v4.json";
 import busPassFormSpecV5Json from "./bus-pass-specs/bus-pass-form-v5.json";
 import busPassFormSpecV6Json from "./bus-pass-specs/bus-pass-form-v6.json";
+import busPassFormSpecV7Json from "./bus-pass-specs/bus-pass-form-v7.json";
 
 export type Json =
   | string
@@ -56,6 +57,9 @@ export const busPassFormSpecV5 = busPassFormSpecV5Json as unknown as Json;
  * wording for each rule is authored per field in `errors`.
  */
 export const busPassFormSpecV6 = busPassFormSpecV6Json as unknown as Json;
+
+/** The BC Bus Pass v7 form spec with the shared phone rule. */
+export const busPassFormSpecV7 = busPassFormSpecV7Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -380,6 +384,21 @@ export const registrationFormSpecV4: Json = {
       validate: { required: true },
     },
   ],
+};
+
+/** Registration v5 shares the phone rule with the other forms. */
+export const registrationFormSpecV5: Json = structuredClone(registrationFormSpecV4);
+const registrationPhoneV5 = (registrationFormSpecV5 as { components: Record<string, Json>[] })
+  .components.find((component) => component.key === "phone");
+if (!registrationPhoneV5) throw new Error("Registration v4 has no phone field");
+delete registrationPhoneV5.inputMask;
+registrationPhoneV5.type = "textfield";
+registrationPhoneV5.placeholder = "(250) 555-0199";
+registrationPhoneV5.validateOn = "blur";
+registrationPhoneV5.validate = { required: true, customMessage: "Phone number is invalid" };
+registrationPhoneV5.properties = {
+  ...(registrationPhoneV5.properties as Record<string, Json>),
+  myssValidator: "phone",
 };
 
 // POC test form. v1 is seeded so a fresh database has a working form;
@@ -1491,6 +1510,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 2, spec: registrationFormSpecV2 },
       { version: 3, spec: registrationFormSpecV3 },
       { version: 4, spec: registrationFormSpecV4 },
+      { version: 5, spec: registrationFormSpecV5 },
     ],
   },
   {
@@ -1523,6 +1543,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 4, spec: busPassFormSpecV4 },
       { version: 5, spec: busPassFormSpecV5 },
       { version: 6, spec: busPassFormSpecV6 },
+      { version: 7, spec: busPassFormSpecV7 },
     ],
   },
 ];
