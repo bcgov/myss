@@ -42,6 +42,16 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
       const onChange = (next: string) => {
         this.bcgovCommit(applyInputMask(next, mask));
       };
+      const onBlur =
+        this.key === "phoneNumber" &&
+        component.validateOn === "blur" &&
+        (component.properties as Record<string, unknown> | undefined)
+          ?.myssValidator === "phone"
+          ? () => {
+              this.bcgovErrorsUnlocked = true;
+              void this.checkComponentValidity(this.rootValue, true);
+            }
+          : undefined;
 
       // The design system fields take no placeholder: a format hint belongs
       // in the description, where it stays visible once the field is filled.
@@ -64,6 +74,7 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
           value={value}
           autoComplete={autoComplete}
           onChange={onChange}
+          onBlur={onBlur}
         />
       );
     }

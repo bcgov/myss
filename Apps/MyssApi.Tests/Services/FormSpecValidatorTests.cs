@@ -674,26 +674,6 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void Validate_AppliesPhoneRules_WhenAFieldOptsInViaProperties()
-        {
-            const string spec = """
-            { "components": [ { "type": "textfield", "key": "phoneNumber", "input": true,
-              "validate": { "required": true },
-              "properties": { "myssValidator": "phone" } } ] }
-            """;
-
-            Assert.Empty(Run(spec, """{"phoneNumber":"(250) 555-0199"}"""));
-            ValidationErrorModel error = Assert.Single(Run(spec, """{"phoneNumber":"(123) 456-7890"}"""));
-            Assert.Equal("phoneNumber", error.Field);
-            Assert.Equal(ValidationKeywords.PhoneInvalidFormat, error.Keyword);
-            Assert.Equal("Phone number is invalid", error.Message);
-
-            Assert.Equal(
-                ValidationKeywords.FieldRequired,
-                Assert.Single(Run(spec, """{"phoneNumber":""}""")).Keyword);
-        }
-
-        [Fact]
         public void Validate_AppliesEmailFormatRules()
         {
             const string spec = """{ "components": [ { "type": "email", "key": "contactEmail", "input": true } ] }""";

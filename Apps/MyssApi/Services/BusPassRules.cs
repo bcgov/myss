@@ -3,6 +3,7 @@ namespace Myss.Api.Services
     using System;
     using System.Collections.Generic;
     using System.Text.Json;
+    using System.Text.RegularExpressions;
     using Myss.Api.Domain;
     using Myss.Api.Models;
 
@@ -12,12 +13,9 @@ namespace Myss.Api.Services
     /// server-side before anything is stored.
     /// </summary>
     /// <remarks>
-    /// Only cross-field rules live here: a SIN or an account number, an email
-    /// when email is the contact method, a plausible date of birth, and a
-    /// service type the form offers. Everything a single field can declare is
-    /// the spec's job and <see cref="FormSpecValidator"/>'s to enforce, the
-    /// conditionally required fields included, so nothing here duplicates a
-    /// failure the spec already reports.
+    /// Cross-field rules and the bus-pass-specific phone format live here.
+    /// The phone format is also authored on v7 of the spec for browser feedback;
+    /// the service enforces it even for an older or later spec version.
     /// </remarks>
     public static class BusPassRules
     {
@@ -30,6 +28,11 @@ namespace Myss.Api.Services
         /// reports a mismatch and this class must not report it twice.
         /// </summary>
         public const int SpecValidatesEmailMatchVersion = 6;
+
+        private static readonly Regex LegacyPhonePattern = new(
+            @"^\(?([2-9][0-9][0-9])\)?[\s.-]?([0-9]{3})[\s.-]?([0-9]{4})$",
+            RegexOptions.ECMAScript,
+            TimeSpan.FromMilliseconds(100));
 
         /// <summary>
         /// Checks the answers against the bus pass rules.
@@ -155,6 +158,20 @@ namespace Myss.Api.Services
 
         private static void ValidateContact(JsonElement answers, int formSpecVersion, List<ValidationErrorModel> errors)
         {
+            string? phone = answers.TryGetProperty(BusPassAnswers.PhoneNumber, out JsonElement value)
+                && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+            Match match = LegacyPhonePattern.Match(phone ?? string.Empty);
+            // .NET's $ also matches before a trailing newline.
+            if (phone is null || !match.Success || match.Length != phone.Length)
+            {
+                errors.Add(new ValidationErrorModel
+                {
+                    Field = BusPassAnswers.PhoneNumber,
+                    Keyword = ValidationKeywords.PhoneInvalidFormat,
+                    Message = "Phone number is invalid",
+                });
+            }
+
             string? email = BusPassAnswers.GetString(answers, BusPassAnswers.Email);
 
             bool prefersEmail = BusPassAnswers.GetString(answers, BusPassAnswers.PreferredCommunication) == "email";

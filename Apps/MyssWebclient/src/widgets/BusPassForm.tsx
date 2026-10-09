@@ -44,12 +44,6 @@ const MESSAGE_RETRY_SAFE =
 /** The parts of the Form.io instance this component talks to. */
 interface FormInstance {
   emit: (event: string, ...args: unknown[]) => void;
-  on: (event: string, listener: (component: FormFieldInstance) => void) => void;
-}
-
-interface FormFieldInstance {
-  component: { key: string; properties?: { myssValidator?: string } };
-  checkValidity: (data: null, dirty: boolean) => boolean;
 }
 
 /**
@@ -267,17 +261,7 @@ export default function BusPassForm() {
         src={spec.spec}
         options={formOptions}
         onFormReady={(instance) => {
-          const form = instance as unknown as FormInstance;
-          formRef.current = form;
-          form.on("blur", (component) => {
-            if (
-              component.component.key === "phoneNumber" &&
-              component.component.properties?.myssValidator === "phone"
-            ) {
-              // Form.io's blur pass leaves this field non-dirty until submit.
-              component.checkValidity(null, true);
-            }
-          });
+          formRef.current = instance as unknown as FormInstance;
         }}
         onSubmitError={clientValidation.onSubmitError}
         onSubmit={(submission: { data: Record<string, unknown> }) => {

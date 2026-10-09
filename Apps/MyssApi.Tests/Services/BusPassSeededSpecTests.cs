@@ -17,10 +17,10 @@ namespace Myss.Api.Tests.Services
     {
         private static readonly DateOnly Today = new(2026, 9, 10);
 
-        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 6).Select(v => new object[] { v });
+        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 7).Select(v => new object[] { v });
 
         public static IEnumerable<object[]> VersionsWithTheReplacementAcknowledgement =>
-            Enumerable.Range(4, 3).Select(v => new object[] { v });
+            Enumerable.Range(4, 4).Select(v => new object[] { v });
 
         [Theory]
         [MemberData(nameof(EveryVersion))]
@@ -166,6 +166,27 @@ namespace Myss.Api.Tests.Services
 
             Assert.Equal("A city is required", Assert.Single(errors, e => e.Field == "mailingCity").Message);
             Assert.Equal("A postal code is required", Assert.Single(errors, e => e.Field == "mailingPostalCode").Message);
+        }
+
+        [Fact]
+        public void V7_AppliesTheBusPassPhonePatternBeforeDispatch()
+        {
+            foreach (string accepted in new[] { "2501550199", "(250) 055-0199" })
+            {
+                var answers = NewApplicant(7);
+                answers["phoneNumber"] = accepted;
+                Assert.Empty(Run(7, answers));
+            }
+
+            foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12" })
+            {
+                var answers = NewApplicant(7);
+                answers["phoneNumber"] = refused;
+                ValidationErrorModel error = Assert.Single(Run(7, answers));
+                Assert.Equal("phoneNumber", error.Field);
+                Assert.Equal(ValidationKeywords.FieldPattern, error.Keyword);
+                Assert.Equal("Phone number is invalid", error.Message);
+            }
         }
 
         private static IReadOnlyList<ValidationErrorModel> Run(int version, Dictionary<string, object?> answers)

@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -10,6 +9,7 @@ import {
   busPassFormSpecV4,
   busPassFormSpecV5,
   busPassFormSpecV6,
+  busPassFormSpecV7,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   INCOME_ASSISTANCE_FORM_SPEC_ID,
@@ -362,7 +362,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
   });
 
-  it("seeds the bus pass with v1 through v6", () => {
+  it("seeds the bus pass with v1 through v7", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -374,6 +374,7 @@ describe("seeded forms collection", () => {
       { version: 4, spec: busPassFormSpecV4 },
       { version: 5, spec: busPassFormSpecV5 },
       { version: 6, spec: busPassFormSpecV6 },
+      { version: 7, spec: busPassFormSpecV7 },
     ]);
   });
 
@@ -496,25 +497,11 @@ describe("seeded forms collection", () => {
     expect(phoneNumber.placeholder).toBe("(999) 999-9999");
   });
 
-  it("validates the v6 phone field on blur with the legacy MySS rule", () => {
-    const oldPhone = componentByKey(busPassFormSpecV5, "phoneNumber");
-    const phone = componentByKey(busPassFormSpecV6, "phoneNumber");
-    const vectors = JSON.parse(
-      readFileSync(
-        new URL(
-          "../../../../Shared/validation/validation-vectors.json",
-          import.meta.url,
-        ),
-        "utf8",
-      ),
-    ) as {
-      phone: {
-        valid: { value: string }[];
-        invalid: { value: string; keyword: string }[];
-      };
-    };
+  it("validates the v7 phone field on blur with the legacy MySS rule", () => {
+    const oldPhone = componentByKey(busPassFormSpecV6, "phoneNumber");
+    const phone = componentByKey(busPassFormSpecV7, "phoneNumber");
 
-    expect(oldPhone.properties?.myssValidator).toBeUndefined();
+    expect(oldPhone.validate?.pattern).toBeUndefined();
     expect(phone.properties?.myssValidator).toBe("phone");
     expect(phone.validateOn).toBe("blur");
     expect(phone.validate?.required).toBe(true);
@@ -526,11 +513,15 @@ describe("seeded forms collection", () => {
     expect(phone.placeholder).toBe(oldPhone.placeholder);
 
     const pattern = new RegExp(String(phone.validate?.pattern));
-    for (const { value } of vectors.phone.valid) {
+    for (const value of [
+      "2505550199",
+      "(250) 555-0199",
+      "2501550199",
+      "(250 555-0199",
+    ]) {
       expect(pattern.test(value), `Expected ${value} to be valid`).toBe(true);
     }
-    for (const { value, keyword } of vectors.phone.invalid) {
-      expect(keyword).toBe("IDA.PHONE.INVALID_FORMAT");
+    for (const value of ["1505550199", "12505550199", "(250) 555-0199 x12"]) {
       expect(pattern.test(value), `Expected ${value} to be invalid`).toBe(
         false,
       );
@@ -597,9 +588,11 @@ describe("bus pass seed — v6 (named validation rules)", () => {
   };
 
   it("names the phone and postal code rules the API and the browser both run", () => {
-    expect(componentByKey(busPassFormSpecV6, "phoneNumber").properties).toEqual({
-      myssValidator: "phone",
-    });
+    expect(componentByKey(busPassFormSpecV6, "phoneNumber").properties).toEqual(
+      {
+        myssValidator: "phone",
+      },
+    );
     for (const key of ["postalCode", "mailingPostalCode"]) {
       expect(componentByKey(busPassFormSpecV6, key).properties).toEqual({
         myssValidator: "postalCode",

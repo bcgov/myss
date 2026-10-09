@@ -50,3 +50,4 @@ namespace Myss.Api.Domain
             return DomainValidationResult<PhoneNumber>.Ok(new PhoneNumber(digits));
         }
     }
+}

@@ -173,9 +173,9 @@ const currentSpecV4 = {
   },
 };
 
-const phoneSpecV6 = {
+const phoneSpecV7 = {
   formSpecId: "bc-bus-pass",
-  version: 6,
+  version: 7,
   title: "BC Bus Pass",
   spec: {
     display: "form",
@@ -353,7 +353,7 @@ afterEach(() => {
 });
 
 test("phone errors appear inline on blur and clear after correction", async () => {
-  stubApi(accepted, phoneSpecV6);
+  stubApi(accepted, phoneSpecV7);
   const screen = await renderForm();
   const phone = screen.getByRole("textbox", { name: "Phone number" });
   const firstName = screen.getByRole("textbox", { name: "First name" });

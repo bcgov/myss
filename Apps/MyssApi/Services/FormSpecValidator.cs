@@ -400,15 +400,6 @@ namespace Myss.Api.Services
 
                     break;
 
-                case "phone":
-                    DomainValidationResult<PhoneNumber> phone = PhoneNumber.TryCreate(raw);
-                    if (!phone.IsValid)
-                    {
-                        errors.Add(Error(key, phone.Keyword!, phone.Message!));
-                    }
-
-                    break;
-
                 case "dateParts":
                     // The day of a day/month/year group. A part that is missing or
                     // not a number is the required or pattern rule's business; a

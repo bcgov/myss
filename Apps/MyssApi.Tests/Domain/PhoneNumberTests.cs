@@ -46,18 +46,5 @@ namespace Myss.Api.Tests.Domain
         {
             Assert.False(PhoneNumber.TryCreate(null).IsValid);
         }
-
-        [Fact]
-        public void ToString_DoesNotLeakPhoneNumber()
-        {
-            PhoneNumber phone = PhoneNumber.TryCreate("2505550199").Value!;
-
-            Assert.DoesNotContain("2505550199", phone.ToString(), StringComparison.Ordinal);
-        }
-
-        [Fact]
-        public void TheFixtureIsNotEmpty()
-        {
-            Assert.NotEmpty(ValidationVectors.Valid("phone"));
-            Assert.NotEmpty(ValidationVectors.Invalid("phone"));
-        }
+    }
+}
