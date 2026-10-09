@@ -129,6 +129,7 @@ dotnet test Apps/IcmApi.Host.Tests
 cd Apps/MyssWebclient
 npm run test:unit                             # *.unit.test.ts, node env
 npm run test:browser-headless                 # *.browser.test.tsx, needs `npx playwright install chromium`
+npm run test:e2e                              # e2e/features/*.feature via playwright-bdd; starts Vite on 5174, API stubbed from the seed
 npx vitest --config=vitest.config.ts --project=unit src/auth/decodeJwt.unit.test.ts
 npm run lint && npm run format:check
 

@@ -7,7 +7,15 @@ import tanstackQuery from "@tanstack/eslint-plugin-query";
 import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-    globalIgnores(["dist", "src/api/generated"]),
+    globalIgnores([
+        "dist",
+        "src/api/generated",
+        // Playwright e2e output (playwright.config.ts)
+        ".features-gen",
+        "playwright-report",
+        "test-results",
+        "e2e-report",
+    ]),
     {
         files: ["**/*.{ts,tsx}"],
         extends: [
@@ -33,6 +41,15 @@ export default defineConfig([
                 "error",
                 { argsIgnorePattern: "^_" },
             ],
+        },
+    },
+    {
+        // Playwright code, no React in it. A fixture's second argument is
+        // conventionally named `use` (`async ({ page }, use) => use(...)`),
+        // which the hooks rule mistakes for React's `use`.
+        files: ["e2e/**/*.ts", "playwright.config.ts"],
+        rules: {
+            "react-hooks/rules-of-hooks": "off",
         },
     },
 ]);

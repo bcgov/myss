@@ -14,6 +14,9 @@
         "test:browser": "vitest --config=vitest.config.ts --project=browser",
         "test:browser-headless": "vitest --config=vitest.config.ts --project=browser --browser.headless",
         "test:coverage": "vitest run --config=vitest.config.ts --coverage --browser.headless",
+        "test:e2e": "bddgen && playwright test",
+        "test:e2e:ui": "bddgen && playwright test --ui",
+        "test:e2e:report": "playwright show-report",
         "generate:schema": "node --env-file=.env node_modules/.bin/openapi-ts --file openapi-ts.config.ts"
     },
     "dependencies": {
@@ -33,6 +36,7 @@
     "devDependencies": {
         "@eslint/js": "9.39.5",
         "@hey-api/openapi-ts": "^0.99.0",
+        "@playwright/test": "1.62.1",
         "@tanstack/eslint-plugin-query": "5.103.0",
         "@types/node": "25.9.7",
         "@types/react": "19.3.0",
@@ -44,6 +48,7 @@
         "eslint-plugin-react-hooks": "7.1.1",
         "eslint-plugin-react-refresh": "0.5.7",
         "globals": "17.12.0",
+        "playwright-bdd": "9.2.1",
         "prettier": "3.9.8",
         "typescript": "5.9.3",
         "typescript-eslint": "8.70.0",

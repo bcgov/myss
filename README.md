@@ -128,6 +128,11 @@ compose Postgres.
 - Webclient: `cd Apps/MyssWebclient && npm run test:unit` and
   `npm run test:browser-headless` — the browser tests need a one-time
   `npx playwright install chromium`
+- Webclient end-to-end (Gherkin): `cd Apps/MyssWebclient && npm run test:e2e` —
+  Playwright runs the scenarios in `e2e/features/` against the real app on
+  port 5174, with the API answered from the Strapi seed. `npm run
+  test:e2e:report` opens the last run; `MYSS_E2E_LIVE_API=1` runs the same
+  scenarios against the configured API instead. See `Apps/MyssWebclient/e2e/README.md`.
 
 ## SonarQube Cloud
 
