@@ -4,7 +4,7 @@
     gap: var(--layout-margin-large);
     isolation: isolate;
     margin: 0 auto;
-    max-width: 900px;
+    max-width: var(--myss-form-page-width);
     margin-top: calc(-1 * var(--layout-padding-xlarge));
     padding-block: var(--layout-padding-xlarge) var(--layout-padding-large);
     position: relative;
@@ -26,7 +26,7 @@
     background-color: var(--surface-color-background-light-gray);
     margin-left: calc(50% - 50vw);
     padding: var(--layout-padding-large)
-        max(var(--layout-padding-xlarge), calc((100vw - 900px) / 2));
+        max(var(--layout-padding-xlarge), calc((100vw - var(--myss-form-page-width)) / 2));
     width: 100vw;
 }
 

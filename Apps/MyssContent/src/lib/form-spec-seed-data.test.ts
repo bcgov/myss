@@ -9,6 +9,7 @@ import {
   busPassFormSpecV4,
   busPassFormSpecV5,
   busPassFormSpecV6,
+  busPassFormSpecV7,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   INCOME_ASSISTANCE_FORM_SPEC_ID,
@@ -360,7 +361,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
   });
 
-  it("seeds the bus pass with v1 through v6", () => {
+  it("seeds the bus pass with v1 through v7", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -372,6 +373,7 @@ describe("seeded forms collection", () => {
       { version: 4, spec: busPassFormSpecV4 },
       { version: 5, spec: busPassFormSpecV5 },
       { version: 6, spec: busPassFormSpecV6 },
+      { version: 7, spec: busPassFormSpecV7 },
     ]);
   });
 
@@ -554,9 +556,11 @@ describe("bus pass seed — v6 (named validation rules)", () => {
   };
 
   it("names the phone and postal code rules the API and the browser both run", () => {
-    expect(componentByKey(busPassFormSpecV6, "phoneNumber").properties).toEqual({
-      myssValidator: "phone",
-    });
+    expect(componentByKey(busPassFormSpecV6, "phoneNumber").properties).toEqual(
+      {
+        myssValidator: "phone",
+      },
+    );
     for (const key of ["postalCode", "mailingPostalCode"]) {
       expect(componentByKey(busPassFormSpecV6, key).properties).toEqual({
         myssValidator: "postalCode",
@@ -591,5 +595,173 @@ describe("bus pass seed — v6 (named validation rules)", () => {
     expect(
       componentByKey(busPassFormSpecV6, "socialInsuranceNumber").properties,
     ).toEqual({ myssValidator: "sin" });
+  });
+});
+
+describe("bus pass seed — v7 (layout, single date of birth, required SIN)", () => {
+  it("makes the form title the page's h1", () => {
+    expect(componentByKey(busPassFormSpecV7, "busPassTitle").html).toBe(
+      "<h1>BC Bus Pass Program - Online Request for Service</h1>",
+    );
+  });
+
+  it("puts an h2 above the service question", () => {
+    const keys = keysOf(busPassFormSpecV7);
+    expect(keys.indexOf("serviceRequestHeading")).toBe(
+      keys.indexOf("serviceRequestType") - 1,
+    );
+    expect(
+      componentByKey(busPassFormSpecV7, "serviceRequestHeading").html,
+    ).toBe("<h2>What type of service would you like to request?</h2>");
+  });
+
+  it("lists the three service choices flat, with the values v6 submits", () => {
+    const serviceRequest = componentByKey(
+      busPassFormSpecV7,
+      "serviceRequestType",
+    );
+    expect(serviceRequest.label).toBe("Service Request type");
+    const values = serviceRequest.values as {
+      value: string;
+      children?: unknown;
+    }[];
+    expect(values.map((option) => option.value)).toEqual([
+      "addressUpdate",
+      "replacement",
+      "newApplication",
+    ]);
+    expect(values.every((option) => option.children === undefined)).toBe(true);
+  });
+
+  it("puts the privacy notice inside a callout", () => {
+    const callout = componentByKey(busPassFormSpecV7, "privacyCallout");
+    expect(callout.type).toBe("bcgovCallout");
+    expect(callout.components).toEqual([
+      componentByKey(busPassFormSpecV6, "privacyNotice"),
+    ]);
+  });
+
+  it("asks for the date of birth in one required date field", () => {
+    const dateOfBirth = componentByKey(busPassFormSpecV7, "dateOfBirth");
+    expect(dateOfBirth).toMatchObject({
+      type: "datetime",
+      format: "yyyy-MM-dd",
+      enableTime: false,
+      validate: { required: true },
+    });
+    const keys = keysOf(busPassFormSpecV7);
+    for (const part of ["birthDay", "birthMonth", "birthYear"]) {
+      expect(keys).not.toContain(part);
+    }
+  });
+
+  it("requires the social insurance number", () => {
+    expect(
+      componentByKey(busPassFormSpecV7, "socialInsuranceNumber").validate,
+    ).toEqual({ required: true });
+  });
+
+  it("lays out the phone section as separate questions", () => {
+    const phoneNumber = componentByKey(busPassFormSpecV7, "phoneNumber");
+    expect(phoneNumber.placeholder).toBeUndefined();
+    expect(phoneNumber.validate).toEqual({ required: true });
+
+    const phoneType = componentByKey(busPassFormSpecV7, "phoneType");
+    expect(phoneType).toMatchObject({ type: "radio", label: "Phone type" });
+    // The values the API maps, unchanged from the v6 dropdown.
+    expect(
+      (phoneType.values as { value: string }[]).map((option) => option.value),
+    ).toEqual(["home", "work", "cell"]);
+
+    expect(keysOf(busPassFormSpecV7)).not.toContain("contactPreferences");
+  });
+
+  it("puts the eligibility criteria and the band office note in inline alerts", () => {
+    const eligibility = componentByKey(
+      busPassFormSpecV7,
+      "newApplicantEligibilityAlert",
+    );
+    expect(eligibility).toMatchObject({
+      type: "bcgovInlineAlert",
+      variant: "info",
+      conditional: {
+        eq: "newApplication",
+        show: true,
+        when: "serviceRequestType",
+      },
+    });
+    expect(eligibility.alertTitle).toBe(
+      "To be eligible for the BC Bus Pass Program, the applicant must meet one of the following criteria:",
+    );
+
+    const note = componentByKey(
+      busPassFormSpecV7,
+      "firstNationsDocumentationAlert",
+    );
+    expect(note).toMatchObject({
+      type: "bcgovInlineAlert",
+      conditional: {
+        eq: "firstNations",
+        show: true,
+        when: "eligibilityCategory",
+      },
+    });
+    // The alert's condition hides its contents; they carry none of their own.
+    for (const key of [
+      "newApplicantEligibilityInfo",
+      "firstNationsDocumentationNote",
+    ]) {
+      expect(
+        componentByKey(busPassFormSpecV7, key).conditional,
+      ).toBeUndefined();
+    }
+  });
+
+  it("asks the eligibility acknowledgement under its own question", () => {
+    expect(
+      componentByKey(busPassFormSpecV7, "eligibilityAcknowledged").properties,
+    ).toEqual({ myssGroupLabel: "Acknowledgement" });
+    expect(
+      componentByKey(busPassFormSpecV7, "acknowledgedPassCancellation")
+        .properties,
+    ).toEqual({ myssGroupLabel: "Acknowledgement" });
+  });
+
+  it("puts the replacement cost note in an inline alert", () => {
+    expect(
+      componentByKey(busPassFormSpecV7, "replacementCostAlert"),
+    ).toMatchObject({
+      type: "bcgovInlineAlert",
+      variant: "info",
+      conditional: {
+        eq: "replacement",
+        show: true,
+        when: "serviceRequestType",
+      },
+    });
+    expect(
+      componentByKey(busPassFormSpecV7, "replacementCostNote").conditional,
+    ).toBeUndefined();
+  });
+
+  it("leaves every other v6 field unchanged", () => {
+    const changed = new Set([
+      "serviceRequestType",
+      "socialInsuranceNumber",
+      "birthDay",
+      "birthMonth",
+      "birthYear",
+      "dateOfBirth",
+      "phoneNumber",
+      "phoneType",
+      "eligibilityAcknowledged",
+      "acknowledgedPassCancellation",
+    ]);
+    const fields = (spec: Json) =>
+      allComponents(spec).filter(
+        (component) =>
+          component.input === true && !changed.has(String(component.key)),
+      );
+    expect(fields(busPassFormSpecV7)).toEqual(fields(busPassFormSpecV6));
   });
 });

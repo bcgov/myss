@@ -71,8 +71,10 @@ describe("bcgovAccordion body sanitization", () => {
     await expect.element(screen.getByText("Still here.")).toBeVisible();
 
     const image = document.querySelector("img[src='x']");
-    expect(image, "the img was removed entirely, so nothing was proven").not
-      .toBeNull();
+    expect(
+      image,
+      "the img was removed entirely, so nothing was proven",
+    ).not.toBeNull();
     expect(image?.getAttribute("onerror")).toBeNull();
     expect(window.__xssFired).toBeUndefined();
   });
@@ -132,5 +134,190 @@ describe("bcgovRadio required state", () => {
     await expect.element(group).toBeInTheDocument();
     await expect.element(group).not.toHaveAttribute("aria-required", "true");
     expect(document.querySelector("[data-myss-required]")).toBeNull();
+  });
+});
+
+function calloutSpec(callout: Record<string, unknown>): FormType {
+  return {
+    display: "form",
+    components: [
+      {
+        type: "bcgovCallout",
+        key: "privacyCallout",
+        input: false,
+        components: [
+          { type: "content", key: "notice", html: "<p>Privacy notice.</p>" },
+          {
+            type: "textfield",
+            key: "firstName",
+            label: "First name",
+            input: true,
+          },
+        ],
+        ...callout,
+      },
+    ],
+  } as unknown as FormType;
+}
+
+describe("bcgovCallout", () => {
+  it("renders nested components inside the design system callout", async () => {
+    const screen = await render(
+      <Form src={calloutSpec({ variant: "lightBlue" })} />,
+    );
+
+    await expect.element(screen.getByText("Privacy notice.")).toBeVisible();
+    await expect
+      .element(screen.getByRole("textbox", { name: "First name" }))
+      .toBeVisible();
+    const box = document.querySelector(".bcds-Callout.lightBlue");
+    expect(box?.textContent).toContain("Privacy notice.");
+    expect(getComputedStyle(box as Element).borderLeftWidth).toBe("8px");
+  });
+
+  it("shows the title as a heading at the level given", async () => {
+    const screen = await render(
+      <Form
+        src={calloutSpec({ calloutTitle: "Your privacy", headingLevel: 3 })}
+      />,
+    );
+
+    await expect
+      .element(screen.getByRole("heading", { level: 3, name: "Your privacy" }))
+      .toBeVisible();
+  });
+
+  it("writes the title as text, never as markup", async () => {
+    await render(
+      <Form
+        src={calloutSpec({ calloutTitle: '<img src="x" onerror="1">Title' })}
+      />,
+    );
+
+    expect(document.querySelector(".bcds-Callout img")).toBeNull();
+    expect(document.querySelector(".bcds-Callout h2")?.textContent).toBe(
+      '<img src="x" onerror="1">Title',
+    );
+  });
+});
+
+function inlineAlertSpec(alert: Record<string, unknown>): FormType {
+  return {
+    display: "form",
+    components: [
+      {
+        type: "bcgovInlineAlert",
+        key: "eligibilityAlert",
+        input: false,
+        components: [
+          { type: "content", key: "criteria", html: "<p>Criteria text.</p>" },
+          {
+            type: "checkbox",
+            key: "acknowledged",
+            label: "I have read the criteria.",
+            input: true,
+          },
+        ],
+        ...alert,
+      },
+    ],
+  } as unknown as FormType;
+}
+
+describe("bcgovInlineAlert", () => {
+  it("renders nested components inside the design system inline alert, with its icon", async () => {
+    const screen = await render(
+      <Form src={inlineAlertSpec({ variant: "info" })} />,
+    );
+
+    await expect.element(screen.getByText("Criteria text.")).toBeVisible();
+    await expect
+      .element(
+        screen.getByRole("checkbox", { name: "I have read the criteria." }),
+      )
+      .toBeInTheDocument();
+    const box = document.querySelector(".bcds-Inline-Alert.info");
+    expect(box?.textContent).toContain("Criteria text.");
+    expect(box?.querySelector(".bcds-Inline-Alert--icon svg")).not.toBeNull();
+    expect(getComputedStyle(box as Element).borderTopWidth).toBe("1px");
+    expect(
+      getComputedStyle(screen.getByText("Criteria text.").element()).fontSize,
+    ).toBe("16px");
+  });
+
+  it("shows the title in bold, as text, never as markup", async () => {
+    await render(
+      <Form
+        src={inlineAlertSpec({ alertTitle: '<img src="x">Eligibility' })}
+      />,
+    );
+
+    const title = document.querySelector(
+      ".bcds-Inline-Alert--container > .title",
+    );
+    expect(title?.textContent).toBe('<img src="x">Eligibility');
+    expect(document.querySelector(".bcds-Inline-Alert img")).toBeNull();
+    expect(getComputedStyle(title as Element).fontWeight).toBe("700");
+  });
+
+  it("falls back to the information kind for an unknown variant", async () => {
+    await render(<Form src={inlineAlertSpec({ variant: "purple" })} />);
+
+    await expect
+      .poll(() => document.querySelector(".bcds-Inline-Alert.info"))
+      .not.toBeNull();
+  });
+});
+
+function checkboxSpec(checkbox: Record<string, unknown>): FormType {
+  return {
+    display: "form",
+    components: [
+      {
+        type: "checkbox",
+        key: "eligibilityAcknowledged",
+        label: "I have read the BC Bus Pass Program eligibility criteria.",
+        input: true,
+        validate: { required: true },
+        ...checkbox,
+      },
+    ],
+  } as unknown as FormType;
+}
+
+describe("checkbox under a question", () => {
+  it("draws the question above the checkbox, with (required) on the question only", async () => {
+    const screen = await render(
+      <Form
+        src={checkboxSpec({
+          properties: { myssGroupLabel: "Acknowledgement" },
+        })}
+      />,
+    );
+
+    await expect
+      .element(
+        screen.getByRole("group", { name: "Acknowledgement (required)" }),
+      )
+      .toBeInTheDocument();
+    const checkbox = screen.getByRole("checkbox", {
+      name: "I have read the BC Bus Pass Program eligibility criteria.",
+      exact: true,
+    });
+    await expect.element(checkbox).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-myss-required]")).toHaveLength(1);
+  });
+
+  it("keeps (required) on the checkbox's own text without a question", async () => {
+    const screen = await render(<Form src={checkboxSpec({})} />);
+
+    await expect
+      .element(
+        screen.getByRole("checkbox", {
+          name: "I have read the BC Bus Pass Program eligibility criteria. (required)",
+        }),
+      )
+      .toBeInTheDocument();
+    expect(document.querySelector("[role='group']")).toBeNull();
   });
 });

@@ -18,6 +18,7 @@ import busPassFormSpecV3Json from "./bus-pass-specs/bus-pass-form-v3.json";
 import busPassFormSpecV4Json from "./bus-pass-specs/bus-pass-form-v4.json";
 import busPassFormSpecV5Json from "./bus-pass-specs/bus-pass-form-v5.json";
 import busPassFormSpecV6Json from "./bus-pass-specs/bus-pass-form-v6.json";
+import busPassFormSpecV7Json from "./bus-pass-specs/bus-pass-form-v7.json";
 
 export type Json =
   | string
@@ -56,6 +57,22 @@ export const busPassFormSpecV5 = busPassFormSpecV5Json as unknown as Json;
  * wording for each rule is authored per field in `errors`.
  */
 export const busPassFormSpecV6 = busPassFormSpecV6Json as unknown as Json;
+
+/**
+ * Bus pass v7: layout and two field changes.
+ *
+ * - Layout: the form title is the page's h1, the privacy notice sits inside a
+ *   `bcgovCallout` container, and the service question gets its own h2 above
+ *   a radio labelled "Service Request type" whose three choices are listed
+ *   flat rather than two of them nested under an "existing client" parent.
+ *   The submitted values are the same (`addressUpdate`, `replacement`,
+ *   `newApplication`).
+ * - The date of birth is one required date field (`dateOfBirth`, an ISO date)
+ *   in place of the day / month / year group. MyssApi reads either shape, and
+ *   from v7 reports date-of-birth errors on the single field.
+ * - The social insurance number is required.
+ */
+export const busPassFormSpecV7 = busPassFormSpecV7Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -1523,6 +1540,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 4, spec: busPassFormSpecV4 },
       { version: 5, spec: busPassFormSpecV5 },
       { version: 6, spec: busPassFormSpecV6 },
+      { version: 7, spec: busPassFormSpecV7 },
     ],
   },
 ];

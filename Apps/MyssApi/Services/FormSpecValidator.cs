@@ -61,10 +61,14 @@ namespace Myss.Api.Services
             "button", "content", "htmlelement", "panel", "columns",
             "fieldset", "well", "table", "tabs",
 
-            // Custom BC Gov display component, rendered client-side by a
-            // registered Form.io component. Carries no citizen answer, so treat it
-            // like the other non-data content components.
+            // Custom BC Gov display components, rendered client-side by a
+            // registered Form.io component. They carry no citizen answer, so treat
+            // them like the other non-data content components. A callout and an
+            // inline alert are containers: the fields inside them are still
+            // collected, because the walk recurses into every component's children.
             "bcgovAccordion",
+            "bcgovCallout",
+            "bcgovInlineAlert",
         ];
 
         /// <summary>

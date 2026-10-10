@@ -6,9 +6,11 @@
 // the design system without a spec, builder or server change.
 //
 // Display and layout types stay Form.io's own: `content`, `columns` and
-// `panel` have no design system equivalent. `bcgovAccordion` is the one
-// display component added here; `bcgovRadio` stays registered as a second name
-// for the radio so specs published with it keep rendering.
+// `panel` have no design system equivalent. `bcgovAccordion` and the
+// `bcgovCallout` and `bcgovInlineAlert` containers are the display components
+// added here; `bcgovRadio`
+// stays registered as a second name for the radio so specs published with it
+// keep rendering.
 //
 // A referenced type only works if registered: call `registerBcgovComponents()`
 // once at app start, before any <Form> mounts.
@@ -24,6 +26,10 @@ import {
   Radio,
   RadioGroup,
   Select,
+  SvgCheckCircleIcon,
+  SvgExclamationCircleIcon,
+  SvgExclamationIcon,
+  SvgInfoIcon,
 } from "@bcgov/design-system-react-components";
 
 import { BcgovAddressAutocompleteComponent } from "./addressAutocomplete";
@@ -36,6 +42,7 @@ import {
   textOf,
   withBcgovField,
   type FormioFieldCtor,
+  type FormioFieldInstance,
 } from "./bcgovField";
 import {
   BcgovEmailComponent,
@@ -43,6 +50,7 @@ import {
   BcgovTextFieldComponent,
 } from "./bcgovTextField";
 import styles from "./bcgovFields.module.css";
+import calloutStyles from "@/components/Callout.module.css";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -116,6 +124,199 @@ class BcgovAccordionComponent extends BaseComponent {
         <div dangerouslySetInnerHTML={{ __html: body }} />
       </Accordion>
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// bcgovCallout: a container, like Form.io's fieldset, so a designer can drop
+// any components into it (text, questions, buttons). The children are drawn
+// by Form.io itself, which is why this writes the design system callout's
+// markup and classes instead of mounting the React Callout: Form.io cannot
+// render its components inside a React tree. Carries no value of its own.
+
+/** The design system's callout colour schemes. */
+const CALLOUT_VARIANTS = [
+  "lightGrey",
+  "lightBlue",
+  "lightGold",
+  "Blue",
+  "Grey",
+  "Black",
+] as const;
+
+/** Form.io's fieldset class, with the container members this one uses. */
+const FieldsetComponent = stockComponent("fieldset") as unknown as new (
+  ...args: unknown[]
+) => FormioFieldInstance & {
+  nestedKey: string;
+  renderComponents(): string;
+};
+
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+/** The callout box. Reads `calloutTitle`, `headingLevel` and `variant`. */
+class BcgovCalloutComponent extends FieldsetComponent {
+  static schema(...extend: unknown[]): Record<string, unknown> {
+    return (
+      FieldsetComponent as unknown as {
+        schema(...extend: unknown[]): Record<string, unknown>;
+      }
+    ).schema(
+      {
+        type: "bcgovCallout",
+        key: "bcgovCallout",
+        label: "Callout",
+        legend: "",
+        calloutTitle: "",
+        headingLevel: 2,
+        variant: "lightBlue",
+        components: [],
+        input: false,
+        persistent: false,
+        clearOnHide: false,
+      },
+      ...extend,
+    );
+  }
+
+  static get builderInfo() {
+    return {
+      title: "BC Gov Callout",
+      group: "basic",
+      icon: "square",
+      schema: BcgovCalloutComponent.schema(),
+    };
+  }
+
+  override render(): string {
+    const component = this.component;
+    const level = Number(component.headingLevel);
+    const heading = [2, 3, 4, 5, 6].includes(level) ? `h${level}` : "h2";
+    const variant = CALLOUT_VARIANTS.find((v) => v === component.variant);
+    const title = textOf(component.calloutTitle).trim();
+    const titleHtml = title
+      ? `<${heading} class="${calloutStyles.title}">${escapeHtml(title)}</${heading}>`
+      : "";
+    return super.render(
+      `<div class="${calloutStyles.callout}">` +
+        `<div class="bcds-Callout ${variant ?? "lightBlue"}">` +
+        `<div class="${calloutStyles.content}">` +
+        titleHtml +
+        `<div ref="${this.nestedKey}">${this.renderComponents()}</div>` +
+        `</div></div></div>`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// bcgovInlineAlert: a container like bcgovCallout, drawn as the design
+// system's InlineAlert (an icon, a tinted box with a thin border all round)
+// for information the citizen should notice: eligibility criteria, a note
+// about what happens next. Form.io draws the nested components, so this writes
+// the InlineAlert markup and classes and mounts only the icon with React.
+
+/** The design system's inline alert kinds. */
+const INLINE_ALERT_VARIANTS = ["info", "success", "warning", "danger"] as const;
+
+type InlineAlertVariant = (typeof INLINE_ALERT_VARIANTS)[number];
+
+function inlineAlertVariant(value: unknown): InlineAlertVariant {
+  return INLINE_ALERT_VARIANTS.find((variant) => variant === value) ?? "info";
+}
+
+/** Each kind's icon, as the design system's own InlineAlert picks it. */
+function inlineAlertIcon(variant: InlineAlertVariant, id: string): ReactNode {
+  switch (variant) {
+    case "success":
+      return <SvgCheckCircleIcon id={id} />;
+    case "warning":
+      return <SvgExclamationIcon id={id} />;
+    case "danger":
+      return <SvgExclamationCircleIcon id={id} />;
+    default:
+      return <SvgInfoIcon id={id} />;
+  }
+}
+
+/** The alert box. Reads `alertTitle` (plain text, shown bold) and `variant`. */
+class BcgovInlineAlertComponent extends FieldsetComponent {
+  private iconMount?: ReactMount;
+
+  static schema(...extend: unknown[]): Record<string, unknown> {
+    return (
+      FieldsetComponent as unknown as {
+        schema(...extend: unknown[]): Record<string, unknown>;
+      }
+    ).schema(
+      {
+        type: "bcgovInlineAlert",
+        key: "bcgovInlineAlert",
+        label: "Inline alert",
+        legend: "",
+        alertTitle: "",
+        variant: "info",
+        components: [],
+        input: false,
+        persistent: false,
+        clearOnHide: false,
+      },
+      ...extend,
+    );
+  }
+
+  static get builderInfo() {
+    return {
+      title: "BC Gov Inline Alert",
+      group: "basic",
+      icon: "info-circle",
+      schema: BcgovInlineAlertComponent.schema(),
+    };
+  }
+
+  override render(): string {
+    const variant = inlineAlertVariant(this.component.variant);
+    const title = textOf(this.component.alertTitle).trim();
+    // `.title` as a direct child of the container takes the design system's
+    // bold title style.
+    const titleHtml = title
+      ? `<span class="title">${escapeHtml(title)}</span>`
+      : "";
+    return super.render(
+      `<div class="bcds-Inline-Alert ${variant}">` +
+        `<span class="bcds-Inline-Alert--icon" ref="alertIcon"></span>` +
+        `<div class="bcds-Inline-Alert--container" role="note">` +
+        titleHtml +
+        `<div class="${styles.inlineAlertBody}" ref="${this.nestedKey}">` +
+        this.renderComponents() +
+        `</div></div></div>`,
+    );
+  }
+
+  override attach(element: HTMLElement): Promise<void> {
+    this.loadRefs(element, { alertIcon: "single" });
+    const host = this.refs.alertIcon;
+    if (host instanceof HTMLElement) {
+      // A distinct id per alert: the icons default to a shared one.
+      this.iconMount = new ReactMount(
+        host,
+        inlineAlertIcon(
+          inlineAlertVariant(this.component.variant),
+          `${this.id}-icon`,
+        ),
+      );
+    }
+    return super.attach(element);
+  }
+
+  override detach(): void {
+    this.iconMount?.release();
+    super.detach();
   }
 }
 
@@ -231,6 +432,14 @@ class BcgovSelectComponent extends withBcgovField(stockComponent("select")) {
 // ---------------------------------------------------------------------------
 // checkbox
 
+/** `properties.myssGroupLabel`: a question drawn above the checkbox. */
+function checkboxGroupLabel(
+  component: Record<string, unknown>,
+): string | undefined {
+  const properties = isRecord(component.properties) ? component.properties : {};
+  return textOf(properties.myssGroupLabel).trim() || undefined;
+}
+
 class BcgovCheckboxComponent extends withBcgovField(
   stockComponent("checkbox"),
 ) {
@@ -238,6 +447,7 @@ class BcgovCheckboxComponent extends withBcgovField(
     const props = this.bcgovFieldProps();
     return (
       <CheckboxField
+        groupLabel={checkboxGroupLabel(this.component)}
         // The label is HTML sourced from the form spec (a consent checkbox
         // links to the terms it names). Sanitised through Form.io's
         // DOMPurify-backed Utils.sanitize, so spec content can never inject
@@ -542,6 +752,8 @@ export function registerBcgovComponents(): void {
   setComponent("datetime", BcgovDateTimeComponent);
   setComponent("button", BcgovButtonComponent);
   setComponent("bcgovAccordion", BcgovAccordionComponent);
+  setComponent("bcgovCallout", BcgovCalloutComponent);
+  setComponent("bcgovInlineAlert", BcgovInlineAlertComponent);
   setComponent("bcgovAddressAutocomplete", BcgovAddressAutocompleteComponent);
   registered = true;
 }

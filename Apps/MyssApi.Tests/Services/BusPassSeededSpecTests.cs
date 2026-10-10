@@ -17,10 +17,14 @@ namespace Myss.Api.Tests.Services
     {
         private static readonly DateOnly Today = new(2026, 9, 10);
 
-        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 6).Select(v => new object[] { v });
+        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 7).Select(v => new object[] { v });
+
+        /// <summary>The versions that ask for the date of birth as day, month and year.</summary>
+        public static IEnumerable<object[]> VersionsWithDateOfBirthParts =>
+            Enumerable.Range(1, BusPassRules.SingleDateOfBirthVersion - 1).Select(v => new object[] { v });
 
         public static IEnumerable<object[]> VersionsWithTheReplacementAcknowledgement =>
-            Enumerable.Range(4, 3).Select(v => new object[] { v });
+            Enumerable.Range(4, 4).Select(v => new object[] { v });
 
         [Theory]
         [MemberData(nameof(EveryVersion))]
@@ -44,7 +48,7 @@ namespace Myss.Api.Tests.Services
         }
 
         [Theory]
-        [MemberData(nameof(EveryVersion))]
+        [MemberData(nameof(VersionsWithDateOfBirthParts))]
         public void ABirthMonthFormIoSendsAsANumber_Passes(int version)
         {
             // Form.io turns the option "12" into the number 12 before posting.
@@ -132,7 +136,7 @@ namespace Myss.Api.Tests.Services
         }
 
         [Theory]
-        [MemberData(nameof(EveryVersion))]
+        [MemberData(nameof(VersionsWithDateOfBirthParts))]
         public void AnImpossibleDateOfBirth_IsRefusedOnceOnTheDayField(int version)
         {
             // v6 checks the group on the form (dateParts) and the bus pass rules
@@ -143,6 +147,28 @@ namespace Myss.Api.Tests.Services
 
             ValidationErrorModel error = Assert.Single(Run(version, answers));
             Assert.Equal("birthDay", error.Field);
+        }
+
+        [Theory]
+        [InlineData("2010-02-31")]
+        [InlineData("2027-01-01")]
+        public void V7_ABadDateOfBirth_IsRefusedOnceOnTheDateField(string dateOfBirth)
+        {
+            var answers = NewApplicant(7);
+            answers["dateOfBirth"] = dateOfBirth;
+
+            ValidationErrorModel error = Assert.Single(Run(7, answers));
+            Assert.Equal("dateOfBirth", error.Field);
+        }
+
+        [Fact]
+        public void V7_ASocialInsuranceNumberIsRequired()
+        {
+            var answers = NewApplicant(7);
+            answers.Remove("socialInsuranceNumber");
+            answers["busPassAccountNumber"] = "123456789";
+
+            Assert.Contains(Run(7, answers), e => e.Field == "socialInsuranceNumber");
         }
 
         [Fact]
@@ -196,7 +222,22 @@ namespace Myss.Api.Tests.Services
         }
 
         /// <summary>Everything every version asks of an applicant, in the version's own shape.</summary>
-        private static Dictionary<string, object?> Common() => new()
+        private static Dictionary<string, object?> Common(int version)
+        {
+            var answers = CommonParts();
+            if (version >= BusPassRules.SingleDateOfBirthVersion)
+            {
+                answers.Remove("birthDay");
+                answers.Remove("birthMonth");
+                answers.Remove("birthYear");
+                answers["dateOfBirth"] = "1950-12-10";
+            }
+
+            return answers;
+        }
+
+        /// <summary>The answers in the v1-v6 shape, date of birth in three parts.</summary>
+        private static Dictionary<string, object?> CommonParts() => new()
         {
             // Digits only: v1 still checked the SIN's shape with a pattern on the
             // form, before the server-side rule took over in v2.
@@ -223,7 +264,7 @@ namespace Myss.Api.Tests.Services
 
         private static Dictionary<string, object?> NewApplicant(int version)
         {
-            var answers = Common();
+            var answers = Common(version);
             if (version < 3)
             {
                 answers["applicantCategory"] = "new";
@@ -240,7 +281,7 @@ namespace Myss.Api.Tests.Services
 
         private static Dictionary<string, object?> AddressUpdate(int version)
         {
-            var answers = Common();
+            var answers = Common(version);
             if (version < 3)
             {
                 answers["applicantCategory"] = "existing";
@@ -256,7 +297,7 @@ namespace Myss.Api.Tests.Services
 
         private static Dictionary<string, object?> Replacement(int version)
         {
-            var answers = Common();
+            var answers = Common(version);
             if (version < 3)
             {
                 answers["applicantCategory"] = "existing";

@@ -32,6 +32,12 @@ namespace Myss.Api.Services
         public const int SpecValidatesEmailMatchVersion = 6;
 
         /// <summary>
+        /// The first version that asks for the date of birth in one date field
+        /// rather than day, month and year; its errors belong on that field.
+        /// </summary>
+        public const int SingleDateOfBirthVersion = 7;
+
+        /// <summary>
         /// Checks the answers against the bus pass rules.
         /// </summary>
         /// <param name="answers">The submitted answers, keyed by component key.</param>
@@ -47,7 +53,7 @@ namespace Myss.Api.Services
 
             ValidateRequestType(answers, errors);
             ValidateIdentifier(answers, errors);
-            ValidateDateOfBirth(answers, today, errors);
+            ValidateDateOfBirth(answers, today, formSpecVersion, errors);
             ValidateContact(answers, formSpecVersion, errors);
 
             return errors;
@@ -118,13 +124,19 @@ namespace Myss.Api.Services
             }
         }
 
-        private static void ValidateDateOfBirth(JsonElement answers, DateOnly today, List<ValidationErrorModel> errors)
+        private static void ValidateDateOfBirth(JsonElement answers, DateOnly today, int formSpecVersion, List<ValidationErrorModel> errors)
         {
+            // The field the citizen corrects: the one date field from v7, the
+            // day (invalid) or year (out of range) of the three parts before.
+            bool singleField = formSpecVersion >= SingleDateOfBirthVersion;
+            string invalidField = singleField ? BusPassAnswers.DateOfBirth : BusPassAnswers.BirthDay;
+            string rangeField = singleField ? BusPassAnswers.DateOfBirth : BusPassAnswers.BirthYear;
+
             if (!BusPassAnswers.TryGetDateOfBirth(answers, out DateOnly dateOfBirth))
             {
                 errors.Add(new ValidationErrorModel
                 {
-                    Field = BusPassAnswers.BirthDay,
+                    Field = invalidField,
                     Keyword = BusPassErrorKeywords.DateOfBirthInvalid,
                     Message = "Enter a valid date of birth",
                 });
@@ -135,7 +147,7 @@ namespace Myss.Api.Services
             {
                 errors.Add(new ValidationErrorModel
                 {
-                    Field = BusPassAnswers.BirthYear,
+                    Field = rangeField,
                     Keyword = BusPassErrorKeywords.DateOfBirthInFuture,
                     Message = "The date of birth cannot be in the future",
                 });
@@ -146,7 +158,7 @@ namespace Myss.Api.Services
             {
                 errors.Add(new ValidationErrorModel
                 {
-                    Field = BusPassAnswers.BirthYear,
+                    Field = rangeField,
                     Keyword = BusPassErrorKeywords.Under16,
                     Message = $"You must be at least {MinimumAge}",
                 });

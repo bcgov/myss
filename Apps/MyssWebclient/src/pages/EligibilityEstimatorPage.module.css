@@ -6,7 +6,7 @@
 .page {
   /* 800px: the design's content wrapper is 1440 wide with 320px side padding, and every
      content node in the frames is 800px. */
-  max-width: 800px;
+  max-width: var(--myss-form-page-width);
   margin: 0 auto;
   width: 100%;
   /* Nothing here compensates for token sizing; the root font size is set once in
