@@ -1,5 +1,6 @@
-import { Callout, Link } from "@bcgov/design-system-react-components";
+import { Link } from "@bcgov/design-system-react-components";
 
+import Callout from "@/components/Callout";
 import { paths } from "@/routes/paths";
 import styles from "./BusPassCallout.module.css";
 
@@ -10,9 +11,8 @@ export default function BusPassCallout() {
     return (
         <section className={styles.band} aria-label="BC Bus Pass">
             <div className={styles.column}>
-                <Callout variant="lightBlue">
+                <Callout title="Need a bus pass?" variant="lightBlue">
                     <div className={styles.content}>
-                        <h2>Need a bus pass?</h2>
                         <p>
                             Apply for a bus pass online. Learn more about the{" "}
                             <Link href={busPassProgramUrl}>bus pass program</Link>.

@@ -161,6 +161,30 @@ namespace Myss.Api.Tests.Services
             Assert.Equal("dateOfBirth", error.Field);
         }
 
+        [Theory]
+        [InlineData("firstName", "A first name is required")]
+        [InlineData("lastName", "A last name is required")]
+        public void V7_ABlankName_IsWordedAsMissing(string key, string message)
+        {
+            var answers = NewApplicant(7);
+            answers.Remove(key);
+
+            ValidationErrorModel error = Assert.Single(Run(7, answers));
+            Assert.Equal(key, error.Field);
+            Assert.Equal(message, error.Message);
+        }
+
+        [Fact]
+        public void V7_PreferringEmailWithoutOne_IsRefusedOnTheEmailField()
+        {
+            var answers = NewApplicant(7);
+            answers["preferredCommunication"] = "email";
+            answers.Remove("email");
+            answers.Remove("emailVerification");
+
+            Assert.Contains(Run(7, answers), e => e.Field == "email" && e.Keyword == BusPassErrorKeywords.EmailRequiredForEmailContact);
+        }
+
         [Fact]
         public void V7_ASocialInsuranceNumberIsRequired()
         {

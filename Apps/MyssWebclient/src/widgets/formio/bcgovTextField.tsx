@@ -15,7 +15,7 @@ import {
 } from "./bcgovField";
 import { applyInputMask, isNumericMask } from "./inputMask";
 
-type TextVariant = "text" | "email" | "textarea";
+type TextVariant = "text" | "email" | "tel" | "textarea";
 
 /**
  * Mixes a design system text input into a stock Form.io text class. The
@@ -59,7 +59,7 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
       return (
         <TextField
           {...props}
-          type={variant === "email" ? "email" : "text"}
+          type={variant === "text" ? "text" : variant}
           inputMode={isNumericMask(mask) ? "numeric" : undefined}
           value={value}
           autoComplete={autoComplete}
@@ -80,6 +80,15 @@ export const BcgovTextFieldComponent = withBcgovTextInput(
 export const BcgovEmailComponent = withBcgovTextInput(
   stockComponent("email"),
   "email",
+);
+
+/**
+ * Form.io's `phoneNumber`: the TextField with a telephone input (a phone keypad
+ * on mobile) and the type's own "(999) 999-9999" mask.
+ */
+export const BcgovPhoneNumberComponent = withBcgovTextInput(
+  stockComponent("phoneNumber"),
+  "tel",
 );
 
 /** Form.io's `textarea`, drawn with the design system TextArea. */

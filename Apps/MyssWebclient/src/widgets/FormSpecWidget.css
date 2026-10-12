@@ -1,11 +1,7 @@
 /*
- * Minimal Form.io -> BC Gov visual bridge (POC).
- *
- * Form.io's default templates assume Bootstrap classes (.form-control etc.)
- * that this app does not load. Native inputs still render via user-agent
- * styles, but div-based widgets (the Choices.js select) come out invisible.
- * This gives them a real box. Full design-system theming (BC Gov tokens
- * across all components) is a later slice.
+ * Shared Form.io page styles: the error summary for a refused submission.
+ * The fields themselves are design system wrappers (widgets/formio), styled
+ * by the site theme (public/vendor/myss-theme.css).
  */
 
 /*
@@ -49,63 +45,4 @@
   text-align: left;
   text-decoration: underline;
   cursor: pointer;
-}
-
-.formio-form .form-control.dropdown {
-  background: var(--surface-color-background-white);
-  border: var(--layout-border-width-small) solid var(--surface-color-border-dark);
-  border-radius: var(--layout-border-radius-medium);
-  min-height: var(--layout-padding-xxlarge);
-  padding: var(--layout-padding-xsmall) var(--layout-padding-xlarge) var(--layout-padding-xsmall) var(--layout-padding-small);
-  box-sizing: border-box;
-}
-
-.formio-form .choices__list--single {
-  display: flex;
-  align-items: center;
-  min-height: var(--layout-padding-large);
-  padding: 0;
-}
-
-.formio-form .choices:focus-within .form-control.dropdown {
-  outline: var(--layout-border-width-medium) solid var(--surface-color-border-dark);
-  outline-offset: var(--layout-border-width-small);
-}
-
-/*
- * Disabled / read-only state (historical View Form). Native inputs grey out
- * via user-agent styles; the div-based select only gets the `is-disabled`
- * class, so it must be styled explicitly or it reads as editable.
- */
-.formio-form .choices.is-disabled .form-control.dropdown {
-  background: var(--surface-color-background-light-gray);
-  border-color: var(--surface-color-border-default);
-  color: var(--typography-color-disabled);
-  cursor: default;
-}
-
-.formio-form .choices.is-disabled::after {
-  display: none; /* hide the dropdown arrow; it suggests the field is editable */
-}
-
-.formio-form .choices.is-disabled .choices__button {
-  /* The per-item remove (x) button. !important is needed to beat the
-   * vendor rule `.choices[data-type*=select-one] ... [data-deletable]
-   * :not([data-placeholder]) .choices__button`, which is 7 selectors deep. */
-  display: none !important;
-}
-
-/* The open dropdown panel gets the same box treatment as the field. */
-.formio-form .choices__list--dropdown,
-.formio-form .choices__list[aria-expanded] {
-  background: var(--surface-color-background-white);
-  border: var(--layout-border-width-small) solid var(--surface-color-border-dark);
-  border-radius: var(--layout-border-radius-medium);
-  z-index: 10;
-}
-
-.formio-form
-  .choices__list--dropdown
-  .choices__item--selectable.is-highlighted {
-  background: var(--surface-color-background-light-blue);
 }

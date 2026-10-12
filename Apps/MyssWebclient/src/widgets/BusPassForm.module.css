@@ -85,3 +85,22 @@
 .formHost :global([data-myss-nested-option-child]) {
     margin-bottom: var(--layout-margin-small);
 }
+
+/* "Your request is being submitted", under the form while the request is in
+   flight: a spinner beside the message, in the information colours. */
+.submitting {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--layout-margin-small);
+    margin-top: var(--layout-margin-medium);
+    padding: var(--layout-padding-medium);
+    border: var(--layout-border-width-small) solid
+        var(--support-border-color-info);
+    border-radius: var(--layout-border-radius-medium);
+    background: var(--support-surface-color-info);
+    font: var(--typography-regular-body);
+}
+
+.submitting p {
+    margin: 0;
+}

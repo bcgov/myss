@@ -43,3 +43,9 @@
 .inlineAlertBody a {
   text-decoration: underline;
 }
+
+/* A number field's prefix or suffix ("$") inside the box, beside the value. */
+.numberAffix {
+  color: var(--typography-color-secondary);
+  font: var(--typography-regular-body);
+}

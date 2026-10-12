@@ -1,4 +1,4 @@
-import { Button } from "@bcgov/design-system-react-components";
+import { Button, ProgressCircle } from "@bcgov/design-system-react-components";
 import { Form } from "@formio/react";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -250,7 +250,7 @@ export default function BusPassForm() {
   const summaryError = clientValidation.error ?? submit.error;
 
   return (
-    <section className={styles.formHost}>
+    <section className={styles.formHost} aria-busy={submit.isPending}>
       {summaryError &&
         (unavailable && !clientValidation.error ? (
           <SubmissionUnavailable error={unavailable} catalogue={catalogue} />
@@ -281,6 +281,26 @@ export default function BusPassForm() {
           );
         }}
       />
+      {/* The request can take several seconds to reach the ministry. Without
+          this the page looks unchanged after Submit and the applicant cannot
+          tell it was accepted. The live region is always mounted so screen
+          readers announce the message when it appears. */}
+      <div role="status">
+        {submit.isPending && (
+          <div className={styles.submitting}>
+            <ProgressCircle
+              isIndeterminate
+              size="small"
+              aria-label="Submitting your request"
+            />
+            <p>
+              <strong>Your request is being submitted.</strong> This can take up
+              to a minute. Please stay on this page until you see your
+              confirmation.
+            </p>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

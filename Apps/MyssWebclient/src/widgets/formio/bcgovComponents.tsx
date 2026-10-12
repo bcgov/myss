@@ -22,7 +22,6 @@ import {
   Accordion,
   Button,
   DatePicker,
-  NumberField,
   Radio,
   RadioGroup,
   Select,
@@ -30,6 +29,7 @@ import {
   SvgExclamationCircleIcon,
   SvgExclamationIcon,
   SvgInfoIcon,
+  TextField,
 } from "@bcgov/design-system-react-components";
 
 import { BcgovAddressAutocompleteComponent } from "./addressAutocomplete";
@@ -46,10 +46,16 @@ import {
 } from "./bcgovField";
 import {
   BcgovEmailComponent,
+  BcgovPhoneNumberComponent,
   BcgovTextAreaComponent,
   BcgovTextFieldComponent,
 } from "./bcgovTextField";
 import styles from "./bcgovFields.module.css";
+import {
+  cleanNumberText,
+  formatNumberValue,
+  parseNumberText,
+} from "./numberText";
 import calloutStyles from "@/components/Callout.module.css";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -321,39 +327,145 @@ class BcgovInlineAlertComponent extends FieldsetComponent {
 }
 
 // ---------------------------------------------------------------------------
-// number
+// number and currency
 
-/** Form.io's `number`, drawn with the design system NumberField. */
-class BcgovNumberComponent extends withBcgovField(stockComponent("number")) {
-  protected renderReact(): ReactNode {
-    const component = this.component;
-    const props = this.bcgovFieldProps();
-    // A format hint the form put in the placeholder, as the description.
-    props.description ??= textOf(component.placeholder) || undefined;
-    const raw = this.dataValue;
-    const validate = isRecord(component.validate) ? component.validate : {};
-    // The spec's own limit if it sets one; otherwise none for a whole number
-    // and two (currency) for anything else.
-    let decimalLimit = validate.integer === true ? 0 : 2;
-    if (typeof component.decimalLimit === "number") {
-      decimalLimit = component.decimalLimit;
+/**
+ * Mixes a number input drawn with the design system TextField into a stock
+ * Form.io number class, so it looks like every other input: no stepper
+ * buttons, a prefix or suffix ("$", "km") shown inside the box. The stored
+ * value is still a number; what the citizen types is kept as text while it
+ * is on its way to one ("12.") and shown formatted again once they leave the
+ * field. `defaultPrefix` supplies the prefix when the spec sets none.
+ */
+function withBcgovNumberInput<TBase extends FormioFieldCtor>(
+  Base: TBase,
+  defaultPrefix: (component: Record<string, unknown>) => string,
+) {
+  return class BcgovNumberInput extends withBcgovField(Base) {
+    /** The text being typed; undefined when the field shows the stored value. */
+    private typed?: string;
+
+    override setValue(
+      value: unknown,
+      flags?: Record<string, unknown>,
+    ): boolean {
+      // A value set from outside (a loaded draft, a cleared conditional field)
+      // replaces whatever was being typed.
+      this.typed = undefined;
+      return super.setValue(value, flags);
     }
 
-    return (
-      <NumberField
-        {...props}
-        value={typeof raw === "number" ? raw : Number.NaN}
-        formatOptions={{
-          maximumFractionDigits: decimalLimit,
-          useGrouping: component.delimiter === true,
-        }}
-        onChange={(next: number) => {
-          // Form.io reads null as "take the value from the inputs", and there
-          // are none, so a cleared field is sent as '' and normalised to empty.
-          this.bcgovCommit(Number.isNaN(next) ? "" : next);
-        }}
-      />
-    );
+    protected renderReact(): ReactNode {
+      const component = this.component;
+      const props = this.bcgovFieldProps();
+      // A format hint the form put in the placeholder, as the description.
+      props.description ??= textOf(component.placeholder) || undefined;
+      const validate = isRecord(component.validate) ? component.validate : {};
+      // The spec's own limit if it sets one; otherwise none for a whole number
+      // and two (currency) for anything else.
+      let decimalLimit = validate.integer === true ? 0 : 2;
+      if (typeof component.decimalLimit === "number") {
+        decimalLimit = component.decimalLimit;
+      }
+      const prefix =
+        textOf(component.prefix).trim() || defaultPrefix(component);
+      const suffix = textOf(component.suffix).trim();
+      const value =
+        this.typed ??
+        formatNumberValue(
+          this.dataValue,
+          decimalLimit,
+          component.delimiter === true,
+        );
+
+      return (
+        <TextField
+          {...props}
+          type="text"
+          inputMode={decimalLimit > 0 ? "decimal" : "numeric"}
+          value={value}
+          // Read with the label, not aloud on its own: the label names the
+          // amount, and the sign is a visual cue.
+          iconLeft={
+            prefix ? (
+              <span className={styles.numberAffix} aria-hidden="true">
+                {prefix}
+              </span>
+            ) : undefined
+          }
+          iconRight={
+            suffix ? (
+              <span className={styles.numberAffix} aria-hidden="true">
+                {suffix}
+              </span>
+            ) : undefined
+          }
+          onChange={(next: string) => {
+            const cleaned = cleanNumberText(next, decimalLimit);
+            if (cleaned === null) {
+              // Refused: redraw with the text as it was.
+              this.bcgovRerender();
+              return;
+            }
+            this.typed = cleaned;
+            // Form.io reads null as "take the value from the inputs", and there
+            // are none, so a cleared field is sent as '' and normalised to empty.
+            this.bcgovCommit(parseNumberText(cleaned) ?? "");
+          }}
+          onBlur={() => {
+            this.typed = undefined;
+            this.bcgovRerender();
+          }}
+        />
+      );
+    }
+  };
+}
+
+/** Form.io's `number`: the spec's own `prefix` / `suffix`, nothing by default. */
+const BcgovNumberComponent = withBcgovNumberInput(
+  stockComponent("number"),
+  () => "",
+);
+
+/**
+ * The sign for a currency code, as Canadians read it: "$" for CAD (the
+ * default) and USD, "€" for EUR; the code itself when the browser has no
+ * symbol for it.
+ */
+function currencySymbol(component: Record<string, unknown>): string {
+  const code = textOf(component.currency).trim().toUpperCase() || "CAD";
+  try {
+    const parts = new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: code,
+      currencyDisplay: "narrowSymbol",
+    }).formatToParts(0);
+    return parts.find((part) => part.type === "currency")?.value ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** Form.io's own currency class, kept before ours replaces it in the registry. */
+const StockCurrencyComponent = stockComponent("currency");
+
+/**
+ * Form.io's `currency`: a number that holds an amount of money. Form.io's
+ * defaults stay (two decimals, grouping commas); the sign comes from the
+ * field's currency code. Offered in the builder as "Amount".
+ */
+class BcgovCurrencyComponent extends withBcgovNumberInput(
+  StockCurrencyComponent,
+  currencySymbol,
+) {
+  static get builderInfo() {
+    const stock = (
+      StockCurrencyComponent as unknown as {
+        builderInfo: Record<string, unknown>;
+      }
+    ).builderInfo;
+    return { ...stock, title: "Amount", group: "basic" };
   }
 }
 
@@ -702,16 +814,19 @@ class BcgovButtonComponent extends withBcgovField(stockComponent("button")) {
   protected renderReact(): ReactNode {
     const component = this.component;
     const action = textOf(component.action) || "submit";
+    // The spacing sits on a wrapper: the design system Button replaces its own
+    // classes with any className it is given, which left it unstyled.
     return (
-      <Button
-        variant={action === "submit" ? "primary" : "secondary"}
-        type="button"
-        isDisabled={this.disabled || this.options.readOnly === true}
-        className={styles.submitButton}
-        onPress={() => this.bcgovClick()}
-      >
-        {textOf(component.label) || this.t("submit")}
-      </Button>
+      <div className={styles.submitButton}>
+        <Button
+          variant={action === "submit" ? "primary" : "secondary"}
+          type="button"
+          isDisabled={this.disabled || this.options.readOnly === true}
+          onPress={() => this.bcgovClick()}
+        >
+          {textOf(component.label) || this.t("submit")}
+        </Button>
+      </div>
     );
   }
 
@@ -743,8 +858,10 @@ export function registerBcgovComponents(): void {
 
   setComponent("textfield", BcgovTextFieldComponent);
   setComponent("email", BcgovEmailComponent);
+  setComponent("phoneNumber", BcgovPhoneNumberComponent);
   setComponent("textarea", BcgovTextAreaComponent);
   setComponent("number", BcgovNumberComponent);
+  setComponent("currency", BcgovCurrencyComponent);
   setComponent("select", BcgovSelectComponent);
   setComponent("checkbox", BcgovCheckboxComponent);
   setComponent("radio", BcgovRadioComponent);

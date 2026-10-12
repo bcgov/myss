@@ -179,6 +179,43 @@ describe("RegistrationForm", () => {
         await expect.element(screen.getByRole("radio", { name: "Man/Boy" })).toBeEnabled();
     });
 
+    it("draws the phone and consent fields like every other field", async () => {
+        formState.spec.data = {
+            version: 4,
+            spec: {
+                display: "form",
+                components: [
+                    { type: "textfield", key: "firstName", label: "First name", input: true },
+                    { type: "phoneNumber", key: "phone", label: "Phone", input: true },
+                    {
+                        type: "checkbox",
+                        key: "consent",
+                        label: "I accept the Terms of Use.",
+                        input: true,
+                        validate: { required: true },
+                    },
+                ],
+            },
+        };
+        const screen = await renderForm().screen;
+
+        // phoneNumber is a design system telephone input now, not Form.io's
+        // own markup with its red star and "numeric only" hint.
+        await expect.element(screen.getByRole("textbox", { name: /Phone/ })).toBeInTheDocument();
+        const phone = document.querySelector<HTMLInputElement>('input[type="tel"]');
+        expect(phone, "the phone field renders as a telephone input").not.toBeNull();
+        expect(phone?.closest(".bcds-react-aria-TextField")).not.toBeNull();
+        expect(document.querySelector(".form-control, .required-star")).toBeNull();
+
+        // The consent checkbox lines up with the text inputs, not indented.
+        const firstName = screen.getByRole("textbox", { name: /First name/ }).element();
+        const checkbox = document.querySelector(".bcds-react-aria-Checkbox");
+        expect(checkbox).not.toBeNull();
+        expect(Math.round(checkbox!.getBoundingClientRect().left)).toBe(
+            Math.round(firstName.closest(".bcds-react-aria-TextField")!.getBoundingClientRect().left),
+        );
+    });
+
     // v3, the version published today, still carries its own Form.io submit
     // button; the widget's BC Gov buttons replace it.
     it("replaces the spec's submit button with BC Gov Cancel and Complete registration", async () => {

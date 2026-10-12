@@ -162,7 +162,7 @@ export default function RegistrationForm({
   const summaryError = clientValidation.error ?? submit.error;
 
   return (
-    <section className={styles.form}>
+    <section>
       {summaryError && <SubmissionErrors error={summaryError} />}
       <Form
         src={prepared ?? spec.spec}

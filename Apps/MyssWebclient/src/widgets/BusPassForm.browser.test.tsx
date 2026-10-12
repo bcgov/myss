@@ -173,7 +173,8 @@ const currentSpecV4 = {
   },
 };
 
-type Answer = { status: number; body: unknown };
+/** An API answer; `wait`, when given, holds it back until it settles. */
+type Answer = { status: number; body: unknown; wait?: Promise<unknown> };
 
 const accepted: Answer = {
   status: 200,
@@ -275,6 +276,7 @@ function stubApi(
     }
     if (url.endsWith("/v1/bus-pass/submissions") && init?.method === "POST") {
       posts.push({ url, body: JSON.parse(String(init.body)) });
+      await answer.wait;
       return new Response(JSON.stringify(answer.body), {
         status: answer.status,
         headers: { "Content-Type": "application/json" },
@@ -645,4 +647,53 @@ test("a refused submission lists every reason and focuses the field on request",
   await expect
     .element(screen.getByRole("textbox", { name: "First name" }))
     .toHaveFocus();
+});
+
+test("a refused submission keeps every answer, ready to send again", async () => {
+  const posts = stubApi(refused);
+  const screen = await renderForm();
+
+  await fillAndSubmit(screen);
+  await expect.element(screen.getByText("There is a problem")).toBeVisible();
+
+  // The answer is still in the field after the refusal...
+  await expect
+    .element(screen.getByRole("textbox", { name: "First name" }))
+    .toHaveValue("Ada");
+
+  // ...and is what the next attempt sends, without typing it again.
+  await screen.getByRole("button", { name: "Submit" }).click();
+  await vi.waitFor(() => expect(posts).toHaveLength(2));
+  expect(posts[1].body).toMatchObject({ answers: { firstName: "Ada" } });
+});
+
+test("says the request is being submitted while it is on its way", async () => {
+  let release: () => void = () => {};
+  const wait = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const posts = stubApi({ ...accepted, wait });
+  const screen = await renderForm();
+
+  await fillAndSubmit(screen);
+
+  // While the API has not answered: a message, announced, and no second post.
+  const message = screen.getByText("Your request is being submitted.");
+  await expect.element(message).toBeVisible();
+  // Inside a live region, so screen readers announce it.
+  expect(message.element().closest('[role="status"]')).not.toBeNull();
+  await expect
+    .element(
+      screen.getByRole("progressbar", { name: "Submitting your request" }),
+    )
+    .toBeInTheDocument();
+  await screen.getByRole("button", { name: "Submit" }).click({ force: true });
+  expect(posts).toHaveLength(1);
+
+  release();
+
+  await expect.element(screen.getByText("1-TEST-0001")).toBeVisible();
+  expect(document.body.textContent).not.toContain(
+    "Your request is being submitted.",
+  );
 });

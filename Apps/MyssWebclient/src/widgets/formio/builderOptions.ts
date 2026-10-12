@@ -4,8 +4,14 @@
 /** Question types that pick from a fixed set of answers. */
 const CHOICE_TYPES = ["radio", "select", "checkbox"] as const;
 
-/** Question types that take a typed answer. */
-const TEXT_TYPES = ["textfield", "textarea", "number", "email"] as const;
+/** Question types that take a typed answer. `currency` is offered as "Amount". */
+const TEXT_TYPES = [
+  "textfield",
+  "textarea",
+  "number",
+  "currency",
+  "email",
+] as const;
 
 /** Question types that take a date. */
 const DATE_TYPES = ["datetime"] as const;

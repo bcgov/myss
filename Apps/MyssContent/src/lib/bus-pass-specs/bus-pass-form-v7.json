@@ -214,8 +214,12 @@
             "validate": {
                 "pattern": "^[A-Za-z][A-Za-z' -]*$",
                 "required": true,
-                "minLength": 2,
-                "customMessage": "Invalid character(s) in last name"
+                "minLength": 2
+            },
+            "errors": {
+                "required": "A last name is required",
+                "pattern": "Invalid character(s) in last name",
+                "minLength": "A last name must have at least 2 characters"
             }
         },
         {
@@ -226,8 +230,12 @@
             "validate": {
                 "pattern": "^[A-Za-z][A-Za-z' -]*$",
                 "required": true,
-                "minLength": 2,
-                "customMessage": "Invalid character(s) in first name"
+                "minLength": 2
+            },
+            "errors": {
+                "required": "A first name is required",
+                "pattern": "Invalid character(s) in first name",
+                "minLength": "A first name must have at least 2 characters"
             }
         },
         {
@@ -298,6 +306,34 @@
             "label": "Email",
             "validate": {
                 "required": false
+            },
+            "logic": [
+                {
+                    "name": "Required when email is the preferred method of communication",
+                    "trigger": {
+                        "type": "simple",
+                        "simple": {
+                            "show": true,
+                            "when": "preferredCommunication",
+                            "eq": "email"
+                        }
+                    },
+                    "actions": [
+                        {
+                            "name": "Require",
+                            "type": "property",
+                            "property": {
+                                "label": "Required",
+                                "value": "validate.required",
+                                "type": "boolean"
+                            },
+                            "state": true
+                        }
+                    ]
+                }
+            ],
+            "errors": {
+                "required": "An email address is required when email is the preferred means of communication"
             }
         },
         {
@@ -312,8 +348,34 @@
                 "myssMatches": "email"
             },
             "errors": {
-                "matches": "The two email addresses do not match"
-            }
+                "matches": "The two email addresses do not match",
+                "required": "Enter your email address again to confirm it"
+            },
+            "logic": [
+                {
+                    "name": "Required when email is the preferred method of communication",
+                    "trigger": {
+                        "type": "simple",
+                        "simple": {
+                            "show": true,
+                            "when": "preferredCommunication",
+                            "eq": "email"
+                        }
+                    },
+                    "actions": [
+                        {
+                            "name": "Require",
+                            "type": "property",
+                            "property": {
+                                "label": "Required",
+                                "value": "validate.required",
+                                "type": "boolean"
+                            },
+                            "state": true
+                        }
+                    ]
+                }
+            ]
         },
         {
             "key": "preferredCommunication",

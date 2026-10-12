@@ -112,6 +112,15 @@ describe("builderOptions", () => {
     expect(ALLOWED_COMPONENT_TYPES).toContain("bcgovCallout");
   });
 
+  it("offers amounts (currency) beside numbers", () => {
+    expect(ALLOWED_COMPONENT_TYPES).toEqual(
+      expect.arrayContaining(["number", "currency"]),
+    );
+    expect(
+      overridesFor("currency").find((tab) => tab.key === "data")?.components,
+    ).toEqual([{ key: "multiple", ignore: true }]);
+  });
+
   it("lets a checkbox carry a question above it", () => {
     const displayTab = overridesFor("checkbox").find(
       (tab) => tab.key === "display",

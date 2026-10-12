@@ -1,7 +1,8 @@
+import { Formio } from "@formio/js";
 import { Form } from "@formio/react";
 import type { FormType } from "@formio/react/lib/components/Form";
 import { render } from "vitest-browser-react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "@formio/js/dist/formio.form.min.css";
 import { registerBcgovComponents } from "./bcgovComponents";
@@ -319,5 +320,206 @@ describe("checkbox under a question", () => {
       )
       .toBeInTheDocument();
     expect(document.querySelector("[role='group']")).toBeNull();
+  });
+});
+
+function numberSpec(number: Record<string, unknown>): FormType {
+  return {
+    display: "form",
+    components: [
+      {
+        type: "number",
+        key: "monthlyIncome",
+        label: "Your Monthly Income",
+        input: true,
+        ...number,
+      },
+    ],
+  } as unknown as FormType;
+}
+
+/** The answers of the one form on the page, as Form.io holds them. */
+function formData(): Record<string, unknown> {
+  const forms = Object.values(
+    (
+      Formio as unknown as {
+        forms: Record<string, { data: Record<string, unknown> }>;
+      }
+    ).forms,
+  );
+  return forms[forms.length - 1].data;
+}
+
+describe("number field", () => {
+  it("is a plain text box, with the spec's prefix and no steppers", async () => {
+    const screen = await render(<Form src={numberSpec({ prefix: "$" })} />);
+
+    await expect
+      .element(screen.getByRole("textbox", { name: "Your Monthly Income" }))
+      .toBeInTheDocument();
+    expect(document.querySelector(".bcds-react-aria-NumberField")).toBeNull();
+    expect(
+      document.querySelector(".bcds-react-aria-TextField--container")
+        ?.textContent,
+    ).toContain("$");
+  });
+
+  it("stores what is typed as a number", async () => {
+    const screen = await render(<Form src={numberSpec({})} />);
+    const input = screen.getByRole("textbox", { name: "Your Monthly Income" });
+
+    await input.fill("1250.5");
+
+    await vi.waitFor(() => expect(formData().monthlyIncome).toBe(1250.5));
+  });
+
+  it("refuses text that cannot be a number", async () => {
+    const screen = await render(<Form src={numberSpec({})} />);
+    const input = screen.getByRole("textbox", { name: "Your Monthly Income" });
+
+    await input.fill("12a");
+    await expect.element(input).toHaveValue("");
+
+    await input.fill("12.555");
+    await expect.element(input).toHaveValue("");
+  });
+
+  it("shows the stored value tidied once the citizen leaves the field", async () => {
+    const screen = await render(<Form src={numberSpec({ delimiter: true })} />);
+    const input = screen.getByRole("textbox", { name: "Your Monthly Income" });
+
+    await input.fill("1250000.50");
+    await expect.element(input).toHaveValue("1250000.50");
+    (input.element() as HTMLInputElement).blur();
+
+    await expect.element(input).toHaveValue("1,250,000.5");
+  });
+});
+
+describe("currency field (Amount)", () => {
+  const currencySpec = (extra: Record<string, unknown> = {}) =>
+    numberSpec({ type: "currency", ...extra });
+
+  it("shows a $ for Canadian dollars by default, without a prefix in the spec", async () => {
+    const screen = await render(<Form src={currencySpec()} />);
+
+    await expect
+      .element(screen.getByRole("textbox", { name: "Your Monthly Income" }))
+      .toBeInTheDocument();
+    expect(
+      document.querySelector(".bcds-react-aria-TextField--container")
+        ?.textContent,
+    ).toContain("$");
+  });
+
+  it("takes its sign from the currency code", async () => {
+    await render(<Form src={currencySpec({ currency: "EUR" })} />);
+
+    await vi.waitFor(() =>
+      expect(
+        document.querySelector(".bcds-react-aria-TextField--container")
+          ?.textContent,
+      ).toContain("€"),
+    );
+  });
+
+  it("stores the amount as a number and shows it with grouping commas", async () => {
+    const screen = await render(<Form src={currencySpec()} />);
+    const input = screen.getByRole("textbox", { name: "Your Monthly Income" });
+
+    await input.fill("1250.5");
+    await vi.waitFor(() => expect(formData().monthlyIncome).toBe(1250.5));
+    (input.element() as HTMLInputElement).blur();
+
+    await expect.element(input).toHaveValue("1,250.5");
+  });
+});
+
+describe("a field made required by another answer (Form.io logic)", () => {
+  const requiredWhenEmail = [
+    {
+      name: "Required when email is preferred",
+      trigger: {
+        type: "simple",
+        simple: { show: true, when: "preferredCommunication", eq: "email" },
+      },
+      actions: [
+        {
+          name: "Require",
+          type: "property",
+          property: {
+            label: "Required",
+            value: "validate.required",
+            type: "boolean",
+          },
+          state: true,
+        },
+      ],
+    },
+  ];
+  const spec = {
+    display: "form",
+    components: [
+      {
+        type: "radio",
+        key: "preferredCommunication",
+        label: "Preferred method of communication",
+        input: true,
+        values: [
+          { label: "Phone", value: "phone" },
+          { label: "Email", value: "email" },
+        ],
+      },
+      {
+        type: "email",
+        key: "email",
+        label: "Email",
+        input: true,
+        validate: { required: false },
+        errors: { required: "An email address is required" },
+        logic: requiredWhenEmail,
+      },
+      {
+        type: "button",
+        key: "submit",
+        label: "Submit",
+        action: "submit",
+        input: true,
+      },
+    ],
+  } as unknown as FormType;
+
+  it("marks and enforces the field only while the other answer asks for it", async () => {
+    const screen = await render(<Form src={spec} />);
+    const emailLabel = () =>
+      document.querySelector(".formio-component-email label")?.textContent ??
+      "";
+
+    await expect
+      .element(screen.getByRole("textbox", { name: /Email/ }))
+      .toBeInTheDocument();
+    expect(emailLabel()).not.toContain("(required)");
+
+    // The design system hides the real radio input, so click it directly.
+    (
+      screen.getByRole("radio", { name: "Email" }).element() as HTMLElement
+    ).click();
+    await vi.waitFor(() => expect(emailLabel()).toContain("(required)"));
+
+    await screen.getByRole("button", { name: "Submit" }).click();
+    // The field's own message (Form.io's alert list repeats it; the real
+    // forms switch that list off).
+    await vi.waitFor(() =>
+      expect(
+        document.querySelector(
+          ".formio-component-email .bcds-react-aria-TextField--Error",
+        )?.textContent,
+      ).toBe("An email address is required"),
+    );
+
+    (
+      screen.getByRole("radio", { name: "Phone" }).element() as HTMLElement
+    ).click();
+    await vi.waitFor(() => expect(emailLabel()).not.toContain("(required)"));
   });
 });

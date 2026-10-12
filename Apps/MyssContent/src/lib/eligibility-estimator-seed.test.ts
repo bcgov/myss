@@ -7,6 +7,7 @@ import {
   eligibilityEstimatorSpecV2,
   eligibilityEstimatorSpecV3,
   eligibilityEstimatorSpecV4,
+  eligibilityEstimatorSpecV5,
   seededForms,
   type Json,
 } from "./form-spec-seed-data";
@@ -97,6 +98,7 @@ describe("eligibility estimator seed", () => {
       { version: 2, spec: eligibilityEstimatorSpecV2 },
       { version: 3, spec: eligibilityEstimatorSpecV3 },
       { version: 4, spec: eligibilityEstimatorSpecV4 },
+      { version: 5, spec: eligibilityEstimatorSpecV5 },
     ]);
   });
 
@@ -542,5 +544,29 @@ describe("eligibility estimator seed — v4 (residency hard gate + BC Gov radios
     for (const key of MONEY_FIELDS) {
       expect(componentByKey(v4, key).validate?.min).toBe(0);
     }
+  });
+});
+
+describe("eligibility estimator seed — v5 (money fields as currency)", () => {
+  const v5 = eligibilityEstimatorSpecV5;
+
+  it("makes every dollar amount a currency field, and leaves the child count a number", () => {
+    for (const key of MONEY_FIELDS) {
+      expect(componentByKey(v5, key).type).toBe(
+        key === "dependentChildren" ? "number" : "currency",
+      );
+    }
+  });
+
+  it("is v4 apart from those types", () => {
+    const asNumber = (node: Json): Json => {
+      if (Array.isArray(node)) return node.map(asNumber);
+      if (!isRecord(node)) return node;
+      const copy = Object.fromEntries(
+        Object.entries(node).map(([key, value]) => [key, asNumber(value)]),
+      );
+      return copy.type === "currency" ? { ...copy, type: "number" } : copy;
+    };
+    expect(asNumber(v5)).toEqual(eligibilityEstimatorSpecV4);
   });
 });

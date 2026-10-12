@@ -1485,6 +1485,46 @@ export const eligibilityEstimatorSpecV4: Json = {
 };
 
 // ---------------------------------------------------------------------------
+// Estimator spec v5
+// ---------------------------------------------------------------------------
+//
+// v4 with the money fields as Form.io's `currency` type rather than `number`:
+// the webclient draws it with a "$" (CAD) inside the box and grouping commas,
+// and the API validates it as a number, as it always has. The dependent
+// children count stays a `number`. Built from v4 so the two cannot drift;
+// every key, value and rule is unchanged.
+
+/** The estimator's number fields that hold a dollar amount. */
+const ESTIMATOR_MONEY_KEYS = new Set([
+  "monthlyIncome",
+  "vehicleValueMinusTransportation",
+  "vehicleValue",
+  "assetValue",
+  "partnerMonthlyIncome",
+  "partnerVehicleValueMinusTransportation",
+  "partnerVehicleValue",
+  "partnerAssetValue",
+]);
+
+/** A copy of `node` with every money field in it as a `currency` field. */
+function withMoneyAsCurrency(node: Json): Json {
+  if (Array.isArray(node)) return node.map(withMoneyAsCurrency);
+  if (node === null || typeof node !== "object") return node;
+  const copy: { [key: string]: Json } = {};
+  for (const [key, value] of Object.entries(node)) {
+    copy[key] = withMoneyAsCurrency(value);
+  }
+  if (typeof node.key === "string" && ESTIMATOR_MONEY_KEYS.has(node.key)) {
+    copy.type = "currency";
+  }
+  return copy;
+}
+
+export const eligibilityEstimatorSpecV5: Json = withMoneyAsCurrency(
+  eligibilityEstimatorSpecV4,
+);
+
+// ---------------------------------------------------------------------------
 // Everything the bootstrap hook seeds
 // ---------------------------------------------------------------------------
 
@@ -1528,6 +1568,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 2, spec: eligibilityEstimatorSpecV2 },
       { version: 3, spec: eligibilityEstimatorSpecV3 },
       { version: 4, spec: eligibilityEstimatorSpecV4 },
+      { version: 5, spec: eligibilityEstimatorSpecV5 },
     ],
   },
   {

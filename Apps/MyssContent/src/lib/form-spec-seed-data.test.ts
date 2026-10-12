@@ -64,6 +64,8 @@ interface Component {
   readonly components?: unknown;
   readonly columns?: unknown;
   readonly addressFields?: unknown;
+  readonly errors?: { readonly [rule: string]: unknown };
+  readonly logic?: unknown;
 }
 
 function isRecord(value: Json): value is { [key: string]: Json } {
@@ -353,12 +355,12 @@ describe("seeded forms collection", () => {
     );
   });
 
-  it("seeds the eligibility estimator with v1, v2, v3 and v4", () => {
+  it("seeds the eligibility estimator with v1 through v5", () => {
     const estimator = seededForms.find(
       (form) => form.formSpecId === ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     );
     expect(estimator?.title).toBe(ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE);
-    expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
+    expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5]);
   });
 
   it("seeds the bus pass with v1 through v7", () => {
@@ -744,6 +746,44 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
     ).toBeUndefined();
   });
 
+  it("words a blank name as missing, not as invalid characters", () => {
+    for (const [key, noun] of [
+      ["firstName", "first name"],
+      ["lastName", "last name"],
+    ] as const) {
+      const name = componentByKey(busPassFormSpecV7, key);
+      expect(name.validate?.customMessage).toBeUndefined();
+      expect(name.errors).toEqual({
+        required: `A ${noun} is required`,
+        pattern: `Invalid character(s) in ${noun}`,
+        minLength: `A ${noun} must have at least 2 characters`,
+      });
+    }
+  });
+
+  it("requires the email and its confirmation when email is the preferred method", () => {
+    for (const key of ["email", "emailVerification"]) {
+      const field = componentByKey(busPassFormSpecV7, key);
+      expect(field.validate?.required).toBe(false);
+      expect(field.logic).toEqual([
+        expect.objectContaining({
+          trigger: {
+            type: "simple",
+            simple: { show: true, when: "preferredCommunication", eq: "email" },
+          },
+          actions: [
+            expect.objectContaining({
+              type: "property",
+              property: expect.objectContaining({ value: "validate.required" }),
+              state: true,
+            }),
+          ],
+        }),
+      ]);
+      expect(typeof field.errors?.required).toBe("string");
+    }
+  });
+
   it("leaves every other v6 field unchanged", () => {
     const changed = new Set([
       "serviceRequestType",
@@ -756,6 +796,10 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
       "phoneType",
       "eligibilityAcknowledged",
       "acknowledgedPassCancellation",
+      "firstName",
+      "lastName",
+      "email",
+      "emailVerification",
     ]);
     const fields = (spec: Json) =>
       allComponents(spec).filter(
