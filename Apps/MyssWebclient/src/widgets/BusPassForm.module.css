@@ -86,6 +86,11 @@
     margin-bottom: var(--layout-margin-small);
 }
 
+/* The live region around that message; <output> is inline by default. */
+.submittingRegion {
+    display: block;
+}
+
 /* "Your request is being submitted", under the form while the request is in
    flight: a spinner beside the message, in the information colours. */
 .submitting {

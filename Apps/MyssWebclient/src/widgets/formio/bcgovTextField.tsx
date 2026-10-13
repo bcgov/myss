@@ -50,7 +50,7 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
         isPhone && component.validateOn === "blur"
           ? () => {
               this.bcgovErrorsUnlocked = true;
-              this.checkComponentValidity(this.rootValue, true);
+              void this.checkComponentValidity(this.rootValue, true);
             }
           : undefined;
 

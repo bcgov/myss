@@ -285,7 +285,7 @@ export default function BusPassForm() {
           this the page looks unchanged after Submit and the applicant cannot
           tell it was accepted. The live region is always mounted so screen
           readers announce the message when it appears. */}
-      <div role="status">
+      <output className={styles.submittingRegion}>
         {submit.isPending && (
           <div className={styles.submitting}>
             <ProgressCircle
@@ -300,7 +300,7 @@ export default function BusPassForm() {
             </p>
           </div>
         )}
-      </div>
+      </output>
     </section>
   );
 }

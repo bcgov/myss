@@ -8,6 +8,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--layout-margin-xsmall);
+  /* Under a question this is a fieldset; drop the browser's frame. */
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 /* Set like the design system fields' messages, as the theme restyles them

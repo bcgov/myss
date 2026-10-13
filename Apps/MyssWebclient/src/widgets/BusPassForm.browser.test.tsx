@@ -756,8 +756,9 @@ test("says the request is being submitted while it is on its way", async () => {
   // While the API has not answered: a message, announced, and no second post.
   const message = screen.getByText("Your request is being submitted.");
   await expect.element(message).toBeVisible();
-  // Inside a live region, so screen readers announce it.
-  expect(message.element().closest('[role="status"]')).not.toBeNull();
+  // Inside a live region (<output>, role "status"), so screen readers
+  // announce it.
+  expect(message.element().closest("output")).not.toBeNull();
   await expect
     .element(
       screen.getByRole("progressbar", { name: "Submitting your request" }),

@@ -39,10 +39,12 @@ export default function CheckboxField({
 }>) {
   const errorId = useId();
   const groupLabelId = useId();
+  // Under a question the checkbox and the question form a group: a fieldset,
+  // named by the question.
+  const Wrapper = groupLabel ? "fieldset" : "div";
   return (
-    <div
+    <Wrapper
       className={styles.checkboxField}
-      role={groupLabel ? "group" : undefined}
       aria-labelledby={groupLabel ? groupLabelId : undefined}
     >
       {groupLabel && (
@@ -72,6 +74,6 @@ export default function CheckboxField({
           {errorMessage}
         </p>
       )}
-    </div>
+    </Wrapper>
   );
 }
