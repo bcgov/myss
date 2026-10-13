@@ -13,8 +13,9 @@ export const PHONE_TYPES = [
 
 export type PhoneType = (typeof PHONE_TYPES)[number]["type"];
 
-export const PHONE_FORMAT_MESSAGE =
-  "Enter a 10-digit phone number with the area code, like (250) 555-0123.";
+export const PHONE_FORMAT_MESSAGE = "Phone number is invalid";
+
+const PHONE_PATTERN = /^\(?([2-9][0-9][0-9])\)?[\s.-]?([0-9]{3})[\s.-]?([0-9]{4})$/;
 
 /** The label shown for a phone type, e.g. "Home Phone". */
 export function phoneTypeLabel(type: PhoneType): string {
@@ -22,14 +23,11 @@ export function phoneTypeLabel(type: PhoneType): string {
 }
 
 /**
- * The ten digits of a number typed in any of the usual ways, or null when it
- * is not one: a letter or an extension is a different number, not a
- * formatted one, so it is refused rather than silently dropped.
+ * The ten digits of a number matching the legacy MySS format, or null.
  */
 export function phoneDigits(input: string): string | null {
-  if (!/^[\d\s().-]*$/.test(input)) return null;
-  const digits = input.replace(/\D/g, "");
-  return digits.length === 10 ? digits : null;
+  if (!PHONE_PATTERN.test(input)) return null;
+  return input.replace(/\D/g, "");
 }
 
 /** Ten stored digits as the citizen sees them: (250) 555-0123. */

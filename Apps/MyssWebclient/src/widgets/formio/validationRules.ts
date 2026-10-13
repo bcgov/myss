@@ -13,6 +13,7 @@
 // No React, no Form.io: pure functions over strings.
 
 import { catalogueMessage } from "@/lib/errorCatalogue";
+import { phoneDigits } from "@/lib/phone";
 
 /** What a rule needs beyond the value: the other answers and the component. */
 export interface RuleContext {
@@ -55,7 +56,7 @@ export const DEFAULT_MESSAGES: Readonly<Record<string, string>> = {
     "Enter an email address in the format name@example.com.",
   [RULE_KEYWORDS.emailMismatch]: "The two email addresses do not match.",
   [RULE_KEYWORDS.phoneInvalidFormat]:
-    "Enter a 10-digit phone number, for example 250 555 0199.",
+    "Phone number is invalid",
   [RULE_KEYWORDS.postalCodeInvalidFormat]:
     "Enter a postal code in the format A1A 1A1.",
   [RULE_KEYWORDS.dateInvalid]: "Enter a valid date.",
@@ -113,9 +114,7 @@ const email: ValidationRule = (value) =>
     : failure("email", RULE_KEYWORDS.emailInvalidFormat);
 
 const phone: ValidationRule = (value) => {
-  let digits = digitsOf(value);
-  if (digits.length === 11 && digits.startsWith("1")) digits = digits.slice(1);
-  return digits.length === 10
+  return phoneDigits(value) !== null
     ? null
     : failure("phone", RULE_KEYWORDS.phoneInvalidFormat);
 };
