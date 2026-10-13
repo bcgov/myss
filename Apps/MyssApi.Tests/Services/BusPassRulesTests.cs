@@ -96,6 +96,40 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(refused, errors.Any(e => e.Keyword == BusPassErrorKeywords.Under16));
         }
 
+        /// <summary>The v8 shape: the date of birth in one ISO date field.</summary>
+        private static Dictionary<string, object?> NewApplicantWithDateOfBirth(string dateOfBirth)
+        {
+            var answers = NewApplicant();
+            answers.Remove("birthDay");
+            answers.Remove("birthMonth");
+            answers.Remove("birthYear");
+            answers["dateOfBirth"] = dateOfBirth;
+            return answers;
+        }
+
+        [Fact]
+        public void SingleDateOfBirthField_IsAccepted()
+        {
+            var answers = NewApplicantWithDateOfBirth("1950-12-10");
+
+            Assert.Empty(Validate(answers, formSpecVersion: BusPassRules.SingleDateOfBirthVersion));
+        }
+
+        [Theory]
+        [InlineData("2010-02-31", BusPassErrorKeywords.DateOfBirthInvalid)]
+        [InlineData("not a date", BusPassErrorKeywords.DateOfBirthInvalid)]
+        [InlineData("2027-01-01", BusPassErrorKeywords.DateOfBirthInFuture)]
+        [InlineData("2010-09-11", BusPassErrorKeywords.Under16)]
+        public void SingleDateOfBirthField_IsRefusedOnThatField(string dateOfBirth, string keyword)
+        {
+            var answers = NewApplicantWithDateOfBirth(dateOfBirth);
+
+            ValidationErrorModel error = Assert.Single(
+                Validate(answers, formSpecVersion: BusPassRules.SingleDateOfBirthVersion));
+            Assert.Equal("dateOfBirth", error.Field);
+            Assert.Equal(keyword, error.Keyword);
+        }
+
         [Fact]
         public void PreferringEmailWithoutAnAddress_IsRefused()
         {

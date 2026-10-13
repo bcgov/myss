@@ -19,7 +19,3 @@
     flex-direction: column;
 }
 
-.content h2 {
-    margin-top: calc(-1 * var(--layout-margin-small));
-}
-

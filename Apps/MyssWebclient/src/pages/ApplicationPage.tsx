@@ -11,12 +11,12 @@ export default function ApplicationPage() {
   const { id } = useParams<{ id: string }>();
 
   return (
-    <>
+    <div className="form-page">
       <nav aria-label="Breadcrumb">
         <Link to={paths.dashboard}>← My applications</Link>
       </nav>
       <h1>Income Assistance application</h1>
       <ApplicationForm applicationId={id!} />
-    </>
+    </div>
   );
 }

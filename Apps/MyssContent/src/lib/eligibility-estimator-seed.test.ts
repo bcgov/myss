@@ -8,6 +8,7 @@ import {
   eligibilityEstimatorSpecV3,
   eligibilityEstimatorSpecV4,
   eligibilityEstimatorSpecV5,
+  eligibilityEstimatorSpecV6,
   seededForms,
   type Json,
 } from "./form-spec-seed-data";
@@ -99,6 +100,7 @@ describe("eligibility estimator seed", () => {
       { version: 3, spec: eligibilityEstimatorSpecV3 },
       { version: 4, spec: eligibilityEstimatorSpecV4 },
       { version: 5, spec: eligibilityEstimatorSpecV5 },
+      { version: 6, spec: eligibilityEstimatorSpecV6 },
     ]);
   });
 
@@ -633,5 +635,29 @@ describe("eligibility estimator seed — v5 (age questions)", () => {
     expect(field.conditional?.when).toBeUndefined();
     expect(field.conditional?.json).toEqual(PARTNERED);
     expect(field.validate?.required).toBeUndefined();
+  });
+});
+
+describe("eligibility estimator seed — v6 (money fields as currency)", () => {
+  const v6 = eligibilityEstimatorSpecV6;
+
+  it("makes every dollar amount a currency field, and leaves the child count a number", () => {
+    for (const key of MONEY_FIELDS) {
+      expect(componentByKey(v6, key).type).toBe(
+        key === "dependentChildren" ? "number" : "currency",
+      );
+    }
+  });
+
+  it("is v5 apart from those types", () => {
+    const asNumber = (node: Json): Json => {
+      if (Array.isArray(node)) return node.map(asNumber);
+      if (!isRecord(node)) return node;
+      const copy = Object.fromEntries(
+        Object.entries(node).map(([key, value]) => [key, asNumber(value)]),
+      );
+      return copy.type === "currency" ? { ...copy, type: "number" } : copy;
+    };
+    expect(asNumber(v6)).toEqual(eligibilityEstimatorSpecV5);
   });
 });

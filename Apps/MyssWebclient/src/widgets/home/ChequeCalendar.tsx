@@ -1,5 +1,6 @@
-import { Callout, Link } from "@bcgov/design-system-react-components";
+import { Link } from "@bcgov/design-system-react-components";
 
+import Callout from "@/components/Callout";
 import styles from "./ChequeCalendar.module.css";
 
 const nextChequeDate = "Wednesday, July 29, 2027";
@@ -11,7 +12,7 @@ const chequeScheduleUrl =
 export default function ChequeCalendar() {
     return (
         <section className={styles.wrapper} aria-label="Cheque issue information">
-            <Callout title="Payment information">
+            <Callout>
                 <div className={styles.content}>
                     <div className={styles.dateCard}>
                         <p className={styles.dateCardHeader}>

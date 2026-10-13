@@ -73,8 +73,16 @@ describe("builderOptions", () => {
   });
 
   it("removes multiple values from the question types only", () => {
+    const CONTENT = [
+      "bcgovAccordion",
+      "bcgovCallout",
+      "bcgovInlineAlert",
+      "content",
+      "panel",
+      "button",
+    ];
     const questions = ALLOWED_COMPONENT_TYPES.filter(
-      (type) => !["bcgovAccordion", "content", "panel", "button"].includes(type),
+      (type) => !CONTENT.includes(type),
     );
     for (const type of questions) {
       const dataTab = overridesFor(type).find((tab) => tab.key === "data");
@@ -83,12 +91,56 @@ describe("builderOptions", () => {
       ]);
     }
     // The others have no Data tab; an override would invent an empty one.
-    for (const type of ["bcgovAccordion", "content", "panel", "button"]) {
+    for (const type of CONTENT) {
       expect(
         overridesFor(type).find((tab) => tab.key === "data"),
         type,
       ).toBeUndefined();
     }
+  });
+
+  it("gives the callout a heading, heading level and colour instead of a legend", () => {
+    const displayTab = overridesFor("bcgovCallout").find(
+      (tab) => tab.key === "display",
+    );
+    const fields = displayTab?.components ?? [];
+
+    expect(fields.find((f) => f.key === "legend")?.ignore).toBe(true);
+    expect(fields.map((f) => f.key)).toEqual(
+      expect.arrayContaining(["calloutTitle", "headingLevel", "variant"]),
+    );
+    expect(ALLOWED_COMPONENT_TYPES).toContain("bcgovCallout");
+  });
+
+  it("offers amounts (currency) beside numbers", () => {
+    expect(ALLOWED_COMPONENT_TYPES).toEqual(
+      expect.arrayContaining(["number", "currency"]),
+    );
+    expect(
+      overridesFor("currency").find((tab) => tab.key === "data")?.components,
+    ).toEqual([{ key: "multiple", ignore: true }]);
+  });
+
+  it("lets a checkbox carry a question above it", () => {
+    const displayTab = overridesFor("checkbox").find(
+      (tab) => tab.key === "display",
+    );
+    expect(displayTab?.components?.map((f) => f.key)).toEqual([
+      "properties.myssGroupLabel",
+    ]);
+  });
+
+  it("gives the inline alert a title and kind instead of a legend", () => {
+    const displayTab = overridesFor("bcgovInlineAlert").find(
+      (tab) => tab.key === "display",
+    );
+    const fields = displayTab?.components ?? [];
+
+    expect(fields.find((f) => f.key === "legend")?.ignore).toBe(true);
+    expect(fields.map((f) => f.key)).toEqual(
+      expect.arrayContaining(["alertTitle", "variant"]),
+    );
+    expect(ALLOWED_COMPONENT_TYPES).toContain("bcgovInlineAlert");
   });
 
   it("gives the accordion its own heading and body fields instead of a label", () => {

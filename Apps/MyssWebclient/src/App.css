@@ -1,11 +1,24 @@
 #root {
-    background-color: var(--surface-color-background-light-gray);
     color: var(--typography-color-primary);
     display: flex;
     flex-direction: column;
     align-items: center;
     min-height: 100vh;
     width: 100%;
+}
+
+:root {
+    /* The content width of a page that holds a form: Bus Pass, Registration,
+       the Eligibility Estimator, the Income Assistance application. The
+       design's content blocks on those pages are 800px wide. */
+    --myss-form-page-width: 800px;
+}
+
+/* A form page's content column, centred in `main`. */
+.form-page {
+    width: 100%;
+    max-width: var(--myss-form-page-width);
+    margin: 0 auto;
 }
 
 main {
@@ -54,10 +67,28 @@ main.main--dashboard {
     box-sizing: border-box;
 }
 
-/* Same match for the header (BCDS defaults it to 1100px too). */
+/* The header spans the full window, its content 64px in from each edge
+   (BCDS centres it in an 1100px box). No token is that large. On a phone
+   64px would take a third of the width, so it drops to the page's own
+   side padding there. */
 .bcds-header > .bcds-header--container {
-    max-width: 900px;
-    padding-left: var(--layout-padding-xlarge);
-    padding-right: var(--layout-padding-xlarge);
+    max-width: none;
+    padding-left: 64px;
+    padding-right: 64px;
     box-sizing: border-box;
+}
+
+/* BCDS also pads the header bar itself by 16px a side; the 64px above is
+   measured from the window edge. `body` outranks BCDS's runtime-injected
+   one-class rule. */
+body .bcds-header {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+@media (max-width: 576px) {
+    .bcds-header > .bcds-header--container {
+        padding-left: var(--layout-padding-medium);
+        padding-right: var(--layout-padding-medium);
+    }
 }

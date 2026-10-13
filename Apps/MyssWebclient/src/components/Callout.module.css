@@ -1,0 +1,67 @@
+/* The accent bar down the left edge is 8px. The design system draws it 4px
+   wide, in primary blue on the light variants and gold on the dark ones; the
+   width changes here, and isLeftBorderDisabled still comes from the component.
+   The other three sides get a 1px light grey outline, which the design system
+   callout does not have. Its rule is `.bcds-Callout.<variant>`, so this names
+   the variant too and wins on specificity, not on stylesheet order. */
+.callout
+    :global(
+        .bcds-Callout:is(
+            .lightGrey,
+            .lightBlue,
+            .lightGold,
+            .Blue,
+            .Grey,
+            .Black
+        )
+    ) {
+    border-left-width: 8px;
+    border-top: 1px solid var(--surface-color-border-default);
+    border-right: 1px solid var(--surface-color-border-default);
+    border-bottom: 1px solid var(--surface-color-border-default);
+}
+
+/* The grey variant takes a primary blue bar, like the light ones, where the
+   design system draws it gold. Blue and Black keep gold. */
+.callout :global(.bcds-Callout.Grey) {
+    border-left-color: var(--theme-primary-blue);
+}
+
+/* Text inside a callout is the design system's body text, 16px, whatever the
+   page around it uses. Headings keep their own sizes. */
+.content {
+    width: 100%;
+    font: var(--typography-regular-body);
+}
+
+/* The light grey callout sets its text and links in the secondary text
+   colour, the links told apart by their underline alone. Headings keep the
+   primary colour. */
+.callout :global(.bcds-Callout.lightGrey) .content {
+    color: var(--typography-color-secondary);
+}
+
+.content :is(h1, h2, h3, h4, h5, h6) {
+    color: var(--typography-color-primary);
+}
+
+.callout :global(.bcds-Callout.lightGrey) .content a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+/* The theme's h1-h3 rule adds 20px of padding above every heading, which
+   leaves a gap at the top of the box. Size, weight and colour still come from
+   the site heading styles. */
+.title {
+    margin: 0 0 var(--layout-margin-small);
+    padding-top: 0;
+}
+
+/* Nothing nested should add space below the box's own padding. A form's
+   text arrives wrapped in Form.io's component divs, so the last paragraph or
+   list is reached at any depth, not only as a direct child. */
+.content > :last-child,
+.content :is(p, ul, ol):last-child {
+    margin-bottom: 0;
+}

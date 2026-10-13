@@ -6,7 +6,7 @@
 .page {
   /* 800px: the design's content wrapper is 1440 wide with 320px side padding, and every
      content node in the frames is 800px. */
-  max-width: 800px;
+  max-width: var(--myss-form-page-width);
   margin: 0 auto;
   width: 100%;
   /* Nothing here compensates for token sizing; the root font size is set once in
@@ -23,23 +23,18 @@
   color: var(--typography-color-primary);
 }
 
-/* The BCDS Callout supplies its own accent bar, surface, radius, padding and type scale.
-   All this wrapper does is place it in the column — the accent colour and width, the
-   20px/16px title and body, and the side padding that used to be tuned by hand here are
-   now the component's business. */
+/* The callout supplies its own accent bar, outline, surface, padding and body
+   text (components/Callout). This wrapper places it in the column. */
 .privacyCallout {
   margin-bottom: var(--layout-margin-medium);
-  /* The design draws the callout title at 20/34 where the component uses 18px.
-     Feed the value through the token it already reads rather than out-specifying
-     its rule: a custom property inherits, so there is no specificity race with
-     BCDS's runtime-injected stylesheet. */
-  --typography-bold-large-body: 700 20px/34px "BC Sans", sans-serif;
 }
 
-/* The design's accent bar measures 8px; the component ships 4px. Two compounds against
-   BCDS's one, so this wins on specificity rather than on source order. */
-.privacyCallout :global(.bcds-Callout) {
-  border-left-width: 8px;
+/* The design draws the callout title at 20/34 bold in the primary text colour,
+   above the 16px body, 8px apart. */
+.privacyTitle {
+  margin: 0 0 var(--layout-margin-small);
+  font: 700 20px/34px "BC Sans", sans-serif;
+  color: var(--typography-color-primary);
 }
 
 /* Regular/body 16px in literal black, per the design. */
@@ -51,24 +46,8 @@
   color: #000;
 }
 
-/* Screen-reader-only utility. Form.io's label template emits
-   <span class="visually-hidden">, numeric only,</span> on number fields; the
-   bundled Bootstrap 3 defines only .sr-only, so without this the hint renders
-   as visible text. Hide it visually, keep it for screen readers. */
-:global(.visually-hidden) {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-}
-
-/* Visually hidden, still in the accessibility tree. Used for this page's own
-   live region; the :global(.visually-hidden) rule above is Form.io's markup. */
+/* Visually hidden, still in the accessibility tree: this page's own live
+   region. */
 .visuallyHidden {
   position: absolute;
   width: 1px;
@@ -81,8 +60,8 @@
   border: 0;
 }
 
-/* Form.io host — space the fields out and keep number inputs from stretching
-   full width where the design keeps them contained. */
+/* Form.io host. The fields themselves follow the site theme (myss-theme.css);
+   this only places the form in the page. */
 .formHost {
   margin-top: var(--layout-margin-medium);
   /* The form reads white, matching the design (the default surface can appear
@@ -319,128 +298,6 @@
   color: var(--typography-color-secondary);
 }
 
-/* The number fields render as the BCDS NumberField. Money fields carry a "$"
-   prefix (every number field except the dependent-children count), drawn with a
-   pseudo-element so no markup or re-seed is needed. */
-.formHost
-  :global(
-    .formio-component-number:not(.formio-component-dependentChildren)
-      .bcds-react-aria-NumberField--InputContainer
-  ) {
-  position: relative;
-  padding-left: 26px;
-}
-.formHost
-  :global(
-    .formio-component-number:not(.formio-component-dependentChildren)
-      .bcds-react-aria-NumberField--InputContainer
-  )::before {
-  content: "$";
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 12px;
-  color: var(--typography-color-secondary);
-  pointer-events: none;
-}
-
-/* The design has no increment and decrement buttons. */
-.formHost :global(.formio-component-number .bcds-react-aria-NumberField--Button) {
-  display: none;
-}
-
-/* Match design: BCDS TextField size="small" renders a contained input (~600px
-   in the 800px well), not the full column width. Covers the dependent-children
-   field and all money fields; radios and the panel are unaffected. The height
-   and font rules need four classes: BCDS sets them with three and injects its
-   stylesheet after the built CSS, so a tie would go to BCDS in production. */
-.formHost :global(.formio-component-number .bcds-react-aria-NumberField) {
-  gap: 5px;
-}
-.formHost
-  :global(
-    .formio-component-number
-      .bcds-react-aria-NumberField
-      > .bcds-react-aria-NumberField--Group
-  ) {
-  max-width: 600px;
-  height: 34px;
-}
-.formHost
-  :global(
-    .formio-component-number
-      .bcds-react-aria-NumberField
-      .bcds-react-aria-NumberField--Input
-  ) {
-  font-size: 14px;
-}
-
-/* Rely on the "*All fields are required." note; hide the per-field red stars. */
-.formHost :global(.required-star) {
-  display: none !important;
-}
-.formHost :global(.field-required)::after {
-  content: none !important;
-}
-/* Same for the BC Gov radios' "(required)": hidden from sight only. The group
-   still reports itself required, and screen readers still read the text. */
-.formHost :global([data-myss-required]) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-
-/* The radios render as the real BCDS RadioGroup, which sizes its label, options
-   and error message from one token. The design wants 16px labels but a 14px error
-   message, so lift the two that need it rather than redefining that token. Each
-   selector out-specifies BCDS's own so it also wins once BCDS injects its
-   stylesheet at runtime. */
-.formHost :global(.bcds-react-aria-RadioGroup--label) {
-  font: var(--typography-bold-body);
-  color: var(--typography-color-secondary);
-}
-.formHost :global(.bcds-react-aria-Radio) {
-  font: var(--typography-regular-body);
-  gap: 10px; /* design measures 10px; there is no 10px layout token */
-}
-
-/* BCDS aligns the control to the option text's first baseline, tuned for its own
-   14px text; at 16px the circle reads high. The row is already centred. */
-.formHost :global(.bcds-react-aria-Radio)::before {
-  align-self: center;
-  margin-top: 0;
-}
-
-/* Type hierarchy for the number fields' labels and the section headings. (The
-   radios' scale is set in the RadioGroup block above.) All scoped to `.formHost` so
-   the shared theme is untouched; the section h2 is pinned here so the order also
-   holds on mobile, where the theme drops a bare h2 to 18px. */
-.formHost :global(h2) {
-  /* Section headings ("Do you have assets…" / "Does your spouse…") match the
-     page title (.title) — same size and weight. bold/H2 is 32 on a 54px line; the theme's
-     tight heading leading gave 36.8. */
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 54px;
-  /* The theme's `h2 { color: #494949 }` and `h1,h2,h3 { padding-top: 20px }` both leak
-     in; the design has these at typography primary with no extra top padding, since the
-     24px question stack already supplies the spacing. */
-  color: var(--typography-color-primary);
-  padding-top: 0;
-}
-/* Number-field question labels. The BCDS NumberField label defaults to 14px
-   regular; the design's bold/body is 16/27.008. */
-.formHost :global(.bcds-react-aria-NumberField--Label) {
-  font-size: 16px;
-  line-height: 27.008px;
-  font-weight: 700;
-}
-
 /* Inline "not eligible" warning (BC Gov InlineAlert) sits below the form. The
    wrapper is always mounted so it can carry aria-live, so it must take no space
    while the warning is hidden. */
@@ -478,64 +335,4 @@
 .statusWarning a {
   color: inherit;
   text-decoration: underline;
-}
-
-/* Text-input border to design; Bootstrap .form-control default is #ccc.
-   The design's border is border/base #d8d8d8, measured off the rendered TextField node
-   400:2471. It comes from the BCDS TextField component, not a per-field override. */
-.formHost :global(.form-control) {
-  border-color: var(--surface-color-border-default);
-}
-
-/* Field helper text is regular/smallBody 14/21 #474543; unset it inherits the theme base,
-   which drops to 12px under @media (max-width:767px). Size every .form-text, including
-   validation messages, so helper and error text never disagree; only the colour is guarded
-   with :not(.error), so the danger rules below still win. */
-.formHost :global(.form-text) {
-  font-size: 14px;
-  line-height: 21px;
-}
-.formHost :global(.form-text:not(.error)) {
-  color: var(--typography-color-secondary);
-}
-
-/* -----------------------------------------------------------------------------
-   Validation error state. Form.io's stock CSS
-   gives a pink fill (.formio-error-wrapper) + an aggregated banner; the banner
-   is disabled via <Form options={{ noAlerts:true }}>. Here we drop the pink
-   fill, keep the controls neutral and colour the message red. All
-   scoped to .formHost. NOTE: the message text sits in a parent/child pair
-   (.formio-errors.invalid-feedback > .form-text.error); we COLOUR both rather
-   than hide, to avoid removing the only message — confirm in DevTools whether it
-   paints as one line or two before hiding either.
-   --------------------------------------------------------------------------- */
-/* No box around the invalid question — not in the design. Keep the transparent
-   background so Form.io's stock pink error fill stays suppressed; the red message
-   text below is the error affordance. */
-.formHost :global(.formio-error-wrapper) {
-  background-color: transparent;
-  color: inherit;
-  /* Form.io ships `padding: 1em` here. With the pink fill and border gone it
-     encloses nothing and just indents an invalid question, shifting the group
-     right while its neighbours stay put. */
-  padding: 0;
-}
-
-/* The design keeps the controls themselves neutral when a group is invalid — only
-   the message and its icon are red. Re-assert BCDS's valid-state values rather
-   than hard-coding a hex. */
-.formHost :global(.bcds-react-aria-Radio[data-invalid])::before {
-  border-color: var(--surface-color-border-medium);
-}
-.formHost :global(.bcds-react-aria-Radio[data-selected][data-invalid])::before {
-  border-color: var(--surface-color-primary-default);
-}
-.formHost :global(.bcds-react-aria-Radio[data-selected][data-invalid]) {
-  color: var(--typography-color-secondary);
-}
-/* Still needed for the number fields, whose `min: 0` errors Form.io renders
-   itself. The radios draw their own message and icon. */
-.formHost :global(.formio-errors .form-text.error),
-.formHost :global(.formio-errors.invalid-feedback) {
-  color: var(--typography-color-danger);
 }

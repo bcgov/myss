@@ -19,6 +19,7 @@ import busPassFormSpecV4Json from "./bus-pass-specs/bus-pass-form-v4.json";
 import busPassFormSpecV5Json from "./bus-pass-specs/bus-pass-form-v5.json";
 import busPassFormSpecV6Json from "./bus-pass-specs/bus-pass-form-v6.json";
 import busPassFormSpecV7Json from "./bus-pass-specs/bus-pass-form-v7.json";
+import busPassFormSpecV8Json from "./bus-pass-specs/bus-pass-form-v8.json";
 
 export type Json =
   | string
@@ -60,6 +61,22 @@ export const busPassFormSpecV6 = busPassFormSpecV6Json as unknown as Json;
 
 /** The BC Bus Pass v7 form spec with the shared phone rule. */
 export const busPassFormSpecV7 = busPassFormSpecV7Json as unknown as Json;
+
+/**
+ * Bus pass v8: layout and two field changes, on top of v7's phone rule.
+ *
+ * - Layout: the form title is the page's h1, the privacy notice sits inside a
+ *   `bcgovCallout` container, and the service question gets its own h2 above
+ *   a radio labelled "Service Request type" whose three choices are listed
+ *   flat rather than two of them nested under an "existing client" parent.
+ *   The submitted values are the same (`addressUpdate`, `replacement`,
+ *   `newApplication`).
+ * - The date of birth is one required date field (`dateOfBirth`, an ISO date)
+ *   in place of the day / month / year group. MyssApi reads either shape, and
+ *   from v8 reports date-of-birth errors on the single field.
+ * - The social insurance number is required.
+ */
+export const busPassFormSpecV8 = busPassFormSpecV8Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -1719,6 +1736,46 @@ export const eligibilityEstimatorSpecV5: Json = {
 };
 
 // ---------------------------------------------------------------------------
+// Estimator spec v6
+// ---------------------------------------------------------------------------
+//
+// v5 with the money fields as Form.io's `currency` type rather than `number`:
+// the webclient draws it with a "$" (CAD) inside the box and grouping commas,
+// and the API validates it as a number, as it always has. The dependent
+// children count stays a `number`. Built from v5 so the two cannot drift;
+// every key, value and rule is unchanged.
+
+/** The estimator's number fields that hold a dollar amount. */
+const ESTIMATOR_MONEY_KEYS = new Set([
+  "monthlyIncome",
+  "vehicleValueMinusTransportation",
+  "vehicleValue",
+  "assetValue",
+  "partnerMonthlyIncome",
+  "partnerVehicleValueMinusTransportation",
+  "partnerVehicleValue",
+  "partnerAssetValue",
+]);
+
+/** A copy of `node` with every money field in it as a `currency` field. */
+function withMoneyAsCurrency(node: Json): Json {
+  if (Array.isArray(node)) return node.map(withMoneyAsCurrency);
+  if (node === null || typeof node !== "object") return node;
+  const copy: { [key: string]: Json } = {};
+  for (const [key, value] of Object.entries(node)) {
+    copy[key] = withMoneyAsCurrency(value);
+  }
+  if (typeof node.key === "string" && ESTIMATOR_MONEY_KEYS.has(node.key)) {
+    copy.type = "currency";
+  }
+  return copy;
+}
+
+export const eligibilityEstimatorSpecV6: Json = withMoneyAsCurrency(
+  eligibilityEstimatorSpecV5,
+);
+
+// ---------------------------------------------------------------------------
 // Everything the bootstrap hook seeds
 // ---------------------------------------------------------------------------
 
@@ -1764,6 +1821,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 3, spec: eligibilityEstimatorSpecV3 },
       { version: 4, spec: eligibilityEstimatorSpecV4 },
       { version: 5, spec: eligibilityEstimatorSpecV5 },
+      { version: 6, spec: eligibilityEstimatorSpecV6 },
     ],
   },
   {
@@ -1777,6 +1835,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 5, spec: busPassFormSpecV5 },
       { version: 6, spec: busPassFormSpecV6 },
       { version: 7, spec: busPassFormSpecV7 },
+      { version: 8, spec: busPassFormSpecV8 },
     ],
   },
 ];

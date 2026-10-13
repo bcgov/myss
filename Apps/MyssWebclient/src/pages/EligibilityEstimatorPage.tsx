@@ -1,7 +1,6 @@
 import { Form } from "@formio/react";
 import { useEffect, useRef, useState } from "react";
 import {
-  Callout,
   InlineAlert,
   SvgExclamationCircleIcon,
 } from "@bcgov/design-system-react-components";
@@ -18,6 +17,7 @@ import {
   useEstimatorSpec,
   type EligibilityResult,
 } from "@/hooks/useEligibility";
+import Callout from "@/components/Callout";
 import styles from "./EligibilityEstimatorPage.module.css";
 
 // The public, anonymous Pre-Eligibility Estimator. It renders the Form.io spec
@@ -440,15 +440,14 @@ export default function EligibilityEstimatorPage() {
     <div className={styles.page}>
       <h1 className={styles.title}>Estimate your Eligibility for Assistance</h1>
 
-      {/* The real BCDS Callout. Its accent bar, surface, radius and type scale all
-          come from the component, so none of it can drift from the design system the
-          way a hand-rolled copy did. */}
+      {/* The site's Callout (components/Callout): its accent bar, outline, surface
+          and 16px body come from there. The design sets the title as 20px bold
+          text rather than a heading, so it is passed as content. */}
       <div className={styles.privacyCallout}>
-        <Callout
-          variant="lightGrey"
-          title="Your information is private"
-          description="None of the information you share is collected or saved."
-        />
+        <Callout variant="lightGrey">
+          <p className={styles.privacyTitle}>Your information is private</p>
+          <p>None of the information you share is collected or saved.</p>
+        </Callout>
       </div>
 
       <p className={styles.requiredNote}>*All fields are required.</p>

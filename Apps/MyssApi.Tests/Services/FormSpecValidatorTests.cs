@@ -817,6 +817,32 @@ namespace Myss.Api.Tests.Services
             Assert.Empty(Run(accordionMarkedRequired, """{"residesInBc":"true"}"""));
         }
 
+        [Theory]
+        [InlineData("bcgovCallout")]
+        [InlineData("bcgovInlineAlert")]
+        public void Validate_TreatsADisplayContainerAsAContainer_NotAnAnsweredField(string type)
+        {
+            // The container itself carries no answer, even marked required, but
+            // the fields inside it are still known and still validated.
+            string calloutSpec = $$"""
+            {
+              "components": [
+                { "type": "{{type}}", "key": "privacyCallout", "input": false,
+                  "validate": { "required": true },
+                  "components": [
+                    { "type": "content", "key": "privacyNotice", "html": "<p>Notice</p>" },
+                    { "type": "checkbox", "key": "consent", "input": true, "validate": { "required": true } }
+                  ]}
+              ]
+            }
+            """;
+
+            Assert.Empty(Run(calloutSpec, """{"consent":true}"""));
+
+            ValidationErrorModel missing = Assert.Single(Run(calloutSpec, """{}"""));
+            Assert.Equal("consent", missing.Field);
+        }
+
         private static IReadOnlyList<ValidationErrorModel> Run(string specJson, string answersJson)
         {
             using JsonDocument spec = JsonDocument.Parse(specJson);

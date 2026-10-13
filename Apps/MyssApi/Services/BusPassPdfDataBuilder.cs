@@ -1,5 +1,6 @@
 namespace Myss.Api.Services
 {
+    using System;
     using System.Collections.Generic;
     using System.Text.Json;
     using Myss.Api.Models;
@@ -76,6 +77,14 @@ namespace Myss.Api.Services
 
         private static string BuildDateOfBirth(JsonElement answers)
         {
+            // v8 on: one ISO date field, set out the way the three parts were.
+            if (answers.TryGetProperty(BusPassAnswers.DateOfBirth, out _))
+            {
+                return BusPassAnswers.TryGetDateOfBirth(answers, out DateOnly date)
+                    ? $"{date.Day:00} {BusPassPdfFieldMap.BirthMonthLabels[$"{date.Month:00}"]} {date.Year}"
+                    : string.Empty;
+            }
+
             string day = GetString(answers, "birthDay") ?? string.Empty;
             string year = GetString(answers, "birthYear") ?? string.Empty;
             string monthCode = GetString(answers, "birthMonth") ?? string.Empty;

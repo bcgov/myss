@@ -17,10 +17,14 @@ namespace Myss.Api.Tests.Services
     {
         private static readonly DateOnly Today = new(2026, 9, 10);
 
-        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 7).Select(v => new object[] { v });
+        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 8).Select(v => new object[] { v });
+
+        /// <summary>The versions that ask for the date of birth as day, month and year.</summary>
+        public static IEnumerable<object[]> VersionsWithDateOfBirthParts =>
+            Enumerable.Range(1, BusPassRules.SingleDateOfBirthVersion - 1).Select(v => new object[] { v });
 
         public static IEnumerable<object[]> VersionsWithTheReplacementAcknowledgement =>
-            Enumerable.Range(4, 4).Select(v => new object[] { v });
+            Enumerable.Range(4, 5).Select(v => new object[] { v });
 
         [Theory]
         [MemberData(nameof(EveryVersion))]
@@ -44,7 +48,7 @@ namespace Myss.Api.Tests.Services
         }
 
         [Theory]
-        [MemberData(nameof(EveryVersion))]
+        [MemberData(nameof(VersionsWithDateOfBirthParts))]
         public void ABirthMonthFormIoSendsAsANumber_Passes(int version)
         {
             // Form.io turns the option "12" into the number 12 before posting.
@@ -132,7 +136,7 @@ namespace Myss.Api.Tests.Services
         }
 
         [Theory]
-        [MemberData(nameof(EveryVersion))]
+        [MemberData(nameof(VersionsWithDateOfBirthParts))]
         public void AnImpossibleDateOfBirth_IsRefusedOnceOnTheDayField(int version)
         {
             // v6 checks the group on the form (dateParts) and the bus pass rules
@@ -143,6 +147,52 @@ namespace Myss.Api.Tests.Services
 
             ValidationErrorModel error = Assert.Single(Run(version, answers));
             Assert.Equal("birthDay", error.Field);
+        }
+
+        [Theory]
+        [InlineData("2010-02-31")]
+        [InlineData("2027-01-01")]
+        public void V8_ABadDateOfBirth_IsRefusedOnceOnTheDateFieldABadDateOfBirth_IsRefusedOnceOnTheDateField(string dateOfBirth)
+        {
+            var answers = NewApplicant(8);
+            answers["dateOfBirth"] = dateOfBirth;
+
+            ValidationErrorModel error = Assert.Single(Run(8, answers));
+            Assert.Equal("dateOfBirth", error.Field);
+        }
+
+        [Theory]
+        [InlineData("firstName", "A first name is required")]
+        [InlineData("lastName", "A last name is required")]
+        public void V8_ABlankName_IsWordedAsMissingABlankName_IsWordedAsMissing(string key, string message)
+        {
+            var answers = NewApplicant(8);
+            answers.Remove(key);
+
+            ValidationErrorModel error = Assert.Single(Run(8, answers));
+            Assert.Equal(key, error.Field);
+            Assert.Equal(message, error.Message);
+        }
+
+        [Fact]
+        public void V8_PreferringEmailWithoutOne_IsRefusedOnTheEmailFieldPreferringEmailWithoutOne_IsRefusedOnTheEmailField()
+        {
+            var answers = NewApplicant(8);
+            answers["preferredCommunication"] = "email";
+            answers.Remove("email");
+            answers.Remove("emailVerification");
+
+            Assert.Contains(Run(8, answers), e => e.Field == "email" && e.Keyword == BusPassErrorKeywords.EmailRequiredForEmailContact);
+        }
+
+        [Fact]
+        public void V8_ASocialInsuranceNumberIsRequiredASocialInsuranceNumberIsRequired()
+        {
+            var answers = NewApplicant(8);
+            answers.Remove("socialInsuranceNumber");
+            answers["busPassAccountNumber"] = "123456789";
+
+            Assert.Contains(Run(8, answers), e => e.Field == "socialInsuranceNumber");
         }
 
         [Fact]
@@ -169,7 +219,7 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void V6AndV7_UseTheSharedPhoneRuleBeforeDispatch()
+        public void V6ToV8_UseTheSharedPhoneRuleBeforeDispatch()
         {
             var earlierVersion = NewApplicant(6);
             earlierVersion["phoneNumber"] = "1 (250) 555-0199";
@@ -177,21 +227,24 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(ValidationKeywords.PhoneInvalidFormat, earlierError.Keyword);
             Assert.Equal("Phone number is invalid", earlierError.Message);
 
-            foreach (string accepted in new[] { "2501550199", "(250) 055-0199" })
+            foreach (int version in new[] { 7, 8 })
             {
-                var answers = NewApplicant(7);
-                answers["phoneNumber"] = accepted;
-                Assert.Empty(Run(7, answers));
-            }
+                foreach (string accepted in new[] { "2501550199", "(250) 055-0199" })
+                {
+                    var answers = NewApplicant(version);
+                    answers["phoneNumber"] = accepted;
+                    Assert.Empty(Run(version, answers));
+                }
 
-            foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12", "25055501999", "" })
-            {
-                var answers = NewApplicant(7);
-                answers["phoneNumber"] = refused;
-                ValidationErrorModel error = Assert.Single(Run(7, answers));
-                Assert.Equal("phoneNumber", error.Field);
-                Assert.Equal(refused == "" ? ValidationKeywords.FieldRequired : ValidationKeywords.PhoneInvalidFormat, error.Keyword);
-                Assert.Equal("Phone number is invalid", error.Message);
+                foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12", "25055501999", "" })
+                {
+                    var answers = NewApplicant(version);
+                    answers["phoneNumber"] = refused;
+                    ValidationErrorModel error = Assert.Single(Run(version, answers));
+                    Assert.Equal("phoneNumber", error.Field);
+                    Assert.Equal(refused == "" ? ValidationKeywords.FieldRequired : ValidationKeywords.PhoneInvalidFormat, error.Keyword);
+                    Assert.Equal("Phone number is invalid", error.Message);
+                }
             }
         }
 
@@ -223,7 +276,22 @@ namespace Myss.Api.Tests.Services
         }
 
         /// <summary>Everything every version asks of an applicant, in the version's own shape.</summary>
-        private static Dictionary<string, object?> Common() => new()
+        private static Dictionary<string, object?> Common(int version)
+        {
+            var answers = CommonParts();
+            if (version >= BusPassRules.SingleDateOfBirthVersion)
+            {
+                answers.Remove("birthDay");
+                answers.Remove("birthMonth");
+                answers.Remove("birthYear");
+                answers["dateOfBirth"] = "1950-12-10";
+            }
+
+            return answers;
+        }
+
+        /// <summary>The answers in the v1-v7 shape, date of birth in three parts.</summary>
+        private static Dictionary<string, object?> CommonParts() => new()
         {
             // Digits only: v1 still checked the SIN's shape with a pattern on the
             // form, before the server-side rule took over in v2.
@@ -250,7 +318,7 @@ namespace Myss.Api.Tests.Services
 
         private static Dictionary<string, object?> NewApplicant(int version)
         {
-            var answers = Common();
+            var answers = Common(version);
             if (version < 3)
             {
                 answers["applicantCategory"] = "new";
@@ -267,7 +335,7 @@ namespace Myss.Api.Tests.Services
 
         private static Dictionary<string, object?> AddressUpdate(int version)
         {
-            var answers = Common();
+            var answers = Common(version);
             if (version < 3)
             {
                 answers["applicantCategory"] = "existing";
@@ -283,7 +351,7 @@ namespace Myss.Api.Tests.Services
 
         private static Dictionary<string, object?> Replacement(int version)
         {
-            var answers = Common();
+            var answers = Common(version);
             if (version < 3)
             {
                 answers["applicantCategory"] = "existing";

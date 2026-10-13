@@ -8,14 +8,49 @@
   display: flex;
   flex-direction: column;
   gap: var(--layout-margin-xsmall);
+  /* Under a question this is a fieldset; drop the browser's frame. */
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
+/* Set like the design system fields' messages, as the theme restyles them
+   (myss-theme.css, "Form fields"). */
 .fieldError {
   margin: 0;
-  color: var(--typography-color-danger);
-  font-size: var(--typography-font-size-small-body);
+  color: var(--myss-color-error-text, var(--typography-color-danger));
+  font: var(--typography-regular-body);
 }
 
 .submitButton {
   margin-top: var(--layout-margin-medium);
+}
+
+/* The components inside a bcgovInlineAlert: the design system's alert body
+   text, 16px, set apart from the bold title, with no trailing margin below
+   the last paragraph or list. */
+.inlineAlertBody {
+  font: var(--typography-regular-body);
+  color: var(--typography-color-primary);
+}
+
+:global(.bcds-Inline-Alert--container) > :global(.title) + .inlineAlertBody {
+  margin-top: var(--layout-margin-medium);
+}
+
+.inlineAlertBody :is(p, ul, ol):last-child {
+  margin-bottom: 0;
+}
+
+/* Links read as links by their underline too, as in the design system's own
+   Link; Bootstrap takes the underline off every link. */
+.inlineAlertBody a {
+  text-decoration: underline;
+}
+
+/* A number field's prefix or suffix ("$") inside the box, beside the value. */
+.numberAffix {
+  color: var(--typography-color-secondary);
+  font: var(--typography-regular-body);
 }

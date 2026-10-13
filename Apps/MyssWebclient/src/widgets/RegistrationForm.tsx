@@ -257,7 +257,7 @@ export default function RegistrationForm({
   if (error) return <p>Could not load the form: {error.message}</p>;
 
   return (
-    <section className={styles.form}>
+    <section>
       {summaryError && <SubmissionErrors error={summaryError} />}
       <Form
         src={prepared ?? spec.spec}

@@ -59,6 +59,14 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public void Build_SetsOutASingleDateOfBirthFieldTheSameWay()
+        {
+            var data = Build("""{"dateOfBirth":"1950-05-05"}""");
+
+            Assert.Equal("05 May 1950", data["dateOfBirth"]);
+        }
+
+        [Fact]
         public void Build_DefaultsMailingAddressToResidentialWhenNotDifferent()
         {
             var data = Build("""
