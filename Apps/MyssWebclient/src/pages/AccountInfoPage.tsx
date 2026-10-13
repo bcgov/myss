@@ -6,7 +6,7 @@ import PinManagement from "@/widgets/account/PinManagement";
 import styles from "./AccountInfoPage.module.css";
 
 // The dashboard's Account Info section (MYSS-271): case details, contact
-// details, PIN management and notification preferences on one page.
+// details, PIN management (MYSS-258) and notification preferences on one page.
 export default function AccountInfoPage() {
   const { data: account, error, isPending } = useAccount();
 
@@ -21,7 +21,7 @@ export default function AccountInfoPage() {
         <>
           <AccountSummary account={account} />
           <ContactInformation account={account} />
-          <PinManagement />
+          <PinManagement account={account} />
           <NotificationPreferences account={account} />
         </>
       )}

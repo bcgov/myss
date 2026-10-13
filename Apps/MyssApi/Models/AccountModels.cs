@@ -1,5 +1,6 @@
 namespace Myss.Api.Models
 {
+    using System;
     using System.Collections.Generic;
     using System.Text.Json.Serialization;
 
@@ -29,6 +30,25 @@ namespace Myss.Api.Models
 
         /// <summary>Gets or sets a value indicating whether the citizen wants the monthly report reminder.</summary>
         public bool MonthlyReportReminder { get; set; }
+
+        /// <summary>Gets or sets whether the citizen has a PIN, or does not use one (MYSS-258).</summary>
+        [JsonConverter(typeof(JsonStringEnumConverter<AccountPinStatus>))]
+        public AccountPinStatus PinStatus { get; set; }
+    }
+
+    /// <summary>
+    /// Where the citizen stands with the PIN, which decides what Account Info offers.
+    /// </summary>
+    public enum AccountPinStatus
+    {
+        /// <summary>The sign-in does not use a PIN: only Basic BCeID does.</summary>
+        NotApplicable,
+
+        /// <summary>A Basic BCeID citizen with no PIN yet, registered before PINs were asked for.</summary>
+        NotSet,
+
+        /// <summary>A PIN is set; changing it needs the current one.</summary>
+        Set,
     }
 
     /// <summary>
@@ -99,6 +119,23 @@ namespace Myss.Api.Models
     }
 
     /// <summary>
+    /// The body of a PIN save: a change when a PIN is set, otherwise its
+    /// creation, in which case <see cref="CurrentPin"/> is ignored. All three are
+    /// checked by the service, so a mistake comes back as a field error.
+    /// </summary>
+    public class SavePinRequestModel
+    {
+        /// <summary>Gets or sets the PIN the citizen has now. Required to change one.</summary>
+        public string? CurrentPin { get; set; }
+
+        /// <summary>Gets or sets the new 4-digit PIN.</summary>
+        public string? NewPin { get; set; }
+
+        /// <summary>Gets or sets the new PIN typed a second time.</summary>
+        public string? ConfirmPin { get; set; }
+    }
+
+    /// <summary>
     /// How an account operation ended.
     /// </summary>
     public enum AccountOutcome
@@ -111,6 +148,12 @@ namespace Myss.Api.Models
 
         /// <summary>The input failed validation; <see cref="AccountResultModel.Errors"/> is set.</summary>
         Invalid,
+
+        /// <summary>Too many wrong PINs; <see cref="AccountResultModel.LockedUntil"/> says until when.</summary>
+        PinLocked,
+
+        /// <summary>The caller's sign-in does not use a PIN.</summary>
+        PinNotAvailable,
     }
 
     /// <summary>
@@ -121,11 +164,13 @@ namespace Myss.Api.Models
         private AccountResultModel(
             AccountOutcome outcome,
             AccountModel? account = null,
-            IReadOnlyList<ValidationErrorModel>? errors = null)
+            IReadOnlyList<ValidationErrorModel>? errors = null,
+            DateTimeOffset? lockedUntil = null)
         {
             Outcome = outcome;
             Account = account;
             Errors = errors ?? [];
+            LockedUntil = lockedUntil;
         }
 
         /// <summary>Gets how the operation ended.</summary>
@@ -136,6 +181,9 @@ namespace Myss.Api.Models
 
         /// <summary>Gets the validation failures when the outcome is <see cref="AccountOutcome.Invalid"/>.</summary>
         public IReadOnlyList<ValidationErrorModel> Errors { get; }
+
+        /// <summary>Gets when the PIN lockout ends, when the outcome is <see cref="AccountOutcome.PinLocked"/>.</summary>
+        public DateTimeOffset? LockedUntil { get; }
 
         /// <summary>Creates a success.</summary>
         /// <param name="account">The account as it now stands.</param>
@@ -151,5 +199,15 @@ namespace Myss.Api.Models
         /// <returns>The result.</returns>
         public static AccountResultModel Invalid(IReadOnlyList<ValidationErrorModel> errors) =>
             new(AccountOutcome.Invalid, errors: errors);
+
+        /// <summary>Creates a refusal while the PIN is locked.</summary>
+        /// <param name="lockedUntil">When the lockout ends.</param>
+        /// <returns>The result.</returns>
+        public static AccountResultModel PinLocked(DateTimeOffset lockedUntil) =>
+            new(AccountOutcome.PinLocked, lockedUntil: lockedUntil);
+
+        /// <summary>Creates a refusal for a caller whose sign-in does not use a PIN.</summary>
+        /// <returns>The result.</returns>
+        public static AccountResultModel PinNotAvailable() => new(AccountOutcome.PinNotAvailable);
     }
 }

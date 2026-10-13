@@ -123,6 +123,26 @@
       "note": "Account info: more phone numbers were sent than there are phone types."
     },
     {
+      "keyword": "IDA.PIN.INVALID_FORMAT",
+      "message": "Enter a 4-digit PIN using numbers only.",
+      "note": "A PIN (registration or Account Info) that is not exactly four numeric digits."
+    },
+    {
+      "keyword": "IDA.PIN.MISMATCH",
+      "message": "The two PINs do not match.",
+      "note": "A PIN confirmation that differs from the PIN it confirms."
+    },
+    {
+      "keyword": "ACCOUNT.PIN.INCORRECT",
+      "message": "The current PIN is not correct.",
+      "note": "Account info: the current PIN given to change it is not the stored one. Repeated, it locks Change PIN."
+    },
+    {
+      "keyword": "ACCOUNT.PIN.NOT_AVAILABLE",
+      "message": "A PIN is only used when you sign in with Basic BCeID.",
+      "note": "A PIN sent for a sign-in that does not use one (BC Services Card). The webclient never shows a PIN to those users."
+    },
+    {
       "keyword": "BUSPASS.REQUEST.TYPE_INVALID",
       "message": "Select a valid service type",
       "note": "Bus pass: the service type selector holds a value the form does not offer."

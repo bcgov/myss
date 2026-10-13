@@ -43,13 +43,15 @@ namespace Myss.Api.Tests.TestDoubles
     /// Caller accessor that always reports the given subject.
     /// </summary>
     /// <param name="subject">The subject to report.</param>
-    public sealed class StubCurrentUserAccessor(string subject) : Myss.Api.Services.ICurrentUserAccessor
+    /// <param name="bceidGuid">A Basic BCeID GUID, for a BCeID caller; null for any other sign-in.</param>
+    public sealed class StubCurrentUserAccessor(string subject, string? bceidGuid = null) : Myss.Api.Services.ICurrentUserAccessor
     {
         /// <inheritdoc/>
         public Myss.Api.Models.CurrentUser User { get; } = new()
         {
             IsAuthenticated = true,
             Subject = subject,
+            BceidGuid = bceidGuid,
         };
     }
 }

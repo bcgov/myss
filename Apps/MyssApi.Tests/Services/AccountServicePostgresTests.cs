@@ -2,6 +2,7 @@ namespace Myss.Api.Tests.Services
 {
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging.Abstractions;
+    using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
     using Myss.Api.Models;
     using Myss.Api.Providers;
@@ -72,7 +73,10 @@ namespace Myss.Api.Tests.Services
                 db,
                 new PlaceholderCaseAccountProvider(),
                 new StubCurrentUserAccessor(subject),
-                TimeProvider.System);
+                TimeProvider.System,
+                new PinHasher(),
+                new PinLockoutConfig(),
+                new FakeErrorMessageProvider());
             return await service.UpdatePhonesAsync(
                 new UpdatePhonesRequestModel
                 {

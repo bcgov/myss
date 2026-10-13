@@ -198,6 +198,22 @@ namespace Myss.Api.Migrations
                         .HasColumnType("character varying(10)")
                         .HasColumnName("phone");
 
+                    b.Property<int>("PinFailedAttempts")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("pin_failed_attempts");
+
+                    b.Property<string>("PinHash")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("taapcd_aae_passcode");
+
+                    b.Property<DateTimeOffset?>("PinLockedUntil")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pin_locked_until");
+
                     b.Property<string>("Sin")
                         .IsRequired()
                         .HasMaxLength(20)

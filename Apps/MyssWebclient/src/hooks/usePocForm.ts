@@ -5,6 +5,7 @@ import {
   getSubmission,
   listSubmissions,
   submitForm,
+  type FormSubmissionInput,
 } from "@/api/forms";
 
 // These endpoints are not in the generated client yet. Once the forms API
@@ -46,9 +47,6 @@ export function useSubmission(id: string) {
 
 export function useSubmitForm(formSpecId: string) {
   return useMutation({
-    mutationFn: (input: {
-      formSpecVersion: number;
-      answers: Record<string, unknown>;
-    }) => submitForm(formSpecId, input),
+    mutationFn: (input: FormSubmissionInput) => submitForm(formSpecId, input),
   });
 }
