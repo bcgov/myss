@@ -150,6 +150,10 @@ namespace Myss.Api
             services.AddScoped<IIntakeService, IntakeService>();
             services.AddScoped<IReviewService, ReviewService>();
 
+            // What follows a worker's Accept. Nothing receives applications
+            // yet; the placeholder succeeds without leaving the API.
+            services.AddSingleton<IApplicationPromotionProvider, PlaceholderApplicationPromotionProvider>();
+
             // Bus pass hand-off to ICM. MyssApi never calls Siebel: everything
             // ICM-bound goes to the IcmApi middleware over REST, which owns the
             // ICM credentials and the Siebel translation, so nothing Siebel-shaped

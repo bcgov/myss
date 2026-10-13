@@ -9,8 +9,9 @@ import { REVIEW_KEYWORDS } from "@/api/review";
 import ReviewApplication from "@/widgets/review/ReviewApplication";
 
 // One application under review: the submitted answers read-only, the buttons
-// the server allows, and each action sending the stream version it was
-// decided against. A 409 reloads the file instead of pretending.
+// the server allows the caller, internal notes for the assignee, the history,
+// and each write sending the stream version it was decided against. A 409
+// reloads the file instead of pretending.
 
 const ID = "11111111-2222-3333-4444-555555555555";
 
@@ -61,8 +62,43 @@ function submitted(
     formSpecVersion: 1,
     spec,
     availableActions: ["Review"],
+    assignee: null,
+    inQueue: true,
+    canAddNote: false,
+    notes: [],
+    history: [
+      {
+        code: "SUBMIT",
+        actorKind: "APPLICANT",
+        idir: null,
+        occurredAt: "2026-09-28T11:00:00Z",
+      },
+    ],
     ...overrides,
   };
+}
+
+const ASSIGNEE_ACTIONS: ReviewApplicationPayload["availableActions"] = [
+  "RequestMoreInfo",
+  "Escalate",
+  "Deny",
+  "Accept",
+  "Release",
+];
+
+/** A file the mock worker (MWORKER) has picked up. */
+function underReview(
+  overrides: Partial<ReviewApplicationPayload> = {},
+): ReviewApplicationPayload {
+  return submitted({
+    status: "UNDER_REVIEW",
+    streamVersion: 2,
+    assignee: "MWORKER",
+    inQueue: false,
+    canAddNote: true,
+    availableActions: ASSIGNEE_ACTIONS,
+    ...overrides,
+  });
 }
 
 type Answer = { status: number; body: unknown };
@@ -72,6 +108,8 @@ interface Stub {
   application: ReviewApplicationPayload;
   /** A canned answer for the next action; consumed once. */
   nextAction?: Answer;
+  /** When set, a note's response waits for this before going out. */
+  holdNote?: Promise<void>;
 }
 
 function json(status: number, body: unknown) {
@@ -95,9 +133,12 @@ const NEXT: Record<
     actions: ReviewApplicationPayload["availableActions"];
   }
 > = {
-  review: { status: "UNDER_REVIEW", actions: ["Accept", "Deny"] },
+  review: { status: "UNDER_REVIEW", actions: ASSIGNEE_ACTIONS },
+  "request-more-info": { status: "RETURNED", actions: [] },
+  escalate: { status: "ESCALATED", actions: [] },
   accept: { status: "ACCEPTED", actions: [] },
   deny: { status: "DENIED", actions: [] },
+  release: { status: "SUBMITTED", actions: ["Review"] },
 };
 
 /**
@@ -115,7 +156,33 @@ function stubApi(stub: Stub) {
     if (url.endsWith(base) && method === "GET") {
       return json(200, { payload: stub.application });
     }
-    const action = /\/(review|accept|deny)$/.exec(url)?.[1];
+    if (url.endsWith(`${base}/notes`) && method === "POST") {
+      const body = JSON.parse(String(init?.body));
+      actions.push({ route: "notes", body });
+      if (stub.holdNote) await stub.holdNote;
+      if (stub.nextAction) {
+        const answer = stub.nextAction;
+        stub.nextAction = undefined;
+        return json(answer.status, answer.body);
+      }
+      stub.application = {
+        ...stub.application,
+        notes: [
+          ...stub.application.notes,
+          {
+            text: body.text,
+            author: "MWORKER",
+            createdAt: "2026-09-28T12:00:00Z",
+          },
+        ],
+        streamVersion: stub.application.streamVersion + 1,
+      };
+      return json(200, { payload: withoutSpec(stub.application) });
+    }
+    const action =
+      /\/(review|request-more-info|escalate|accept|deny|release)$/.exec(
+        url,
+      )?.[1];
     if (action && url.endsWith(`${base}/${action}`) && method === "POST") {
       const body = JSON.parse(String(init?.body));
       actions.push({ route: action, body });
@@ -124,10 +191,14 @@ function stubApi(stub: Stub) {
         stub.nextAction = undefined;
         return json(answer.status, answer.body);
       }
+      const held = action === "review";
       stub.application = {
         ...stub.application,
         status: NEXT[action].status,
         availableActions: NEXT[action].actions,
+        assignee: held ? "MWORKER" : null,
+        canAddNote: held,
+        inQueue: ["RETURNED", "SUBMITTED"].includes(NEXT[action].status),
         streamVersion: stub.application.streamVersion + 1,
       };
       return json(200, { payload: withoutSpec(stub.application) });
@@ -177,7 +248,7 @@ test("shows the submission read-only with only the action the file allows", asyn
     .not.toBeInTheDocument();
 
   await expect
-    .element(screen.getByRole("button", { name: "Under Review" }))
+    .element(screen.getByRole("button", { name: "Pick up for review" }))
     .toBeEnabled();
   await expect
     .element(screen.getByRole("button", { name: "Accept" }))
@@ -191,16 +262,18 @@ test("moves the file to Under Review, then decides it, sending the stream versio
   const actions = stubApi({ application: submitted() });
   const screen = await renderReview();
 
-  await screen.getByRole("button", { name: "Under Review" }).click();
+  await screen.getByRole("button", { name: "Pick up for review" }).click();
 
   await expect
-    .element(screen.getByRole("gridcell", { name: "Under Review" }))
+    .element(screen.getByRole("gridcell", { name: "Under Review - MWORKER" }))
     .toBeVisible();
   await expect
     .element(screen.getByRole("status"))
-    .toHaveTextContent("The application is now under review.");
+    .toHaveTextContent(
+      "The application is now under review and assigned to you.",
+    );
   await expect
-    .element(screen.getByRole("button", { name: "Under Review" }))
+    .element(screen.getByRole("button", { name: "Pick up for review" }))
     .not.toBeInTheDocument();
 
   await screen.getByRole("button", { name: "Accept" }).click();
@@ -222,13 +295,7 @@ test("moves the file to Under Review, then decides it, sending the stream versio
 });
 
 test("denies a file under review", async () => {
-  const actions = stubApi({
-    application: submitted({
-      status: "UNDER_REVIEW",
-      streamVersion: 2,
-      availableActions: ["Accept", "Deny"],
-    }),
-  });
+  const actions = stubApi({ application: underReview() });
   const screen = await renderReview();
 
   await screen.getByRole("button", { name: "Deny" }).click();
@@ -277,7 +344,7 @@ test("a conflict reloads the file and says another worker acted first", async ()
     availableActions: [],
   });
 
-  await screen.getByRole("button", { name: "Under Review" }).click();
+  await screen.getByRole("button", { name: "Pick up for review" }).click();
 
   await expect
     .element(screen.getByRole("alert"))
@@ -286,7 +353,7 @@ test("a conflict reloads the file and says another worker acted first", async ()
     .element(screen.getByRole("gridcell", { name: "Denied" }))
     .toBeVisible();
   await expect
-    .element(screen.getByRole("button", { name: "Under Review" }))
+    .element(screen.getByRole("button", { name: "Pick up for review" }))
     .not.toBeInTheDocument();
   expect(actions).toEqual([{ route: "review", body: { streamVersion: 1 } }]);
 });
@@ -300,4 +367,203 @@ test("a missing or draft application says so", async () => {
   await expect
     .element(screen.getByRole("alert"))
     .toHaveTextContent("This application could not be found.");
+});
+
+test.each([
+  ["Request more information", "request-more-info", "Returned"],
+  ["Escalate", "escalate", "Review"],
+  ["Release to queue", "release", "Submitted"],
+] as const)("the assignee can %s", async (label, route, statusLabel) => {
+  const actions = stubApi({ application: underReview() });
+  const screen = await renderReview();
+
+  await screen.getByRole("button", { name: label }).click();
+
+  await expect
+    .element(screen.getByRole("gridcell", { name: statusLabel }))
+    .toBeVisible();
+  expect(actions).toEqual([{ route, body: { streamVersion: 2 } }]);
+});
+
+test("the assignee adds an internal note, sent with the stream version", async () => {
+  const actions = stubApi({ application: underReview() });
+  const screen = await renderReview();
+
+  const add = screen.getByRole("button", { name: "Add note" });
+  await expect.element(add).toBeDisabled();
+  await screen
+    .getByRole("textbox", { name: /Add a note/ })
+    .fill("  Income proof checked.  ");
+  await add.click();
+
+  await expect.element(screen.getByText("Income proof checked.")).toBeVisible();
+  await expect
+    .element(screen.getByRole("textbox", { name: /Add a note/ }))
+    .toHaveValue("");
+  expect(actions).toEqual([
+    {
+      route: "notes",
+      body: { streamVersion: 2, text: "Income proof checked." },
+    },
+  ]);
+});
+
+test("a file another worker holds is read-only, with notes shown but no box", async () => {
+  stubApi({
+    application: underReview({
+      assignee: "MOTHER",
+      canAddNote: false,
+      availableActions: [],
+      notes: [
+        {
+          text: "Waiting on a document.",
+          author: "MOTHER",
+          createdAt: "2026-09-28T12:00:00Z",
+        },
+      ],
+    }),
+  });
+  const screen = await renderReview();
+
+  await expect
+    .element(screen.getByRole("gridcell", { name: "Under Review - MOTHER" }))
+    .toBeVisible();
+  await expect
+    .element(screen.getByText(/under review by MOTHER/))
+    .toBeVisible();
+  await expect
+    .element(screen.getByText("Waiting on a document."))
+    .toBeVisible();
+  await expect
+    .element(screen.getByRole("textbox", { name: /Add a note/ }))
+    .not.toBeInTheDocument();
+  await expect.element(screen.getByRole("button")).not.toBeInTheDocument();
+});
+
+test("losing a pick-up to another worker says so and reloads", async () => {
+  const stub: Stub = {
+    application: submitted(),
+    nextAction: {
+      status: 409,
+      body: {
+        status: 409,
+        keyword: REVIEW_KEYWORDS.assignedToAnother,
+        currentVersion: 2,
+      },
+    },
+  };
+  stubApi(stub);
+  const screen = await renderReview();
+  stub.application = underReview({
+    assignee: "MOTHER",
+    canAddNote: false,
+    availableActions: [],
+  });
+
+  await screen.getByRole("button", { name: "Pick up for review" }).click();
+
+  await expect
+    .element(screen.getByRole("alert"))
+    .toHaveTextContent("Another worker picked up this application first.");
+  await expect
+    .element(screen.getByRole("gridcell", { name: "Under Review - MOTHER" }))
+    .toBeVisible();
+});
+
+test("shows the history with who did what", async () => {
+  stubApi({
+    application: underReview({
+      history: [
+        {
+          code: "SUBMIT",
+          actorKind: "APPLICANT",
+          idir: null,
+          occurredAt: "2026-09-28T11:00:00Z",
+        },
+        {
+          code: "PICK_UP",
+          actorKind: "WORKER",
+          idir: "MWORKER",
+          occurredAt: "2026-09-28T11:30:00Z",
+        },
+      ],
+    }),
+  });
+  const screen = await renderReview();
+
+  const history = screen.getByRole("region", { name: "History" });
+  await expect
+    .element(history.getByRole("cell", { name: "Picked up for review" }))
+    .toBeVisible();
+  await expect
+    .element(history.getByRole("cell", { name: "MWORKER" }))
+    .toBeVisible();
+  await expect
+    .element(history.getByRole("cell", { name: "Applicant" }))
+    .toBeVisible();
+});
+
+test("a decision is held back while a note is written but not added", async () => {
+  const actions = stubApi({ application: underReview() });
+  const screen = await renderReview();
+
+  await screen
+    .getByRole("textbox", { name: /Add a note/ })
+    .fill("Checked the income proof.");
+  await screen.getByRole("button", { name: "Accept" }).click();
+
+  await expect
+    .element(screen.getByRole("alert"))
+    .toHaveTextContent("You have a note that has not been added.");
+  await expect
+    .element(screen.getByRole("textbox", { name: /Add a note/ }))
+    .toHaveValue("Checked the income proof.");
+  expect(actions).toEqual([]);
+
+  // Adding it clears the hold; the decision then goes out.
+  await screen.getByRole("button", { name: "Add note" }).click();
+  await expect
+    .element(screen.getByText("Checked the income proof."))
+    .toBeVisible();
+  await screen.getByRole("button", { name: "Accept" }).click();
+
+  await expect
+    .element(screen.getByRole("gridcell", { name: "Accepted" }))
+    .toBeVisible();
+  expect(actions).toEqual([
+    {
+      route: "notes",
+      body: { streamVersion: 2, text: "Checked the income proof." },
+    },
+    { route: "accept", body: { streamVersion: 3 } },
+  ]);
+});
+
+test("the actions wait while a note is being saved", async () => {
+  let release!: () => void;
+  const stub: Stub = {
+    application: underReview(),
+    holdNote: new Promise<void>((resolve) => {
+      release = resolve;
+    }),
+  };
+  stubApi(stub);
+  const screen = await renderReview();
+
+  await screen.getByRole("textbox", { name: /Add a note/ }).fill("Called.");
+  await screen.getByRole("button", { name: "Add note" }).click();
+
+  await expect
+    .element(screen.getByRole("button", { name: "Accept" }))
+    .toBeDisabled();
+  await expect
+    .element(screen.getByRole("button", { name: "Deny" }))
+    .toBeDisabled();
+
+  release();
+
+  await expect.element(screen.getByText("Called.")).toBeVisible();
+  await expect
+    .element(screen.getByRole("button", { name: "Accept" }))
+    .toBeEnabled();
 });

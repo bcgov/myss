@@ -15,7 +15,11 @@ import {
 // fetches for now (see api/intake.ts), so every call carries authHeaders()
 // itself; the Bearer interceptor in useApiAuth only wraps the generated client.
 
-export { ApplicationRequestError, INTAKE_KEYWORDS } from "@/api/intake";
+export {
+  ApplicationRequestError,
+  INTAKE_KEYWORDS,
+  isEditableStatus,
+} from "@/api/intake";
 export type {
   ApplicationPayload,
   ApplicationStatus,

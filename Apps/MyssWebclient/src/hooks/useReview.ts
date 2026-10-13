@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApplicationRequestError } from "@/api/intake";
 import {
+  addReviewNote,
   getReviewApplication,
   listReviewQueue,
   performReviewAction,
@@ -19,6 +20,9 @@ export type {
   ReviewActionRoute,
   ReviewApplicationPayload,
   ReviewApplicationSummaryPayload,
+  ReviewHistoryCode,
+  ReviewHistoryEntryPayload,
+  ReviewNotePayload,
 } from "@/api/review";
 
 // Invalidation PREFIX: invalidateQueries({ queryKey: REVIEW_QUERY_KEY })
@@ -70,18 +74,20 @@ export interface ReviewActionInput {
 }
 
 /**
- * Moves a file. On success the response is folded into the cached application
- * straight away — status, available actions and the new stream version, so a
- * second click cannot go out with the old one while the refetch is in flight —
- * keeping the archived spec the read by id carried, which action responses do
+ * Folds an action or note response into the cached application straight away
+ * — status, available actions, notes and the new stream version, so a second
+ * click cannot go out with the old one while the refetch is in flight —
+ * keeping the archived spec the read by id carried, which these responses do
  * not repeat. On a 409 the cached application is refetched so the worker sees
  * what the file is at now.
  */
-export function useReviewAction(id: string) {
+function useReviewWrite<TInput>(
+  id: string,
+  write: (input: TInput) => Promise<ReviewApplicationPayload>,
+) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ action, streamVersion }: ReviewActionInput) =>
-      performReviewAction(id, action, streamVersion),
+    mutationFn: write,
     onSuccess: (updated) => {
       queryClient.setQueryData<ReviewApplicationPayload>(
         reviewApplicationKey(id),
@@ -100,4 +106,24 @@ export function useReviewAction(id: string) {
       }
     },
   });
+}
+
+/** Moves a file: pick it up, release it, or decide it. */
+export function useReviewAction(id: string) {
+  return useReviewWrite(id, ({ action, streamVersion }: ReviewActionInput) =>
+    performReviewAction(id, action, streamVersion),
+  );
+}
+
+/** The input of one note. */
+export interface ReviewNoteInput {
+  text: string;
+  streamVersion: number;
+}
+
+/** Adds an internal note to a file the caller has Under Review. */
+export function useAddReviewNote(id: string) {
+  return useReviewWrite(id, ({ text, streamVersion }: ReviewNoteInput) =>
+    addReviewNote(id, text, streamVersion),
+  );
 }

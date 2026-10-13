@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationRequestError } from "@/api/intake";
 import {
+  addReviewNote,
   getReviewApplication,
   listReviewQueue,
   performReviewAction,
@@ -24,6 +25,8 @@ const summary: ReviewApplicationSummaryPayload = {
   status: "SUBMITTED",
   submittedAt: "2026-09-28T11:00:00Z",
   streamVersion: 1,
+  assignee: null,
+  inQueue: true,
 };
 
 const application: ReviewApplicationPayload = {
@@ -33,6 +36,16 @@ const application: ReviewApplicationPayload = {
   formSpecVersion: 1,
   spec: null,
   availableActions: ["Review"],
+  canAddNote: false,
+  notes: [],
+  history: [
+    {
+      code: "SUBMIT",
+      actorKind: "APPLICANT",
+      idir: null,
+      occurredAt: "2026-09-28T11:00:00Z",
+    },
+  ],
 };
 
 function jsonResponse(status: number, body: unknown) {
@@ -120,8 +133,11 @@ describe("getReviewApplication", () => {
 describe("performReviewAction", () => {
   it.each([
     ["review", "UNDER_REVIEW"],
+    ["request-more-info", "RETURNED"],
+    ["escalate", "ESCALATED"],
     ["accept", "ACCEPTED"],
     ["deny", "DENIED"],
+    ["release", "SUBMITTED"],
   ] as const)(
     "POSTs the stream version to /%s and returns the moved application",
     async (route, status) => {
@@ -195,6 +211,61 @@ describe("performReviewAction", () => {
 
     expect((error as ApplicationRequestError).keyword).toBe(
       REVIEW_KEYWORDS.notAllowed,
+    );
+  });
+});
+
+describe("addReviewNote", () => {
+  it("POSTs the text and the stream version to /notes", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, {
+        payload: {
+          ...application,
+          status: "UNDER_REVIEW",
+          streamVersion: 3,
+          notes: [
+            {
+              text: "Checked.",
+              author: "MWORKER",
+              createdAt: "2026-09-28T12:00:00Z",
+            },
+          ],
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await addReviewNote(ID, "Checked.", 2);
+
+    const [url, init] = firstCall(fetchMock);
+    expect(url).toMatch(
+      new RegExp(`/v1/intake/review/applications/${ID}/notes$`),
+    );
+    expect(init.method).toBe("POST");
+    expect(authHeaderOf(init)).toBe("Bearer test-token");
+    expect(JSON.parse(String(init.body))).toEqual({
+      streamVersion: 2,
+      text: "Checked.",
+    });
+    expect(result.notes[0]?.text).toBe("Checked.");
+  });
+
+  it("surfaces a file another worker holds with its keyword", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(409, {
+          status: 409,
+          keyword: REVIEW_KEYWORDS.assignedToAnother,
+          currentVersion: 2,
+        }),
+      ),
+    );
+
+    const error = await addReviewNote(ID, "Mine.", 2).catch((e: unknown) => e);
+
+    expect((error as ApplicationRequestError).keyword).toBe(
+      REVIEW_KEYWORDS.assignedToAnother,
     );
   });
 });

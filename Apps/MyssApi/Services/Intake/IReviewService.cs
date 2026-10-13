@@ -7,8 +7,9 @@ namespace Myss.Api.Intake
 
     /// <summary>
     /// The worker side of Application Intake for the POC: every submitted
-    /// application, read-only, and the three status moves. Any worker with an
-    /// IDIR may act; there is no assignment.
+    /// application, read-only, the review moves and internal notes. Any
+    /// worker with an IDIR may pick up a file from the queue; once it is Under
+    /// Review only that worker may act on it.
     /// </summary>
     public interface IReviewService
     {
@@ -34,11 +35,23 @@ namespace Myss.Api.Intake
         /// <param name="action">One of <see cref="WorkerActions"/>.</param>
         /// <param name="request">The stream version the worker last saw.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Ok, NotFound, NotAllowed or StaleVersion.</returns>
+        /// <returns>Ok, NotFound, AssignedToAnother, NotAllowed or StaleVersion.</returns>
         Task<ReviewResultModel> ActAsync(
             Guid id,
             string action,
             ReviewActionRequestModel request,
+            CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Adds an internal note. Only the assignee, while it is Under Review.
+        /// </summary>
+        /// <param name="id">The application.</param>
+        /// <param name="request">The stream version the worker last saw and the text.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Ok, NotFound, AssignedToAnother, NotAllowed or StaleVersion.</returns>
+        Task<ReviewResultModel> AddNoteAsync(
+            Guid id,
+            ReviewNoteRequestModel request,
             CancellationToken cancellationToken);
     }
 }

@@ -141,9 +141,10 @@ function stubApi(stub: Stub) {
       }
       stub.application = {
         ...stub.application,
-        status: "SUBMITTED",
+        status:
+          stub.application.status === "RETURNED" ? "RESUBMITTED" : "SUBMITTED",
         answers: body.answers,
-        submittedAt: "2026-09-28T11:00:00Z",
+        submittedAt: stub.application.submittedAt ?? "2026-09-28T11:00:00Z",
       };
       return json(200, { payload: withoutSpec(stub.application) });
     }
@@ -350,3 +351,78 @@ test("a missing application says so instead of failing silently", async () => {
     .element(screen.getByRole("alert"))
     .toHaveTextContent("This application could not be found.");
 });
+
+test("a returned application is editable again and resubmits", async () => {
+  const stub: Stub = {
+    application: draft({
+      status: "RETURNED",
+      version: 2,
+      answers: { firstName: "Ada", lastName: "Lovelace" },
+      submittedAt: "2026-09-28T11:00:00Z",
+    }),
+  };
+  const writes = stubApi(stub);
+  const screen = await renderForm();
+
+  await expect
+    .element(screen.getByText(/We need more information/))
+    .toBeVisible();
+  const lastName = screen.getByRole("textbox", { name: "Last name" });
+  await expect.element(lastName).toHaveValue("Lovelace");
+  await expect.element(lastName).toBeEnabled();
+
+  await lastName.fill("King");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  const heading = screen.getByRole("heading", {
+    name: "Application resubmitted",
+  });
+  await expect.element(heading).toBeVisible();
+  await expect.element(heading).toHaveFocus();
+  await expect
+    .element(screen.getByRole("gridcell", { name: "Re-submitted" }))
+    .toBeVisible();
+  expect(writes[0].body).toMatchObject({
+    version: 2,
+    answers: { firstName: "Ada", lastName: "King" },
+  });
+  await expect
+    .element(screen.getByRole("button", { name: "Save" }))
+    .not.toBeInTheDocument();
+});
+
+test.each([
+  ["UNDER_REVIEW", "Under Review"],
+  ["ESCALATED", "Review"],
+  ["ACCEPTED", "Accepted"],
+  ["DENIED", "Denied"],
+  ["PROMOTION_FAILED", "Promotion Failed"],
+] as const)(
+  "a %s application is read-only with its status",
+  async (status, label) => {
+    stubApi({
+      application: draft({
+        status,
+        answers: { firstName: "Ada", lastName: "Lovelace" },
+        submittedAt: "2026-09-28T11:00:00Z",
+      }),
+    });
+    const screen = await renderForm();
+
+    await expect
+      .element(screen.getByRole("heading", { name: "Application status" }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("gridcell", { name: label }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("textbox", { name: "First name" }))
+      .toBeDisabled();
+    await expect
+      .element(screen.getByRole("button", { name: "Save" }))
+      .not.toBeInTheDocument();
+    await expect
+      .element(screen.getByRole("button", { name: "Submit" }))
+      .not.toBeInTheDocument();
+  },
+);
