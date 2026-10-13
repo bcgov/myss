@@ -18,6 +18,7 @@ import {
 import {
   eligibilityEstimatorSpecV3,
   eligibilityEstimatorSpecV4,
+  eligibilityEstimatorSpecV5,
   seededFormSpecs,
   testFormSpecV1,
 } from "./form-spec-seed-data";
@@ -104,6 +105,11 @@ describe("validateFormSpec", () => {
     // target — which must name a real field.
     expect(validateFormSpec(eligibilityEstimatorSpecV4)).toEqual([]);
     expect(validateFormSpec(JSON.stringify(eligibilityEstimatorSpecV4))).toEqual([]);
+  });
+
+  it("passes estimator v5 (the two age questions)", () => {
+    expect(validateFormSpec(eligibilityEstimatorSpecV5)).toEqual([]);
+    expect(validateFormSpec(JSON.stringify(eligibilityEstimatorSpecV5))).toEqual([]);
   });
 
   it("rejects a missing or empty components array", () => {

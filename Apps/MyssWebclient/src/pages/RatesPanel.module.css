@@ -26,9 +26,11 @@
     margin: 0 0 var(--layout-margin-small, 8px);
 }
 
-/* Tables can be wider than the panel on a narrow screen. */
+/* Tables can be wider than the panel on a narrow screen. Positioned so the
+   visually hidden text in the cells scrolls with the table, not the page. */
 .tableWrap {
     overflow-x: auto;
+    position: relative;
 }
 
 .table {
@@ -50,13 +52,88 @@
     text-align: right;
 }
 
-.table thead th:first-child,
+.table thead th.rowHeading,
 .table tbody th {
     text-align: left;
 }
 
+.table thead th.groupHeading {
+    text-align: center;
+}
+
 .table tbody tr:nth-child(even) {
     background-color: var(--surface-color-background-light, #f2f2f2);
+}
+
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Fixed width, so the inputs do not widen the table; the error text may wrap. */
+.cellInput {
+    width: 7.5rem;
+    white-space: normal;
+    text-align: left;
+}
+
+.actions {
+    display: flex;
+    gap: var(--layout-margin-small);
+    margin-top: var(--layout-margin-medium);
+}
+
+/* Kept in the accessibility tree while empty, so the message is announced when it appears. */
+.saved:empty {
+    margin: 0;
+}
+
+.errorSummary {
+    border: var(--layout-border-width-medium) solid var(--support-border-color-danger);
+    border-left-width: var(--layout-border-width-large);
+    background: var(--support-surface-color-danger);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: var(--layout-margin-medium) 0;
+}
+
+.errorTitle {
+    font-size: var(--typography-font-size-large-body);
+    margin: 0 0 var(--layout-margin-small);
+}
+
+.errorTitle:focus-visible {
+    outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-medium);
+}
+
+.errorList {
+    margin: 0;
+    padding-left: var(--layout-padding-large);
+}
+
+/* A button, not a link: it moves focus within the page. Styled to read as a link,
+   in the primary text colour, which keeps its contrast on the danger background. */
+.errorLink {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--typography-color-primary);
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.notice {
+    color: var(--typography-color-secondary);
+    font-size: var(--typography-font-size-small-body);
 }
 
 .error {
