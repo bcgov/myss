@@ -7,8 +7,9 @@ import type { ReviewApplicationSummaryPayload } from "@/api/review";
 import { paths } from "@/routes/paths";
 import ReviewQueue from "@/widgets/review/ReviewQueue";
 
-// The worker's list: one row per submitted application, the request number
-// as the link into it, and the status pill saying where the file is.
+// The worker's list: one row per submitted application, split into the
+// queue and the rest, the request number as the link into it, and the status
+// pill saying where the file is and who has it under review.
 
 const FIRST_ID = "11111111-2222-3333-4444-555555555555";
 const SECOND_ID = "22222222-3333-4444-5555-666666666666";
@@ -20,6 +21,7 @@ const queue: ReviewApplicationSummaryPayload[] = [
     status: "SUBMITTED",
     submittedAt: "2026-09-28T11:00:00Z",
     streamVersion: 1,
+    inQueue: true,
   },
   {
     id: SECOND_ID,
@@ -27,6 +29,7 @@ const queue: ReviewApplicationSummaryPayload[] = [
     status: "ACCEPTED",
     submittedAt: "2026-09-27T09:30:00Z",
     streamVersion: 3,
+    inQueue: false,
   },
 ];
 
@@ -77,14 +80,15 @@ test("lists every submitted application with its request number, date and status
   stubApi({ status: 200, body: { payload: queue } });
   const screen = await renderQueue();
 
+  const queueTable = screen.getByRole("table", { name: "Queue" });
   await expect
-    .element(screen.getByRole("columnheader", { name: "Request Number" }))
+    .element(queueTable.getByRole("columnheader", { name: "Request Number" }))
     .toBeVisible();
   await expect
-    .element(screen.getByRole("columnheader", { name: "Submitted On" }))
+    .element(queueTable.getByRole("columnheader", { name: "Submitted On" }))
     .toBeVisible();
   await expect
-    .element(screen.getByRole("columnheader", { name: "Status" }))
+    .element(queueTable.getByRole("columnheader", { name: "Status" }))
     .toBeVisible();
 
   await expect
@@ -99,6 +103,38 @@ test("lists every submitted application with its request number, date and status
     .toBeVisible();
   await expect
     .element(screen.getByRole("gridcell", { name: "Accepted" }))
+    .toBeVisible();
+});
+
+test("splits the queue from files under review or decided, naming the assignee", async () => {
+  stubApi({
+    status: 200,
+    body: {
+      payload: [
+        { ...queue[0], status: "RETURNED", inQueue: true },
+        {
+          ...queue[1],
+          status: "UNDER_REVIEW",
+          assignee: "MWORKER",
+          inQueue: false,
+        },
+      ],
+    },
+  });
+  const screen = await renderQueue();
+
+  const queueTable = screen.getByRole("table", { name: "Queue" });
+  const others = screen.getByRole("table", {
+    name: "Under review and decided",
+  });
+  await expect
+    .element(queueTable.getByRole("gridcell", { name: "Returned" }))
+    .toBeVisible();
+  await expect
+    .element(queueTable.getByRole("link", { name: "IA-22222222" }))
+    .not.toBeInTheDocument();
+  await expect
+    .element(others.getByRole("gridcell", { name: "Under Review - MWORKER" }))
     .toBeVisible();
 });
 
