@@ -379,12 +379,12 @@ describe("seeded forms collection", () => {
     );
   });
 
-  it("seeds the eligibility estimator with v1 through v5", () => {
+  it("seeds the eligibility estimator with v1 through v6", () => {
     const estimator = seededForms.find(
       (form) => form.formSpecId === ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     );
     expect(estimator?.title).toBe(ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE);
-    expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5]);
+    expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
   it("seeds the bus pass with v1 through v8", () => {
