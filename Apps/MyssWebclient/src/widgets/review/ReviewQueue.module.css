@@ -1,3 +1,16 @@
+.host {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-large);
+}
+
+.caption {
+    text-align: left;
+    font-weight: var(--typography-font-weights-bold);
+    font-size: var(--typography-font-size-h4);
+    padding-bottom: var(--layout-padding-small);
+}
+
 .table {
     border-collapse: collapse;
     width: 100%;

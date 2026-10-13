@@ -398,10 +398,27 @@ namespace Myss.Api.Tests.Services
         }
         """;
 
+                private const string RegistrationSpecV5 = """
+                {
+                    "components": [
+                        { "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } },
+                        { "type": "textfield", "key": "lastName", "input": true, "validate": { "required": true } },
+                        { "type": "email", "key": "email", "input": true, "validate": { "required": true } },
+                        { "type": "textfield", "key": "phone", "input": true,
+                            "properties": { "myssValidator": "phone" },
+                            "validate": { "required": true, "customMessage": "Phone number is invalid" } },
+                        { "type": "datetime", "key": "dateOfBirth", "input": true, "validate": { "required": true } },
+                        { "type": "bcgovRadio", "key": "gender", "input": true, "validate": { "required": true },
+                            "values": [ { "label": "Woman/Girl", "value": "woman" } ] },
+                        { "type": "textfield", "key": "sin", "input": true,
+                            "properties": { "myssValidator": "sin" }, "validate": { "required": true } }
+                    ]
+                }
+                """;
+
         [Theory]
         [InlineData("(250) 555-0100")]
         [InlineData("250-555-0100")]
-        [InlineData("+1 250 555 0100")]
         public async Task Submit_RegistrationV4_PersistsTheNormalizedPhoneAndTheGender(string phone)
         {
             using FormsDbContext db = NewDb();
@@ -495,7 +512,9 @@ namespace Myss.Api.Tests.Services
         [Theory]
         [InlineData("555-0100")]
         [InlineData("+44 20 7946 0958")]
-        public async Task Submit_RegistrationWithAPhoneThatIsNotTenDigits_IsRefused(string phone)
+        [InlineData("+1 250 555 0100")]
+        [InlineData("1505550100")]
+        public async Task Submit_RegistrationWithInvalidPhone_IsRefused(string phone)
         {
             using FormsDbContext db = NewDb();
             _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
@@ -509,6 +528,35 @@ namespace Myss.Api.Tests.Services
             ValidationErrorModel error = Assert.Single(result.Errors);
             Assert.Equal("phone", error.Field);
             Assert.Equal(ValidationKeywords.PhoneInvalidFormat, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Theory]
+        [InlineData("(250) 555-0100", true)]
+        [InlineData("1505550100", false)]
+        [InlineData("", false)]
+        public async Task Submit_RegistrationV5_UsesTheSharedPhoneRule(string phone, bool valid)
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 5, RegistrationSpecV5);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(5, $$"""{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"{{phone}}","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            if (valid)
+            {
+                Assert.True(result.IsValid);
+                Assert.Equal("2505550100", Assert.Single(await db.MyssUserProfiles.ToListAsync()).Phone);
+                return;
+            }
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("phone", error.Field);
+            Assert.Equal(phone == "" ? ValidationKeywords.FieldRequired : ValidationKeywords.PhoneInvalidFormat, error.Keyword);
+            Assert.Equal("Phone number is invalid", error.Message);
             Assert.Empty(await db.MyssUserProfiles.ToListAsync());
         }
 

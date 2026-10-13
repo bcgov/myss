@@ -207,7 +207,7 @@ namespace Myss.Api.Intake
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(request);
-            ApplicationAnswers? row = await FindOwnAsync(id, track: false, cancellationToken);
+            ApplicationAnswers? row = await FindOwnAsync(id, track: true, cancellationToken);
             if (row is null)
             {
                 return IntakeResultModel.NotFound();
@@ -243,20 +243,38 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.Invalid(await this.WordAsync(errors, cancellationToken));
             }
 
-            // One write. The row is not touched: the answers that count from
-            // here on are the ones in this event's payload.
+            // The row first: it takes the submitted answers and a new version,
+            // so any other tab still holding the old version is refused from
+            // here on, including after a return reopens the application. The
+            // answers that count stay the ones in the event's payload; the row
+            // is only the working copy a return starts from.
+            row.Answers = JsonDocument.Parse(request.Answers.GetRawText());
+            row.Version = request.Version + 1;
+            row.UpdatedAt = _timeProvider.GetUtcNow();
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return IntakeResultModel.StaleVersion(currentVersion: null);
+            }
+
+            // Then the event. A returned application is resubmitted rather
+            // than submitted again.
             var payload = new SubmittedPayload
             {
                 FormSpecVersion = row.FormSpecVersion,
                 Answers = request.Answers,
             };
+            string eventType = ApplicationProjection.SubmitEventFor(state);
             try
             {
                 await _eventStore.AppendAsync(
                     id,
                     stream.Version,
-                    [payload.ToEvent()],
-                    $"applicant:{row.OwnerSubject}",
+                    [payload.ToEvent(eventType)],
+                    ApplicationActors.Applicant(row.OwnerSubject),
                     cancellationToken);
             }
             catch (ConcurrencyException ex)
@@ -266,7 +284,8 @@ namespace Myss.Api.Intake
             }
 
             _logger.LogInformation(
-                "Submitted application {ApplicationId} on {FormSpecId} v{FormSpecVersion}",
+                "{EventType} application {ApplicationId} on {FormSpecId} v{FormSpecVersion}",
+                eventType,
                 id,
                 row.FormSpecId,
                 row.FormSpecVersion);
@@ -343,9 +362,27 @@ namespace Myss.Api.Intake
                 CreatedAt = row.CreatedAt,
                 UpdatedAt = row.UpdatedAt,
                 SubmittedAt = state.SubmittedAt,
-                Answers = state.Submitted?.Answers ?? row.Answers.RootElement.Clone(),
+                Answers = AnswersFor(row, state),
                 Spec = spec,
             };
+        }
+
+        /// <summary>
+        /// The answers the applicant sees. A draft shows its working copy and
+        /// a submitted application what the log holds. A returned application
+        /// is editable again and shows the last submitted answers until the
+        /// applicant saves after the return. Submit now copies the answers
+        /// into the row, so the two agree; the rule still matters for rows
+        /// submitted before it did, which may hold an earlier draft.
+        /// </summary>
+        private static JsonElement AnswersFor(ApplicationAnswers row, ApplicationState state)
+        {
+            bool savedSinceReturn = state.Status == ApplicationStatus.Returned
+                && state.ReturnedAt is not null
+                && row.UpdatedAt > state.ReturnedAt;
+            return state.Submitted is null || savedSinceReturn
+                ? row.Answers.RootElement.Clone()
+                : state.Submitted.Answers;
         }
     }
 }

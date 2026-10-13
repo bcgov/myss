@@ -77,7 +77,7 @@ namespace Myss.Api.Services
 
         private static string BuildDateOfBirth(JsonElement answers)
         {
-            // v7 on: one ISO date field, set out the way the three parts were.
+            // v8 on: one ISO date field, set out the way the three parts were.
             if (answers.TryGetProperty(BusPassAnswers.DateOfBirth, out _))
             {
                 return BusPassAnswers.TryGetDateOfBirth(answers, out DateOnly date)

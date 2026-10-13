@@ -232,7 +232,7 @@ describe("AccountInfoPage", () => {
       .toHaveFocus();
     await screen
       .getByRole("button", {
-        name: "Phone number 1: Enter a 10-digit phone number with the area code, like (250) 555-0123.",
+        name: "Phone number 1: Phone number is invalid",
       })
       .click();
     await expect.element(number).toHaveFocus();

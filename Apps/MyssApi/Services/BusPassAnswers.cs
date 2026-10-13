@@ -60,7 +60,7 @@ namespace Myss.Api.Services
         public const string BirthYear = "birthYear";
 
         /// <summary>
-        /// Date: date of birth as an ISO date ("1950-12-10"). From v7 the form
+        /// Date: date of birth as an ISO date ("1950-12-10"). From v8 the form
         /// asks for the date in one field; earlier versions split it into
         /// <see cref="BirthDay"/>, <see cref="BirthMonth"/> and <see cref="BirthYear"/>.
         /// </summary>
@@ -182,7 +182,7 @@ namespace Myss.Api.Services
 
         /// <summary>
         /// Reads the date of birth: the single date field when the answers carry
-        /// one (v7 on), otherwise the three date-of-birth parts folded into a date.
+        /// one (v8 on), otherwise the three date-of-birth parts folded into a date.
         /// </summary>
         /// <param name="answers">The submitted answers.</param>
         /// <param name="dateOfBirth">The date, when the answers make one.</param>

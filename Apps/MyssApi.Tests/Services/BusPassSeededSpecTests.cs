@@ -17,14 +17,14 @@ namespace Myss.Api.Tests.Services
     {
         private static readonly DateOnly Today = new(2026, 9, 10);
 
-        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 7).Select(v => new object[] { v });
+        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 8).Select(v => new object[] { v });
 
         /// <summary>The versions that ask for the date of birth as day, month and year.</summary>
         public static IEnumerable<object[]> VersionsWithDateOfBirthParts =>
             Enumerable.Range(1, BusPassRules.SingleDateOfBirthVersion - 1).Select(v => new object[] { v });
 
         public static IEnumerable<object[]> VersionsWithTheReplacementAcknowledgement =>
-            Enumerable.Range(4, 4).Select(v => new object[] { v });
+            Enumerable.Range(4, 5).Select(v => new object[] { v });
 
         [Theory]
         [MemberData(nameof(EveryVersion))]
@@ -152,47 +152,47 @@ namespace Myss.Api.Tests.Services
         [Theory]
         [InlineData("2010-02-31")]
         [InlineData("2027-01-01")]
-        public void V7_ABadDateOfBirth_IsRefusedOnceOnTheDateField(string dateOfBirth)
+        public void V8_ABadDateOfBirth_IsRefusedOnceOnTheDateFieldABadDateOfBirth_IsRefusedOnceOnTheDateField(string dateOfBirth)
         {
-            var answers = NewApplicant(7);
+            var answers = NewApplicant(8);
             answers["dateOfBirth"] = dateOfBirth;
 
-            ValidationErrorModel error = Assert.Single(Run(7, answers));
+            ValidationErrorModel error = Assert.Single(Run(8, answers));
             Assert.Equal("dateOfBirth", error.Field);
         }
 
         [Theory]
         [InlineData("firstName", "A first name is required")]
         [InlineData("lastName", "A last name is required")]
-        public void V7_ABlankName_IsWordedAsMissing(string key, string message)
+        public void V8_ABlankName_IsWordedAsMissingABlankName_IsWordedAsMissing(string key, string message)
         {
-            var answers = NewApplicant(7);
+            var answers = NewApplicant(8);
             answers.Remove(key);
 
-            ValidationErrorModel error = Assert.Single(Run(7, answers));
+            ValidationErrorModel error = Assert.Single(Run(8, answers));
             Assert.Equal(key, error.Field);
             Assert.Equal(message, error.Message);
         }
 
         [Fact]
-        public void V7_PreferringEmailWithoutOne_IsRefusedOnTheEmailField()
+        public void V8_PreferringEmailWithoutOne_IsRefusedOnTheEmailFieldPreferringEmailWithoutOne_IsRefusedOnTheEmailField()
         {
-            var answers = NewApplicant(7);
+            var answers = NewApplicant(8);
             answers["preferredCommunication"] = "email";
             answers.Remove("email");
             answers.Remove("emailVerification");
 
-            Assert.Contains(Run(7, answers), e => e.Field == "email" && e.Keyword == BusPassErrorKeywords.EmailRequiredForEmailContact);
+            Assert.Contains(Run(8, answers), e => e.Field == "email" && e.Keyword == BusPassErrorKeywords.EmailRequiredForEmailContact);
         }
 
         [Fact]
-        public void V7_ASocialInsuranceNumberIsRequired()
+        public void V8_ASocialInsuranceNumberIsRequiredASocialInsuranceNumberIsRequired()
         {
-            var answers = NewApplicant(7);
+            var answers = NewApplicant(8);
             answers.Remove("socialInsuranceNumber");
             answers["busPassAccountNumber"] = "123456789";
 
-            Assert.Contains(Run(7, answers), e => e.Field == "socialInsuranceNumber");
+            Assert.Contains(Run(8, answers), e => e.Field == "socialInsuranceNumber");
         }
 
         [Fact]
@@ -216,6 +216,36 @@ namespace Myss.Api.Tests.Services
 
             Assert.Equal("A city is required", Assert.Single(errors, e => e.Field == "mailingCity").Message);
             Assert.Equal("A postal code is required", Assert.Single(errors, e => e.Field == "mailingPostalCode").Message);
+        }
+
+        [Fact]
+        public void V6ToV8_UseTheSharedPhoneRuleBeforeDispatch()
+        {
+            var earlierVersion = NewApplicant(6);
+            earlierVersion["phoneNumber"] = "1 (250) 555-0199";
+            ValidationErrorModel earlierError = Assert.Single(Run(6, earlierVersion));
+            Assert.Equal(ValidationKeywords.PhoneInvalidFormat, earlierError.Keyword);
+            Assert.Equal("Phone number is invalid", earlierError.Message);
+
+            foreach (int version in new[] { 7, 8 })
+            {
+                foreach (string accepted in new[] { "2501550199", "(250) 055-0199" })
+                {
+                    var answers = NewApplicant(version);
+                    answers["phoneNumber"] = accepted;
+                    Assert.Empty(Run(version, answers));
+                }
+
+                foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12", "25055501999", "" })
+                {
+                    var answers = NewApplicant(version);
+                    answers["phoneNumber"] = refused;
+                    ValidationErrorModel error = Assert.Single(Run(version, answers));
+                    Assert.Equal("phoneNumber", error.Field);
+                    Assert.Equal(refused == "" ? ValidationKeywords.FieldRequired : ValidationKeywords.PhoneInvalidFormat, error.Keyword);
+                    Assert.Equal("Phone number is invalid", error.Message);
+                }
+            }
         }
 
         private static IReadOnlyList<ValidationErrorModel> Run(int version, Dictionary<string, object?> answers)
@@ -260,7 +290,7 @@ namespace Myss.Api.Tests.Services
             return answers;
         }
 
-        /// <summary>The answers in the v1-v6 shape, date of birth in three parts.</summary>
+        /// <summary>The answers in the v1-v7 shape, date of birth in three parts.</summary>
         private static Dictionary<string, object?> CommonParts() => new()
         {
             // Digits only: v1 still checked the SIN's shape with a pattern on the

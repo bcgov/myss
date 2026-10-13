@@ -19,6 +19,7 @@ import busPassFormSpecV4Json from "./bus-pass-specs/bus-pass-form-v4.json";
 import busPassFormSpecV5Json from "./bus-pass-specs/bus-pass-form-v5.json";
 import busPassFormSpecV6Json from "./bus-pass-specs/bus-pass-form-v6.json";
 import busPassFormSpecV7Json from "./bus-pass-specs/bus-pass-form-v7.json";
+import busPassFormSpecV8Json from "./bus-pass-specs/bus-pass-form-v8.json";
 
 export type Json =
   | string
@@ -58,8 +59,11 @@ export const busPassFormSpecV5 = busPassFormSpecV5Json as unknown as Json;
  */
 export const busPassFormSpecV6 = busPassFormSpecV6Json as unknown as Json;
 
+/** The BC Bus Pass v7 form spec with the shared phone rule. */
+export const busPassFormSpecV7 = busPassFormSpecV7Json as unknown as Json;
+
 /**
- * Bus pass v7: layout and two field changes.
+ * Bus pass v8: layout and two field changes, on top of v7's phone rule.
  *
  * - Layout: the form title is the page's h1, the privacy notice sits inside a
  *   `bcgovCallout` container, and the service question gets its own h2 above
@@ -69,10 +73,10 @@ export const busPassFormSpecV6 = busPassFormSpecV6Json as unknown as Json;
  *   `newApplication`).
  * - The date of birth is one required date field (`dateOfBirth`, an ISO date)
  *   in place of the day / month / year group. MyssApi reads either shape, and
- *   from v7 reports date-of-birth errors on the single field.
+ *   from v8 reports date-of-birth errors on the single field.
  * - The social insurance number is required.
  */
-export const busPassFormSpecV7 = busPassFormSpecV7Json as unknown as Json;
+export const busPassFormSpecV8 = busPassFormSpecV8Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -397,6 +401,21 @@ export const registrationFormSpecV4: Json = {
       validate: { required: true },
     },
   ],
+};
+
+/** Registration v5 shares the phone rule with the other forms. */
+export const registrationFormSpecV5: Json = structuredClone(registrationFormSpecV4);
+const registrationPhoneV5 = (registrationFormSpecV5 as { components: Record<string, Json>[] })
+  .components.find((component) => component.key === "phone");
+if (!registrationPhoneV5) throw new Error("Registration v4 has no phone field");
+delete registrationPhoneV5.inputMask;
+registrationPhoneV5.type = "textfield";
+registrationPhoneV5.placeholder = "(250) 555-0199";
+registrationPhoneV5.validateOn = "blur";
+registrationPhoneV5.validate = { required: true, customMessage: "Phone number is invalid" };
+registrationPhoneV5.properties = {
+  ...(registrationPhoneV5.properties as Record<string, Json>),
+  myssValidator: "phone",
 };
 
 // POC test form. v1 is seeded so a fresh database has a working form;
@@ -1548,6 +1567,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 2, spec: registrationFormSpecV2 },
       { version: 3, spec: registrationFormSpecV3 },
       { version: 4, spec: registrationFormSpecV4 },
+      { version: 5, spec: registrationFormSpecV5 },
     ],
   },
   {
@@ -1582,6 +1602,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 5, spec: busPassFormSpecV5 },
       { version: 6, spec: busPassFormSpecV6 },
       { version: 7, spec: busPassFormSpecV7 },
+      { version: 8, spec: busPassFormSpecV8 },
     ],
   },
 ];

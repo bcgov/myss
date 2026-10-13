@@ -35,7 +35,7 @@ namespace Myss.Api.Services
         /// The first version that asks for the date of birth in one date field
         /// rather than day, month and year; its errors belong on that field.
         /// </summary>
-        public const int SingleDateOfBirthVersion = 7;
+        public const int SingleDateOfBirthVersion = 8;
 
         /// <summary>
         /// Checks the answers against the bus pass rules.
@@ -126,7 +126,7 @@ namespace Myss.Api.Services
 
         private static void ValidateDateOfBirth(JsonElement answers, DateOnly today, int formSpecVersion, List<ValidationErrorModel> errors)
         {
-            // The field the citizen corrects: the one date field from v7, the
+            // The field the citizen corrects: the one date field from v8, the
             // day (invalid) or year (out of range) of the three parts before.
             bool singleField = formSpecVersion >= SingleDateOfBirthVersion;
             string invalidField = singleField ? BusPassAnswers.DateOfBirth : BusPassAnswers.BirthDay;

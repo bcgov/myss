@@ -10,6 +10,7 @@ import {
   busPassFormSpecV5,
   busPassFormSpecV6,
   busPassFormSpecV7,
+  busPassFormSpecV8,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   INCOME_ASSISTANCE_FORM_SPEC_ID,
@@ -22,6 +23,7 @@ import {
   registrationFormSpecV2,
   registrationFormSpecV3,
   registrationFormSpecV4,
+  registrationFormSpecV5,
   seededForms,
   seededFormSpecs,
   testFormSpecV1,
@@ -50,6 +52,7 @@ interface Component {
   readonly values?: unknown;
   readonly inputMask?: unknown;
   readonly placeholder?: unknown;
+  readonly validateOn?: unknown;
   readonly conditional?: { readonly when?: unknown };
   readonly properties?: {
     readonly myssValidator?: unknown;
@@ -209,16 +212,37 @@ describe("seeded forms collection", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("seeds the registration form with all four versions", () => {
+  it("seeds the registration form with all five versions", () => {
     const registration = seededForms.find(
       (form) => form.formSpecId === REGISTRATION_FORM_SPEC_ID,
     );
     expect(registration?.title).toBe(REGISTRATION_FORM_SPEC_TITLE);
-    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4]);
+    expect(registration?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5]);
     expect(registration?.versions[1]?.spec).toBe(registrationFormSpecV2);
     expect(registration?.versions[2]?.spec).toBe(registrationFormSpecV3);
-    // The API serves the highest published version, so v4 is what citizens see.
     expect(registration?.versions[3]?.spec).toBe(registrationFormSpecV4);
+    expect(registration?.versions[4]?.spec).toBe(registrationFormSpecV5);
+  });
+
+  it("keeps registration v4 immutable and uses the shared phone rule in v5", () => {
+    const oldPhone = componentByKey(registrationFormSpecV4, "phone");
+    const phone = componentByKey(registrationFormSpecV5, "phone");
+
+    expect(validateFormSpec(registrationFormSpecV5)).toEqual([]);
+    expect(oldPhone.type).toBe("phoneNumber");
+    expect(oldPhone.inputMask).toBe("999-999-9999");
+    expect(oldPhone.properties?.myssValidator).toBeUndefined();
+    expect(phone.type).toBe("textfield");
+    expect(phone.inputMask).toBeUndefined();
+    expect(phone.validate?.pattern).toBeUndefined();
+    expect(phone.validate?.required).toBe(true);
+    expect(phone.validate?.customMessage).toBe("Phone number is invalid");
+    expect(phone.validateOn).toBe("blur");
+    expect(phone.properties).toEqual({
+      myssPrefill: "phoneNumber",
+      myssPrefillLock: "true",
+      myssValidator: "phone",
+    });
   });
 
   it("requires registration consent", () => {
@@ -363,7 +387,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("seeds the bus pass with v1 through v7", () => {
+  it("seeds the bus pass with v1 through v8", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -376,6 +400,7 @@ describe("seeded forms collection", () => {
       { version: 5, spec: busPassFormSpecV5 },
       { version: 6, spec: busPassFormSpecV6 },
       { version: 7, spec: busPassFormSpecV7 },
+      { version: 8, spec: busPassFormSpecV8 },
     ]);
   });
 
@@ -498,6 +523,30 @@ describe("seeded forms collection", () => {
     expect(phoneNumber.placeholder).toBe("(999) 999-9999");
   });
 
+  it("uses the shared phone rule without a second v7 pattern or mask", () => {
+    const oldPhone = componentByKey(busPassFormSpecV6, "phoneNumber");
+    const phone = componentByKey(busPassFormSpecV7, "phoneNumber");
+
+    expect(oldPhone.validate?.pattern).toBeUndefined();
+    expect(phone.properties?.myssValidator).toBe("phone");
+    expect(phone.validateOn).toBe("blur");
+    expect(phone.validate?.required).toBe(true);
+    expect(phone.validate?.customMessage).toBe("Phone number is invalid");
+    expect(phone.validate?.pattern).toBeUndefined();
+    expect(phone.inputMask).toBeUndefined();
+    expect(phone.placeholder).toBe(oldPhone.placeholder);
+  });
+
+  it("keeps the shared phone rule in bus pass v8", () => {
+    const v7 = componentByKey(busPassFormSpecV7, "phoneNumber");
+    const v8 = componentByKey(busPassFormSpecV8, "phoneNumber");
+
+    expect(v8.properties).toEqual(v7.properties);
+    expect(v8.validateOn).toBe(v7.validateOn);
+    expect(v8.validate).toEqual(v7.validate);
+    expect(v8.inputMask).toBeUndefined();
+  });
+
   it("gives every seeded form at least one version, each a valid Form.io form", () => {
     for (const form of seededForms) {
       expect(form.versions.length).toBeGreaterThan(0);
@@ -600,26 +649,26 @@ describe("bus pass seed — v6 (named validation rules)", () => {
   });
 });
 
-describe("bus pass seed — v7 (layout, single date of birth, required SIN)", () => {
+describe("bus pass seed — v8 (layout, single date of birth, required SIN)", () => {
   it("makes the form title the page's h1", () => {
-    expect(componentByKey(busPassFormSpecV7, "busPassTitle").html).toBe(
+    expect(componentByKey(busPassFormSpecV8, "busPassTitle").html).toBe(
       "<h1>BC Bus Pass Program - Online Request for Service</h1>",
     );
   });
 
   it("puts an h2 above the service question", () => {
-    const keys = keysOf(busPassFormSpecV7);
+    const keys = keysOf(busPassFormSpecV8);
     expect(keys.indexOf("serviceRequestHeading")).toBe(
       keys.indexOf("serviceRequestType") - 1,
     );
     expect(
-      componentByKey(busPassFormSpecV7, "serviceRequestHeading").html,
+      componentByKey(busPassFormSpecV8, "serviceRequestHeading").html,
     ).toBe("<h2>What type of service would you like to request?</h2>");
   });
 
   it("lists the three service choices flat, with the values v6 submits", () => {
     const serviceRequest = componentByKey(
-      busPassFormSpecV7,
+      busPassFormSpecV8,
       "serviceRequestType",
     );
     expect(serviceRequest.label).toBe("Service Request type");
@@ -636,7 +685,7 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
   });
 
   it("puts the privacy notice inside a callout", () => {
-    const callout = componentByKey(busPassFormSpecV7, "privacyCallout");
+    const callout = componentByKey(busPassFormSpecV8, "privacyCallout");
     expect(callout.type).toBe("bcgovCallout");
     expect(callout.components).toEqual([
       componentByKey(busPassFormSpecV6, "privacyNotice"),
@@ -644,14 +693,14 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
   });
 
   it("asks for the date of birth in one required date field", () => {
-    const dateOfBirth = componentByKey(busPassFormSpecV7, "dateOfBirth");
+    const dateOfBirth = componentByKey(busPassFormSpecV8, "dateOfBirth");
     expect(dateOfBirth).toMatchObject({
       type: "datetime",
       format: "yyyy-MM-dd",
       enableTime: false,
       validate: { required: true },
     });
-    const keys = keysOf(busPassFormSpecV7);
+    const keys = keysOf(busPassFormSpecV8);
     for (const part of ["birthDay", "birthMonth", "birthYear"]) {
       expect(keys).not.toContain(part);
     }
@@ -659,28 +708,31 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
 
   it("requires the social insurance number", () => {
     expect(
-      componentByKey(busPassFormSpecV7, "socialInsuranceNumber").validate,
+      componentByKey(busPassFormSpecV8, "socialInsuranceNumber").validate,
     ).toEqual({ required: true });
   });
 
   it("lays out the phone section as separate questions", () => {
-    const phoneNumber = componentByKey(busPassFormSpecV7, "phoneNumber");
+    const phoneNumber = componentByKey(busPassFormSpecV8, "phoneNumber");
     expect(phoneNumber.placeholder).toBeUndefined();
-    expect(phoneNumber.validate).toEqual({ required: true });
+    expect(phoneNumber.validate).toEqual({
+      required: true,
+      customMessage: "Phone number is invalid",
+    });
 
-    const phoneType = componentByKey(busPassFormSpecV7, "phoneType");
+    const phoneType = componentByKey(busPassFormSpecV8, "phoneType");
     expect(phoneType).toMatchObject({ type: "radio", label: "Phone type" });
     // The values the API maps, unchanged from the v6 dropdown.
     expect(
       (phoneType.values as { value: string }[]).map((option) => option.value),
     ).toEqual(["home", "work", "cell"]);
 
-    expect(keysOf(busPassFormSpecV7)).not.toContain("contactPreferences");
+    expect(keysOf(busPassFormSpecV8)).not.toContain("contactPreferences");
   });
 
   it("puts the eligibility criteria and the band office note in inline alerts", () => {
     const eligibility = componentByKey(
-      busPassFormSpecV7,
+      busPassFormSpecV8,
       "newApplicantEligibilityAlert",
     );
     expect(eligibility).toMatchObject({
@@ -697,7 +749,7 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
     );
 
     const note = componentByKey(
-      busPassFormSpecV7,
+      busPassFormSpecV8,
       "firstNationsDocumentationAlert",
     );
     expect(note).toMatchObject({
@@ -714,24 +766,24 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
       "firstNationsDocumentationNote",
     ]) {
       expect(
-        componentByKey(busPassFormSpecV7, key).conditional,
+        componentByKey(busPassFormSpecV8, key).conditional,
       ).toBeUndefined();
     }
   });
 
   it("asks the eligibility acknowledgement under its own question", () => {
     expect(
-      componentByKey(busPassFormSpecV7, "eligibilityAcknowledged").properties,
+      componentByKey(busPassFormSpecV8, "eligibilityAcknowledged").properties,
     ).toEqual({ myssGroupLabel: "Acknowledgement" });
     expect(
-      componentByKey(busPassFormSpecV7, "acknowledgedPassCancellation")
+      componentByKey(busPassFormSpecV8, "acknowledgedPassCancellation")
         .properties,
     ).toEqual({ myssGroupLabel: "Acknowledgement" });
   });
 
   it("puts the replacement cost note in an inline alert", () => {
     expect(
-      componentByKey(busPassFormSpecV7, "replacementCostAlert"),
+      componentByKey(busPassFormSpecV8, "replacementCostAlert"),
     ).toMatchObject({
       type: "bcgovInlineAlert",
       variant: "info",
@@ -742,7 +794,7 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
       },
     });
     expect(
-      componentByKey(busPassFormSpecV7, "replacementCostNote").conditional,
+      componentByKey(busPassFormSpecV8, "replacementCostNote").conditional,
     ).toBeUndefined();
   });
 
@@ -751,7 +803,7 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
       ["firstName", "first name"],
       ["lastName", "last name"],
     ] as const) {
-      const name = componentByKey(busPassFormSpecV7, key);
+      const name = componentByKey(busPassFormSpecV8, key);
       expect(name.validate?.customMessage).toBeUndefined();
       expect(name.errors).toEqual({
         required: `A ${noun} is required`,
@@ -763,7 +815,7 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
 
   it("requires the email and its confirmation when email is the preferred method", () => {
     for (const key of ["email", "emailVerification"]) {
-      const field = componentByKey(busPassFormSpecV7, key);
+      const field = componentByKey(busPassFormSpecV8, key);
       expect(field.validate?.required).toBe(false);
       expect(field.logic).toEqual([
         expect.objectContaining({
@@ -784,7 +836,7 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
     }
   });
 
-  it("leaves every other v6 field unchanged", () => {
+  it("leaves every other v7 field unchanged", () => {
     const changed = new Set([
       "serviceRequestType",
       "socialInsuranceNumber",
@@ -806,6 +858,6 @@ describe("bus pass seed — v7 (layout, single date of birth, required SIN)", ()
         (component) =>
           component.input === true && !changed.has(String(component.key)),
       );
-    expect(fields(busPassFormSpecV7)).toEqual(fields(busPassFormSpecV6));
+    expect(fields(busPassFormSpecV8)).toEqual(fields(busPassFormSpecV7));
   });
 });

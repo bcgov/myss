@@ -8,7 +8,7 @@ export default function BusPassPage() {
       <nav aria-label="Breadcrumb">
         <Link to="/">← Home</Link>
       </nav>
-      {/* The form's own title is the page's h1 (spec v7), so none here. */}
+      {/* The form's own title is the page's h1 (spec v8), so none here. */}
       <BusPassForm />
     </div>
   );

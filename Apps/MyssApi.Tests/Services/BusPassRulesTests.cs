@@ -96,7 +96,7 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(refused, errors.Any(e => e.Keyword == BusPassErrorKeywords.Under16));
         }
 
-        /// <summary>The v7 shape: the date of birth in one ISO date field.</summary>
+        /// <summary>The v8 shape: the date of birth in one ISO date field.</summary>
         private static Dictionary<string, object?> NewApplicantWithDateOfBirth(string dateOfBirth)
         {
             var answers = NewApplicant();
