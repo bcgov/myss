@@ -19,7 +19,7 @@ namespace Myss.Api.Intake
     /// Assistance applications. Every route is scoped to the caller; an
     /// application another citizen owns is a 404 here, never a 403, so ids
     /// cannot be enumerated. Workers do not use these routes: the review
-    /// surface is follow-up work with its own controller.
+    /// surface is <see cref="ReviewApplicationsController"/>.
     /// </summary>
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/intake/applications")]
@@ -102,8 +102,8 @@ namespace Myss.Api.Intake
         }
 
         /// <summary>
-        /// Saves the draft's answers. A draft may be incomplete; only submit
-        /// enforces required fields.
+        /// Saves the draft's answers, or a returned application's. Either may
+        /// be incomplete; only submit enforces required fields.
         /// </summary>
         /// <param name="id">The application identifier.</param>
         /// <param name="request">The row version last seen and the answers.</param>
@@ -125,7 +125,8 @@ namespace Myss.Api.Intake
         }
 
         /// <summary>
-        /// Submits the draft. After this the application is read-only.
+        /// Submits the draft, or resubmits an application returned for more
+        /// information. After this the application is read-only.
         /// </summary>
         /// <param name="id">The application identifier.</param>
         /// <param name="request">The row version last seen and the answers.</param>
@@ -190,7 +191,7 @@ namespace Myss.Api.Intake
                         StatusCodes.Status409Conflict,
                         IntakeKeywords.NotEditable,
                         "This application can no longer be changed.",
-                        "It has been submitted.",
+                        "It has been submitted and has not been returned for more information.",
                         result.CurrentVersion);
 
                 case IntakeOutcome.StaleVersion:

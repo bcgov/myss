@@ -15,9 +15,10 @@ namespace Myss.Api.Intake
 
     /// <summary>
     /// The worker side of Application Intake for the POC: the list of
-    /// submitted applications, one application read-only, and the three
-    /// status moves. Staff only, with an IDIR identity; any worker may act on
-    /// any file, and the event records who did.
+    /// submitted applications, one application read-only, the review moves
+    /// and internal notes. Staff only, with an IDIR identity. Any worker may
+    /// pick up a file from the queue; while it is Under Review only that
+    /// worker may act on it, and every event records who did.
     /// </summary>
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/intake/review/applications")]
@@ -72,7 +73,8 @@ namespace Myss.Api.Intake
         }
 
         /// <summary>
-        /// Marks the application Under Review.
+        /// Picks the application up from the queue: it goes Under Review,
+        /// assigned to the caller.
         /// </summary>
         /// <param name="id">The application identifier.</param>
         /// <param name="request">The stream version last seen.</param>
@@ -131,6 +133,94 @@ namespace Myss.Api.Intake
             return Map(await _reviewService.ActAsync(id, WorkerActions.Deny, request, cancellationToken));
         }
 
+        /// <summary>
+        /// Puts the application back in the queue without deciding it. Assignee only.
+        /// </summary>
+        /// <param name="id">The application identifier.</param>
+        /// <param name="request">The stream version last seen.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpPost("{id:guid}/release")]
+        [Produces("application/json")]
+        [EndpointName("ReleaseApplication")]
+        [ProducesResponseType(typeof(BaseResponseModel<ReviewApplicationModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<BaseResponseModel<ReviewApplicationModel>>> Release(
+            Guid id,
+            [FromBody] ReviewActionRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            return Map(await _reviewService.ActAsync(id, WorkerActions.Release, request, cancellationToken));
+        }
+
+        /// <summary>
+        /// Returns the application to the applicant for more information. Assignee only.
+        /// </summary>
+        /// <param name="id">The application identifier.</param>
+        /// <param name="request">The stream version last seen.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpPost("{id:guid}/request-more-info")]
+        [Produces("application/json")]
+        [EndpointName("RequestMoreApplicationInfo")]
+        [ProducesResponseType(typeof(BaseResponseModel<ReviewApplicationModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<BaseResponseModel<ReviewApplicationModel>>> RequestMoreInfo(
+            Guid id,
+            [FromBody] ReviewActionRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            return Map(await _reviewService.ActAsync(id, WorkerActions.RequestMoreInfo, request, cancellationToken));
+        }
+
+        /// <summary>
+        /// Escalates the application for a further review. Assignee only.
+        /// </summary>
+        /// <param name="id">The application identifier.</param>
+        /// <param name="request">The stream version last seen.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpPost("{id:guid}/escalate")]
+        [Produces("application/json")]
+        [EndpointName("EscalateApplication")]
+        [ProducesResponseType(typeof(BaseResponseModel<ReviewApplicationModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<BaseResponseModel<ReviewApplicationModel>>> Escalate(
+            Guid id,
+            [FromBody] ReviewActionRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            return Map(await _reviewService.ActAsync(id, WorkerActions.Escalate, request, cancellationToken));
+        }
+
+        /// <summary>
+        /// Adds an internal note. Assignee only, while the application is Under Review.
+        /// Notes are never shown to the applicant.
+        /// </summary>
+        /// <param name="id">The application identifier.</param>
+        /// <param name="request">The stream version last seen and the note.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpPost("{id:guid}/notes")]
+        [Produces("application/json")]
+        [EndpointName("AddApplicationNote")]
+        [ProducesResponseType(typeof(BaseResponseModel<ReviewApplicationModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<BaseResponseModel<ReviewApplicationModel>>> AddNote(
+            Guid id,
+            [FromBody] ReviewNoteRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(request.Text))
+            {
+                ModelState.AddModelError(nameof(request.Text), "A note needs some text.");
+                return ValidationProblem(ModelState);
+            }
+
+            return Map(await _reviewService.AddNoteAsync(id, request, cancellationToken));
+        }
+
         private ActionResult<BaseResponseModel<ReviewApplicationModel>> Map(ReviewResultModel result)
         {
             switch (result.Outcome)
@@ -150,6 +240,13 @@ namespace Myss.Api.Intake
                         IntakeKeywords.ReviewNotAllowed,
                         "This action is not available for the application right now.",
                         "Its status has moved on. Reload to see the actions that apply.",
+                        result.CurrentVersion);
+
+                case ReviewOutcome.AssignedToAnother:
+                    return Keyworded(
+                        IntakeKeywords.AssignedToAnother,
+                        "This application is assigned to another worker.",
+                        $"It is under review by {result.Assignee}. Only they can act on it until they decide it or release it.",
                         result.CurrentVersion);
 
                 case ReviewOutcome.StaleVersion:

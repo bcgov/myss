@@ -55,7 +55,7 @@ describe("prepareRegistrationSpec", () => {
     const prepared = prepareRegistrationSpec(spec, {
       givenName: "Jane",
       familyName: "Johnson",
-      phoneNumber: "+1 778 123 4567",
+      phoneNumber: "778 123 4567",
       birthdate: "1990-01-01",
       gender: "female",
     });
@@ -65,7 +65,7 @@ describe("prepareRegistrationSpec", () => {
       disabled: true,
     });
     expect(byKey(prepared, "lastName").defaultValue).toBe("Johnson");
-    expect(byKey(prepared, "phone").defaultValue).toBe("778-123-4567");
+    expect(byKey(prepared, "phone").defaultValue).toBe("(778) 123-4567");
     // Local midnight, so the picker shows 1990-01-01 in every time zone.
     expect(byKey(prepared, "dateOfBirth").defaultValue).toBe(
       "1990-01-01T00:00:00",
@@ -102,6 +102,7 @@ describe("prepareRegistrationSpec", () => {
       { phoneNumber: "555-0100" },
       "phone",
     ],
+    ["a phone number with a country code", { phoneNumber: "+1 778 123 4567" }, "phone"],
     ["a year-only birthdate", { birthdate: "1990" }, "dateOfBirth"],
     [
       "a birthdate that is not a real day",
@@ -177,15 +178,15 @@ describe("prepareRegistrationSpec", () => {
 
 describe("formatPhone", () => {
   it.each([
-    ["7781234567", "778-123-4567"],
-    ["(778) 123-4567", "778-123-4567"],
-    ["+1 778 123 4567", "778-123-4567"],
+    ["7781234567", "(778) 123-4567"],
+    ["(778) 123-4567", "(778) 123-4567"],
   ])("formats %s", (raw, formatted) => {
     expect(formatPhone(raw)).toBe(formatted);
   });
 
   it("rejects numbers that are not ten North American digits", () => {
     expect(formatPhone("123-4567")).toBeUndefined();
+    expect(formatPhone("+1 778 123 4567")).toBeUndefined();
     expect(formatPhone("+44 20 7946 0958")).toBeUndefined();
   });
 });

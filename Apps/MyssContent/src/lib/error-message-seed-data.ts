@@ -48,8 +48,8 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
   },
   {
     keyword: "IDA.PHONE.INVALID_FORMAT",
-    message: "Enter a 10-digit phone number, for example 250 555 0199.",
-    note: "A phone field (properties.myssValidator = phone) with other than ten digits once formatting is stripped.",
+    message: "Phone number is invalid",
+    note: "A phone field (properties.myssValidator = phone) that does not match the legacy MySS phone format.",
   },
   {
     keyword: "IDA.POSTAL_CODE.INVALID_FORMAT",

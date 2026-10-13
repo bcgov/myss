@@ -120,7 +120,11 @@ namespace Myss.Api.Services
                 {
                     if (component.Required && visible)
                     {
-                        errors.Add(RuleError(component, "required", ValidationKeywords.FieldRequired, "This answer is required."));
+                        errors.Add(RuleError(
+                            component,
+                            "required",
+                            ValidationKeywords.FieldRequired,
+                            component.Validator == "phone" ? "Phone number is invalid" : "This answer is required."));
                     }
 
                     // An empty confirmation of a filled partner is a mismatch, not

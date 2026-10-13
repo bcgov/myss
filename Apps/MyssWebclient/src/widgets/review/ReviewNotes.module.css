@@ -1,0 +1,53 @@
+/*
+ * The internal notes on a file and the box to add one. The warning notice
+ * carries its meaning in the border and left bar alongside colour.
+ */
+.host {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.heading {
+    margin: 0;
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.note {
+    border-left: var(--layout-border-width-medium) solid
+        var(--surface-color-border-default);
+    padding-left: var(--layout-padding-medium);
+}
+
+.meta {
+    margin: 0;
+    font-weight: var(--typography-font-weights-bold);
+}
+
+.text {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.add {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.notice {
+    border: var(--layout-border-width-medium) solid
+        var(--support-border-color-warning);
+    border-left-width: var(--layout-margin-small);
+    background: var(--support-surface-color-warning);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: 0;
+}

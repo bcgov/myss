@@ -7,7 +7,13 @@ import { useApplications } from "@/hooks/useIntake";
 import { applicationPath } from "@/routes/paths";
 
 // The citizen's Income Assistance applications, newest first: every draft
-// with a way back into it, every submitted one with a way to view it.
+// with a way back into it, every returned one with a way to update it, every
+// other one with a way to view it.
+
+const LINK_TEXT: Record<string, string> = {
+  DRAFT: "Continue",
+  RETURNED: "Update",
+};
 
 function formatDate(value: string | null | undefined): string {
   return value ? new Date(value).toLocaleString() : "—";
@@ -52,7 +58,7 @@ export default function ApplicationsList() {
             <td>{formatDate(application.submittedAt)}</td>
             <td>
               <Link to={applicationPath(application.id)}>
-                {application.status === "DRAFT" ? "Continue" : "View"}
+                {LINK_TEXT[application.status] ?? "View"}
                 <span className={styles.visuallyHidden}>
                   {" "}
                   application {application.referenceNumber}

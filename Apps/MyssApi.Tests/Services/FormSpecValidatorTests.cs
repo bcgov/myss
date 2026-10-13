@@ -452,6 +452,17 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(ValidationKeywords.PostalCodeInvalidFormat, Assert.Single(errors, e => e.Field == "postal").Keyword);
             Assert.Equal(ValidationKeywords.DateInvalid, Assert.Single(errors, e => e.Field == "started").Keyword);
             Assert.Equal(ValidationKeywords.PhoneInvalidFormat, Assert.Single(errors, e => e.Field == "mobile").Keyword);
+
+            const string requiredPhone = """
+            { "components": [
+                { "type": "textfield", "key": "phone", "input": true, "validate": { "required": true },
+                  "properties": { "myssValidator": "phone" } },
+                { "type": "textfield", "key": "name", "input": true, "validate": { "required": true } }
+              ] }
+            """;
+            IReadOnlyList<ValidationErrorModel> requiredErrors = Run(requiredPhone, """{"phone":"","name":""}""");
+            Assert.Equal("Phone number is invalid", Assert.Single(requiredErrors, e => e.Field == "phone").Message);
+            Assert.Equal("This answer is required.", Assert.Single(requiredErrors, e => e.Field == "name").Message);
         }
 
         private const string DatePartsSpec = """

@@ -547,7 +547,7 @@ interface FieldEdits {
     onRequired: (key: string, required: boolean) => void;
 }
 
-// The settings for one field: its key, label and required flag. A field that
+// The settings for one field: its label and required flag. A field that
 // cannot be edited gets a placeholder so the row still lines up.
 function FieldSettings({
     editable,
@@ -563,7 +563,6 @@ function FieldSettings({
     }
     return (
         <div className={styles.editControls}>
-            <code className={styles.key}>{editable.key}</code>
             <label className={styles.labelField}>
                 <span className={styles.fieldLabel}>Label</span>
                 <input
