@@ -38,6 +38,8 @@ export interface FormSummary {
 export interface SaveDraftInput {
   spec: FormType;
   title?: string | null;
+  /** The version this save must create as a new draft; omit for an ordinary save. */
+  newVersion?: number;
 }
 
 /** The result of publishing a form: the version number that went live. */
@@ -251,10 +253,23 @@ export async function submitForm(
 
 // --- Admin form editor (IDIR-only) -----------------------------------------
 //
-// The four admin endpoints behind MyssApi's `AdminIdir` policy. Same
+// The admin endpoints behind MyssApi's `AdminIdir` policy. Same
 // fetch + authHeaders() + unwrap-`.payload` pattern as the citizen calls above.
-// A 422 from a write carries the full error collection, surfaced as a typed
-// SpecRejectedError.
+// A 409 or 422 from a write carries the full error collection, surfaced as a
+// typed SpecRejectedError.
+
+/** The keyword of a save refused because the version it would create is taken. */
+export const VERSION_TAKEN = "FORMSPEC.VERSION.TAKEN";
+
+/** True when a save was refused because the version it would create is taken. */
+export function isVersionTaken(error: unknown): boolean {
+  return (
+    error instanceof SpecRejectedError &&
+    error.errors.some(
+      (validationError) => validationError.keyword === VERSION_TAKEN,
+    )
+  );
+}
 
 /** Every form with its versions and published/draft state (admin list). */
 export async function listForms(): Promise<FormSummary[]> {
@@ -278,9 +293,24 @@ export async function getDraft(formSpecId: string): Promise<FormSpecPayload> {
   return (await res.json()).payload;
 }
 
+/** One version of a form, published or draft. */
+export async function getFormVersion(
+  formSpecId: string,
+  version: number,
+): Promise<FormSpecPayload> {
+  const res = await fetch(
+    `${API_URL}/v1/forms/${encodeURIComponent(formSpecId)}/versions/${version}`,
+    { headers: authHeaders() },
+  );
+  if (!res.ok)
+    throw new FormLoadError(res.status, `Version fetch failed (${res.status})`);
+  return (await res.json()).payload;
+}
+
 /**
  * Validates and stores an edited spec as a draft (not published). A refused
- * spec (422) throws {@link SpecRejectedError} carrying the field errors.
+ * spec (422), or a version that is taken when `newVersion` is given (409),
+ * throws {@link SpecRejectedError} carrying the field errors.
  */
 export async function saveDraft(
   formSpecId: string,

@@ -5,13 +5,10 @@ import { Link, useNavigate } from "react-router";
 import { useAdminForms } from "@/hooks/useForms";
 import { adminFormEditorPath, adminNewFormPath } from "@/routes/paths";
 import type { FormSummary } from "@/api/forms";
+import { isValidFormId } from "@/lib/formSpecId";
 import homeStyles from "./HomePage.module.css";
 import adminStyles from "./AdminPage.module.css";
 import styles from "./FormManagementPage.module.css";
-
-// Mirrors the pattern MyssContent's form-spec schema enforces on formSpecId,
-// so a bad ID is an inline hint here instead of a refused write later.
-const FORM_ID_PATTERN = /^[a-z0-9-]+$/;
 
 // The admin forms list: every seeded form with its versions and which one is
 // published. Each row links into the editor (the route is registered later).
@@ -84,7 +81,7 @@ function NewFormSection({ forms }: Readonly<{ forms: FormSummary[] }>) {
     function create(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         const id = formSpecId.trim();
-        if (!FORM_ID_PATTERN.test(id)) {
+        if (!isValidFormId(id)) {
             setError(
                 "Enter a form ID using only lowercase letters, numbers and hyphens.",
             );

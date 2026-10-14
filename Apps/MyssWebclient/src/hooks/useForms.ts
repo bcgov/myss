@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import {
   FormLoadError,
   getDraft,
+  getFormVersion,
   listForms,
   publishForm,
   saveDraft,
@@ -22,6 +24,29 @@ export function useAdminForms() {
   });
 }
 
+/** Every form with its versions, read now and without retries, as a function.
+ * On success the result becomes the forms list's cached data; a failure
+ * rejects and leaves the cached list and its error state as they were. */
+export function useFreshFormList() {
+  const queryClient = useQueryClient();
+  return useCallback(async () => {
+    const forms = await listForms();
+    // A background read that started earlier must not replace this one.
+    await queryClient.cancelQueries({ queryKey: ["admin-forms"] });
+    queryClient.setQueryData(["admin-forms"], forms);
+    return forms;
+  }, [queryClient]);
+}
+
+// A 404 is a stable answer (the form or version does not exist), not a
+// transient fault; retrying it only delays the not-found paths.
+function retryUnlessNotFound(failureCount: number, error: Error): boolean {
+  return (
+    !(error instanceof FormLoadError && error.status === 404) &&
+    failureCount < 3
+  );
+}
+
 /** The spec to open in the editor: the in-progress draft, or the latest
  * published version as the starting point for a new draft. */
 export function useDraft(formSpecId: string | undefined) {
@@ -29,11 +54,23 @@ export function useDraft(formSpecId: string | undefined) {
     queryKey: ["admin-draft", formSpecId],
     queryFn: () => getDraft(formSpecId!),
     enabled: !!formSpecId,
-    // A 404 is a stable answer (the form does not exist), not a transient
-    // fault; retrying it only delays the not-found and new-form paths.
-    retry: (failureCount, error) =>
-      !(error instanceof FormLoadError && error.status === 404) &&
-      failureCount < 3,
+    retry: retryUnlessNotFound,
+  });
+}
+
+/** One version of a form, published or draft. Nothing is kept between mounts
+ * (`gcTime: 0`): a draft can change between two openings, so each one reads it
+ * again rather than showing an earlier copy. */
+export function useFormVersion(
+  formSpecId: string | undefined,
+  version: number | null | undefined,
+) {
+  return useQuery({
+    queryKey: ["admin-form-version", formSpecId, version],
+    queryFn: () => getFormVersion(formSpecId!, version!),
+    enabled: !!formSpecId && version != null,
+    retry: retryUnlessNotFound,
+    gcTime: 0,
   });
 }
 

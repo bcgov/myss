@@ -23,7 +23,7 @@ const DATE_TYPES = ["datetime"] as const;
  * submit. `bcgovRadio` is no longer offered: `radio` renders the same way,
  * and the older name stays registered only for the forms published with it.
  */
-const QUESTION_TYPES = [...CHOICE_TYPES, ...TEXT_TYPES, ...DATE_TYPES] as const;
+export const QUESTION_TYPES = [...CHOICE_TYPES, ...TEXT_TYPES, ...DATE_TYPES] as const;
 
 /**
  * Display, action and grouping types, which carry no answer. `button` is here

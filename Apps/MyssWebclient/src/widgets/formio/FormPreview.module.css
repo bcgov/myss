@@ -1,0 +1,33 @@
+/* Receives focus when the answers give way to the form again. */
+.formRegion:focus-visible {
+    outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-medium);
+}
+
+.result {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+}
+
+.resultHeading {
+    font: var(--typography-bold-body);
+    margin: 0;
+}
+
+.resultHeading:focus-visible {
+    outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-medium);
+}
+
+/* @bcgov/design-tokens defines no monospace family, so the generic one is used.
+   Long answers wrap, so the block never needs a keyboard-reachable scroll area. */
+.answers {
+    background: var(--surface-color-background-light-gray);
+    border: var(--layout-border-width-small) solid var(--surface-color-border-default);
+    font-family: monospace;
+    margin: 0;
+    overflow-wrap: anywhere;
+    padding: var(--layout-padding-medium);
+    white-space: pre-wrap;
+}

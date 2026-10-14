@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  FormLoadError,
   getDraft,
+  getFormVersion,
+  isVersionTaken,
   listForms,
   publishForm,
   saveDraft,
   SpecRejectedError,
+  VERSION_TAKEN,
   type FormSummary,
 } from "@/api/forms";
 import { setAccessToken } from "@/auth/accessToken";
@@ -102,6 +106,51 @@ describe("getDraft", () => {
   });
 });
 
+describe("getFormVersion", () => {
+  it("GETs /v1/forms/{id}/versions/{version} and unwraps the payload", async () => {
+    const version = {
+      formSpecId: "bc-bus-pass",
+      version: 3,
+      title: "BC Bus Pass",
+      spec: { components: [] },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { payload: version }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getFormVersion("bc-bus-pass", 3);
+
+    const [url, init] = firstCall(fetchMock);
+    expect(url).toMatch(/\/v1\/forms\/bc-bus-pass\/versions\/3$/);
+    expect(init.method ?? "GET").toBe("GET");
+    expect(authHeaderOf(init)).toBe("Bearer test-token");
+    expect(result).toEqual(version);
+  });
+
+  it("encodes the form ID in the URL", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { payload: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getFormVersion("a/b", 1);
+
+    expect(firstCall(fetchMock)[0]).toMatch(/\/v1\/forms\/a%2Fb\/versions\/1$/);
+  });
+
+  it("throws a FormLoadError carrying the status (e.g. unknown version → 404)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(404, {})));
+
+    const error = await getFormVersion("bc-bus-pass", 99).catch(
+      (e: unknown) => e,
+    );
+
+    expect(error).toBeInstanceOf(FormLoadError);
+    expect((error as FormLoadError).status).toBe(404);
+  });
+});
+
 describe("saveDraft", () => {
   it("PUTs /v1/forms/{id}/draft with the spec+title body and unwraps the payload", async () => {
     const saved = {
@@ -162,6 +211,66 @@ describe("saveDraft", () => {
     expect(error).toBeInstanceOf(SpecRejectedError);
     expect((error as SpecRejectedError).status).toBe(502);
     expect((error as SpecRejectedError).errors).toEqual([]);
+  });
+
+  it("sends newVersion only when it is given", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(jsonResponse(200, { payload: {} })),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await saveDraft("new-form", { spec: { components: [] }, newVersion: 1 });
+    await saveDraft("new-form", { spec: { components: [] } });
+
+    const bodies = fetchMock.mock.calls.map(
+      ([, init]) => JSON.parse((init as RequestInit).body as string) as object,
+    );
+    expect(bodies[0]).toMatchObject({ newVersion: 1 });
+    expect(bodies[1]).not.toHaveProperty("newVersion");
+  });
+});
+
+describe("isVersionTaken", () => {
+  it("is true for a 409 carrying the version-taken keyword", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(409, {
+          payload: [
+            {
+              field: "newVersion",
+              keyword: VERSION_TAKEN,
+              message: 'A form with the ID "new-form" already exists.',
+            },
+          ],
+        }),
+      ),
+    );
+
+    const error = await saveDraft("new-form", {
+      spec: { components: [] },
+      newVersion: 1,
+    }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(SpecRejectedError);
+    expect((error as SpecRejectedError).status).toBe(409);
+    expect(isVersionTaken(error)).toBe(true);
+  });
+
+  it("is false for a refusal with another keyword, and for other errors", () => {
+    const refused = new SpecRejectedError(422, [
+      {
+        field: "spec",
+        keyword: "FORMSPEC.COMPONENT_KEY.DUPLICATE",
+        message: "Duplicate.",
+      },
+    ]);
+
+    expect(isVersionTaken(refused)).toBe(false);
+    expect(isVersionTaken(new Error("boom"))).toBe(false);
+    expect(isVersionTaken(undefined)).toBe(false);
   });
 });
 
