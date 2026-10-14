@@ -35,6 +35,10 @@
         <None Update="docs\integration\SR_OpenApi.json" />
         <None Update="docs\integration\Contact_OpenApi.json" />
         <None Update="docs\integration\Case_OpenApi.json" />
+        <None Update="docs\integration\SRProspects_OpenApi.json" />
+        <None Update="docs\integration\Activities_OpenApi.json" />
+        <None Update="docs\integration\ActivityPlan_OpenApi.json" />
+        <None Update="docs\integration\SRContactLink_OpenApi.json" />
         <None Update="docs\integration\BusPassWorkflow_OpenApi.json" />
     </ItemGroup>
 

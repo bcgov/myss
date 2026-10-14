@@ -1,0 +1,1568 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "SblDtProspectsSRProspects",
+    "description" : "OpenAPI specification for SiebelData - API : data/Prospects/SRProspects",
+    "contact" : {
+      "email" : "sample@sample.com"
+    },
+    "version" : "1.0"
+  },
+  "externalDocs" : {
+    "description" : "OpenAPI",
+    "url" : "https://openapis.org"
+  },
+  "servers" : [ {
+    "url" : "https://sit2-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  }, {
+    "url" : "http://sit2-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  } ],
+  "tags" : [ {
+    "name" : "data/Prospects/SRProspects/"
+  }, {
+    "name" : "data/Prospects/SRProspects/{srprospects_key}/"
+  } ],
+  "paths" : {
+    "/data/Prospects/SRProspects/" : {
+      "get" : {
+        "tags" : [ "data/Prospects/SRProspects/" ],
+        "operationId" : "data_Prospects_SRProspects__get",
+        "parameters" : [ {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "uniformresponse",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y" ]
+          }
+        }, {
+          "name" : "searchspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sortspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "PageSize",
+          "in" : "query",
+          "schema" : {
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "StartRowNum",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "default" : 0
+          }
+        }, {
+          "name" : "pagination",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y", "N" ]
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "recordcountneeded",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "ExecutionMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "BiDirectional"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_get_all_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_get_all_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/Prospects/SRProspects/" ],
+        "operationId" : "data_Prospects_SRProspects__put",
+        "parameters" : [ {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Prospects_SRProspects_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Prospects_SRProspects_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      },
+      "post" : {
+        "tags" : [ "data/Prospects/SRProspects/" ],
+        "operationId" : "data_Prospects_SRProspects__post",
+        "parameters" : [ {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Prospects_SRProspects_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Prospects_SRProspects_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      }
+    },
+    "/data/Prospects/SRProspects/{srprospects_key}/" : {
+      "get" : {
+        "tags" : [ "data/Prospects/SRProspects/{srprospects_key}/" ],
+        "operationId" : "data_Prospects_SRProspects_{srprospects_key}__get",
+        "parameters" : [ {
+          "name" : "srprospects_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_get_one_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_get_one_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/Prospects/SRProspects/{srprospects_key}/" ],
+        "operationId" : "data_Prospects_SRProspects_{srprospects_key}__put",
+        "parameters" : [ {
+          "name" : "srprospects_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Prospects_SRProspects_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Prospects_SRProspects_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      },
+      "delete" : {
+        "tags" : [ "data/Prospects/SRProspects/{srprospects_key}/" ],
+        "operationId" : "data_Prospects_SRProspects_{srprospects_key}__delete",
+        "parameters" : [ {
+          "name" : "srprospects_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_del_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Prospects_SRProspects_del_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "data_Prospects_SRProspects_" : {
+        "required" : [ "Birth Date", "Created", "Created By", "First Name", "Last Name", "M/F" ],
+        "type" : "object",
+        "properties" : {
+          "Created" : {
+            "title" : "Created",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By" : {
+            "title" : "Created By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Address Care Of" : {
+            "title" : "Address Care Of",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "20",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Alias" : {
+            "title" : "Alias",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Alternate Phone #" : {
+            "title" : "Alternate Phone #",
+            "type" : "string",
+            "x-maxLength" : "40",
+            "x-siebel-datatype" : "DTYPE_PHONE"
+          },
+          "Applicant Flag" : {
+            "title" : "Applicant Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Birth Date" : {
+            "title" : "Birth Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Cellular Phone #" : {
+            "title" : "Cellular Phone #",
+            "type" : "string",
+            "x-maxLength" : "40",
+            "x-siebel-datatype" : "DTYPE_PHONE"
+          },
+          "City" : {
+            "title" : "City",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Comment" : {
+            "title" : "Comment",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "2000",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Email Address" : {
+            "title" : "Email Address",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "350",
+            "x-siebel-scale" : "0",
+            "x-siebel-validation" : "*?@*?.?*",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Name" : {
+            "title" : "Created By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "First Name" : {
+            "title" : "First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Home Phone #" : {
+            "title" : "Home Phone #",
+            "type" : "string",
+            "x-maxLength" : "40",
+            "x-siebel-datatype" : "DTYPE_PHONE"
+          },
+          "ICM BCSC DID" : {
+            "title" : "ICM BCSC DID",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Last Name" : {
+            "title" : "Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Last Updated" : {
+            "title" : "Last Updated",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Last Updated By" : {
+            "title" : "Last Updated By",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Last Updated By Name" : {
+            "title" : "Last Updated By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "M/F" : {
+            "title" : "M/F",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "M/M" : {
+            "title" : "M/M",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Marital Status Code" : {
+            "title" : "Marital Status Code",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Middle Name" : {
+            "title" : "Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Portal Role" : {
+            "title" : "Portal Role",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Postal Code" : {
+            "title" : "Postal Code",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Preferred Communication Method" : {
+            "title" : "Preferred Communication Method",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Previous First Name" : {
+            "title" : "Previous First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Previous Last Name" : {
+            "title" : "Previous Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Previous Middle Name" : {
+            "title" : "Previous Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Prospective Contact UId" : {
+            "title" : "Prospective Contact UId",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Purpose" : {
+            "title" : "Purpose",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Service Request Id" : {
+            "title" : "Service Request Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Social Security Number" : {
+            "title" : "Social Security Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "20",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Source" : {
+            "title" : "Source",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Source Name" : {
+            "title" : "Source Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Source Type" : {
+            "title" : "Source Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "State" : {
+            "title" : "State",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "10",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Street Address" : {
+            "title" : "Street Address",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "200",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Street Address 2" : {
+            "title" : "Street Address 2",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Street Address 3" : {
+            "title" : "Street Address 3",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Unit #" : {
+            "title" : "Unit #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "5",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Work Phone #" : {
+            "title" : "Work Phone #",
+            "type" : "string",
+            "x-maxLength" : "40",
+            "x-siebel-datatype" : "DTYPE_PHONE"
+          }
+        }
+      },
+      "data_Prospects_SRProspects_get_one_response" : {
+        "type" : "object",
+        "properties" : {
+          "Created" : {
+            "title" : "Created",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By" : {
+            "title" : "Created By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Address Care Of" : {
+            "title" : "Address Care Of",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "20",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Alias" : {
+            "title" : "Alias",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Alternate Phone #" : {
+            "title" : "Alternate Phone #",
+            "type" : "string",
+            "x-maxLength" : "40",
+            "x-siebel-datatype" : "DTYPE_PHONE"
+          },
+          "Applicant Flag" : {
+            "title" : "Applicant Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Birth Date" : {
+            "title" : "Birth Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Cellular Phone #" : {
+            "title" : "Cellular Phone #",
+            "type" : "string",
+            "x-maxLength" : "40",
+            "x-siebel-datatype" : "DTYPE_PHONE"
+          },
+          "City" : {
+            "title" : "City",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Comment" : {
+            "title" : "Comment",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "2000",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Email Address" : {
+            "title" : "Email Address",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "350",
+            "x-siebel-scale" : "0",
+            "x-siebel-validation" : "*?@*?.?*",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Name" : {
+            "title" : "Created By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "First Name" : {
+            "title" : "First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Home Phone #" : {
+            "title" : "Home Phone #",
+            "type" : "string",
+            "x-maxLength" : "40",
+            "x-siebel-datatype" : "DTYPE_PHONE"
+          },
+          "ICM BCSC DID" : {
+            "title" : "ICM BCSC DID",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Last Name" : {
+            "title" : "Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Last Updated" : {
+            "title" : "Last Updated",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Last Updated By" : {
+            "title" : "Last Updated By",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Last Updated By Name" : {
+            "title" : "Last Updated By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "M/F" : {
+            "title" : "M/F",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "M/M" : {
+            "title" : "M/M",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Marital Status Code" : {
+            "title" : "Marital Status Code",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Middle Name" : {
+            "title" : "Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Portal Role" : {
+            "title" : "Portal Role",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Postal Code" : {
+            "title" : "Postal Code",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Preferred Communication Method" : {
+            "title" : "Preferred Communication Method",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Previous First Name" : {
+            "title" : "Previous First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Previous Last Name" : {
+            "title" : "Previous Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Previous Middle Name" : {
+            "title" : "Previous Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Prospective Contact UId" : {
+            "title" : "Prospective Contact UId",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Purpose" : {
+            "title" : "Purpose",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Service Request Id" : {
+            "title" : "Service Request Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Social Security Number" : {
+            "title" : "Social Security Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "20",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Source" : {
+            "title" : "Source",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Source Name" : {
+            "title" : "Source Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Source Type" : {
+            "title" : "Source Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "State" : {
+            "title" : "State",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "10",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Street Address" : {
+            "title" : "Street Address",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "200",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Street Address 2" : {
+            "title" : "Street Address 2",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Street Address 3" : {
+            "title" : "Street Address 3",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Unit #" : {
+            "title" : "Unit #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "5",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Work Phone #" : {
+            "title" : "Work Phone #",
+            "type" : "string",
+            "x-maxLength" : "40",
+            "x-siebel-datatype" : "DTYPE_PHONE"
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_Prospects_SRProspects_put_post_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "Id" : {
+                "type" : "object"
+              },
+              "Created" : {
+                "title" : "Created",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Created By" : {
+                "title" : "Created By",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Address Care Of" : {
+                "title" : "Address Care Of",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "20",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Alias" : {
+                "title" : "Alias",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Alternate Phone #" : {
+                "title" : "Alternate Phone #",
+                "type" : "string",
+                "x-maxLength" : "40",
+                "x-siebel-datatype" : "DTYPE_PHONE"
+              },
+              "Applicant Flag" : {
+                "title" : "Applicant Flag",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Birth Date" : {
+                "title" : "Birth Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_DATE"
+              },
+              "Cellular Phone #" : {
+                "title" : "Cellular Phone #",
+                "type" : "string",
+                "x-maxLength" : "40",
+                "x-siebel-datatype" : "DTYPE_PHONE"
+              },
+              "City" : {
+                "title" : "City",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Comment" : {
+                "title" : "Comment",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "2000",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Email Address" : {
+                "title" : "Email Address",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "350",
+                "x-siebel-scale" : "0",
+                "x-siebel-validation" : "*?@*?.?*",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Created By Name" : {
+                "title" : "Created By Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "First Name" : {
+                "title" : "First Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Home Phone #" : {
+                "title" : "Home Phone #",
+                "type" : "string",
+                "x-maxLength" : "40",
+                "x-siebel-datatype" : "DTYPE_PHONE"
+              },
+              "ICM BCSC DID" : {
+                "title" : "ICM BCSC DID",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "255",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Last Name" : {
+                "title" : "Last Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Last Updated" : {
+                "title" : "Last Updated",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Last Updated By" : {
+                "title" : "Last Updated By",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Last Updated By Name" : {
+                "title" : "Last Updated By Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "M/F" : {
+                "title" : "M/F",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "M/M" : {
+                "title" : "M/M",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Marital Status Code" : {
+                "title" : "Marital Status Code",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Middle Name" : {
+                "title" : "Middle Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Portal Role" : {
+                "title" : "Portal Role",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Postal Code" : {
+                "title" : "Postal Code",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Preferred Communication Method" : {
+                "title" : "Preferred Communication Method",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Previous First Name" : {
+                "title" : "Previous First Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Previous Last Name" : {
+                "title" : "Previous Last Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Previous Middle Name" : {
+                "title" : "Previous Middle Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Prospective Contact UId" : {
+                "title" : "Prospective Contact UId",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Purpose" : {
+                "title" : "Purpose",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Service Request Id" : {
+                "title" : "Service Request Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Social Security Number" : {
+                "title" : "Social Security Number",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "20",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Source" : {
+                "title" : "Source",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Source Name" : {
+                "title" : "Source Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Source Type" : {
+                "title" : "Source Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "State" : {
+                "title" : "State",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "10",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Street Address" : {
+                "title" : "Street Address",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "200",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Street Address 2" : {
+                "title" : "Street Address 2",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Street Address 3" : {
+                "title" : "Street Address 3",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Unit #" : {
+                "title" : "Unit #",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "5",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Work Phone #" : {
+                "title" : "Work Phone #",
+                "type" : "string",
+                "x-maxLength" : "40",
+                "x-siebel-datatype" : "DTYPE_PHONE"
+              },
+              "Link" : {
+                "type" : "object",
+                "properties" : {
+                  "rel" : {
+                    "title" : "rel",
+                    "type" : "string"
+                  },
+                  "href" : {
+                    "title" : "href",
+                    "type" : "string"
+                  },
+                  "name" : {
+                    "title" : "name",
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_Prospects_SRProspects_get_all_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/data_Prospects_SRProspects_get_one_response"
+            }
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_Prospects_SRProspects_del_response" : {
+        "type" : "object"
+      }
+    },
+    "securitySchemes" : {
+      "basicAuth" : {
+        "type" : "http",
+        "scheme" : "basic"
+      },
+      "oAuth2.0" : {
+        "type" : "oauth2",
+        "flows" : {
+          "implicit" : {
+            "authorizationUrl" : "http://openAPI.io/",
+            "scopes" : {
+              "write:" : "modify",
+              "read:" : "read only"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-original-swagger-version" : "3.0"
+}

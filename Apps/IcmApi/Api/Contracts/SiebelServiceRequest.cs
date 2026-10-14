@@ -238,8 +238,9 @@ namespace Icm.Api.Contracts
         [JsonPropertyName("Updated Date")]
         public string? UpdatedDate { get; set; }
 
-        /// <summary>Gets or sets <c>Link</c>, the self and child links.</summary>
+        /// <summary>Gets or sets <c>Link</c>, the self and child links — an array on a read, one object on a write (see <see cref="SiebelLinkListConverter"/>).</summary>
         [JsonPropertyName("Link")]
+        [JsonConverter(typeof(SiebelLinkListConverter))]
         public IList<SiebelLink>? Link { get; set; }
 
         /// <summary>

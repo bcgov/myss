@@ -174,18 +174,18 @@ namespace Icm.Api.Tests.Api
             await api.CreateAsync(
                 "t",
                 null,
-                new SiebelServiceRequest
+                new SiebelServiceRequestWrite
                 {
                     Type = "Application",
                     Status = "Open",
                     CellPhone = "250-555-0100",
                 });
 
-            // The record has fifty-odd nullable fields. If nulls were serialized, this write
+            // The record has thirty-odd nullable fields. If nulls were serialized, this write
             // would blank every one of them in Siebel. Key order follows the property
-            // declaration order, which is alphabetical by ICM field name.
+            // declaration order: ASCII order of field name, with Type ahead of the sub types.
             Assert.Equal(
-                """{"Cell Phone":"250-555-0100","Status":"Open","Type":"Application"}""",
+                """{"Cell Phone":"250-555-0100","Type":"Application","Status":"Open"}""",
                 handler.RequestBody);
         }
 
@@ -194,7 +194,7 @@ namespace Icm.Api.Tests.Api
         {
             (IServiceRequestApi api, RecordingHttpMessageHandler handler) = CreateApi();
 
-            await api.UpdateAsync("t", null, "1-ABCDE", new SiebelServiceRequest { Status = "Closed" }, true);
+            await api.UpdateAsync("t", null, "1-ABCDE", new SiebelServiceRequestWrite { Status = "Closed" }, true);
 
             Assert.Equal(HttpMethod.Put, handler.Request!.Method);
             Assert.Equal(

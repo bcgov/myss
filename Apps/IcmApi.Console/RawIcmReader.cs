@@ -94,6 +94,82 @@ namespace Icm.Api.ConsoleApp
         }
 
         /// <summary>
+        /// Reads one child collection of a service request raw — <c>SRProspects</c>,
+        /// <c>Activities</c>, <c>ActivityPlan</c> — as ICM sent it. The library models the
+        /// first; the other two it has no typed support for, and the activity plan is what
+        /// the direct-create experiment compares.
+        /// </summary>
+        /// <returns>The status and body.</returns>
+        public static Task<(HttpStatusCode Status, string Body)> ReadChildAsync(
+            HttpClient icmClient,
+            IOAuthTokenService tokenService,
+            OAuthClientCredentials credentials,
+            ConsoleSettings settings,
+            string serviceRequestKey,
+            string child,
+            string? viewMode,
+            bool? excludeEmptyFields)
+        {
+            string query = "uniformresponse=Y";
+            if (!string.IsNullOrWhiteSpace(viewMode))
+            {
+                query += $"&ViewMode={Uri.EscapeDataString(viewMode)}";
+            }
+
+            if (excludeEmptyFields is { } exclude)
+            {
+                query += $"&excludeEmptyFieldsInResponse={(exclude ? "true" : "false")}";
+            }
+
+            // Absolute, appended to the configured base URL the way Refit appends its
+            // routes — HttpClient's relative-URI resolution would drop the base's last
+            // segment (/gov/v1.0 → /gov/). The key and child name are path segments, not
+            // one encoded value: the gateway answers 400 to %2F.
+            string path = $"{settings.Icm.BaseUrl!.TrimEnd('/')}/data/ServiceRequest/ServiceRequest/{Uri.EscapeDataString(serviceRequestKey)}/{Uri.EscapeDataString(child)}?{query}";
+            return GetAsync(icmClient, tokenService, credentials, settings, path);
+        }
+
+        /// <summary>
+        /// One authenticated POST of a hand-built JSON body outside the library — for the
+        /// direct-create experiments, where the shape of the body (the name of the nested
+        /// child, say) is the thing under test and a typed contract would fix it.
+        /// </summary>
+        /// <returns>The status and body.</returns>
+        public static Task<(HttpStatusCode Status, string Body)> PostAsync(
+            HttpClient icmClient,
+            IOAuthTokenService tokenService,
+            OAuthClientCredentials credentials,
+            ConsoleSettings settings,
+            string path,
+            string json) =>
+            SendAsync(icmClient, tokenService, credentials, settings, HttpMethod.Post, path, json);
+
+        /// <summary>One authenticated write of a hand-built JSON body, by any method.</summary>
+        /// <returns>The status and body.</returns>
+        public static async Task<(HttpStatusCode Status, string Body)> SendAsync(
+            HttpClient icmClient,
+            IOAuthTokenService tokenService,
+            OAuthClientCredentials credentials,
+            ConsoleSettings settings,
+            HttpMethod method,
+            string path,
+            string json)
+        {
+            using HttpRequestMessage request = new(method, path);
+            request.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer", await tokenService.GetTokenAsync(credentials));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            if (!string.IsNullOrWhiteSpace(settings.Icm.TrustedUserName))
+            {
+                request.Headers.Add("X-ICM-TrustedUserName", settings.Icm.TrustedUserName);
+            }
+
+            request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            using HttpResponseMessage response = await icmClient.SendAsync(request);
+            return (response.StatusCode, await response.Content.ReadAsStringAsync());
+        }
+
+        /// <summary>
         /// One authenticated GET outside the library. Same two identifying headers as
         /// every library call.
         /// </summary>
