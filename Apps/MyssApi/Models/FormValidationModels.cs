@@ -73,7 +73,7 @@ namespace Myss.Api.Models
     /// The outcome of an admin form-spec write (save draft or publish): the
     /// value produced, or the reasons it was refused. Mirrors
     /// <see cref="FormSubmissionResultModel"/> so the controller can shape a
-    /// 422-with-errors the same way for both.
+    /// 422-with-errors the same way for both; a conflict becomes a 409 with the same body.
     /// </summary>
     /// <typeparam name="T">The success payload type.</typeparam>
     public class FormSpecWriteResultModel<T>
@@ -88,6 +88,12 @@ namespace Myss.Api.Models
         /// <summary>Gets a value indicating whether the write was accepted.</summary>
         public bool IsValid => Errors.Count == 0;
 
+        /// <summary>
+        /// Gets a value indicating whether the write was refused because the version it
+        /// would create is taken, rather than because the spec is invalid.
+        /// </summary>
+        public bool IsConflict { get; private init; }
+
         /// <summary>Creates an accepted result.</summary>
         /// <param name="value">The produced value.</param>
         /// <returns>An accepted result.</returns>
@@ -97,5 +103,11 @@ namespace Myss.Api.Models
         /// <param name="errors">Every reason for refusal.</param>
         /// <returns>A refused result.</returns>
         public static FormSpecWriteResultModel<T> Refused(IReadOnlyList<ValidationErrorModel> errors) => new() { Errors = errors };
+
+        /// <summary>Creates a result refused because the version it would create is taken.</summary>
+        /// <param name="errors">Every reason for refusal.</param>
+        /// <returns>A refused result marked as a conflict.</returns>
+        public static FormSpecWriteResultModel<T> Conflict(IReadOnlyList<ValidationErrorModel> errors) =>
+            new() { Errors = errors, IsConflict = true };
     }
 }

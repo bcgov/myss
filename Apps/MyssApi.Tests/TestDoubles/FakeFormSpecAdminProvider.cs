@@ -22,6 +22,15 @@ namespace Myss.Api.Tests.TestDoubles
         /// <summary>Gets the formSpecIds passed to <see cref="GetDraftOrLatestPublishedAsync"/>.</summary>
         public List<string> GetDraftCalls { get; } = [];
 
+        /// <summary>Gets the (formSpecId, version) pairs passed to <see cref="GetVersionAsync"/>.</summary>
+        public List<(string FormSpecId, int Version)> GetVersionCalls { get; } = [];
+
+        /// <summary>Gets the formSpecIds passed to <see cref="GetVersionStateAsync"/>.</summary>
+        public List<string> VersionStateCalls { get; } = [];
+
+        /// <summary>Gets the (formSpecId, version, title) triples passed to <see cref="CreateDraftVersionAsync"/>.</summary>
+        public List<(string FormSpecId, int Version, string? Title)> CreateDraftVersionCalls { get; } = [];
+
         /// <summary>Gets or sets the forms returned by <see cref="ListFormsAsync"/>.</summary>
         public IReadOnlyList<FormSummaryModel> Forms { get; set; } = [];
 
@@ -30,6 +39,12 @@ namespace Myss.Api.Tests.TestDoubles
 
         /// <summary>Gets or sets the spec returned by <see cref="SaveDraftAsync"/> (defaults to a spec built from the arguments).</summary>
         public FormSpecModel? Saved { get; set; }
+
+        /// <summary>Gets the specs returned by <see cref="GetVersionAsync"/>, keyed by form and version.</summary>
+        public Dictionary<(string FormSpecId, int Version), FormSpecModel> Versions { get; } = [];
+
+        /// <summary>Gets or sets the state returned by <see cref="GetVersionStateAsync"/> (defaults to a form that does not exist).</summary>
+        public FormSpecVersionState VersionState { get; set; } = new(LatestVersion: 0, InProgressDraftVersion: null);
 
         /// <summary>Gets or sets the version returned by <see cref="PublishAsync"/>.</summary>
         public int PublishedVersion { get; set; } = 1;
@@ -40,6 +55,9 @@ namespace Myss.Api.Tests.TestDoubles
         /// <summary>Gets or sets an exception for <see cref="PublishAsync"/> to throw.</summary>
         public Exception? PublishException { get; set; }
 
+        /// <summary>Gets or sets an exception for <see cref="CreateDraftVersionAsync"/> to throw.</summary>
+        public Exception? CreateDraftVersionException { get; set; }
+
         /// <inheritdoc/>
         public Task<IReadOnlyList<FormSummaryModel>> ListFormsAsync(CancellationToken cancellationToken) =>
             Task.FromResult(Forms);
@@ -49,6 +67,20 @@ namespace Myss.Api.Tests.TestDoubles
         {
             GetDraftCalls.Add(formSpecId);
             return Task.FromResult(Draft);
+        }
+
+        /// <inheritdoc/>
+        public Task<FormSpecModel?> GetVersionAsync(string formSpecId, int version, CancellationToken cancellationToken)
+        {
+            GetVersionCalls.Add((formSpecId, version));
+            return Task.FromResult(Versions.TryGetValue((formSpecId, version), out FormSpecModel? found) ? found : null);
+        }
+
+        /// <inheritdoc/>
+        public Task<FormSpecVersionState> GetVersionStateAsync(string formSpecId, CancellationToken cancellationToken)
+        {
+            VersionStateCalls.Add(formSpecId);
+            return Task.FromResult(VersionState);
         }
 
         /// <inheritdoc/>
@@ -64,6 +96,25 @@ namespace Myss.Api.Tests.TestDoubles
             {
                 FormSpecId = formSpecId,
                 Version = PublishedVersion,
+                Title = title,
+                Spec = spec,
+            });
+        }
+
+        /// <inheritdoc/>
+        public Task<FormSpecModel> CreateDraftVersionAsync(
+            string formSpecId, int version, JsonElement spec, string? title, CancellationToken cancellationToken)
+        {
+            CreateDraftVersionCalls.Add((formSpecId, version, title));
+            if (CreateDraftVersionException is not null)
+            {
+                throw CreateDraftVersionException;
+            }
+
+            return Task.FromResult(new FormSpecModel
+            {
+                FormSpecId = formSpecId,
+                Version = version,
                 Title = title,
                 Spec = spec,
             });

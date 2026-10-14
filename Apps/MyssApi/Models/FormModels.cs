@@ -2,6 +2,7 @@ namespace Myss.Api.Models
 {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel.DataAnnotations;
     using System.Text.Json;
 
     /// <summary>
@@ -162,7 +163,8 @@ namespace Myss.Api.Models
     }
 
     /// <summary>
-    /// The body of a save-draft request: the edited spec and its title.
+    /// The body of a save-draft request: the edited spec, its title and, optionally,
+    /// the version the save must create.
     /// </summary>
     public class SaveDraftRequestModel
     {
@@ -175,6 +177,14 @@ namespace Myss.Api.Models
         /// Gets or sets the human-readable title, or null to leave it unset.
         /// </summary>
         public string? Title { get; set; }
+
+        /// <summary>
+        /// Gets or sets the version this save must create as a new draft, or null for
+        /// an ordinary save. With a value, the save never updates an existing draft and
+        /// is refused when that version is taken.
+        /// </summary>
+        [Range(1, int.MaxValue)]
+        public int? NewVersion { get; set; }
     }
 
     /// <summary>

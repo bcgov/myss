@@ -113,6 +113,16 @@ namespace Myss.Api.Services
         Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken);
 
         /// <summary>
+        /// Gets one version of a form for admin form management: its published entry,
+        /// or its draft entry when that version has no published entry.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="version">The version number.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The version's spec, or null when the version does not exist.</returns>
+        Task<FormSpecModel?> GetFormVersionAsync(string formSpecId, int version, CancellationToken cancellationToken);
+
+        /// <summary>
         /// Saves an edited spec as a draft (not published). Its structure is validated
         /// first, so nothing is written and the failures are returned when the check fails.
         /// </summary>
@@ -122,6 +132,22 @@ namespace Myss.Api.Services
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The saved draft, or the structural failures that stopped it.</returns>
         Task<FormSpecWriteResultModel<FormSpecModel>> SaveDraftAsync(string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Saves a spec as exactly the given version, as a new draft, and never updates an
+        /// existing draft. Accepted with the created draft; a conflict when that version
+        /// already exists or the form has an unpublished draft; refused with the structural
+        /// or lifecycle failures otherwise, including a version that skips one. An
+        /// infrastructure failure propagates as an exception.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="version">The version to create.</param>
+        /// <param name="spec">The Form.io specification JSON.</param>
+        /// <param name="title">The human-readable title, or null to leave it unset.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The created draft, or the reasons it was refused.</returns>
+        Task<FormSpecWriteResultModel<FormSpecModel>> CreateDraftVersionAsync(
+            string formSpecId, int version, JsonElement spec, string? title, CancellationToken cancellationToken);
 
         /// <summary>
         /// Publishes the in-progress draft as the next version. The draft's structure is
