@@ -77,6 +77,17 @@ export default function ContactInformation({
   const summaryRef = useRef<HTMLHeadingElement>(null);
   // BCDS Button does not forward a ref, so focus goes through its wrapper.
   const editActionRef = useRef<HTMLDivElement>(null);
+  // Set when the form closes, so the effect below can put focus back on the
+  // edit button. An effect runs after React has put the button back on the
+  // page; an animation frame can run first under load and leave focus on the
+  // body.
+  const returnFocus = useRef(false);
+
+  useEffect(() => {
+    if (isEditing || !returnFocus.current) return;
+    returnFocus.current = false;
+    editActionRef.current?.querySelector("button")?.focus();
+  }, [isEditing]);
 
   // After a refused save, move focus to the error summary, so a screen-reader
   // user hears that the save failed and can go from there to each field.
@@ -109,11 +120,9 @@ export default function ContactInformation({
   }
 
   function stopEditing() {
-    setIsEditing(false);
     // The edit button is back in place of the form; keep focus on it.
-    requestAnimationFrame(() =>
-      editActionRef.current?.querySelector("button")?.focus(),
-    );
+    returnFocus.current = true;
+    setIsEditing(false);
   }
 
   function updateRow(key: number, change: Partial<PhoneRow>) {

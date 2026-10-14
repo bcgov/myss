@@ -516,6 +516,56 @@ namespace Myss.Api.Tests.Services
             Assert.True(_pinHasher.Verify(profile.PinHash!, Pin.TryCreate("4821").Value!, out _));
         }
 
+        [Fact]
+        public async Task Submit_Registration_PutsThePhoneOnAccountInfoAsTheCellNumber()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            await service.SubmitAsync("registration", Request(4, RegistrationAnswersV4), CancellationToken.None);
+
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            MyssUserPhone phone = Assert.Single(await db.Set<MyssUserPhone>().ToListAsync());
+            Assert.Equal(profile.Id, phone.ProfileId);
+            Assert.Equal("2505550100", phone.Number);
+            Assert.Equal(AccountPhoneType.Cell, phone.Type);
+            Assert.Equal(0, phone.Position);
+        }
+
+        [Fact]
+        public async Task Submit_Registration_WithoutAPhoneAddsNoneToAccountInfo()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 2, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            await service.SubmitAsync(
+                "registration",
+                Request(2, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Empty(await db.Set<MyssUserPhone>().ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_Registration_RegisteringAgainLeavesTheAccountInfoPhonesAlone()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+            await service.SubmitAsync("registration", Request(4, RegistrationAnswersV4), CancellationToken.None);
+
+            FormSubmissionResultModel again = await service.SubmitAsync(
+                "registration",
+                Request(4, RegistrationAnswersV4.Replace("2505550100", "2505550199", StringComparison.Ordinal)),
+                CancellationToken.None);
+
+            Assert.True(again.IsValid);
+            Assert.Equal("2505550100", Assert.Single(await db.Set<MyssUserPhone>().ToListAsync()).Number);
+        }
+
                 private const string RegistrationSpecV5 = """
                 {
                     "components": [
