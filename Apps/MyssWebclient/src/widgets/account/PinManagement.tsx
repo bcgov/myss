@@ -65,6 +65,21 @@ export default function PinManagement({
   const summaryRef = useRef<HTMLHeadingElement>(null);
   // BCDS Button does not forward a ref, so focus goes through its wrapper.
   const openActionRef = useRef<HTMLDivElement>(null);
+  // Where focus goes once the form has opened or closed. Moved in an effect,
+  // which runs after React has put the new elements on the page; a timer or
+  // animation frame can run first under load and leave focus on the body.
+  const focusAfterToggle = useRef<"form" | "openAction" | null>(null);
+
+  useEffect(() => {
+    const target = focusAfterToggle.current;
+    focusAfterToggle.current = null;
+    if (target === "form") {
+      formRef.current?.querySelector("input")?.focus();
+    } else if (target === "openAction") {
+      // The open button is back in place of the form; keep focus on it.
+      openActionRef.current?.querySelector("button")?.focus();
+    }
+  }, [isOpen]);
 
   // After a refused save, move focus to the error summary, so a screen-reader
   // user hears that the save failed and can go from there to each field.
@@ -91,16 +106,13 @@ export default function PinManagement({
     setErrors({});
     setSavedMessage(null);
     save.reset();
+    focusAfterToggle.current = "form";
     setIsOpen(true);
-    requestAnimationFrame(() => formRef.current?.querySelector("input")?.focus());
   }
 
   function close() {
+    focusAfterToggle.current = "openAction";
     setIsOpen(false);
-    // The open button is back in place of the form; keep focus on it.
-    requestAnimationFrame(() =>
-      openActionRef.current?.querySelector("button")?.focus(),
-    );
   }
 
   function submit(event: React.FormEvent) {
