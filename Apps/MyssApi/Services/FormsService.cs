@@ -454,10 +454,11 @@ namespace Myss.Api.Services
             _ = TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate);
 
             MyssUserProfile? profile = _dbContext.MyssUserProfiles
+                .Include(p => p.Phones)
                 .SingleOrDefault(p => p.Subject == currentUser.Subject);
             if (profile is null)
             {
-                _dbContext.MyssUserProfiles.Add(new MyssUserProfile
+                profile = new MyssUserProfile
                 {
                     Id = Guid.NewGuid(),
                     Subject = currentUser.Subject,
@@ -471,7 +472,9 @@ namespace Myss.Api.Services
                     PinHash = pinHash,
                     CreatedAt = DateTimeOffset.UtcNow,
                     UpdatedAt = DateTimeOffset.UtcNow,
-                });
+                };
+                _dbContext.MyssUserProfiles.Add(profile);
+                AddRegistrationPhone(profile, phone);
                 return;
             }
 
@@ -488,6 +491,8 @@ namespace Myss.Api.Services
                 profile.Phone = phone;
             }
 
+            AddRegistrationPhone(profile, phone);
+
             if (gender is not null)
             {
                 profile.Gender = gender;
@@ -501,6 +506,32 @@ namespace Myss.Api.Services
             }
 
             profile.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        /// <summary>
+        /// Puts the registration phone on Account Info's list (MYSS-299), as the
+        /// Cell number: the form does not ask for a type, and the citizen can
+        /// change it there. Only into an empty list: once the citizen has phone
+        /// numbers on Account Info, that list is theirs, and registering again
+        /// does not add to it or reorder it.
+        /// </summary>
+        private void AddRegistrationPhone(MyssUserProfile profile, string? phone)
+        {
+            if (phone is null || profile.Phones.Count > 0)
+            {
+                return;
+            }
+
+            // Added explicitly, as AccountService does: a row whose key is
+            // already set would otherwise be taken for an existing one.
+            _dbContext.Add(new MyssUserPhone
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profile.Id,
+                Type = AccountPhoneType.Cell,
+                Number = phone,
+                Position = 0,
+            });
         }
 
         /// <summary>

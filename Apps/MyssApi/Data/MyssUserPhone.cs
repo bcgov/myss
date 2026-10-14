@@ -4,7 +4,8 @@ namespace Myss.Api.Data
     using Myss.Api.Models;
 
     /// <summary>
-    /// A phone number on a citizen's account, entered on Account Info (MYSS-271).
+    /// A phone number on a citizen's account, entered on Account Info (MYSS-271)
+    /// or carried over from the registration form as the Cell number (MYSS-299).
     /// </summary>
     public class MyssUserPhone
     {
