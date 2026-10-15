@@ -97,7 +97,7 @@ namespace Icm.Api
         Task<IApiResponse<SiebelWriteResponse>> CreateAsync(
             [Authorize("Bearer")] string bearerToken,
             [Header(TrustedUserNameHeader)] string? trustedUserName,
-            [Body] SiebelServiceRequest serviceRequest,
+            [Body] SiebelServiceRequestWrite serviceRequest,
             [AliasAs("excludeEmptyFieldsInResponse")] bool? excludeEmptyFieldsInResponse = null,
             CancellationToken cancellationToken = default);
 
@@ -127,7 +127,7 @@ namespace Icm.Api
         Task<IApiResponse<SiebelWriteResponse>> UpsertAsync(
             [Authorize("Bearer")] string bearerToken,
             [Header(TrustedUserNameHeader)] string? trustedUserName,
-            [Body] SiebelServiceRequest serviceRequest,
+            [Body] SiebelServiceRequestWrite serviceRequest,
             [AliasAs("excludeEmptyFieldsInResponse")] bool? excludeEmptyFieldsInResponse = null,
             CancellationToken cancellationToken = default);
 
@@ -181,8 +181,42 @@ namespace Icm.Api
             [Authorize("Bearer")] string bearerToken,
             [Header(TrustedUserNameHeader)] string? trustedUserName,
             [AliasAs("servicerequest_key")] string serviceRequestKey,
-            [Body] SiebelServiceRequest serviceRequest,
+            [Body] SiebelServiceRequestWrite serviceRequest,
             [AliasAs("excludeEmptyFieldsInResponse")] bool? excludeEmptyFieldsInResponse = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Reads the contacts on a service request — its <c>ICMContact</c> child collection.</summary>
+        /// <param name="bearerToken">The caller's access token.</param>
+        /// <param name="trustedUserName">The ICM user the call acts as, or null to send no header.</param>
+        /// <param name="serviceRequestKey">The Siebel row id of the service request.</param>
+        /// <param name="query">Paging and visibility mode.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns><c>200</c> with the rows, or <c>204</c>/<c>404</c> when there are none the caller can see.</returns>
+        [Get("/data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/")]
+        Task<IApiResponse<SiebelServiceRequestContactListResponse>> GetContactsAsync(
+            [Authorize("Bearer")] string bearerToken,
+            [Header(TrustedUserNameHeader)] string? trustedUserName,
+            [AliasAs("servicerequest_key")] string serviceRequestKey,
+            [Query] SiebelListQuery query,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Links an existing contact to a service request: a PUT on the <c>ICMContact</c>
+        /// child, keyed by the contact's <c>Id</c> in the body (MEASURED SIT2 2026-09-29;
+        /// ICM's "PUT Contact to Service Request" guidance, ADO 8628).
+        /// </summary>
+        /// <param name="bearerToken">The caller's access token.</param>
+        /// <param name="trustedUserName">The ICM user the call acts as, or null to send no header.</param>
+        /// <param name="serviceRequestKey">The Siebel row id of the service request.</param>
+        /// <param name="contact">The contact's id and the link fields.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns><c>200</c> with the service request and the link.</returns>
+        [Put("/data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/")]
+        Task<IApiResponse<SiebelWriteResponse>> LinkContactAsync(
+            [Authorize("Bearer")] string bearerToken,
+            [Header(TrustedUserNameHeader)] string? trustedUserName,
+            [AliasAs("servicerequest_key")] string serviceRequestKey,
+            [Body] SiebelServiceRequestContact contact,
             CancellationToken cancellationToken = default);
 
         /// <summary>

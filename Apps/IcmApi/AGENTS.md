@@ -14,9 +14,9 @@ assembly. Namespaces are `Icm.Api` (Refit interfaces), `Icm.Api.Contracts`,
 `Icm.Api.Api` reads worse than it informs.
 
 ```
-Services/            IServiceRequestService, IContactService, ICaseService, IBusPassService, IOAuthTokenService  ← inject these
-Repositories/        IServiceRequestRepository, IContactRepository, ICaseRepository, IBusPassRepository, IOAuthTokenRepository
-Api/                 IServiceRequestApi, IContactApi, ICaseApi, IOAuthTokenApi (Refit)  ┐
+Services/            IServiceRequestService, IContactService, ICaseService, IProspectService, IActivityService, IBusPassService, IOAuthTokenService  ← inject these
+Repositories/        IServiceRequestRepository, IContactRepository, ICaseRepository, IProspectRepository, IActivityRepository, IBusPassRepository, IOAuthTokenRepository
+Api/                 IServiceRequestApi, IContactApi, ICaseApi, IProspectApi, IActivityApi, IOAuthTokenApi (Refit)  ┐
 Api/Contracts/       Siebel* and Token* wire models, the mapper       │ internal
 Workflows/           IBusPassWorkflowApi (Refit)                      │
 Workflows/Contracts/ SiebelBusPass* wire envelope, BusPassMapper      ┘
@@ -101,6 +101,71 @@ a change, all MEASURED on SIT2 on 2026-09-24 and detailed in the README's "Case 
   `CaseMapper.Validate`/`ContactMapper.Validate` (which *are* `ToSiebel`) before
   acquiring a token, and the repository vets again when it builds the query. Keep both.
 - **Reads only**: no case write is declared.
+
+## Prospects
+
+`IProspectService` reads the applicant rows on a service request and creates one
+directly (`docs/integration/SRProspects_OpenApi.json`; README "Prospects"). Things
+that must survive a change:
+
+- **Two paths, one component.** `GetForServiceRequestAsync` reads the child path
+  (`ServiceRequest/{key}/SRProspects`, MEASURED); `SearchAsync`/`GetAsync` the
+  standalone `Prospects/SRProspects` (MEASURED 2026-09-29).
+- **A create is a PUT on the standalone path with `"Id": "NULL"`** (ICM's documented
+  shape; MEASURED 2026-09-29 on icmdev and SIT2). The same body by POST is refused, a
+  POST to the child path creates a *new service request*, and a nested
+  `ListOfSRProspects` dies on an association list the applet lacks — so `UpsertAsync`
+  is the only prospect write on `IProspectApi` and there is no child-path write. Do not
+  add one.
+- **Required on create:** first name, last name, birth date, `M/F`, and the service
+  request id — from ICM's field list (ADO 8249). The mapper refuses without them.
+- **No `fields` list, deliberately.** The child view sends 36 of the document's 42
+  fields, the standalone path all 42; naming one a view lacks is `SBL-EAI-50258`.
+  Every field is modelled; `ProspectMapperTests` ties the wire contract to the
+  document's names plus `Id`.
+- **`ProspectQuery` has no raw `SearchSpec`**; values go through `SiebelSearchValue.Vet`.
+- **`ViewMode` defaults to `Organization`** (`ProspectMapper.DefaultViewMode`).
+- **A create insists on the names and, standalone, on `ServiceRequestId`**; the
+  document's other required fields are ICM's to enforce. No update, no delete.
+- A prospect is all personal information (SIN, DOB): never log one whole.
+
+## Activities
+
+`IActivityService` reads the activities and activity plans on a service request — the
+events the bus pass workflow's plan produces — and creates an activity (README
+"Activities"). Things that must survive a change:
+
+- **Creating an activity is a PUT with `"Id": "NULL"`** (ICM's guidance, ADO 8646;
+  MEASURED 2026-09-29), profiled by `Activity SR Id`. The mapper defaults `Category` and
+  `Display` and refuses an activity profiled to nothing.
+- **No plan write.** `ActivityPlan/ActivityPlan` refuses the bus pass template on write
+  (`SBL-EAI-04401`), so a directly created activity is a stand-alone task with no
+  `Plan Name` — not a plan step ICM will chain. Do not present it as one.
+- **No `fields` list on activity reads**: the child view rejects one (`500`).
+- `ActivityQuery` / `ActivityPlanQuery` have no raw `SearchSpec`; values go through
+  `SiebelSearchValue.Vet`. `ViewMode` defaults to `Organization`.
+
+## Service request writes
+
+`IServiceRequestService.CreateAsync` is MEASURED (SIT2 2026-09-29, README "Creating a
+service request directly"). Things that must survive a change:
+
+- **Writes use the gateway's read names** (`Type`, not the document's `SR Type`, which is
+  silently ignored). `SiebelServiceRequestWrite` is the write body; a test holds its names
+  to `SiebelServiceRequest`'s.
+- **A create carries a placeholder `Id`** (`ServiceRequestMapper.CreatePlaceholderId`,
+  the component's only user key — Siebel replaces it) **and an empty
+  `ListOfSRProspects` container**; without either the POST is refused. `Type` precedes
+  the sub types in the body. Do not "clean up" any of the three.
+- A write's answer carries `Link` as one object; `SiebelLinkListConverter` reads both shapes.
+- **Linking a contact is a PUT on the SR's `ICMContact` child** with `Id`,
+  `SR Relationship` and `SSA Primary Field` — the child view's names; ICM's guidance
+  names `Relationship`/`Subject` are silently ignored (MEASURED 2026-09-29). A primary
+  link sets `Primary Contact Id` and the header names, which is the workflow's matched
+  shape. Contacts cannot be nested on the SR create; do not add them to the write body.
+- **A directly created SR gets no activity plan**, with or without its prospect — the
+  workflow applies it. Do not present a direct create as a replacement for the workflow
+  without an answer for that.
 
 ## The published surface is enforced
 
