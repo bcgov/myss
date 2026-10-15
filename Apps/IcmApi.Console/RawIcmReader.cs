@@ -144,7 +144,10 @@ namespace Icm.Api.ConsoleApp
             string json) =>
             SendAsync(icmClient, tokenService, credentials, settings, HttpMethod.Post, path, json);
 
-        /// <summary>One authenticated write of a hand-built JSON body, by any method.</summary>
+        /// <summary>
+        /// One authenticated request of a hand-built JSON body, by any method. A null
+        /// <paramref name="json"/> sends no content at all — a bodyless DELETE, say.
+        /// </summary>
         /// <returns>The status and body.</returns>
         public static async Task<(HttpStatusCode Status, string Body)> SendAsync(
             HttpClient icmClient,
@@ -153,7 +156,7 @@ namespace Icm.Api.ConsoleApp
             ConsoleSettings settings,
             HttpMethod method,
             string path,
-            string json)
+            string? json)
         {
             using HttpRequestMessage request = new(method, path);
             request.Headers.Authorization = new AuthenticationHeaderValue(
@@ -164,7 +167,11 @@ namespace Icm.Api.ConsoleApp
                 request.Headers.Add("X-ICM-TrustedUserName", settings.Icm.TrustedUserName);
             }
 
-            request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            if (json is not null)
+            {
+                request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            }
+
             using HttpResponseMessage response = await icmClient.SendAsync(request);
             return (response.StatusCode, await response.Content.ReadAsStringAsync());
         }

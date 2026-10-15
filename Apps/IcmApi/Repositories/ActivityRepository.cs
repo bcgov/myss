@@ -198,7 +198,7 @@ namespace Icm.Api.Repositories
         private static long? ReadTotalCount(System.Net.Http.Headers.HttpResponseHeaders? headers) =>
             headers is not null
                 && headers.TryGetValues("Total-Record-Count", out IEnumerable<string>? values)
-                && long.TryParse(values?.FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long count)
+                && long.TryParse(values.FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long count)
                 ? count
                 : null;
     }

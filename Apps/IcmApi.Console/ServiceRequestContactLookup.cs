@@ -53,9 +53,11 @@ namespace Icm.Api.ConsoleApp
                 for (int i = 0; i < people.Count; i++)
                 {
                     ServiceRequestContact person = people[i];
+                    // The row id, relationship and flag are what the next call needs and are
+                    // printed either way; the name is personal information and follows ShowValues.
                     Console.WriteLine(
                         $"  [{i + 1}] {person.Relationship ?? "(no relationship)"}{(person.IsPrimary == true ? ", primary" : string.Empty)}"
-                        + $"  contact {person.Id ?? "(none)"}  {person.FirstName} {person.LastName}");
+                        + $"  contact {person.Id ?? "(none)"}  {Name(person.FirstName, person.LastName, wanted.ShowValues)}");
                     if (wanted.ShowValues)
                     {
                         CasePrinter.WriteFields(person, Fields, person.AdditionalFields, person.UnparsedValues, showValues: true, "ServiceRequestContact");
@@ -70,7 +72,7 @@ namespace Icm.Api.ConsoleApp
                 Console.WriteLine();
                 Console.WriteLine(header is null
                     ? "The service request itself could not be read back."
-                    : $"SR header: Primary Contact Id {header.PrimaryContactId ?? "(none)"}, Given Names \"{header.GivenNames}\", Last Name \"{header.LastName}\"");
+                    : $"SR header: Primary Contact Id {header.PrimaryContactId ?? "(none)"}, Given Names {Quote(header.GivenNames, wanted.ShowValues)}, Last Name {Quote(header.LastName, wanted.ShowValues)}");
                 return 0;
             }
             catch (ArgumentException exception)
@@ -96,6 +98,29 @@ namespace Icm.Api.ConsoleApp
             }
         }
 
+        /// <summary>A person's name, or only whether one came back when values are hidden.</summary>
+        private static string Name(string? first, string? last, bool showValues)
+        {
+            if (showValues)
+            {
+                return $"{first} {last}".Trim();
+            }
+
+            bool any = !string.IsNullOrWhiteSpace(first) || !string.IsNullOrWhiteSpace(last);
+            return any ? "(name set)" : "(no name)";
+        }
+
+        /// <summary>A quoted header value, or only whether it is set when values are hidden.</summary>
+        private static string Quote(string? value, bool showValues)
+        {
+            if (showValues)
+            {
+                return $"\"{value}\"";
+            }
+
+            return string.IsNullOrWhiteSpace(value) ? "(empty)" : "(set)";
+        }
+
         /// <summary>The run header's title for this mode.</summary>
         /// <param name="settings">The settings.</param>
         /// <returns>The title.</returns>
@@ -113,6 +138,7 @@ namespace Icm.Api.ConsoleApp
             Console.WriteLine($"  SR           {settings.SrContact.ServiceRequestId}");
             Console.WriteLine($"  Contact      {settings.SrContact.ContactId ?? "(none - read only)"}");
             Console.WriteLine($"  ViewMode     {settings.SrContact.ViewMode ?? "Organization"}");
+            Console.WriteLine($"  Values       {(settings.SrContact.ShowValues ? "shown" : "hidden (--SrContact:ShowValues=true to print them)")}");
         }
     }
 }

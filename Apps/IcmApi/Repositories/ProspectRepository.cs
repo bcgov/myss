@@ -192,7 +192,7 @@ namespace Icm.Api.Repositories
         private static long? ReadTotalCount(IApiResponse<SiebelProspectListResponse> response) =>
             response.Headers is { } headers
                 && headers.TryGetValues("Total-Record-Count", out IEnumerable<string>? values)
-                && long.TryParse(values?.FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long count)
+                && long.TryParse(values.FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long count)
                 ? count
                 : null;
     }

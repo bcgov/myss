@@ -32,9 +32,12 @@ namespace Icm.Api.ConsoleApp
             Stopwatch stopwatch = Stopwatch.StartNew();
             try
             {
-                (HttpStatusCode status, string response) = body.Length == 0
+                // The method is the configured one whatever the body: a bodyless DELETE
+                // must still delete, not read. Only a GET takes the GET helper, so it goes
+                // out without a Content-Type the gateway could object to.
+                (HttpStatusCode status, string response) = method == HttpMethod.Get
                     ? await RawIcmReader.GetAsync(icmClient, tokenService, credentials, settings, path)
-                    : await RawIcmReader.SendAsync(icmClient, tokenService, credentials, settings, method, path, body);
+                    : await RawIcmReader.SendAsync(icmClient, tokenService, credentials, settings, method, path, body.Length == 0 ? null : body);
                 stopwatch.Stop();
                 Console.WriteLine($"{(int)status} {status} in {stopwatch.ElapsedMilliseconds} ms");
                 Console.WriteLine(response.Length == 0 ? "(empty body)" : Program.PrettyJson(response));

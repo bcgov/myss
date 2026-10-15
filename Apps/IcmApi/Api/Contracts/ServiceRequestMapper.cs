@@ -135,9 +135,15 @@ namespace Icm.Api.Contracts
         {
             ArgumentNullException.ThrowIfNull(input);
 
-            SiebelProspectList? prospects = input.Prospects is { Count: > 0 } rows
-                ? new SiebelProspectList { SRProspects = [.. rows.Select(ProspectMapper.ToNestedSiebel)] }
-                : forCreate ? new SiebelProspectList() : null;
+            SiebelProspectList? prospects = null;
+            if (input.Prospects is { Count: > 0 } rows)
+            {
+                prospects = new SiebelProspectList { SRProspects = [.. rows.Select(ProspectMapper.ToNestedSiebel)] };
+            }
+            else if (forCreate)
+            {
+                prospects = new SiebelProspectList();
+            }
 
             return new SiebelServiceRequestWrite
             {
@@ -312,7 +318,7 @@ namespace Icm.Api.Contracts
                 ContactUpdated = SiebelDate.ToDateTime(siebel.Updated, "Updated", unparsed),
                 ContactUpdatedBy = siebel.ICMUpdatedBy,
                 AdditionalFields = siebel.AdditionalFields is null
-                    ? new Dictionary<string, System.Text.Json.JsonElement>()
+                    ? []
                     : new Dictionary<string, System.Text.Json.JsonElement>(siebel.AdditionalFields),
                 UnparsedValues = unparsed,
             };
