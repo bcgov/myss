@@ -4,6 +4,13 @@ Feature: Pre-eligibility estimator
   monthly income assistance they might receive. The estimate is computed in
   the browser from the published rate table and nothing is stored.
 
+  # Business rules referenced by the scenario tags:
+  #   BR-D9-03  Family size is the adults (2 for a couple, else 1) plus dependants, capped at 7.
+  #   BR-D9-04  Client type comes from relationship, PWD and age answers, and picks the rate column.
+  #   BR-D9-06  The asset ceiling depends on the household (single/couple, dependants, PWD).
+  #   BR-D9-07  Total assets over the ceiling make the estimate $0.
+  #   BR-D9-08  Estimate = income limit for the family size and client type, minus total income ($0 if not positive).
+
   Background:
     Given the estimator serves the seeded form and the seeded rates
     And I open the eligibility estimator
