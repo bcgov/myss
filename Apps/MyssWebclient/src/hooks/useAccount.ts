@@ -3,17 +3,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AccountRequestError,
   getAccount,
+  savePin,
   updateNotificationPreferences,
   updatePhones,
   type AccountPayload,
   type PhoneInput,
+  type PinInput,
 } from "@/api/account";
 
-// React-query hooks for the citizen's Account Info (MYSS-271). Raw fetches
+// React-query hooks for the citizen's Account Info (MYSS-271) and PIN (MYSS-258). Raw fetches
 // for now (see api/account.ts), so every call carries authHeaders() itself.
 
-export { AccountRequestError } from "@/api/account";
-export type { AccountPayload, AccountPhone, PhoneInput } from "@/api/account";
+export { AccountRequestError, PIN_LOCKED_KEYWORD } from "@/api/account";
+export type {
+  AccountPayload,
+  AccountPhone,
+  AccountPinStatus,
+  PhoneInput,
+  PinInput,
+} from "@/api/account";
 
 export const ACCOUNT_QUERY_KEY = ["account"] as const;
 
@@ -56,6 +64,11 @@ function useAccountWrite<TInput>(
 /** Replaces the caller's phone numbers. */
 export function useUpdatePhones() {
   return useAccountWrite((phones: PhoneInput[]) => updatePhones(phones));
+}
+
+/** Changes the caller's PIN, or creates it when they have none. */
+export function useSavePin() {
+  return useAccountWrite((input: PinInput) => savePin(input));
 }
 
 /** Saves the monthly report reminder. */

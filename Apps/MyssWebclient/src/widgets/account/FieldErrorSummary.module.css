@@ -1,0 +1,36 @@
+/* The error summary, matching components/SubmissionErrors: the left bar and
+   border carry the meaning, so it does not rest on colour alone. */
+.summary {
+    background: var(--support-surface-color-danger);
+    border: var(--layout-border-width-medium) solid
+        var(--support-border-color-danger);
+    border-left-width: var(--layout-margin-small);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+}
+
+.summaryHeading {
+    margin: 0 0 var(--layout-margin-small);
+}
+
+.summaryHeading:focus-visible {
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-medium);
+}
+
+.summaryList {
+    margin: 0;
+    padding-left: var(--layout-padding-large);
+}
+
+/* Reads as a link; see the component for why it is a button. */
+.summaryLink {
+    background: none;
+    border: none;
+    color: var(--typography-color-danger);
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-align: left;
+    text-decoration: underline;
+}

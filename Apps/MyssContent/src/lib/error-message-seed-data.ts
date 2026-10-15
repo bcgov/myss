@@ -48,8 +48,8 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
   },
   {
     keyword: "IDA.PHONE.INVALID_FORMAT",
-    message: "Enter a 10-digit phone number, for example 250 555 0199.",
-    note: "A phone field (properties.myssValidator = phone) with other than ten digits once formatting is stripped.",
+    message: "Phone number is invalid",
+    note: "A phone field (properties.myssValidator = phone) that does not match the legacy MySS phone format.",
   },
   {
     keyword: "IDA.POSTAL_CODE.INVALID_FORMAT",
@@ -115,6 +115,26 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
     keyword: "ACCOUNT.PHONE.TOO_MANY",
     message: "You can have up to 4 phone numbers, one of each type.",
     note: "Account info: more phone numbers were sent than there are phone types.",
+  },
+  {
+    keyword: "IDA.PIN.INVALID_FORMAT",
+    message: "Enter a 4-digit PIN using numbers only.",
+    note: "A PIN (registration or Account Info) that is not exactly four numeric digits.",
+  },
+  {
+    keyword: "IDA.PIN.MISMATCH",
+    message: "The two PINs do not match.",
+    note: "A PIN confirmation that differs from the PIN it confirms.",
+  },
+  {
+    keyword: "ACCOUNT.PIN.INCORRECT",
+    message: "The current PIN is not correct.",
+    note: "Account info: the current PIN given to change it is not the stored one. Repeated, it locks Change PIN.",
+  },
+  {
+    keyword: "ACCOUNT.PIN.NOT_AVAILABLE",
+    message: "A PIN is only used when you sign in with Basic BCeID.",
+    note: "A PIN sent for a sign-in that does not use one (BC Services Card). The webclient never shows a PIN to those users.",
   },
   {
     keyword: "BUSPASS.REQUEST.TYPE_INVALID",

@@ -36,7 +36,8 @@ namespace Myss.Api.Intake
         Task<IntakeResultModel> GetAsync(Guid id, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Saves the working copy of a draft.
+        /// Saves the working copy of a draft, or of an application returned
+        /// for more information.
         /// </summary>
         /// <param name="id">The application.</param>
         /// <param name="request">The row version last seen and the answers.</param>
@@ -48,7 +49,8 @@ namespace Myss.Api.Intake
             CancellationToken cancellationToken);
 
         /// <summary>
-        /// Submits a draft: full validation, then one Submitted event.
+        /// Submits a draft, or resubmits a returned application: full
+        /// validation, then one Submitted or Resubmitted event.
         /// </summary>
         /// <param name="id">The application.</param>
         /// <param name="request">The row version last seen and the answers.</param>

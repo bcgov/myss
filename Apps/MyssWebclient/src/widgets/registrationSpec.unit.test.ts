@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { formatPhone, prepareRegistrationSpec } from "./registrationSpec";
+import {
+  formatPhone,
+  namesFrom,
+  prepareRegistrationSpec,
+} from "./registrationSpec";
 
 type Component = Record<string, unknown>;
 
@@ -55,7 +59,7 @@ describe("prepareRegistrationSpec", () => {
     const prepared = prepareRegistrationSpec(spec, {
       givenName: "Jane",
       familyName: "Johnson",
-      phoneNumber: "+1 778 123 4567",
+      phoneNumber: "778 123 4567",
       birthdate: "1990-01-01",
       gender: "female",
     });
@@ -65,7 +69,7 @@ describe("prepareRegistrationSpec", () => {
       disabled: true,
     });
     expect(byKey(prepared, "lastName").defaultValue).toBe("Johnson");
-    expect(byKey(prepared, "phone").defaultValue).toBe("778-123-4567");
+    expect(byKey(prepared, "phone").defaultValue).toBe("(778) 123-4567");
     // Local midnight, so the picker shows 1990-01-01 in every time zone.
     expect(byKey(prepared, "dateOfBirth").defaultValue).toBe(
       "1990-01-01T00:00:00",
@@ -102,6 +106,7 @@ describe("prepareRegistrationSpec", () => {
       { phoneNumber: "555-0100" },
       "phone",
     ],
+    ["a phone number with a country code", { phoneNumber: "+1 778 123 4567" }, "phone"],
     ["a year-only birthdate", { birthdate: "1990" }, "dateOfBirth"],
     [
       "a birthdate that is not a real day",
@@ -177,15 +182,75 @@ describe("prepareRegistrationSpec", () => {
 
 describe("formatPhone", () => {
   it.each([
-    ["7781234567", "778-123-4567"],
-    ["(778) 123-4567", "778-123-4567"],
-    ["+1 778 123 4567", "778-123-4567"],
+    ["7781234567", "(778) 123-4567"],
+    ["(778) 123-4567", "(778) 123-4567"],
   ])("formats %s", (raw, formatted) => {
     expect(formatPhone(raw)).toBe(formatted);
   });
 
   it("rejects numbers that are not ten North American digits", () => {
     expect(formatPhone("123-4567")).toBeUndefined();
+    expect(formatPhone("+1 778 123 4567")).toBeUndefined();
     expect(formatPhone("+44 20 7946 0958")).toBeUndefined();
+  });
+});
+
+// Basic BCeID releases one full name in given_name and no family_name (MYSS-299).
+describe("a full name with no family name", () => {
+  const spec = {
+    components: [
+      field("firstName", "givenName"),
+      field("lastName", "familyName"),
+      field("dateOfBirth", "birthdate"),
+    ],
+  };
+
+  it("is split at the last space into first and last name", () => {
+    const prepared = prepareRegistrationSpec(spec, {
+      givenName: "Ada King Lovelace",
+    });
+
+    expect(byKey(prepared, "firstName").defaultValue).toBe("Ada King");
+    expect(byKey(prepared, "lastName").defaultValue).toBe("Lovelace");
+  });
+
+  it("leaves both names editable, because the split is a guess", () => {
+    const prepared = prepareRegistrationSpec(spec, {
+      givenName: "Ada Lovelace",
+      birthdate: "1815-12-10",
+    });
+
+    expect(byKey(prepared, "firstName").disabled).toBeUndefined();
+    expect(byKey(prepared, "lastName").disabled).toBeUndefined();
+    // Other prefilled fields still lock as the spec asks.
+    expect(byKey(prepared, "dateOfBirth").disabled).toBe(true);
+  });
+
+  it("is not split when the identity has a family name", () => {
+    const prepared = prepareRegistrationSpec(spec, {
+      givenName: "Ada King",
+      familyName: "Lovelace",
+    });
+
+    expect(byKey(prepared, "firstName").defaultValue).toBe("Ada King");
+    expect(byKey(prepared, "firstName").disabled).toBe(true);
+    expect(byKey(prepared, "lastName").defaultValue).toBe("Lovelace");
+    expect(byKey(prepared, "lastName").disabled).toBe(true);
+  });
+
+  it("is not split when it is one word, so the last name is left to the citizen", () => {
+    expect(namesFrom({ givenName: "Ada" })).toEqual({
+      givenName: "Ada",
+      familyName: undefined,
+      guessed: false,
+    });
+  });
+
+  it("ignores extra spaces around and between the words", () => {
+    expect(namesFrom({ givenName: "  Ada   Lovelace " })).toEqual({
+      givenName: "Ada",
+      familyName: "Lovelace",
+      guessed: true,
+    });
   });
 });

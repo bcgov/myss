@@ -30,11 +30,13 @@ namespace Myss.Api.Tests.TestSupport
         /// <param name="provider">The fake spec provider every context shares.</param>
         /// <param name="registered">Personas that get a profile row.</param>
         /// <param name="mockAuth">Whether mock auth is on; off makes every call anonymous.</param>
+        /// <param name="promotion">The promotion step, when a test needs other than the placeholder's success.</param>
         public IntakeTestHost(
             WebApplicationFactory<Startup> factory,
             FakeFormSpecProvider provider,
             IReadOnlyList<string> registered,
-            bool mockAuth)
+            bool mockAuth,
+            IApplicationPromotionProvider? promotion = null)
         {
             string dbName = Guid.NewGuid().ToString();
             ServiceProvider efProvider = new ServiceCollection()
@@ -99,6 +101,12 @@ namespace Myss.Api.Tests.TestSupport
                     // reaches for a content engine that is not running here.
                     services.RemoveAll<IErrorMessageProvider>();
                     services.AddSingleton<IErrorMessageProvider>(new FakeErrorMessageProvider());
+
+                    if (promotion is not null)
+                    {
+                        services.RemoveAll<IApplicationPromotionProvider>();
+                        services.AddSingleton(promotion);
+                    }
                 });
             });
             _client = _factory.CreateClient();
@@ -133,6 +141,17 @@ namespace Myss.Api.Tests.TestSupport
                 $"/v1/intake/applications/{id}/submit",
                 JsonContent.Create(new { version, answers }));
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        /// <summary>The event types on a stream, oldest first.</summary>
+        public async Task<IReadOnlyList<string>> EventTypes(Guid streamId)
+        {
+            using IServiceScope scope = _factory.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<PlatformDbContext>()
+                .Events.Where(e => e.StreamId == streamId)
+                .OrderBy(e => e.Version)
+                .Select(e => e.Type)
+                .ToListAsync();
         }
 
         public async Task<int> CountEvents(Guid streamId)

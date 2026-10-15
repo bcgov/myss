@@ -4,8 +4,14 @@
 /** Question types that pick from a fixed set of answers. */
 const CHOICE_TYPES = ["radio", "select", "checkbox"] as const;
 
-/** Question types that take a typed answer. */
-const TEXT_TYPES = ["textfield", "textarea", "number", "email"] as const;
+/** Question types that take a typed answer. `currency` is offered as "Amount". */
+const TEXT_TYPES = [
+  "textfield",
+  "textarea",
+  "number",
+  "currency",
+  "email",
+] as const;
 
 /** Question types that take a date. */
 const DATE_TYPES = ["datetime"] as const;
@@ -24,7 +30,14 @@ const QUESTION_TYPES = [...CHOICE_TYPES, ...TEXT_TYPES, ...DATE_TYPES] as const;
  * because every seeded spec ends with a submit button that a designer can
  * delete; without a palette entry there would be no way to put one back.
  */
-const CONTENT_TYPES = ["bcgovAccordion", "content", "panel", "button"] as const;
+const CONTENT_TYPES = [
+  "bcgovAccordion",
+  "bcgovCallout",
+  "bcgovInlineAlert",
+  "content",
+  "panel",
+  "button",
+] as const;
 
 /** Every type the palette offers. The builder sorts the sidebar itself. */
 export const ALLOWED_COMPONENT_TYPES: readonly string[] = [
@@ -162,6 +175,115 @@ const accordionSettings = [
   },
 ];
 
+// The callout draws calloutTitle as a real heading inside the box rather than
+// Form.io's fieldset legend, so the dialog offers the title, its heading level
+// and the colour scheme, and drops the legend. Its contents are added by
+// dragging components into it.
+const calloutSettings = [
+  lockedKey,
+  {
+    key: "display",
+    components: [
+      { key: "legend", ignore: true },
+      {
+        type: "textfield",
+        key: "calloutTitle",
+        label: "Callout heading",
+        description: "Optional. Leave blank for a callout without a heading.",
+        input: true,
+        weight: 1,
+      },
+      {
+        type: "select",
+        key: "headingLevel",
+        label: "Heading level",
+        input: true,
+        weight: 2,
+        dataSrc: "values",
+        data: {
+          values: [2, 3, 4, 5, 6].map((level) => ({
+            label: `Heading ${level}`,
+            value: level,
+          })),
+        },
+      },
+      {
+        type: "select",
+        key: "variant",
+        label: "Colour",
+        input: true,
+        weight: 3,
+        dataSrc: "values",
+        data: {
+          values: [
+            { label: "Light blue", value: "lightBlue" },
+            { label: "Light grey", value: "lightGrey" },
+            { label: "Light gold", value: "lightGold" },
+            { label: "Blue", value: "Blue" },
+            { label: "Grey", value: "Grey" },
+            { label: "Black", value: "Black" },
+          ],
+        },
+      },
+    ],
+  },
+];
+
+// The inline alert draws alertTitle in bold beside its icon rather than
+// Form.io's fieldset legend, so the dialog offers the title and the kind of
+// alert, and drops the legend. Its contents are added by dragging components
+// into it.
+const inlineAlertSettings = [
+  lockedKey,
+  {
+    key: "display",
+    components: [
+      { key: "legend", ignore: true },
+      {
+        type: "textfield",
+        key: "alertTitle",
+        label: "Alert title",
+        description: "Optional. Shown in bold beside the icon.",
+        input: true,
+        weight: 1,
+      },
+      {
+        type: "select",
+        key: "variant",
+        label: "Kind",
+        input: true,
+        weight: 2,
+        dataSrc: "values",
+        data: {
+          values: [
+            { label: "Information", value: "info" },
+            { label: "Success", value: "success" },
+            { label: "Warning", value: "warning" },
+            { label: "Danger", value: "danger" },
+          ],
+        },
+      },
+    ],
+  },
+];
+
+// A checkbox can sit under a question of its own ("Acknowledgement"), drawn
+// above it as a label; its Label stays the text beside the box.
+const checkboxQuestionSettings = {
+  key: "display",
+  components: [
+    {
+      type: "textfield",
+      key: "properties.myssGroupLabel",
+      label: "Question above the checkbox",
+      description:
+        'Optional. Shown as a label above the checkbox, with "(required)" when the checkbox is required.',
+      input: true,
+      weight: 1,
+    },
+  ],
+};
+
 const editForm: Record<string, unknown> = {
   ...Object.fromEntries(
     CHOICE_TYPES.map((type) => [
@@ -177,6 +299,14 @@ const editForm: Record<string, unknown> = {
   ),
   ...Object.fromEntries(CONTENT_TYPES.map((type) => [type, [lockedKey]])),
   bcgovAccordion: accordionSettings,
+  checkbox: [
+    lockedKey,
+    lockedMultiple,
+    choiceValidationSettings,
+    checkboxQuestionSettings,
+  ],
+  bcgovCallout: calloutSettings,
+  bcgovInlineAlert: inlineAlertSettings,
 };
 
 /**

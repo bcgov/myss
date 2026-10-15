@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { eligibilityRateAugust2023 } from "../../../MyssContent/src/lib/eligibility-rate-seed-data";
+import { eligibilityRateOctober2026 } from "../../../MyssContent/src/lib/eligibility-rate-seed-data";
 import {
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   seededForms,
@@ -36,7 +36,7 @@ export function latestSeededEstimatorSpec() {
 }
 
 /** The rate table as GET /rates serves it. */
-export const seededRates = eligibilityRateAugust2023;
+export const seededRates = eligibilityRateOctober2026;
 
 export function isLiveApi(): boolean {
   return Boolean(process.env.MYSS_E2E_LIVE_API);

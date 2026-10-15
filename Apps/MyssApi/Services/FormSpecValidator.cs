@@ -61,10 +61,14 @@ namespace Myss.Api.Services
             "button", "content", "htmlelement", "panel", "columns",
             "fieldset", "well", "table", "tabs",
 
-            // Custom BC Gov display component, rendered client-side by a
-            // registered Form.io component. Carries no citizen answer, so treat it
-            // like the other non-data content components.
+            // Custom BC Gov display components, rendered client-side by a
+            // registered Form.io component. They carry no citizen answer, so treat
+            // them like the other non-data content components. A callout and an
+            // inline alert are containers: the fields inside them are still
+            // collected, because the walk recurses into every component's children.
             "bcgovAccordion",
+            "bcgovCallout",
+            "bcgovInlineAlert",
         ];
 
         /// <summary>
@@ -120,7 +124,11 @@ namespace Myss.Api.Services
                 {
                     if (component.Required && visible)
                     {
-                        errors.Add(RuleError(component, "required", ValidationKeywords.FieldRequired, "This answer is required."));
+                        errors.Add(RuleError(
+                            component,
+                            "required",
+                            ValidationKeywords.FieldRequired,
+                            component.Validator == "phone" ? "Phone number is invalid" : "This answer is required."));
                     }
 
                     // An empty confirmation of a filled partner is a mismatch, not

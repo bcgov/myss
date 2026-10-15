@@ -5,7 +5,9 @@ import { expect, type Locator, type Page } from "@playwright/test";
 export const Question = {
   residesInBc: "Do you currently reside in British Columbia?",
   hasEligibleStatus: "Do you have a status that allows you to live in Canada?",
+  age65: "Are you 65 years of age or older?",
   relationshipStatus: "What is your relationship status?",
+  partnerAge65: "Is your spouse 65 years of age or older?",
   dependentChildren:
     "How many dependent children under the age of 19 live with you?",
   pwd: "Do you plan to apply for the Persons with Disabilities (PWD) designation?",

@@ -1,0 +1,17 @@
+/* The inline Change PIN section: the same column as Contact Information's. */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+    max-width: 24rem;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-medium);
+}
+
+.confirmation {
+    display: block;
+}

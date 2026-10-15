@@ -7,6 +7,8 @@
 import type { ReactNode } from "react";
 import { TextArea, TextField } from "@bcgov/design-system-react-components";
 
+import PhoneInput from "@/components/PhoneInput";
+
 import {
   stockComponent,
   textOf,
@@ -15,7 +17,7 @@ import {
 } from "./bcgovField";
 import { applyInputMask, isNumericMask } from "./inputMask";
 
-type TextVariant = "text" | "email" | "textarea";
+type TextVariant = "text" | "email" | "tel" | "textarea";
 
 /**
  * Mixes a design system text input into a stock Form.io text class. The
@@ -36,12 +38,21 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
       // form put there ("dd", "(999) 999-9999") is shown as the description
       // when the field has none of its own.
       props.description ??= textOf(component.placeholder) || undefined;
-      const mask = textOf(component.inputMask) || undefined;
+      const isPhone = (component.properties as Record<string, unknown> | undefined)
+        ?.myssValidator === "phone";
+      const mask = isPhone ? undefined : textOf(component.inputMask) || undefined;
       const value = textOf(this.dataValue);
       const autoComplete = textOf(component.autocomplete) || undefined;
       const onChange = (next: string) => {
         this.bcgovCommit(applyInputMask(next, mask));
       };
+      const onBlur =
+        isPhone && component.validateOn === "blur"
+          ? () => {
+              this.bcgovErrorsUnlocked = true;
+              void this.checkComponentValidity(this.rootValue, true);
+            }
+          : undefined;
 
       // The design system fields take no placeholder: a format hint belongs
       // in the description, where it stays visible once the field is filled.
@@ -56,14 +67,27 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
         );
       }
 
+      if (isPhone) {
+        return (
+          <PhoneInput
+            {...props}
+            value={value}
+            autoComplete={autoComplete || undefined}
+            onChange={onChange}
+            onBlur={onBlur}
+          />
+        );
+      }
+
       return (
         <TextField
           {...props}
-          type={variant === "email" ? "email" : "text"}
+          type={variant === "text" ? "text" : variant}
           inputMode={isNumericMask(mask) ? "numeric" : undefined}
           value={value}
           autoComplete={autoComplete}
           onChange={onChange}
+          onBlur={onBlur}
         />
       );
     }
@@ -80,6 +104,15 @@ export const BcgovTextFieldComponent = withBcgovTextInput(
 export const BcgovEmailComponent = withBcgovTextInput(
   stockComponent("email"),
   "email",
+);
+
+/**
+ * Form.io's `phoneNumber`: the TextField with a telephone input (a phone keypad
+ * on mobile) and the type's own "(999) 999-9999" mask.
+ */
+export const BcgovPhoneNumberComponent = withBcgovTextInput(
+  stockComponent("phoneNumber"),
+  "tel",
 );
 
 /** Form.io's `textarea`, drawn with the design system TextArea. */

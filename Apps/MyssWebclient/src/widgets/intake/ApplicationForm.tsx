@@ -16,30 +16,35 @@ import "@/widgets/FormSpecWidget.css";
 import styles from "./ApplicationForm.module.css";
 
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
+import StatusPill from "@/components/StatusPill";
 import SubmissionErrors from "@/components/SubmissionErrors";
 import { useClientValidation } from "@/hooks/useClientValidation";
 import ReadOnlySpecForm from "@/widgets/ReadOnlySpecForm";
 import {
   ApplicationRequestError,
   INTAKE_KEYWORDS,
+  isEditableStatus,
   useApplication,
   useSaveAnswers,
   useSubmitApplication,
   type ApplicationPayload,
 } from "@/hooks/useIntake";
 
-// One Income Assistance application. While it is a draft the Form.io spec
-// renders editable with a Save button OUTSIDE the renderer (the spec's own
-// button is Submit, and pressing it runs Form.io's client validation, which
-// would block a partial save). Once submitted the same spec renders read-only
-// under an acknowledgement heading, from the answers the event log holds.
+// One Income Assistance application. While it is a draft, or once a worker
+// has returned it for more information, the Form.io spec renders editable
+// with a Save button OUTSIDE the renderer (the spec's own button is Submit,
+// and pressing it runs Form.io's client validation, which would block a
+// partial save). Otherwise the same spec renders read-only under its status,
+// from the answers the event log holds.
 //
 // Design: docs/development_design/income-assistance-application.md.
 
 const MESSAGE_CONFLICT =
   "Another tab saved a newer version of this application, so the answers here were not saved. The latest version has been loaded; check your answers and save again to keep these.";
 const MESSAGE_NOT_EDITABLE =
-  "This application has already been submitted and can no longer be changed.";
+  "This application has been submitted and cannot be changed while it is being reviewed.";
+const MESSAGE_RETURNED =
+  "We need more information to review this application. Update your answers, then submit the application again.";
 
 interface FormSubmission {
   data: Record<string, unknown>;
@@ -70,7 +75,10 @@ function useFocusOnMount(enabled: boolean) {
   return headingRef;
 }
 
-/** A submitted application: the acknowledgement plus the read-only form. */
+/**
+ * An application the applicant cannot change: just after a submit, the
+ * acknowledgement; on a later visit, its status. The read-only form follows.
+ */
 function SubmittedView({
   application,
   spec,
@@ -84,22 +92,47 @@ function SubmittedView({
   const submittedAt = application.submittedAt
     ? new Date(application.submittedAt).toLocaleString()
     : undefined;
+  const waiting =
+    application.status === "SUBMITTED" || application.status === "RESUBMITTED";
+  const heading =
+    application.status === "RESUBMITTED"
+      ? "Application resubmitted"
+      : waiting
+        ? "Application submitted"
+        : "Application status";
 
   return (
     <>
-      <section className={styles.outcome} aria-live="polite">
+      <section
+        className={waiting ? styles.outcome : styles.status}
+        aria-live="polite"
+      >
         <h2 ref={headingRef} tabIndex={-1} className={styles.heading}>
-          Application submitted
+          {heading}
         </h2>
-        <p>
-          Your Income Assistance application has been received
-          {submittedAt ? ` on ${submittedAt}` : ""}. It can no longer be
-          changed. Keep the request number below for your records.
-        </p>
+        {waiting ? (
+          <p>
+            Your Income Assistance application has been received
+            {submittedAt ? `. It was first submitted on ${submittedAt}` : ""}.
+            It cannot be changed while it is being reviewed; if we need more
+            information, it will be returned to you to update. Keep the request
+            number below for your records.
+          </p>
+        ) : (
+          <p>
+            Your Income Assistance application
+            {submittedAt ? `, submitted on ${submittedAt},` : ""} cannot be
+            changed. Its status is shown below.
+          </p>
+        )}
         <dl className={styles.details}>
           <dt>Request number</dt>
           <dd>
             <code>{application.referenceNumber}</code>
+          </dd>
+          <dt>Status</dt>
+          <dd>
+            <StatusPill status={application.status} />
           </dd>
         </dl>
       </section>
@@ -108,7 +141,10 @@ function SubmittedView({
   );
 }
 
-/** A draft: the editable form, Save outside the renderer, Submit inside it. */
+/**
+ * A draft or a returned application: the editable form, Save outside the
+ * renderer, Submit inside it.
+ */
 function DraftForm({
   application,
   spec,
@@ -264,6 +300,9 @@ function DraftForm({
 
   return (
     <section className={styles.formHost} onInputCapture={handleInputCapture}>
+      {application.status === "RETURNED" && (
+        <p className={styles.notice}>{MESSAGE_RETURNED}</p>
+      )}
       {conflict && (
         <p role="alert" className={styles.notice}>
           {notEditable ? MESSAGE_NOT_EDITABLE : MESSAGE_CONFLICT}
@@ -310,9 +349,10 @@ function DraftForm({
 }
 
 /**
- * Renders one application by id: editable while it is a draft, read-only
- * with an acknowledgement once submitted. The spec comes with the application
- * (the archived version it was started on), so no separate spec fetch.
+ * Renders one application by id: editable while it is a draft or returned
+ * for more information, read-only otherwise, with an acknowledgement right
+ * after a submit. The spec comes with the application (the archived version
+ * it was started on), so no separate spec fetch.
  */
 export default function ApplicationForm({
   applicationId,
@@ -345,7 +385,7 @@ export default function ApplicationForm({
     );
   }
 
-  if (application.status === "SUBMITTED") {
+  if (!isEditableStatus(application.status)) {
     return (
       <SubmittedView
         application={application}
@@ -357,7 +397,8 @@ export default function ApplicationForm({
 
   return (
     <DraftForm
-      key={application.id}
+      // A return remounts the form, so it starts from the answers as loaded.
+      key={`${application.id}:${application.status}`}
       application={application}
       spec={application.spec.spec}
       onSubmitted={handleSubmitted}

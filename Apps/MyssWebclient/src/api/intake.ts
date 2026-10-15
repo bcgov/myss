@@ -20,15 +20,24 @@ import {
 
 /**
  * The application's state, folded server-side from its event stream. The
- * applicant only ever edits a DRAFT; everything after SUBMITTED is what the
- * review workflow did to the file, shown read-only.
+ * applicant edits a DRAFT, and a RETURNED application once a worker asks for
+ * more information; every other status is shown to them read-only.
  */
 export type ApplicationStatus =
   | "DRAFT"
   | "SUBMITTED"
   | "UNDER_REVIEW"
+  | "RETURNED"
+  | "RESUBMITTED"
+  | "ESCALATED"
   | "ACCEPTED"
-  | "DENIED";
+  | "DENIED"
+  | "PROMOTION_FAILED";
+
+/** Whether the applicant may change the answers: a draft, or a returned application. */
+export function isEditableStatus(status: ApplicationStatus): boolean {
+  return status === "DRAFT" || status === "RETURNED";
+}
 
 /** Mirrors the intake ApplicationModel in MyssApi (Myss.Api.Intake). */
 export interface ApplicationPayload {
@@ -72,7 +81,7 @@ export interface AnswersInput {
 export const INTAKE_KEYWORDS = {
   /** The row version sent is stale: another tab saved first (409). */
   conflict: "INTAKE.APPLICATION.CONFLICT",
-  /** The application is no longer a draft (409). */
+  /** The application is neither a draft nor returned for more information (409). */
   notEditable: "INTAKE.APPLICATION.NOT_EDITABLE",
   /** The caller has no registered MySS profile (403). */
   profileRequired: "INTAKE.APPLICATION.PROFILE_REQUIRED",
@@ -185,7 +194,7 @@ export async function getApplication(id: string): Promise<ApplicationPayload> {
 }
 
 /**
- * Saves the draft's working copy. The server ignores required-field errors on
+ * Saves the working copy of a draft or a returned application. The server ignores required-field errors on
  * a save (a partial draft is the point), so a 422 here means an unknown key
  * or a wrong type, not an empty field.
  */
@@ -203,9 +212,10 @@ export async function saveAnswers(
 }
 
 /**
- * Submits the application. The server re-validates every answer against the
- * pinned spec (422 with every reason), checks the row version (409), and
- * appends the Submitted event; the returned application is read-only.
+ * Submits the application, or resubmits a returned one. The server
+ * re-validates every answer against the pinned spec (422 with every reason),
+ * checks the row version (409), and appends the Submitted (or Resubmitted)
+ * event; the returned application is read-only.
  */
 export async function submitApplication(
   id: string,

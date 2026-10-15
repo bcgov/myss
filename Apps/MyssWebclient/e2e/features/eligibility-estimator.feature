@@ -5,7 +5,7 @@ Feature: Pre-eligibility estimator
   the browser from the published rate table and nothing is stored.
 
   Background:
-    Given the estimator serves the seeded form and the August 2023 rates
+    Given the estimator serves the seeded form and the seeded rates
     And I open the eligibility estimator
 
   Scenario: Only the residency question is asked at first
@@ -27,6 +27,7 @@ Feature: Pre-eligibility estimator
   @BR-D9-03 @BR-D9-04 @BR-D9-08
   Scenario Outline: A single applicant sees their monthly estimate
     Given I live in BC with an eligible status
+    And I am under 65
     And I am "<relationship>" with <dependants> dependent children
     And I <pwd> to apply for the PWD designation
     And my monthly income is $<income>
@@ -44,7 +45,9 @@ Feature: Pre-eligibility estimator
   @BR-D9-04 @BR-D9-08
   Scenario Outline: A couple's estimate counts both incomes and both PWD answers
     Given I live in BC with an eligible status
+    And I am under 65
     And I am "<relationship>" with 0 dependent children
+    And my spouse is under 65
     And I <pwd> to apply for the PWD designation
     And my spouse <spousePwd> to apply for the PWD designation
     And my monthly income is $400
@@ -63,6 +66,7 @@ Feature: Pre-eligibility estimator
   @BR-D9-08
   Scenario: Income at or above the limit gives a $0 estimate
     Given I live in BC with an eligible status
+    And I am under 65
     And I am "Single and Never Married" with 0 dependent children
     And I do not plan to apply for the PWD designation
     And my monthly income is $1200
@@ -73,6 +77,7 @@ Feature: Pre-eligibility estimator
   @BR-D9-06 @BR-D9-07
   Scenario: Assets over the ceiling disqualify regardless of income
     Given I live in BC with an eligible status
+    And I am under 65
     And I am "Single and Never Married" with 0 dependent children
     And I do not plan to apply for the PWD designation
     And my other assets are worth $6000
@@ -83,6 +88,7 @@ Feature: Pre-eligibility estimator
   @BR-D9-06
   Scenario: A dependant raises the asset ceiling
     Given I live in BC with an eligible status
+    And I am under 65
     And I am "Single and Never Married" with 1 dependent children
     And I do not plan to apply for the PWD designation
     And my other assets are worth $6000

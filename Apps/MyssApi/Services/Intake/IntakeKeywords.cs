@@ -12,10 +12,13 @@ namespace Myss.Api.Intake
         /// <summary>The caller's row version is behind the stored one: another tab saved first.</summary>
         public const string Conflict = "INTAKE.APPLICATION.CONFLICT";
 
-        /// <summary>The application is not in a state that allows the change.</summary>
+        /// <summary>The application is not in a state that allows the change: it is not a draft and has not been returned.</summary>
         public const string NotEditable = "INTAKE.APPLICATION.NOT_EDITABLE";
 
         /// <summary>The worker action is not available in the application's current state.</summary>
         public const string ReviewNotAllowed = "INTAKE.REVIEW.NOT_ALLOWED";
+
+        /// <summary>The application is Under Review by another worker; only they can act on it.</summary>
+        public const string AssignedToAnother = "INTAKE.REVIEW.ASSIGNED_TO_ANOTHER";
     }
 }

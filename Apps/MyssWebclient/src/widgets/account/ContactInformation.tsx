@@ -7,6 +7,7 @@ import {
 } from "@bcgov/design-system-react-components";
 import { useEffect, useRef, useState } from "react";
 
+import PhoneInput from "@/components/PhoneInput";
 import {
   AccountRequestError,
   useUpdatePhones,
@@ -20,7 +21,9 @@ import {
   phoneTypeLabel,
   type PhoneType,
 } from "@/lib/phone";
+import { catalogueMessage } from "@/lib/errorCatalogue";
 import styles from "./ContactInformation.module.css";
+import FieldErrorSummary from "./FieldErrorSummary";
 
 // Contact Information on Account Info (MYSS-271). Read-only until the citizen
 // chooses Edit; then the phone numbers can be changed, added and removed.
@@ -45,7 +48,8 @@ function validate(rows: readonly PhoneRow[]): FieldErrors {
   const seen = new Set<PhoneType>();
   rows.forEach((row, i) => {
     if (phoneDigits(row.number) === null) {
-      errors[`phones[${i}].number`] = PHONE_FORMAT_MESSAGE;
+      errors[`phones[${i}].number`] =
+        catalogueMessage("IDA.PHONE.INVALID_FORMAT") ?? PHONE_FORMAT_MESSAGE;
     }
     if (row.type === null) {
       errors[`phones[${i}].type`] =
@@ -73,6 +77,17 @@ export default function ContactInformation({
   const summaryRef = useRef<HTMLHeadingElement>(null);
   // BCDS Button does not forward a ref, so focus goes through its wrapper.
   const editActionRef = useRef<HTMLDivElement>(null);
+  // Set when the form closes, so the effect below can put focus back on the
+  // edit button. An effect runs after React has put the button back on the
+  // page; an animation frame can run first under load and leave focus on the
+  // body.
+  const returnFocus = useRef(false);
+
+  useEffect(() => {
+    if (isEditing || !returnFocus.current) return;
+    returnFocus.current = false;
+    editActionRef.current?.querySelector("button")?.focus();
+  }, [isEditing]);
 
   // After a refused save, move focus to the error summary, so a screen-reader
   // user hears that the save failed and can go from there to each field.
@@ -105,11 +120,9 @@ export default function ContactInformation({
   }
 
   function stopEditing() {
-    setIsEditing(false);
     // The edit button is back in place of the form; keep focus on it.
-    requestAnimationFrame(() =>
-      editActionRef.current?.querySelector("button")?.focus(),
-    );
+    returnFocus.current = true;
+    setIsEditing(false);
   }
 
   function updateRow(key: number, change: Partial<PhoneRow>) {
@@ -153,7 +166,9 @@ export default function ContactInformation({
               Object.fromEntries(
                 error.errors.map((fieldError) => [
                   fieldError.field,
-                  fieldError.message,
+                  fieldError.keyword === "IDA.PHONE.INVALID_FORMAT"
+                    ? catalogueMessage(fieldError.keyword) ?? fieldError.message
+                    : fieldError.message,
                 ]),
               ),
             );
@@ -194,8 +209,9 @@ export default function ContactInformation({
           aria-label="Edit phone numbers"
         >
           {Object.keys(errors).length > 0 && (
-            <ErrorSummary
+            <FieldErrorSummary
               errors={errors}
+              fieldName={fieldName}
               headingRef={summaryRef}
               onSelect={focusField}
             />
@@ -213,10 +229,8 @@ export default function ContactInformation({
                   className={styles.number}
                   data-field={`phones[${i}].number`}
                 >
-                  <TextField
+                  <PhoneInput
                     label="Phone Number"
-                    type="tel"
-                    autoComplete="tel-national"
                     value={row.number}
                     onChange={(number) => updateRow(row.key, { number })}
                     isInvalid={Boolean(errors[`phones[${i}].number`])}
@@ -308,43 +322,6 @@ function fieldName(field: string): string {
     : `Phone number ${Number(index) + 1}`;
 }
 
-/**
- * Every reason the save was refused, at the top of the form, each one a button
- * that moves focus to its field (Docs/accessibility.md, error summaries). The
- * same messages also sit on the fields themselves. Buttons, not links: they
- * move focus within the page rather than navigate.
- */
-function ErrorSummary({
-  errors,
-  headingRef,
-  onSelect,
-}: Readonly<{
-  errors: FieldErrors;
-  headingRef: React.RefObject<HTMLHeadingElement | null>;
-  onSelect: (field: string) => void;
-}>) {
-  return (
-    <div className={styles.summary} role="alert">
-      <h3 ref={headingRef} tabIndex={-1} className={styles.summaryHeading}>
-        There is a problem
-      </h3>
-      <ul className={styles.summaryList}>
-        {Object.entries(errors).map(([field, message]) => (
-          <li key={field}>
-            <button
-              type="button"
-              className={styles.summaryLink}
-              onClick={() => onSelect(field)}
-            >
-              {fieldName(field)}: {message}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function PhoneList({ account }: Readonly<{ account: AccountPayload }>) {
   if (account.phones.length === 0) {
     return <p>No phone numbers added.</p>;
@@ -357,7 +334,7 @@ function PhoneList({ account }: Readonly<{ account: AccountPayload }>) {
       className={styles.phoneRow}
     >
       <div className={styles.number}>
-        <TextField
+        <PhoneInput
           label="Phone Number"
           value={formatPhone(phone.number)}
           isReadOnly

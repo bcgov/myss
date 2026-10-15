@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  ClientType,
   EligibilityRates,
   EligibilityRequest,
   HouseholdType,
@@ -14,20 +15,18 @@ import {
   INELIGIBLE_INCOME,
 } from "@/lib/eligibilityCalculator";
 
-// The MYSS-25 August-2023 rate table, matching the parked C# FddRateData.August2023
-// and the Strapi seed (document/MYSS-25-vs-169-EE-Values-Diff.md). These vectors
-// are ported verbatim from Apps/MyssApi.Tests/EligibilityCalculatorTests.cs and
-// MUST match it exactly.
+// The nine-type rate table, matching the Strapi seed (eligibility-rate-seed-data.ts)
+// and MyssApi's compiled fallback (FddRateData).
 const RATES: EligibilityRates = {
-  effectiveDate: "2023-08-01",
+  effectiveDate: "2026-10-02",
   incomeRows: [
-    { familySize: 1, a: 0, b: 1060, c: 0, d: 1535.5, e: 0 },
-    { familySize: 2, a: 1650, b: 1405, c: 2290.5, d: 1880.5, e: 2766 },
-    { familySize: 3, a: 1845, b: 1500, c: 2485.5, d: 1975.5, e: 2961 },
-    { familySize: 4, a: 1895, b: 1550, c: 2535.5, d: 2025.5, e: 3011 },
-    { familySize: 5, a: 1945, b: 1600, c: 2585.5, d: 2075.5, e: 3061 },
-    { familySize: 6, a: 1995, b: 1650, c: 2635.5, d: 2125.5, e: 3111 },
-    { familySize: 7, a: 2045, b: 1700, c: 2685.5, d: 2175.5, e: 3161 },
+    { familySize: 1, a: 0, b: 1060, c: 0, d: 0, e: 1360, f: 0, g: 1535.5, h: 0, i: 0 },
+    { familySize: 2, a: 1650, b: 1405, c: 2200, d: 1950, e: 1705, f: 2290.5, g: 1880.5, h: 2766, i: 2590.5 },
+    { familySize: 3, a: 1845, b: 1500, c: 2395, d: 2145, e: 1800, f: 2485.5, g: 1975.5, h: 2961, i: 2785.5 },
+    { familySize: 4, a: 1895, b: 1550, c: 2445, d: 2195, e: 1850, f: 2535.5, g: 2025.5, h: 3011, i: 2835.5 },
+    { familySize: 5, a: 1945, b: 1600, c: 2495, d: 2245, e: 1900, f: 2585.5, g: 2075.5, h: 3061, i: 2885.5 },
+    { familySize: 6, a: 1995, b: 1650, c: 2545, d: 2295, e: 1950, f: 2635.5, g: 2125.5, h: 3111, i: 2935.5 },
+    { familySize: 7, a: 2045, b: 1700, c: 2595, d: 2345, e: 2000, f: 2685.5, g: 2175.5, h: 3161, i: 2985.5 },
   ],
   assetLimits: { a: 5000, b: 10000, c: 100000, d: 200000 },
 };
@@ -40,6 +39,8 @@ function request(
     dependants: 0,
     applicantPwd: false,
     spousePwd: false,
+    applicantSenior: false,
+    spouseSenior: false,
     monthlyIncome: 0,
     spouseMonthlyIncome: 0,
     primaryVehicleValue: 0,
@@ -49,28 +50,90 @@ function request(
   };
 }
 
-describe("classifyClientType (BR-D9-04, MYSS-25)", () => {
-  const cases: Array<[HouseholdType, number, boolean, boolean, string]> = [
-    ["Couple", 0, true, true, "E"], // both PWD
-    ["Couple", 0, true, false, "C"], // applicant PWD only
-    ["Couple", 0, false, true, "C"], // spouse PWD only
-    ["Couple", 0, false, false, "A"], // neither
-    ["Couple", 2, false, false, "A"], // couple, neither PWD => A (deps irrelevant)
-    ["Single", 1, false, false, "B"], // single, not PWD => B (deps irrelevant)
-    ["Single", 1, true, false, "D"], // single, PWD => D (deps irrelevant)
-    ["Single", 0, true, false, "D"], // single, PWD => D
-    ["Single", 0, false, false, "B"], // single, not PWD => B
-  ];
+/** An adult's answers to the PWD and 65+ questions. */
+type Adult = "neither" | "65+" | "PWD" | "PWD and 65+";
 
-  it.each(cases)(
-    "%s deps=%i applicantPwd=%s spousePwd=%s -> %s",
-    (relationshipStatus, dependants, applicantPwd, spousePwd, expected) => {
-      const result = classifyClientType(
-        request({ relationshipStatus, dependants, applicantPwd, spousePwd }),
-      );
-      expect(result).toBe(expected);
-    },
-  );
+const ANSWERS: Record<Adult, { pwd: boolean; senior: boolean }> = {
+  neither: { pwd: false, senior: false },
+  "65+": { pwd: false, senior: true },
+  PWD: { pwd: true, senior: false },
+  "PWD and 65+": { pwd: true, senior: true },
+};
+
+function applicant(adult: Adult): Partial<EligibilityRequest> {
+  return { applicantPwd: ANSWERS[adult].pwd, applicantSenior: ANSWERS[adult].senior };
+}
+
+function spouse(adult: Adult): Partial<EligibilityRequest> {
+  return { spousePwd: ANSWERS[adult].pwd, spouseSenior: ANSWERS[adult].senior };
+}
+
+function couple(kp: Adult, partner: Adult, dependants = 0): EligibilityRequest {
+  return request({
+    relationshipStatus: "Couple",
+    dependants,
+    ...applicant(kp),
+    ...spouse(partner),
+  });
+}
+
+describe("classifyClientType (BR-D9-04)", () => {
+  it.each<[Adult, ClientType]>([
+    ["neither", "B"],
+    ["65+", "E"],
+    ["PWD", "G"],
+    ["PWD and 65+", "G"], // PWD takes priority over 65+
+  ])("single, %s -> %s", (adult, expected) => {
+    expect(classifyClientType(request(applicant(adult)))).toBe(expected);
+  });
+
+  it.each<[Adult, Adult, ClientType]>([
+    ["neither", "neither", "A"],
+    ["neither", "65+", "D"],
+    ["65+", "65+", "C"],
+    ["neither", "PWD", "F"],
+    ["65+", "PWD", "I"],
+    ["PWD", "PWD", "H"],
+    // PWD takes priority over 65+ for each adult.
+    ["PWD and 65+", "neither", "F"],
+    ["PWD and 65+", "65+", "I"],
+    ["PWD and 65+", "PWD", "H"],
+    ["PWD and 65+", "PWD and 65+", "H"],
+  ])("couple, %s and %s -> %s (either way round)", (kp, partner, expected) => {
+    expect(classifyClientType(couple(kp, partner))).toBe(expected);
+    expect(classifyClientType(couple(partner, kp))).toBe(expected);
+  });
+
+  it("ignores dependants", () => {
+    expect(classifyClientType(couple("neither", "neither", 2))).toBe("A");
+    expect(classifyClientType(request({ dependants: 1 }))).toBe("B");
+    expect(classifyClientType(request({ dependants: 1, ...applicant("65+") }))).toBe("E");
+    expect(classifyClientType(request({ dependants: 1, ...applicant("PWD") }))).toBe("G");
+  });
+
+  it("ignores spouse answers for a single", () => {
+    expect(classifyClientType(request(spouse("PWD and 65+")))).toBe("B");
+  });
+});
+
+describe("estimate for each client type at zero income", () => {
+  it.each<[string, EligibilityRequest, ClientType, number]>([
+    ["couple, neither", couple("neither", "neither"), "A", 1650],
+    ["single, one child", request({ dependants: 1 }), "B", 1405],
+    ["couple, both 65+", couple("65+", "65+"), "C", 2200],
+    ["couple, one 65+", couple("65+", "neither"), "D", 1950],
+    ["single 65+, one child", request({ dependants: 1, ...applicant("65+") }), "E", 1705],
+    ["couple, one PWD", couple("PWD", "neither"), "F", 2290.5],
+    ["single PWD, one child", request({ dependants: 1, ...applicant("PWD") }), "G", 1880.5],
+    ["couple, both PWD", couple("PWD", "PWD"), "H", 2766],
+    ["couple, one PWD and one 65+", couple("PWD", "65+"), "I", 2590.5],
+    ["single 65+, no children", request(applicant("65+")), "E", 1360],
+  ])("%s -> type %s, $%s", (_, household, clientType, amount) => {
+    const result = calculateEstimate(household, RATES);
+    expect(result.eligible).toBe(true);
+    expect(result.clientType).toBe(clientType);
+    expect(result.estimatedAmount).toBe(amount);
+  });
 });
 
 describe("assetLimitCategory + asset gate (BR-D9-06 / BR-D9-07)", () => {
@@ -163,7 +226,7 @@ describe("benefit = income limit - total income (BR-D9-08)", () => {
   });
 
   it("keeps two-decimal precision (integer cents, not JS floats)", () => {
-    // Single PWD => type D, size 1 => 1535.50; minus 100.55 => 1434.95.
+    // Single PWD => type G, size 1 => 1535.50; minus 100.55 => 1434.95.
     const result = calculateEstimate(
       request({ applicantPwd: true, monthlyIncome: 100.55 }),
       RATES,
@@ -198,7 +261,7 @@ describe("family size cap (BR-D9-03 / OQ-D9-02)", () => {
   });
 });
 
-describe("MYSS-25 sanity vectors (must match parked dotnet test exactly)", () => {
+describe("sanity vectors", () => {
   it("single / no kids / no PWD => type B, $1060.00", () => {
     const result = calculateEstimate(request(), RATES);
     expect(result.eligible).toBe(true);
@@ -207,11 +270,11 @@ describe("MYSS-25 sanity vectors (must match parked dotnet test exactly)", () =>
     expect(result.ineligibilityReasonKeyword).toBeNull();
   });
 
-  it("single / PWD => type D, $1535.50", () => {
+  it("single / PWD => type G, $1535.50", () => {
     const result = calculateEstimate(request({ applicantPwd: true }), RATES);
     expect(result.eligible).toBe(true);
     expect(result.estimatedAmount).toBe(1535.5);
-    expect(result.clientType).toBe("D");
+    expect(result.clientType).toBe("G");
   });
 
   it("single / assets $6,000 => ineligible ASSETS, type B", () => {
@@ -229,7 +292,7 @@ describe("MYSS-25 sanity vectors (must match parked dotnet test exactly)", () =>
     expect(result.estimatedAmount).toBe(0);
   });
 
-  it("couple / both PWD / one child => type E, family size 3, $2961.00", () => {
+  it("couple / both PWD / one child => type H, family size 3, $2961.00", () => {
     const result = calculateEstimate(
       request({
         relationshipStatus: "Couple",
@@ -240,9 +303,39 @@ describe("MYSS-25 sanity vectors (must match parked dotnet test exactly)", () =>
       RATES,
     );
     expect(result.eligible).toBe(true);
-    expect(result.clientType).toBe("E");
+    expect(result.clientType).toBe("H");
     expect(result.familySize).toBe(3);
     expect(result.estimatedAmount).toBe(2961);
+  });
+
+  it("couple / one PWD => type F, $2290.50", () => {
+    const result = calculateEstimate(couple("neither", "PWD"), RATES);
+    expect(result.clientType).toBe("F");
+    expect(result.estimatedAmount).toBe(2290.5);
+  });
+});
+
+describe("missing rate data", () => {
+  it("throws for a client type whose column is missing, rather than estimating", () => {
+    const withoutI = {
+      ...RATES,
+      incomeRows: RATES.incomeRows.map((row) => ({ ...row, i: undefined })),
+    } as unknown as EligibilityRates;
+
+    expect(() => calculateEstimate(couple("PWD", "65+"), withoutI)).toThrow(
+      "No income limit for client type I at family size 2",
+    );
+  });
+
+  it("throws for a family size with no row", () => {
+    const withoutSize2 = {
+      ...RATES,
+      incomeRows: RATES.incomeRows.filter((row) => row.familySize !== 2),
+    };
+
+    expect(() => calculateEstimate(couple("neither", "neither"), withoutSize2)).toThrow(
+      "No income-limit row for family size 2",
+    );
   });
 });
 
@@ -289,5 +382,10 @@ describe("assetLimitCategory (standalone, separate from income type)", () => {
         }),
       ),
     ).toBe("D");
+  });
+
+  it("does not depend on age", () => {
+    expect(assetLimitCategory(request(applicant("65+")))).toBe("A");
+    expect(assetLimitCategory(couple("65+", "65+"))).toBe("B");
   });
 });

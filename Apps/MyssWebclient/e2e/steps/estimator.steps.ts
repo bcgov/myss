@@ -7,7 +7,7 @@ import { stubEstimatorApi } from "../support/estimatorApi";
 // --- Getting there ---------------------------------------------------------
 
 Given(
-  "the estimator serves the seeded form and the August 2023 rates",
+  "the estimator serves the seeded form and the seeded rates",
   async ({ page }) => {
     await stubEstimatorApi(page);
   },
@@ -41,6 +41,20 @@ Given("I live in BC with an eligible status", async ({ estimator }) => {
   await estimator.answer(Question.residesInBc, "Yes");
   await estimator.answer(Question.hasEligibleStatus, "Yes");
 });
+
+Given(/^I am (under 65|65 or older)$/, async ({ estimator }, age: string) => {
+  await estimator.answer(Question.age65, age === "65 or older" ? "Yes" : "No");
+});
+
+Given(
+  /^my spouse is (under 65|65 or older)$/,
+  async ({ estimator }, age: string) => {
+    await estimator.answer(
+      Question.partnerAge65,
+      age === "65 or older" ? "Yes" : "No",
+    );
+  },
+);
 
 Given(
   "I am {string} with {int} dependent children",

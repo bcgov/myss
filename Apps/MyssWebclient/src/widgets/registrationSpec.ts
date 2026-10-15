@@ -1,4 +1,5 @@
 import type { CurrentUser } from "@/auth/currentUser";
+import { formatPhone as displayPhone, phoneDigits } from "@/lib/phone";
 
 // Prepares the Strapi registration spec for rendering: fills fields from the
 // sign-in identity and drops the spec's own submit button, because the widget
@@ -13,6 +14,10 @@ import type { CurrentUser } from "@/auth/currentUser";
 // release leaves an editable field, never a required one the citizen is
 // stuck on. Locking is a UX guard, not a control: the API validates and
 // stores whatever is submitted.
+//
+// Basic BCeID releases one full name, in given_name, and no family_name
+// (MYSS-299). That is split into first and last name here, and the two are
+// left editable even where the spec locks them, because the split is a guess.
 
 export type IdentityDetails = Pick<
   CurrentUser,
@@ -33,12 +38,41 @@ function isRecord(value: unknown): value is Component {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** "+1 (250) 555-0100" → "250-555-0100"; undefined unless ten NANP digits. */
+/** The name fields as the citizen should see them first. */
+interface Names {
+  givenName?: string;
+  familyName?: string;
+  /** True when both came from splitting one full name, so may be wrong. */
+  guessed: boolean;
+}
+
+/**
+ * Splits a full name at its last space, when that is all the identity has:
+ * "Ada King Lovelace" is first name "Ada King", last name "Lovelace". A name
+ * that is one word, or an identity with a family name, is left as it is.
+ */
+export function namesFrom(identity: IdentityDetails): Names {
+  const { givenName, familyName } = identity;
+  const words = givenName?.trim().split(/\s+/) ?? [];
+  if (familyName || words.length < 2) {
+    return { givenName, familyName, guessed: false };
+  }
+  return {
+    givenName: words.slice(0, -1).join(" "),
+    familyName: words.at(-1),
+    guessed: true,
+  };
+}
+
+const NAME_ATTRIBUTES: ReadonlySet<string> = new Set([
+  "givenName",
+  "familyName",
+]);
+
+/** Formats a valid phone claim; an invalid one must stay editable. */
 export function formatPhone(raw: string): string | undefined {
-  let digits = raw.replace(/\D/g, "");
-  if (digits.length === 11 && digits.startsWith("1")) digits = digits.slice(1);
-  if (digits.length !== 10) return undefined;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  const digits = phoneDigits(raw);
+  return digits === null ? undefined : displayPhone(digits);
 }
 
 function optionValues(component: Component): string[] {
@@ -54,12 +88,13 @@ function prefillValue(
   component: Component,
   attribute: string,
   identity: IdentityDetails,
+  names: Names,
 ): string | undefined {
   switch (attribute) {
     case "givenName":
-      return identity.givenName;
+      return names.givenName;
     case "familyName":
-      return identity.familyName;
+      return names.familyName;
     case "email":
       return identity.email;
     case "phoneNumber":
@@ -100,11 +135,16 @@ function prefillValue(
 function prepareComponent(
   component: Component,
   identity: IdentityDetails,
+  names: Names,
 ): Component {
   const prepared: Component = { ...component };
 
   if (Array.isArray(component.components)) {
-    prepared.components = prepareComponents(component.components, identity);
+    prepared.components = prepareComponents(
+      component.components,
+      identity,
+      names,
+    );
   }
 
   const properties = isRecord(component.properties)
@@ -112,10 +152,13 @@ function prepareComponent(
     : undefined;
   const attribute = properties?.myssPrefill;
   if (typeof attribute === "string") {
-    const value = prefillValue(component, attribute, identity);
+    const value = prefillValue(component, attribute, identity, names);
     if (value !== undefined) {
       prepared.defaultValue = value;
-      if (properties?.myssPrefillLock === "true") prepared.disabled = true;
+      const guessed = names.guessed && NAME_ATTRIBUTES.has(attribute);
+      if (properties?.myssPrefillLock === "true" && !guessed) {
+        prepared.disabled = true;
+      }
     }
   }
 
@@ -132,11 +175,14 @@ function isSubmitButton(component: Component): boolean {
 function prepareComponents(
   components: unknown[],
   identity: IdentityDetails,
+  names: Names,
 ): unknown[] {
   return components
     .filter((component) => !(isRecord(component) && isSubmitButton(component)))
     .map((component) =>
-      isRecord(component) ? prepareComponent(component, identity) : component,
+      isRecord(component)
+        ? prepareComponent(component, identity, names)
+        : component,
     );
 }
 
@@ -152,6 +198,10 @@ export function prepareRegistrationSpec<T>(
   if (!isRecord(spec) || !Array.isArray(spec.components)) return spec;
   return {
     ...spec,
-    components: prepareComponents(spec.components, identity),
+    components: prepareComponents(
+      spec.components,
+      identity,
+      namesFrom(identity),
+    ),
   } as T;
 }

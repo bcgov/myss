@@ -17,6 +17,10 @@ const formState = vi.hoisted(() => ({
         error: null as Error | null,
         isPending: false,
         mutate: vi.fn(),
+        // As the real mutation's reset: the last refusal is forgotten.
+        reset: vi.fn(() => {
+            formState.submit.error = null;
+        }),
     },
 }));
 
@@ -80,6 +84,28 @@ const specV4 = {
     ],
 };
 
+const specV5 = {
+    ...specV4,
+    components: [
+        ...specV4.components.slice(0, 3),
+        {
+            type: "textfield",
+            key: "phone",
+            label: "Phone number",
+            input: true,
+            placeholder: "(250) 555-0199",
+            validateOn: "blur",
+            validate: { required: true, customMessage: "Phone number is invalid" },
+            properties: {
+                myssValidator: "phone",
+                myssPrefill: "phoneNumber",
+                myssPrefillLock: "true",
+            },
+        },
+        ...specV4.components.slice(3),
+    ],
+};
+
 const identity: IdentityDetails = {
     givenName: "Jane",
     familyName: "Johnson",
@@ -87,7 +113,10 @@ const identity: IdentityDetails = {
     gender: "female",
 };
 
-function renderForm(overrides: Partial<IdentityDetails> | null = {}) {
+function renderForm(
+    overrides: Partial<IdentityDetails> | null = {},
+    { requirePin = false }: { requirePin?: boolean } = {},
+) {
     const onRegistered = vi.fn();
     const onCancel = vi.fn();
     const queryClient = new QueryClient({
@@ -99,6 +128,7 @@ function renderForm(overrides: Partial<IdentityDetails> | null = {}) {
         <QueryClientProvider client={queryClient}>
             <RegistrationForm
                 identity={details}
+                requirePin={requirePin}
                 onRegistered={onRegistered}
                 onCancel={onCancel}
             />
@@ -113,9 +143,10 @@ function renderForm(overrides: Partial<IdentityDetails> | null = {}) {
 /** A mutation the API refuses with these field errors, as useSubmitForm reports it. */
 function refuseWith(errors: FormValidationError[]) {
     formState.submit.mutate.mockImplementation(
-        (_input: unknown, callbacks?: { onError?: () => void }) => {
-            formState.submit.error = new SubmissionRejectedError(422, errors);
-            callbacks?.onError?.();
+        (_input: unknown, callbacks?: { onError?: (error: Error) => void }) => {
+            const error = new SubmissionRejectedError(422, errors);
+            formState.submit.error = error;
+            callbacks?.onError?.(error);
         },
     );
 }
@@ -135,6 +166,7 @@ describe("RegistrationForm", () => {
         formState.submit.error = null;
         formState.submit.isPending = false;
         formState.submit.mutate.mockReset();
+        formState.submit.reset.mockClear();
     });
 
     it("shows loading while the registration spec is fetched", async () => {
@@ -177,6 +209,74 @@ describe("RegistrationForm", () => {
 
         await expect.element(screen.getByRole("textbox", { name: /First name/ })).toBeEnabled();
         await expect.element(screen.getByRole("radio", { name: "Man/Boy" })).toBeEnabled();
+    });
+
+    it("draws the phone and consent fields like every other field", async () => {
+        formState.spec.data = {
+            version: 4,
+            spec: {
+                display: "form",
+                components: [
+                    { type: "textfield", key: "firstName", label: "First name", input: true },
+                    { type: "phoneNumber", key: "phone", label: "Phone", input: true },
+                    {
+                        type: "checkbox",
+                        key: "consent",
+                        label: "I accept the Terms of Use.",
+                        input: true,
+                        validate: { required: true },
+                    },
+                ],
+            },
+        };
+        const screen = await renderForm().screen;
+
+        // phoneNumber is a design system telephone input now, not Form.io's
+        // own markup with its red star and "numeric only" hint.
+        await expect.element(screen.getByRole("textbox", { name: /Phone/ })).toBeInTheDocument();
+        const phone = document.querySelector<HTMLInputElement>('input[type="tel"]');
+        expect(phone, "the phone field renders as a telephone input").not.toBeNull();
+        expect(phone?.closest(".bcds-react-aria-TextField")).not.toBeNull();
+        expect(document.querySelector(".form-control, .required-star")).toBeNull();
+
+        // The consent checkbox lines up with the text inputs, not indented.
+        const firstName = screen.getByRole("textbox", { name: /First name/ }).element();
+        const checkbox = document.querySelector(".bcds-react-aria-Checkbox");
+        expect(checkbox).not.toBeNull();
+        expect(Math.round(checkbox!.getBoundingClientRect().left)).toBe(
+            Math.round(firstName.closest(".bcds-react-aria-TextField")!.getBoundingClientRect().left),
+        );
+    });
+
+    it("validates a v5 phone on blur without masking an overlong number", async () => {
+        formState.spec.data = { version: 5, spec: specV5 };
+        const screen = await renderForm({ phoneNumber: "+1 250 555 0199" }).screen;
+        const phone = screen.getByRole("textbox", { name: "Phone number" });
+        const email = screen.getByRole("textbox", { name: /Email/ });
+
+        await expect.element(phone).toBeEnabled();
+        await expect.element(phone).toHaveValue("");
+        await phone.fill("25055501999");
+        await expect.element(phone).toHaveValue("25055501999");
+        await email.click();
+        await expect.element(screen.getByText("Phone number is invalid").first()).toBeVisible();
+
+        await phone.fill("(250) 555-0199");
+        await email.click();
+        await expect.element(screen.getByText("Phone number is invalid")).not.toBeInTheDocument();
+
+        await phone.fill("");
+        await email.click();
+        await expect.element(screen.getByText("Phone number is invalid").first()).toBeVisible();
+    });
+
+    it("locks a valid v5 phone supplied by the identity", async () => {
+        formState.spec.data = { version: 5, spec: specV5 };
+        const screen = await renderForm({ phoneNumber: "250 555 0199" }).screen;
+        const phone = screen.getByRole("textbox", { name: "Phone number" });
+
+        await expect.element(phone).toHaveValue("(250) 555-0199");
+        await expect.element(phone).toBeDisabled();
     });
 
     // v3, the version published today, still carries its own Form.io submit
@@ -366,5 +466,159 @@ describe("RegistrationForm", () => {
         // Give Form.io's validation pass time to run and refuse.
         await new Promise((resolve) => setTimeout(resolve, 300));
         expect(formState.submit.mutate).not.toHaveBeenCalled();
+    });
+});
+
+describe("RegistrationForm PIN (MYSS-258)", () => {
+    beforeEach(() => {
+        formState.spec.data = { version: 4, spec: specV4 };
+        formState.spec.error = null;
+        formState.spec.isPending = false;
+        formState.submit.error = null;
+        formState.submit.isPending = false;
+        formState.submit.mutate.mockReset();
+        formState.submit.reset.mockClear();
+    });
+
+    // Masked inputs have no textbox role; their labels end in "(required)".
+    type Screen = Awaited<ReturnType<typeof renderForm>["screen"]>;
+    const pinInput = (screen: Screen) => screen.getByLabelText(/^Type in a PIN/);
+    const confirmInput = (screen: Screen) => screen.getByLabelText(/^Re-type in the PIN/);
+
+    function sentInput() {
+        return formState.submit.mutate.mock.calls[0][0] as {
+            answers: Record<string, unknown>;
+            pin?: string;
+            pinConfirmation?: string;
+        };
+    }
+
+    it("is not asked of a citizen whose sign-in has no PIN", async () => {
+        formState.submit.mutate.mockImplementation(
+            (_input: unknown, callbacks?: { onSuccess?: () => void }) => callbacks?.onSuccess?.(),
+        );
+        const screen = await renderForm().screen;
+
+        expect(
+            screen.getByRole("heading", { name: /Create your Personal Identification Number/ }).query(),
+        ).toBeNull();
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        expect(sentInput()).not.toHaveProperty("pin");
+        expect(sentInput()).not.toHaveProperty("pinConfirmation");
+    });
+
+    it("asks a BCeID citizen for a 4-digit PIN, twice", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        await expect
+            .element(screen.getByRole("heading", { name: "Create your Personal Identification Number (PIN)" }))
+            .toBeVisible();
+        await expect.element(screen.getByText("To protect your identity, create a 4-digit PIN.")).toBeVisible();
+        await expect.element(pinInput(screen)).toHaveAttribute("type", "password");
+        await expect.element(pinInput(screen)).toHaveAttribute("inputmode", "numeric");
+        await expect.element(confirmInput(screen)).toBeVisible();
+    });
+
+    it("sends the PIN beside the answers, never inside them", async () => {
+        formState.submit.mutate.mockImplementation(
+            (_input: unknown, callbacks?: { onSuccess?: () => void }) => callbacks?.onSuccess?.(),
+        );
+        const { screen: pending, onRegistered } = renderForm({}, { requirePin: true });
+        const screen = await pending;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await pinInput(screen).fill("4821");
+        await confirmInput(screen).fill("4821");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        expect(sentInput().pin).toBe("4821");
+        expect(sentInput().pinConfirmation).toBe("4821");
+        expect(JSON.stringify(sentInput().answers)).not.toContain("4821");
+        expect(onRegistered).toHaveBeenCalledOnce();
+    });
+
+    it("does not send a PIN that is not typed twice the same", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await pinInput(screen).fill("4821");
+        await confirmInput(screen).fill("4812");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await expect
+            .element(screen.getByRole("heading", { name: "There is a problem" }))
+            .toBeVisible();
+        // In the summary and under the field.
+        await vi.waitFor(() =>
+            expect(screen.getByText("The two PINs do not match.").elements()).toHaveLength(2),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        expect(formState.submit.mutate).not.toHaveBeenCalled();
+    });
+
+    it("lists the form's problems and the PIN's in one summary", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        // The SIN is required and left empty; the PIN is too short.
+        await pinInput(screen).fill("48");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        const summary = screen.getByRole("alert");
+        await expect.element(summary).toHaveTextContent(/Social Insurance Number/);
+        await expect.element(summary).toHaveTextContent("Enter a 4-digit PIN using numbers only.");
+        expect(formState.submit.mutate).not.toHaveBeenCalled();
+    });
+
+    it("leads from the summary to the PIN field", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await screen
+            .getByRole("alert")
+            .getByRole("button", { name: "Enter a 4-digit PIN using numbers only." })
+            .click();
+        await expect.element(pinInput(screen)).toHaveFocus();
+    });
+
+    it("takes the PIN's error off once it is changed", async () => {
+        const screen = await renderForm({}, { requirePin: true }).screen;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await pinInput(screen).fill("4821");
+        await confirmInput(screen).fill("4812");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+        await expect.element(confirmInput(screen)).toHaveAttribute("aria-invalid", "true");
+
+        await confirmInput(screen).fill("4821");
+
+        await expect.element(confirmInput(screen)).not.toHaveAttribute("aria-invalid");
+    });
+
+    it("puts the API's PIN error on the PIN field and focuses it", async () => {
+        refuseWith([
+            {
+                field: "pinConfirmation",
+                keyword: "IDA.PIN.MISMATCH",
+                message: "The two PINs do not match.",
+            },
+        ]);
+        const { screen: pending, rerender } = renderForm({}, { requirePin: true });
+        const screen = await pending;
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await pinInput(screen).fill("4821");
+        await confirmInput(screen).fill("4821");
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        await rerender();
+
+        await expect.element(confirmInput(screen)).toHaveFocus();
+        await expect.element(confirmInput(screen)).toHaveAttribute("aria-invalid", "true");
     });
 });

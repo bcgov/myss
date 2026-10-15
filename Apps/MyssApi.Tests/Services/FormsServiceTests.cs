@@ -29,6 +29,7 @@ namespace Myss.Api.Tests.Services
         private readonly FakeFormSpecAdminProvider _adminProvider = new();
         private readonly ITemplateProvider _templateProvider = new UnexpectedTemplateProvider();
         private readonly FakeErrorMessageProvider _errorMessages = new();
+        private readonly PinHasher _pinHasher = new();
 
         [Fact]
         public async Task Submit_RefusedAnswers_AreWordedFromTheCatalogue_KeywordByKeyword()
@@ -398,10 +399,194 @@ namespace Myss.Api.Tests.Services
         }
         """;
 
+        private const string RegistrationAnswersV4 =
+            """{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"2505550100","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}""";
+
+        private const string TestBceidGuid = "66666666-6666-6666-6666-666666666666";
+
+        [Fact]
+        public async Task Submit_Registration_ABceidCitizenMustCreateAPin()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db, new StubCurrentUserAccessor("test-subject", TestBceidGuid));
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration", Request(4, RegistrationAnswersV4), CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("pin", error.Field);
+            Assert.Equal(ValidationKeywords.PinInvalidFormat, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Theory]
+        [InlineData("123")]
+        [InlineData("12a4")]
+        [InlineData("12345")]
+        public async Task Submit_Registration_ThePinMustBeFourDigits(string pin)
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db, new StubCurrentUserAccessor("test-subject", TestBceidGuid));
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration", Request(4, RegistrationAnswersV4, pin, pin), CancellationToken.None);
+
+            Assert.Equal(ValidationKeywords.PinInvalidFormat, Assert.Single(result.Errors, e => e.Field == "pin").Keyword);
+        }
+
+        [Fact]
+        public async Task Submit_Registration_ThePinMustBeTypedTwiceTheSame()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db, new StubCurrentUserAccessor("test-subject", TestBceidGuid));
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration", Request(4, RegistrationAnswersV4, "4821", "4812"), CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("pinConfirmation", error.Field);
+            Assert.Equal(ValidationKeywords.PinMismatch, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_Registration_StoresOnlyTheSaltedHashOfThePin()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db, new StubCurrentUserAccessor("test-subject", TestBceidGuid));
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration", Request(4, RegistrationAnswersV4, "4821", "4821"), CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.DoesNotContain("4821", profile.PinHash!, StringComparison.Ordinal);
+            Assert.True(_pinHasher.Verify(profile.PinHash!, Pin.TryCreate("4821").Value!, out _));
+
+            // The answers are stored as submitted, which is why the PIN is not one of them.
+            FormSubmission submission = Assert.Single(await db.FormSubmissions.ToListAsync());
+            Assert.DoesNotContain("4821", submission.Answers.RootElement.GetRawText(), StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task Submit_Registration_ASignInWithoutAPinMayNotSendOne()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration", Request(4, RegistrationAnswersV4, "4821", "4821"), CancellationToken.None);
+
+            Assert.Equal(ValidationKeywords.PinNotAvailable, Assert.Single(result.Errors).Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_Registration_ASignInWithoutAPinRegistersWithoutOne()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration", Request(4, RegistrationAnswersV4), CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Null(Assert.Single(await db.MyssUserProfiles.ToListAsync()).PinHash);
+        }
+
+        [Fact]
+        public async Task Submit_Registration_RegisteringAgainDoesNotReplaceAPinAlreadySet()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db, new StubCurrentUserAccessor("test-subject", TestBceidGuid));
+            await service.SubmitAsync("registration", Request(4, RegistrationAnswersV4, "4821", "4821"), CancellationToken.None);
+
+            FormSubmissionResultModel again = await service.SubmitAsync(
+                "registration", Request(4, RegistrationAnswersV4, "9999", "9999"), CancellationToken.None);
+
+            Assert.True(again.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.True(_pinHasher.Verify(profile.PinHash!, Pin.TryCreate("4821").Value!, out _));
+        }
+
+        [Fact]
+        public async Task Submit_Registration_PutsThePhoneOnAccountInfoAsTheCellNumber()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+
+            await service.SubmitAsync("registration", Request(4, RegistrationAnswersV4), CancellationToken.None);
+
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            MyssUserPhone phone = Assert.Single(await db.Set<MyssUserPhone>().ToListAsync());
+            Assert.Equal(profile.Id, phone.ProfileId);
+            Assert.Equal("2505550100", phone.Number);
+            Assert.Equal(AccountPhoneType.Cell, phone.Type);
+            Assert.Equal(0, phone.Position);
+        }
+
+        [Fact]
+        public async Task Submit_Registration_WithoutAPhoneAddsNoneToAccountInfo()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 2, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            await service.SubmitAsync(
+                "registration",
+                Request(2, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Empty(await db.Set<MyssUserPhone>().ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_Registration_RegisteringAgainLeavesTheAccountInfoPhonesAlone()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
+            FormsService service = NewService(db);
+            await service.SubmitAsync("registration", Request(4, RegistrationAnswersV4), CancellationToken.None);
+
+            FormSubmissionResultModel again = await service.SubmitAsync(
+                "registration",
+                Request(4, RegistrationAnswersV4.Replace("2505550100", "2505550199", StringComparison.Ordinal)),
+                CancellationToken.None);
+
+            Assert.True(again.IsValid);
+            Assert.Equal("2505550100", Assert.Single(await db.Set<MyssUserPhone>().ToListAsync()).Number);
+        }
+
+                private const string RegistrationSpecV5 = """
+                {
+                    "components": [
+                        { "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } },
+                        { "type": "textfield", "key": "lastName", "input": true, "validate": { "required": true } },
+                        { "type": "email", "key": "email", "input": true, "validate": { "required": true } },
+                        { "type": "textfield", "key": "phone", "input": true,
+                            "properties": { "myssValidator": "phone" },
+                            "validate": { "required": true, "customMessage": "Phone number is invalid" } },
+                        { "type": "datetime", "key": "dateOfBirth", "input": true, "validate": { "required": true } },
+                        { "type": "bcgovRadio", "key": "gender", "input": true, "validate": { "required": true },
+                            "values": [ { "label": "Woman/Girl", "value": "woman" } ] },
+                        { "type": "textfield", "key": "sin", "input": true,
+                            "properties": { "myssValidator": "sin" }, "validate": { "required": true } }
+                    ]
+                }
+                """;
+
         [Theory]
         [InlineData("(250) 555-0100")]
         [InlineData("250-555-0100")]
-        [InlineData("+1 250 555 0100")]
         public async Task Submit_RegistrationV4_PersistsTheNormalizedPhoneAndTheGender(string phone)
         {
             using FormsDbContext db = NewDb();
@@ -495,7 +680,9 @@ namespace Myss.Api.Tests.Services
         [Theory]
         [InlineData("555-0100")]
         [InlineData("+44 20 7946 0958")]
-        public async Task Submit_RegistrationWithAPhoneThatIsNotTenDigits_IsRefused(string phone)
+        [InlineData("+1 250 555 0100")]
+        [InlineData("1505550100")]
+        public async Task Submit_RegistrationWithInvalidPhone_IsRefused(string phone)
         {
             using FormsDbContext db = NewDb();
             _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 4, RegistrationSpecV4);
@@ -509,6 +696,35 @@ namespace Myss.Api.Tests.Services
             ValidationErrorModel error = Assert.Single(result.Errors);
             Assert.Equal("phone", error.Field);
             Assert.Equal(ValidationKeywords.PhoneInvalidFormat, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Theory]
+        [InlineData("(250) 555-0100", true)]
+        [InlineData("1505550100", false)]
+        [InlineData("", false)]
+        public async Task Submit_RegistrationV5_UsesTheSharedPhoneRule(string phone, bool valid)
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 5, RegistrationSpecV5);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(5, $$"""{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","phone":"{{phone}}","dateOfBirth":"1815-12-10","gender":"woman","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            if (valid)
+            {
+                Assert.True(result.IsValid);
+                Assert.Equal("2505550100", Assert.Single(await db.MyssUserProfiles.ToListAsync()).Phone);
+                return;
+            }
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("phone", error.Field);
+            Assert.Equal(phone == "" ? ValidationKeywords.FieldRequired : ValidationKeywords.PhoneInvalidFormat, error.Keyword);
+            Assert.Equal("Phone number is invalid", error.Message);
             Assert.Empty(await db.MyssUserProfiles.ToListAsync());
         }
 
@@ -530,13 +746,19 @@ namespace Myss.Api.Tests.Services
             Assert.Empty(await db.MyssUserProfiles.ToListAsync());
         }
 
-        private static FormSubmissionRequestModel Request(int version, string answersJson)
+        private static FormSubmissionRequestModel Request(
+            int version,
+            string answersJson,
+            string? pin = null,
+            string? pinConfirmation = null)
         {
             using JsonDocument answers = JsonDocument.Parse(answersJson);
             return new FormSubmissionRequestModel
             {
                 FormSpecVersion = version,
                 Answers = answers.RootElement.Clone(),
+                Pin = pin,
+                PinConfirmation = pinConfirmation,
             };
         }
 
@@ -552,7 +774,8 @@ namespace Myss.Api.Tests.Services
                 _templateProvider,
                 _adminProvider,
                 currentUserAccessor ?? new StubCurrentUserAccessor("test-subject"),
-                _errorMessages);
+                _errorMessages,
+                _pinHasher);
         }
 
             private sealed class AnonymousCurrentUserAccessor : ICurrentUserAccessor

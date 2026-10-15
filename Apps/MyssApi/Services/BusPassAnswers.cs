@@ -4,6 +4,7 @@ namespace Myss.Api.Services
     using System.Globalization;
     using System.Linq;
     using System.Text.Json;
+    using Myss.Api.Domain;
     using Myss.Api.Models;
 
     /// <summary>
@@ -57,6 +58,13 @@ namespace Myss.Api.Services
 
         /// <summary>Text: year of birth.</summary>
         public const string BirthYear = "birthYear";
+
+        /// <summary>
+        /// Date: date of birth as an ISO date ("1950-12-10"). From v8 the form
+        /// asks for the date in one field; earlier versions split it into
+        /// <see cref="BirthDay"/>, <see cref="BirthMonth"/> and <see cref="BirthYear"/>.
+        /// </summary>
+        public const string DateOfBirth = "dateOfBirth";
 
         /// <summary>Text: the phone number.</summary>
         public const string PhoneNumber = "phoneNumber";
@@ -173,14 +181,20 @@ namespace Myss.Api.Services
         }
 
         /// <summary>
-        /// Folds the three date-of-birth parts into a date.
+        /// Reads the date of birth: the single date field when the answers carry
+        /// one (v8 on), otherwise the three date-of-birth parts folded into a date.
         /// </summary>
         /// <param name="answers">The submitted answers.</param>
-        /// <param name="dateOfBirth">The date, when the parts make one.</param>
-        /// <returns>True when all three parts are present and form a real calendar date.</returns>
+        /// <param name="dateOfBirth">The date, when the answers make one.</param>
+        /// <returns>True when the answers hold a real calendar date.</returns>
         public static bool TryGetDateOfBirth(JsonElement answers, out DateOnly dateOfBirth)
         {
             dateOfBirth = default;
+
+            if (answers.TryGetProperty(DateOfBirth, out _))
+            {
+                return IsoDate.TryParse(GetString(answers, DateOfBirth), out dateOfBirth);
+            }
 
             if (!TryGetInt(answers, BirthYear, out int year)
                 || !TryGetInt(answers, BirthMonth, out int month)

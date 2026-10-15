@@ -452,6 +452,17 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(ValidationKeywords.PostalCodeInvalidFormat, Assert.Single(errors, e => e.Field == "postal").Keyword);
             Assert.Equal(ValidationKeywords.DateInvalid, Assert.Single(errors, e => e.Field == "started").Keyword);
             Assert.Equal(ValidationKeywords.PhoneInvalidFormat, Assert.Single(errors, e => e.Field == "mobile").Keyword);
+
+            const string requiredPhone = """
+            { "components": [
+                { "type": "textfield", "key": "phone", "input": true, "validate": { "required": true },
+                  "properties": { "myssValidator": "phone" } },
+                { "type": "textfield", "key": "name", "input": true, "validate": { "required": true } }
+              ] }
+            """;
+            IReadOnlyList<ValidationErrorModel> requiredErrors = Run(requiredPhone, """{"phone":"","name":""}""");
+            Assert.Equal("Phone number is invalid", Assert.Single(requiredErrors, e => e.Field == "phone").Message);
+            Assert.Equal("This answer is required.", Assert.Single(requiredErrors, e => e.Field == "name").Message);
         }
 
         private const string DatePartsSpec = """
@@ -804,6 +815,32 @@ namespace Myss.Api.Tests.Services
             """;
 
             Assert.Empty(Run(accordionMarkedRequired, """{"residesInBc":"true"}"""));
+        }
+
+        [Theory]
+        [InlineData("bcgovCallout")]
+        [InlineData("bcgovInlineAlert")]
+        public void Validate_TreatsADisplayContainerAsAContainer_NotAnAnsweredField(string type)
+        {
+            // The container itself carries no answer, even marked required, but
+            // the fields inside it are still known and still validated.
+            string calloutSpec = $$"""
+            {
+              "components": [
+                { "type": "{{type}}", "key": "privacyCallout", "input": false,
+                  "validate": { "required": true },
+                  "components": [
+                    { "type": "content", "key": "privacyNotice", "html": "<p>Notice</p>" },
+                    { "type": "checkbox", "key": "consent", "input": true, "validate": { "required": true } }
+                  ]}
+              ]
+            }
+            """;
+
+            Assert.Empty(Run(calloutSpec, """{"consent":true}"""));
+
+            ValidationErrorModel missing = Assert.Single(Run(calloutSpec, """{}"""));
+            Assert.Equal("consent", missing.Field);
         }
 
         private static IReadOnlyList<ValidationErrorModel> Run(string specJson, string answersJson)

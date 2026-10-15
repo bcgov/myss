@@ -18,6 +18,15 @@
     margin: var(--layout-margin-medium) 0;
 }
 
+.status {
+    border: var(--layout-border-width-medium) solid
+        var(--support-border-color-info);
+    border-left-width: var(--layout-margin-small);
+    background: var(--support-surface-color-info);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    margin: var(--layout-margin-medium) 0;
+}
+
 .heading {
     margin: 0 0 var(--layout-margin-small);
 }

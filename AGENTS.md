@@ -228,11 +228,15 @@ in the shared file and every mirror, or a reason in the header — the test suit
 
 `Myss.Api.Platform` is the shared event log of ADR-0001: one `platform.event` table
 keyed `(stream_id, version)`, reached only through `IEventStore` (append with an
-expected version, load, load-many, and a fold helper). `Myss.Api.Intake` is the
-applicant slice of Application Intake: `intake.application_answers` holds a draft's
-working copy under a row version, submit appends one `Submitted` event, workers append
-`ReviewStarted`, `Accepted` and `Denied` through `ReviewService`, and state is always
-the fold in `ApplicationProjection` — there is no status column. Modules are
+expected version, load, load-many, and a fold helper). `Myss.Api.Intake` is
+Application Intake: `intake.application_answers` holds a draft's working copy under a
+row version, submit appends one `Submitted` event (`Resubmitted` after a return), and
+workers act through `ReviewService` — `PickedUp` assigns the file to the caller, and
+only that worker can then append `NoteAdded`, `MoreInfoRequested`, `Escalated`,
+`Accepted`, `Denied` or `Released`. An Accept is followed by the promotion step
+(`IApplicationPromotionProvider`, a placeholder that succeeds today), recorded as
+`Promoted` or `PromotionFailed`. State is always the fold in `ApplicationProjection`
+— there is no status column. Modules are
 marked by **namespace** (`Myss.Api.Platform`, `Myss.Api.Intake`), with files in
 subfolders of the layer folders. Design: `docs/development_design/income-assistance-application.md`
 in the workspace; the forms and profile dependencies are ADR-0008.

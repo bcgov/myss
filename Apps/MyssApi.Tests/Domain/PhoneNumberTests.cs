@@ -36,9 +36,10 @@ namespace Myss.Api.Tests.Domain
         }
 
         [Fact]
-        public void TryCreate_DropsTheCountryCode()
+        public void TryCreate_StripsFormattingOnlyAfterValidation()
         {
-            Assert.Equal("2505550199", PhoneNumber.TryCreate("1 (250) 555-0199").Value!.Digits);
+            Assert.Equal("2505550199", PhoneNumber.TryCreate("(250) 555-0199").Value!.Digits);
+            Assert.False(PhoneNumber.TryCreate("1 (250) 555-0199").IsValid);
         }
 
         [Fact]

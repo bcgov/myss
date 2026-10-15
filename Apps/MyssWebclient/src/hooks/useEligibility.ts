@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { getEstimatorRates, getEstimatorSpec } from "@/api/eligibility";
 
-// React-query hooks for the public Pre-Eligibility Estimator. Option B: only the
-// two READS are hooks — the estimate is a synchronous, local, pure call
+// React-query hooks for the public Pre-Eligibility Estimator. Only the two
+// READS are hooks — the estimate is a synchronous, local, pure call
 // (`calculateEstimate`), so there is deliberately NO `useMutation` here.
 //
 // Both fetches are ANONYMOUS (see @/api/eligibility) — no Bearer interceptor,
@@ -11,12 +11,13 @@ import { getEstimatorRates, getEstimatorSpec } from "@/api/eligibility";
 // data, and change rarely, so they carry a long staleTime.
 
 // Re-export the page's whole toolkit from one place: the reads, the pure
-// mapper + pre-check gate (Step 4), and the calculator (Step 5) with its types.
+// mapper + pre-check gate, and the calculator with its types.
 export {
   getEstimatorSpec,
   getEstimatorRates,
   mapAnswersToEstimate,
   missingRequiredCoupleAnswers,
+  REQUIRED_COUPLE_QUESTIONS,
   screenPreCheck,
 } from "@/api/eligibility";
 export type {
@@ -45,6 +46,9 @@ export type { IncomeLimit } from "@/lib/eligibilityCalculator";
 /** Content changes rarely and is not per-user, so keep it fresh for an hour. */
 const CONTENT_STALE_TIME = 60 * 60 * 1000;
 
+/** The cache key of the rate table; the rates editor's save updates it. */
+export const ESTIMATOR_RATES_QUERY_KEY = ["estimator-rates"] as const;
+
 /** The latest published estimator form spec (anonymous read). */
 export function useEstimatorSpec() {
   return useQuery({
@@ -57,7 +61,7 @@ export function useEstimatorSpec() {
 /** The rate table the browser computes the estimate against (anonymous read). */
 export function useEstimatorRates() {
   return useQuery({
-    queryKey: ["estimator-rates"],
+    queryKey: ESTIMATOR_RATES_QUERY_KEY,
     queryFn: getEstimatorRates,
     staleTime: CONTENT_STALE_TIME,
   });

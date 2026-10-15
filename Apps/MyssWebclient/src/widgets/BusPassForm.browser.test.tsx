@@ -173,7 +173,45 @@ const currentSpecV4 = {
   },
 };
 
-type Answer = { status: number; body: unknown };
+const phoneSpecV7 = {
+  formSpecId: "bc-bus-pass",
+  version: 7,
+  title: "BC Bus Pass",
+  spec: {
+    display: "form",
+    components: [
+      {
+        type: "textfield",
+        key: "phoneNumber",
+        label: "Phone number",
+        input: true,
+        placeholder: "(999) 999-9999",
+        validateOn: "blur",
+        properties: { myssValidator: "phone" },
+        validate: {
+          required: true,
+          customMessage: "Phone number is invalid",
+        },
+      },
+      {
+        type: "textfield",
+        key: "firstName",
+        label: "First name",
+        input: true,
+      },
+      {
+        type: "button",
+        key: "submit",
+        action: "submit",
+        label: "Submit",
+        input: true,
+      },
+    ],
+  },
+};
+
+/** An API answer; `wait`, when given, holds it back until it settles. */
+type Answer = { status: number; body: unknown; wait?: Promise<unknown> };
 
 const accepted: Answer = {
   status: 200,
@@ -275,6 +313,7 @@ function stubApi(
     }
     if (url.endsWith("/v1/bus-pass/submissions") && init?.method === "POST") {
       posts.push({ url, body: JSON.parse(String(init.body)) });
+      await answer.wait;
       return new Response(JSON.stringify(answer.body), {
         status: answer.status,
         headers: { "Content-Type": "application/json" },
@@ -310,6 +349,45 @@ async function fillAndSubmit(screen: Awaited<ReturnType<typeof renderForm>>) {
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+test("phone errors appear inline on blur and clear after correction", async () => {
+  stubApi(accepted, phoneSpecV7);
+  const screen = await renderForm();
+  const phone = screen.getByRole("textbox", { name: "Phone number" });
+  const firstName = screen.getByRole("textbox", { name: "First name" });
+
+  await phone.fill("1234567890");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid").first())
+    .toBeVisible();
+
+  await phone.fill("2505550199");
+  await expect.element(phone).toHaveValue("2505550199");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid"))
+    .not.toBeInTheDocument();
+
+  await phone.fill("2501550199");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid"))
+    .not.toBeInTheDocument();
+
+  await phone.fill("25055501999");
+  await expect.element(phone).toHaveValue("25055501999");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid").first())
+    .toBeVisible();
+
+  await phone.fill("");
+  await firstName.click();
+  await expect
+    .element(screen.getByText("Phone number is invalid").first())
+    .toBeVisible();
 });
 
 test("posts to the bus pass endpoint with the rendered version and shows the reference number", async () => {
@@ -645,4 +723,54 @@ test("a refused submission lists every reason and focuses the field on request",
   await expect
     .element(screen.getByRole("textbox", { name: "First name" }))
     .toHaveFocus();
+});
+
+test("a refused submission keeps every answer, ready to send again", async () => {
+  const posts = stubApi(refused);
+  const screen = await renderForm();
+
+  await fillAndSubmit(screen);
+  await expect.element(screen.getByText("There is a problem")).toBeVisible();
+
+  // The answer is still in the field after the refusal...
+  await expect
+    .element(screen.getByRole("textbox", { name: "First name" }))
+    .toHaveValue("Ada");
+
+  // ...and is what the next attempt sends, without typing it again.
+  await screen.getByRole("button", { name: "Submit" }).click();
+  await vi.waitFor(() => expect(posts).toHaveLength(2));
+  expect(posts[1].body).toMatchObject({ answers: { firstName: "Ada" } });
+});
+
+test("says the request is being submitted while it is on its way", async () => {
+  let release: () => void = () => {};
+  const wait = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const posts = stubApi({ ...accepted, wait });
+  const screen = await renderForm();
+
+  await fillAndSubmit(screen);
+
+  // While the API has not answered: a message, announced, and no second post.
+  const message = screen.getByText("Your request is being submitted.");
+  await expect.element(message).toBeVisible();
+  // Inside a live region (<output>, role "status"), so screen readers
+  // announce it.
+  expect(message.element().closest("output")).not.toBeNull();
+  await expect
+    .element(
+      screen.getByRole("progressbar", { name: "Submitting your request" }),
+    )
+    .toBeInTheDocument();
+  await screen.getByRole("button", { name: "Submit" }).click({ force: true });
+  expect(posts).toHaveLength(1);
+
+  release();
+
+  await expect.element(screen.getByText("1-TEST-0001")).toBeVisible();
+  expect(document.body.textContent).not.toContain(
+    "Your request is being submitted.",
+  );
 });
