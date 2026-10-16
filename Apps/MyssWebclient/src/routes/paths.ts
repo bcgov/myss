@@ -19,6 +19,8 @@ export const paths = {
   adminFormManagement: "/admin/form-management",
   // Editor for one form, opened from the form-management list.
   adminFormEditor: "/admin/form-management/:formSpecId",
+  // Creates a form, or a new version of one, from pasted JSON.
+  adminFormFromJson: "/admin/form-management/:formSpecId/from-json",
   // Minimal standalone login harness. Deliberately independent of the home
   // page so home can keep changing without disturbing a known-good way to
   // exercise the auth flow end to end.
@@ -51,6 +53,26 @@ export function adminNewFormPath(formSpecId: string, title: string): string {
     params.set("title", title.trim());
   }
   return `${adminFormEditorPath(formSpecId)}?${params.toString()}`;
+}
+
+/**
+ * URL of the page that saves pasted JSON as a new form or a new version of
+ * one. `confirm` records the save target accepted in the existing-form warning.
+ */
+export function adminFormFromJsonPath(
+  formSpecId: string,
+  title: string,
+  confirm?: string | null,
+): string {
+  const params = new URLSearchParams();
+  if (title.trim()) {
+    params.set("title", title.trim());
+  }
+  if (confirm) {
+    params.set("confirm", confirm);
+  }
+  const query = params.toString();
+  return `${adminFormEditorPath(formSpecId)}/from-json${query ? `?${query}` : ""}`;
 }
 
 /** Concrete URL for one application, kept beside the `application` pattern. */

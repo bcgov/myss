@@ -1,0 +1,191 @@
+.meta {
+    color: var(--typography-color-secondary);
+    font: var(--typography-regular-small-body);
+    margin: var(--layout-margin-small) 0 0;
+}
+
+.status {
+    color: var(--typography-color-secondary);
+    margin: 0;
+}
+
+.error {
+    color: var(--typography-color-danger);
+    font: var(--typography-bold-body);
+    margin: 0;
+}
+
+/* Save and Publish move focus to these while the text box cannot be saved. */
+.status:focus-visible,
+.error:focus-visible {
+    outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-medium);
+}
+
+.guard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+}
+
+/* The existing-form warning, shown inline until it is answered. */
+.warning {
+    background-color: var(--support-surface-color-warning);
+    border: var(--layout-border-width-small) solid var(--support-border-color-warning);
+    border-left-width: var(--layout-border-width-large);
+    border-radius: var(--layout-border-radius-medium);
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+    padding: var(--layout-padding-large);
+}
+
+.warningHeading {
+    font: var(--typography-bold-h4);
+    margin: 0;
+}
+
+.warningHeading:focus-visible {
+    outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-medium);
+}
+
+.warningBody {
+    margin: 0;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.sectionTitle {
+    font: var(--typography-bold-h3);
+    margin: 0;
+}
+
+.hint {
+    color: var(--typography-color-secondary);
+    margin: 0;
+}
+
+/* @bcgov/design-tokens defines no monospace family, so the generic one is used. */
+.json {
+    border: var(--layout-border-width-small) solid var(--surface-color-border-medium);
+    border-radius: var(--layout-border-radius-medium);
+    box-sizing: border-box;
+    font-family: monospace;
+    font-size: var(--typography-font-size-small-body);
+    padding: var(--layout-padding-small);
+    resize: vertical;
+    width: 100%;
+}
+
+.json:focus-visible {
+    outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-small);
+}
+
+.neutral,
+.valid,
+.invalid {
+    margin: 0;
+}
+
+.neutral {
+    color: var(--typography-color-secondary);
+}
+
+.valid {
+    color: var(--typography-color-primary);
+}
+
+.invalid {
+    color: var(--typography-color-danger);
+    font: var(--typography-bold-body);
+}
+
+.note {
+    color: var(--typography-color-secondary);
+    font-style: italic;
+    margin: 0;
+}
+
+.preview {
+    border: var(--layout-border-width-small) solid var(--surface-color-border-default);
+    border-radius: var(--layout-border-radius-medium);
+    padding: var(--layout-padding-large);
+}
+
+.previewEmpty {
+    border: var(--layout-border-width-small) dashed var(--surface-color-border-default);
+    border-radius: var(--layout-border-radius-medium);
+    color: var(--typography-color-secondary);
+    margin: 0;
+    padding: var(--layout-padding-large);
+}
+
+.confirm,
+.confirmDanger {
+    border: var(--layout-border-width-small) solid var(--surface-color-border-default);
+    border-left-width: var(--layout-border-width-large);
+    border-radius: var(--layout-border-radius-medium);
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+    padding: var(--layout-padding-medium);
+}
+
+.confirm {
+    background-color: var(--surface-color-background-light-gray);
+    border-left-color: var(--surface-color-border-active);
+}
+
+.confirmDanger {
+    background-color: var(--support-surface-color-danger);
+    border-color: var(--support-border-color-danger);
+}
+
+.confirmHeading {
+    font: var(--typography-bold-body);
+    margin: 0;
+}
+
+.confirmHeading:focus-visible {
+    outline: var(--layout-border-width-medium) solid var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-medium);
+}
+
+.confirm p,
+.confirmDanger p {
+    margin: 0;
+}
+
+.actionBar {
+    align-items: center;
+    border-top: var(--layout-border-width-small) solid var(--surface-color-border-default);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+    padding-top: var(--layout-padding-medium);
+}
+
+.outcome {
+    font: var(--typography-bold-body);
+    margin-left: auto;
+}
+
+.newId {
+    align-items: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+    max-width: 28rem;
+}
