@@ -1188,6 +1188,13 @@ namespace Icm.Api.ConsoleApp.Configuration
 
             if (Create.Enabled)
             {
+                // Checked before the create: an invalid delay found afterwards would skip the
+                // read-back, and a retry would file a duplicate.
+                if (SettleSeconds is < 0 or > 120)
+                {
+                    problems.Add($"Activity:SettleSeconds must be between 0 and 120 (it is {SettleSeconds}).");
+                }
+
                 Create.Validate(problems);
                 return;
             }

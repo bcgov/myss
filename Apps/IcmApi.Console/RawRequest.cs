@@ -23,7 +23,16 @@ namespace Icm.Api.ConsoleApp
             RawSettings wanted = settings.Raw;
             HttpMethod method = HttpMethod.Parse(wanted.Method);
             string path = $"{settings.Icm.BaseUrl!.TrimEnd('/')}/{wanted.Path!.TrimStart('/')}";
-            string body = wanted.BodyFile is { Length: > 0 } file ? await File.ReadAllTextAsync(file) : wanted.Body ?? string.Empty;
+            string body;
+            try
+            {
+                body = wanted.BodyFile is { Length: > 0 } file ? await File.ReadAllTextAsync(file) : wanted.Body ?? string.Empty;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                Console.Error.WriteLine($"Raw:BodyFile '{wanted.BodyFile}' could not be read: {exception.Message}");
+                return 1;
+            }
 
             Console.WriteLine($"RAW {method} {path}");
             Console.WriteLine(body.Length == 0 ? "(no body)" : body);
