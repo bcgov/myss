@@ -16,12 +16,14 @@ namespace Icm.Api.Models
     /// <c>Display</c>; the library insists on the first two and defaults the other two to
     /// the values every bus pass step carries. Only the properties that are set are sent.
     /// </para>
+    /// <para>
+    /// <b>There is no <c>Id</c>.</b> The create is a PUT to the collection, which Siebel
+    /// treats as an upsert: a caller-supplied row id would update an existing activity.
+    /// The placeholder <c>NULL</c> is always sent.
+    /// </para>
     /// </remarks>
     public class ActivityInput
     {
-        /// <summary>Gets or sets <c>Id</c>; null sends the placeholder <c>NULL</c>.</summary>
-        public string? Id { get; set; }
-
         /// <summary>Gets or sets <c>Activity SR Id</c>: the service request to profile the activity to.</summary>
         public string? ServiceRequestId { get; set; }
 

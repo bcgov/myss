@@ -22,9 +22,10 @@ namespace Icm.Api.Contracts
         public const int ChildPageSize = 100;
 
         /// <summary>
-        /// The <c>Id</c> a create sends when the caller gave none: the literal ICM's REST
-        /// API guidance prescribes as a new activity's user key, which Siebel replaces
-        /// with the row id it allocates (MEASURED 2026-09-29, <c>1-53MU3Y4</c>).
+        /// The <c>Id</c> every create sends: the literal ICM's REST API guidance prescribes
+        /// as a new activity's user key, which Siebel replaces with the row id it allocates
+        /// (MEASURED 2026-09-29, <c>1-53MU3Y4</c>). Never a caller's: the create is an
+        /// upsert, so a real row id would update that activity.
         /// </summary>
         public const string CreatePlaceholderId = "NULL";
 
@@ -139,7 +140,7 @@ namespace Icm.Api.Contracts
 
             return new SiebelActivity
             {
-                Id = input.Id ?? CreatePlaceholderId,
+                Id = CreatePlaceholderId,
                 ActivitySRId = input.ServiceRequestId,
                 CaseId = input.CaseId,
                 IncidentId = input.IncidentId,

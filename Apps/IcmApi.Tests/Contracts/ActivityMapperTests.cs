@@ -105,12 +105,9 @@ namespace Icm.Api.Tests.Contracts
             Assert.DoesNotContain("null", json, StringComparison.Ordinal);
             Assert.DoesNotContain("Plan Name", json, StringComparison.Ordinal);
 
-            // A caller's own key and category are kept.
-            input.Id = "1-X";
+            // A caller's own category is kept.
             input.Category = "Other";
-            SiebelActivity kept = ActivityMapper.ToSiebel(input);
-            Assert.Equal("1-X", kept.Id);
-            Assert.Equal("Other", kept.Category);
+            Assert.Equal("Other", ActivityMapper.ToSiebel(input).Category);
         }
 
         [Fact]

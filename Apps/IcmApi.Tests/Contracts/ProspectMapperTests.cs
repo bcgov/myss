@@ -130,10 +130,6 @@ namespace Icm.Api.Tests.Contracts
             Assert.DoesNotContain("Created", json, StringComparison.Ordinal);
             Assert.DoesNotContain("Last Updated", json, StringComparison.Ordinal);
             Assert.DoesNotContain("null", json, StringComparison.Ordinal);
-
-            // A caller's own key is kept.
-            input.Id = "1-X";
-            Assert.Equal("1-X", ProspectMapper.ToSiebel(input).Id);
         }
 
         [Fact]
@@ -155,8 +151,9 @@ namespace Icm.Api.Tests.Contracts
                 .Where(v => v is not null)
                 .Select(v => v!)];
 
-            // Every text plus the formatted birth date.
-            Assert.Equal(texts.Length + 1, sent.Length);
+            // Every text plus the formatted birth date and the placeholder key.
+            Assert.Equal(texts.Length + 2, sent.Length);
+            Assert.Equal(ProspectMapper.CreatePlaceholderId, row.Id);
             Assert.All(texts, text => Assert.Contains(text.Name, sent));
         }
 

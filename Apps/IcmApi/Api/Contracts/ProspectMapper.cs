@@ -118,9 +118,10 @@ namespace Icm.Api.Contracts
         }
 
         /// <summary>
-        /// The <c>Id</c> a create sends when the caller gave none: the literal ICM's REST Data
-        /// API guidance prescribes as the user key of a new prospect, which Siebel replaces
-        /// with the row id it allocates (MEASURED 2026-09-29, icmdev and SIT2).
+        /// The <c>Id</c> every standalone create sends: the literal ICM's REST Data API
+        /// guidance prescribes as the user key of a new prospect, which Siebel replaces with
+        /// the row id it allocates (MEASURED 2026-09-29, icmdev and SIT2). Never a caller's:
+        /// the create is an upsert, so a real row id would rewrite that prospect.
         /// </summary>
         public const string CreatePlaceholderId = "NULL";
 
@@ -163,7 +164,7 @@ namespace Icm.Api.Contracts
 
             return new SiebelProspect
             {
-                Id = nested ? null : input.Id ?? CreatePlaceholderId,
+                Id = nested ? null : CreatePlaceholderId,
                 ServiceRequestId = input.ServiceRequestId,
                 FirstName = input.FirstName,
                 MiddleName = input.MiddleName,

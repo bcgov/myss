@@ -736,9 +736,6 @@ namespace Icm.Api.ConsoleApp.Configuration
         /// <summary>Gets or sets a value indicating whether to create rather than read. Off by default: it writes.</summary>
         public bool Enabled { get; set; }
 
-        /// <summary>Gets or sets <c>Id</c>; null sends the library's placeholder, <c>NULL</c>.</summary>
-        public string? Id { get; set; }
-
         /// <summary>Gets or sets the row id of the service request the prospect belongs to. Required.</summary>
         public string? ServiceRequestId { get; set; }
 
@@ -845,7 +842,6 @@ namespace Icm.Api.ConsoleApp.Configuration
             {
                 // Blank means "not set" for every text field, so a --Prospect:Create:X=
                 // on the command line drops a committed value instead of sending "".
-                Id = N(Id),
                 ServiceRequestId = N(ServiceRequestId),
                 FirstName = N(FirstName),
                 MiddleName = N(MiddleName),

@@ -127,7 +127,7 @@ namespace Icm.Api.ConsoleApp
 
             if (wanted.Create.Enabled)
             {
-                Console.WriteLine($"  Create       PUT Prospects/SRProspects, Id {wanted.Create.Id ?? "NULL"}");
+                Console.WriteLine($"  Create       PUT Prospects/SRProspects, Id NULL");
                 Console.WriteLine($"  Under SR     {wanted.Create.ServiceRequestId}");
             }
             else

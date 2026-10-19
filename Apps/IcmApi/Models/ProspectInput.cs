@@ -18,16 +18,15 @@ namespace Icm.Api.Models
     /// <para>
     /// <b>Only the properties that are set are sent.</b> Null means "leave the field alone".
     /// </para>
+    /// <para>
+    /// <b>There is no <c>Id</c>.</b> The standalone create is a PUT to the collection, which
+    /// Siebel treats as an upsert: a caller-supplied row id would rewrite an existing
+    /// applicant row. The placeholder <c>NULL</c> ICM's documentation prescribes is always
+    /// sent (and nothing, when nested in a service request write).
+    /// </para>
     /// </remarks>
     public class ProspectInput
     {
-        /// <summary>
-        /// Gets or sets <c>Id</c>. ICM's REST Data API documentation for adding a prospect
-        /// to a service request sends the literal placeholder <c>NULL</c> here — the
-        /// integration component's user key, satisfied by a value Siebel then replaces.
-        /// </summary>
-        public string? Id { get; set; }
-
         /// <summary>
         /// Gets or sets <c>Service Request Id</c>: the row id of the service request the
         /// prospect belongs to. Required for a standalone create; on a create under a service

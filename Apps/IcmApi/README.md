@@ -500,7 +500,9 @@ the row — icmdev `1-5M16MO8` on the guidance's own example SR `1-5D7C2PD`, the
 `1-53MU3XZ` and `1-53MU3Y0` on the directly created bus pass SRs, each listed under its
 SR's `SRProspects` child at once. Siebel replaces the placeholder id with the row id it
 allocates. `CreateAsync` is that PUT; `ProspectMapper.CreatePlaceholderId` supplies the
-`NULL`.
+`NULL`. A PUT to the collection is an upsert, so `ProspectInput` has no `Id`: a caller's
+row id would rewrite an existing applicant row through a create-only API. Experiments
+with other keys belong in the console's `raw` mode.
 
 **Required fields** (ICM's field list): `First Name`, `Last Name`, `Birth Date`
 (`MM/DD/YYYY`) and `M/F` (`Man/Boy`, `Woman/Girl`, `Non-Binary`, `Unknown`). The library
@@ -607,7 +609,8 @@ does not declare arrive in `Activity.AdditionalFields`.
 **Creating an activity is a PUT with `"Id": "NULL"`**, per ICM's REST API guidance
 ("GET-PUT-POST Activities (Stand Alone or Profiled to Memo, SR, Incident and Case)",
 ADO 8646): the same body by POST needs the user key `Activity UID` and, the guidance
-warns, gives undesirable results. Profiling is by `Activity SR Id` (or `Case Id`,
+warns, gives undesirable results. The PUT is an upsert, so `ActivityInput` has no `Id` —
+the placeholder is always sent, and a worker's activity cannot be overwritten by a create. Profiling is by `Activity SR Id` (or `Case Id`,
 `Incident Id`, `ICM Memo Id`). The document requires `Type`, `Action By`, `Category` and
 `Display`; the library insists on the first two, defaults the others to `General` and
 `Calendar and Activities` (what every bus pass step carries), and refuses an activity
