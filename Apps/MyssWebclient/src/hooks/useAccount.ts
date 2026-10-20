@@ -3,24 +3,34 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AccountRequestError,
   getAccount,
+  requestPinReset,
+  resetPin,
   savePin,
   updateNotificationPreferences,
   updatePhones,
   type AccountPayload,
   type PhoneInput,
   type PinInput,
+  type ResetPinInput,
 } from "@/api/account";
 
-// React-query hooks for the citizen's Account Info (MYSS-271) and PIN (MYSS-258). Raw fetches
-// for now (see api/account.ts), so every call carries authHeaders() itself.
+// React-query hooks for the citizen's Account Info (MYSS-271), PIN (MYSS-258)
+// and PIN reset by email (MYSS-36). Raw fetches for now (see api/account.ts),
+// so every signed-in call carries authHeaders() itself.
 
-export { AccountRequestError, PIN_LOCKED_KEYWORD } from "@/api/account";
+export {
+  AccountRequestError,
+  PIN_LOCKED_KEYWORD,
+  PIN_RESET_LINK_INVALID_KEYWORD,
+} from "@/api/account";
 export type {
   AccountPayload,
   AccountPhone,
   AccountPinStatus,
   PhoneInput,
   PinInput,
+  PinResetRequested,
+  ResetPinInput,
 } from "@/api/account";
 
 export const ACCOUNT_QUERY_KEY = ["account"] as const;
@@ -76,4 +86,14 @@ export function useUpdateNotificationPreferences() {
   return useAccountWrite((monthlyReportReminder: boolean) =>
     updateNotificationPreferences(monthlyReportReminder),
   );
+}
+
+/** Emails the caller a link to reset their PIN. Changes nothing on the account yet. */
+export function useRequestPinReset() {
+  return useMutation({ mutationFn: requestPinReset });
+}
+
+/** Sets a new PIN from the emailed link. Anonymous; nothing to cache. */
+export function useResetPin() {
+  return useMutation({ mutationFn: (input: ResetPinInput) => resetPin(input) });
 }
