@@ -62,6 +62,8 @@ the API token for `Strapi:ApiToken` (goes in `Apps/MyssApi/appsettings.local.jso
 the write-scoped token for `Strapi:AdminApiToken` (goes in
 `Apps/MyssAdminApi/appsettings.local.json`; `find`, `findOne`, `create` and `update` on
 Form Spec and Eligibility Rate, never `delete`). Only the admin API holds the write token.
+The admin API's bus pass PDF also needs the CDOGS credentials (`Cdogs:ClientId` and
+`Cdogs:ClientSecret`) in the same file; without them only the PDF fails.
 The token is read-only and scoped: it needs `find` and `findOne` on Form Spec,
 Eligibility Rate and Error Message. A token created before the Error Message collection
 existed lacks the last grant; MyssApi then logs a warning and words refused submissions
@@ -121,7 +123,8 @@ compose Postgres.
   - Webclient: `cd Apps/MyssWebclient && npm run dev` → http://localhost:5173 (the
     forms demo is under `/techdemos/forms`)
   - Admin webclient: `cd Apps/MyssAdminWebclient && npm run dev` →
-    http://localhost:5174 (IDIR sign-in; the form editor and the estimator rates)
+    http://localhost:5174 (IDIR sign-in; the form and rates editors, and, for the
+    WORKER or ADMIN role, the applications to review)
 - Strapi admin: http://localhost:1337/admin — the first visit asks you to
   create the initial admin user (local account, any credentials)
 

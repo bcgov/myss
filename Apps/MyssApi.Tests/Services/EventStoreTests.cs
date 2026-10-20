@@ -2,8 +2,8 @@ namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
     using Microsoft.EntityFrameworkCore;
-    using Myss.Api.Platform;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// The store's two guards against a lost update: the early version check,

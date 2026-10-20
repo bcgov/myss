@@ -2,16 +2,14 @@ import { Link } from "react-router";
 
 import SubmissionErrors from "@/components/SubmissionErrors";
 import FormSpecWidget from "@/widgets/FormSpecWidget";
-import { useSubmissions } from "@/hooks/usePocForm";
 
 const FORM_SPEC_ID = "poc-test-form";
 
 /**
- * Forms tech demo: the Strapi-authored, version-stamped Form.io loop.
+ * Forms tech demo: the Strapi-authored, version-stamped Form.io loop. Listing
+ * and reading submissions back are staff calls and live on the admin site.
  */
 export default function FormsTechDemo() {
-  const { data: submissions } = useSubmissions(FORM_SPEC_ID);
-
   return (
     <>
       <nav aria-label="Breadcrumb">
@@ -23,22 +21,6 @@ export default function FormsTechDemo() {
         renderSubmissionError={(error) => <SubmissionErrors error={error} />}
         showSpecHeading
       />
-      <section>
-        <h3>Previous submissions</h3>
-        {submissions?.length === 0 && <p>None yet.</p>}
-        {submissions && submissions.length > 0 && (
-          <ul>
-            {submissions.map((s) => (
-              <li key={s.id}>
-                <Link to={`/techdemos/forms/submissions/${s.id}`}>
-                  {new Date(s.submittedAt).toLocaleString()} - spec v
-                  {s.formSpecVersion} - <code>{s.id.slice(0, 8)}…</code>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </>
   );
 }

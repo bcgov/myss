@@ -2,6 +2,7 @@ namespace Myss.Api.Tests.Services
 {
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging.Abstractions;
+    using Myss.Api.Configuration;
     using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
     using Myss.Api.Models;
@@ -9,6 +10,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
+    using Myss.Data;
     using Myss.FormSpec.Domain;
 
     /// <summary>
@@ -89,7 +91,7 @@ namespace Myss.Api.Tests.Services
         private static DbContextOptions<FormsDbContext> Options()
         {
             return new DbContextOptionsBuilder<FormsDbContext>()
-                .UseNpgsql(PostgresFactAttribute.ConnectionString)
+                .UseNpgsql(PostgresFactAttribute.ConnectionString, npgsql => MyssMigrations.Configure(npgsql, historySchema: null))
                 .Options;
         }
     }

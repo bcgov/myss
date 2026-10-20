@@ -9,9 +9,10 @@ namespace Myss.Api.Intake
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging;
     using Myss.Api.Models;
-    using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
 

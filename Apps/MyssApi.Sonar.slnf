@@ -4,6 +4,7 @@
     "projects": [
       "MyssApi\\MyssApi.csproj",
       "MyssApi.Tests\\MyssApi.Tests.csproj",
+      "MyssData\\MyssData.csproj",
       "MyssFormSpec\\MyssFormSpec.csproj",
       "MyssFormSpec.Tests\\MyssFormSpec.Tests.csproj",
       "MyssAdminApi\\MyssAdminApi.csproj",

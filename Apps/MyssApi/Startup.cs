@@ -13,9 +13,11 @@ namespace Myss.Api
     using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
     using Myss.Api.Intake;
-    using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.Data;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// Configures the application during startup.
@@ -63,11 +65,13 @@ namespace Myss.Api
 
             // Configure the forms module (POC: spec proxy + versioned submissions).
             // Protected behind authentication (see FormsController [Authorize]).
+            // The forms, platform and intake contexts are the shared model in
+            // MyssData; their migrations live here (see MyssMigrations).
             services.AddDbContext<FormsDbContext>(options =>
-                options.UseNpgsql(this.startupConfig.Configuration.GetConnectionString("FormsDb")));
+                options.UseNpgsql(
+                    this.startupConfig.Configuration.GetConnectionString("FormsDb"),
+                    npgsql => MyssMigrations.Configure(npgsql, historySchema: null)));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
-            services.AddHttpClient<IPdfProvider, CdogsPdfProvider>();
-            services.AddSingleton<ITemplateProvider, EmbeddedTemplateProvider>();
             services.AddScoped<IFormsService, FormsService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
 
@@ -136,7 +140,7 @@ namespace Myss.Api
                 options.UseNpgsql(
                     configuration.GetConnectionString("PlatformDb")
                         ?? configuration.GetConnectionString("FormsDb"),
-                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "platform")));
+                    npgsql => MyssMigrations.Configure(npgsql, "platform")));
             services.AddScoped<IEventStore, EventStore>();
 
             // Application Intake, applicant slice: the citizen's own Income
@@ -147,13 +151,12 @@ namespace Myss.Api
                 options.UseNpgsql(
                     configuration.GetConnectionString("IntakeDb")
                         ?? configuration.GetConnectionString("FormsDb"),
-                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "intake")));
+                    npgsql => MyssMigrations.Configure(npgsql, "intake")));
             services.AddScoped<IIntakeService, IntakeService>();
-            services.AddScoped<IReviewService, ReviewService>();
 
-            // What follows a worker's Accept. Nothing receives applications
-            // yet; the placeholder succeeds without leaving the API.
-            services.AddSingleton<IApplicationPromotionProvider, PlaceholderApplicationPromotionProvider>();
+            // The worker side of intake (review, decisions, promotion) and the
+            // staff reads of stored submissions are served by MyssAdminApi over
+            // the same schemas (MyssData). This API owns those schemas' migrations.
 
             // Bus pass hand-off to ICM. MyssApi never calls Siebel: everything
             // ICM-bound goes to the IcmApi middleware over REST, which owns the

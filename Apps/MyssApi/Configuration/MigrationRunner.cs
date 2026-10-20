@@ -10,7 +10,9 @@ namespace Myss.Api.Configuration
     using Microsoft.Extensions.Logging;
     using Myss.Api.Data;
     using Myss.Api.Intake;
-    using Myss.Api.Platform;
+    using Myss.Data;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// The API's migrate mode: <c>MyssApi --migrate</c> applies every pending
@@ -133,18 +135,20 @@ namespace Myss.Api.Configuration
         private static readonly IReadOnlyList<ContextTarget> Targets =
         [
             new("forms", "FormsDb", cs => new FormsDbContext(
-                new DbContextOptionsBuilder<FormsDbContext>().UseNpgsql(cs).Options)),
+                new DbContextOptionsBuilder<FormsDbContext>()
+                    .UseNpgsql(cs, npgsql => MyssMigrations.Configure(npgsql, historySchema: null))
+                    .Options)),
             new("attachments", "AttachmentsDb", cs => new AttachmentsDbContext(
                 new DbContextOptionsBuilder<AttachmentsDbContext>()
                     .UseNpgsql(cs, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "attachments"))
                     .Options)),
             new("platform", "PlatformDb", cs => new PlatformDbContext(
                 new DbContextOptionsBuilder<PlatformDbContext>()
-                    .UseNpgsql(cs, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "platform"))
+                    .UseNpgsql(cs, npgsql => MyssMigrations.Configure(npgsql, "platform"))
                     .Options)),
             new("intake", "IntakeDb", cs => new IntakeDbContext(
                 new DbContextOptionsBuilder<IntakeDbContext>()
-                    .UseNpgsql(cs, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "intake"))
+                    .UseNpgsql(cs, npgsql => MyssMigrations.Configure(npgsql, "intake"))
                     .Options)),
         ];
 

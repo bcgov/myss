@@ -10,6 +10,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
+    using Myss.Data;
     using Myss.FormSpec.Domain;
 
     /// <summary>

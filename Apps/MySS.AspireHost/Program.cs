@@ -333,15 +333,20 @@ builder
     .WaitFor(api);
 
 // ---------------------------------------------------------------------------
-// MySSAdminApi — the IDIR administration API (form editor, estimator rates).
-// No database: it reads and writes Strapi only, with the write-scoped
-// Strapi:AdminApiToken from its own appsettings.local.json. Its port is
-// fixed by its launch profile (http://localhost:5010), which the admin
-// webclient's default API_URL expects.
+// MySSAdminApi — the staff API: the form and rates editors, and the worker
+// review screens. It uses the same database as MySSApi (ADR-0010) but never
+// migrates it, so it waits for the same migration chain. Strapi is written
+// with the write-scoped Strapi:AdminApiToken, and the bus pass PDF calls
+// CDOGS with Cdogs:ClientId/ClientSecret, both from its own
+// appsettings.local.json. Its port is fixed by its launch profile
+// (http://localhost:5010), which the admin webclient's default API_URL expects.
 // ---------------------------------------------------------------------------
 IResourceBuilder<ProjectResource> adminApi = builder
     .AddProject<Projects.MyssAdminApi>("MySSAdminApi")
-    .WithEnvironment("Strapi__BaseUrl", content.GetEndpoint("http"));
+    .WithReference(formsDb)
+    .WithEnvironment("Strapi__BaseUrl", content.GetEndpoint("http"))
+    .WaitFor(postgres)
+    .WaitForCompletion(migrateIntake);
 
 if (!string.IsNullOrWhiteSpace(dashboardOtlp))
 {

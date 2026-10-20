@@ -39,7 +39,8 @@ const STATUS_COLORS: Record<string, TagColor> = {
 /**
  * The display text for a status code; the code itself when none is mapped.
  * A file under review names its assignee when one is given ("Under Review -
- * IDIR"), which only the worker views pass.
+ * IDIR"), which only the review views pass (now on the admin site, which
+ * keeps its own copy of this pill).
  */
 function statusLabel(status: string, assignee?: string | null): string {
   const label = STATUS_LABELS[status] ?? status;

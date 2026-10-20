@@ -44,15 +44,33 @@ namespace Myss.AdminApi.Configuration
         public static readonly IReadOnlyDictionary<string, MockPersona> Personas =
             new Dictionary<string, MockPersona>(StringComparer.OrdinalIgnoreCase)
             {
-                ["admin"] = new("mock-admin", [MyssRoles.Admin], IdirUsername: "MADMIN"),
+                // The same personas, with the same subjects, as MyssApi's: a test or a
+                // local run can act on one file as a citizen there and as staff here.
+                ["alice"] = new("mock-alice", [MyssRoles.Client], BceidGuid: "11111111-1111-1111-1111-111111111111"),
+                ["bob"] = new("mock-bob", [MyssRoles.Client], BceidGuid: "22222222-2222-2222-2222-222222222222"),
+                ["carol"] = new("mock-carol", [MyssRoles.Client], BceidGuid: "33333333-3333-3333-3333-333333333333"),
                 ["worker"] = new("mock-worker", [MyssRoles.Worker], IdirUsername: "MWORKER"),
+                ["admin"] = new("mock-admin", [MyssRoles.Admin], IdirUsername: "MADMIN"),
 
                 // Deliberately has the WORKER role but no IDIR identity, so the
-                // AdminIdir policy can be shown to reject it.
+                // WorkerWithIdir policy can be shown to reject it.
                 ["workernoidir"] = new("mock-worker-no-idir", [MyssRoles.Worker]),
 
-                // A signed-in citizen, which the AdminIdir policy refuses.
-                ["alice"] = new("mock-alice", [MyssRoles.Client], BceidGuid: "11111111-1111-1111-1111-111111111111"),
+                // Mirrors a REAL Basic BCeID token: an identity_provider claim and NO
+                // roles — CLIENT comes from RoleCalculator (ADR-0007), not the token.
+                // alice/bob/carol predate the calculator and carry CLIENT explicitly.
+                ["bceid"] = new(
+                    "mock-bceid",
+                    [],
+                    BceidGuid: "44444444-4444-4444-4444-444444444444",
+                    IdentityProvider: IdentityProviders.BceidBasic),
+
+                // A BC Services Card citizen: CLIENT from the calculator like
+                // "bceid", but no BCeID GUID, so no PIN (MYSS-258).
+                ["bcsc"] = new(
+                    "mock-bcsc",
+                    [],
+                    IdentityProvider: IdentityProviders.BcServicesCard),
             };
 
         private readonly string defaultPersona;

@@ -6,9 +6,9 @@ import type {
 import { API_URL } from "@/constants";
 import { authHeaders } from "@/auth/accessToken";
 
-// Calls to the forms API (/v1/forms): fetch form specs, list and read
-// submissions, and post new ones. Responses come wrapped in the API's payload
-// envelope. The admin editor's calls (list forms, drafts, publish) live in
+// Calls to the forms API (/v1/forms): fetch form specs and post submissions.
+// Responses come wrapped in the API's payload envelope. The staff calls (the
+// editor's list, drafts and publish; listing and reading submissions) live in
 // MyssAdminWebclient and go to MyssAdminApi.
 //
 // These endpoints are not in the generated client yet, hence the raw fetches
@@ -28,13 +28,6 @@ export interface FormSubmissionPayload {
   answers: { [key: string]: FormioJson };
   submittedAt: string;
   spec?: FormSpecPayload | null;
-}
-
-export interface FormSubmissionSummary {
-  id: string;
-  formSpecId: string;
-  formSpecVersion: number;
-  submittedAt: string;
 }
 
 /**
@@ -122,28 +115,6 @@ export async function getFormSpec(formSpecId: string): Promise<FormSpecPayload> 
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(`Spec fetch failed (${res.status})`);
-  return (await res.json()).payload;
-}
-
-/** A form's submissions, newest first (metadata only). */
-export async function listSubmissions(
-  formSpecId: string,
-): Promise<FormSubmissionSummary[]> {
-  const res = await fetch(`${API_URL}/v1/forms/${formSpecId}/submissions`, {
-    headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error(`Submissions fetch failed (${res.status})`);
-  return (await res.json()).payload;
-}
-
-/** One submission with the archived spec version that rendered it. */
-export async function getSubmission(
-  id: string,
-): Promise<FormSubmissionPayload> {
-  const res = await fetch(`${API_URL}/v1/forms/submissions/${id}`, {
-    headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error(`Submission fetch failed (${res.status})`);
   return (await res.json()).payload;
 }
 

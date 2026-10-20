@@ -68,11 +68,12 @@ describe("buildOidcConfig", () => {
 describe("IDP_ALIAS", () => {
   // Pinned to the providers enabled on the CSS integration (the dev realm's
   // chooser on 2026-10-02 listed bceidboth, azureidir and BC Services Card).
-  // A change here is a change to the integration, not a typo fix.
+  // A change here is a change to the integration, not a typo fix. IDIR is
+  // the admin site's; this app has no hint for it.
   it("maps friendly idp names to the hint aliases the CSS integration has", () => {
     const aliases = buildIdpAliases("sdpr-my-ss-6498");
     expect(aliases.bceid).toBe("bceidboth");
-    expect(aliases.idir).toBe("azureidir");
+    expect(aliases).not.toHaveProperty("idir");
   });
 
   // CSS names each integration's BC Services Card broker after the client

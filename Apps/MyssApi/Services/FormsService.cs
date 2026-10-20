@@ -2,9 +2,9 @@ namespace Myss.Api.Services
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Globalization;
     using System.Reflection;
     using System.Text.Json;
     using System.Threading;
@@ -15,6 +15,7 @@ namespace Myss.Api.Services
     using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Data;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
 
@@ -23,8 +24,6 @@ namespace Myss.Api.Services
     /// </summary>
     public class FormsService : IFormsService
     {
-        private const string BusPassTemplateName = "bus-pass.odt";
-
         /// <summary>
         /// The oldest registration version a submission may claim. v1 predates the
         /// fields a profile needs; see <see cref="SubmitAsync(string, FormSubmissionRequestModel, Func{JsonElement, IReadOnlyList{ValidationErrorModel}}?, CancellationToken)"/>.
@@ -34,8 +33,6 @@ namespace Myss.Api.Services
         private readonly ILogger<FormsService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly IFormSpecProvider _formSpecProvider;
-        private readonly IPdfProvider _pdfProvider;
-        private readonly ITemplateProvider _templateProvider;
         private readonly ICurrentUserAccessor _currentUserAccessor;
         private readonly IErrorMessageProvider _errorMessageProvider;
         private readonly IPinHasher _pinHasher;
@@ -46,8 +43,6 @@ namespace Myss.Api.Services
         /// <param name="logger">Injected Logger Provider.</param>
         /// <param name="dbContext">Injected forms db context.</param>
         /// <param name="formSpecProvider">Injected form spec provider.</param>
-        /// <param name="pdfProvider">Injected PDF provider.</param>
-        /// <param name="templateProvider">Injected template provider.</param>
         /// <param name="currentUserAccessor">Injected current user accessor.</param>
         /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
         /// <param name="pinHasher">Injected PIN hasher, for the PIN set at registration.</param>
@@ -55,8 +50,6 @@ namespace Myss.Api.Services
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
             IFormSpecProvider formSpecProvider,
-            IPdfProvider pdfProvider,
-            ITemplateProvider templateProvider,
             ICurrentUserAccessor currentUserAccessor,
             IErrorMessageProvider errorMessageProvider,
             IPinHasher pinHasher)
@@ -64,8 +57,6 @@ namespace Myss.Api.Services
             _logger = logger;
             _dbContext = dbContext;
             _formSpecProvider = formSpecProvider;
-            _pdfProvider = pdfProvider;
-            _templateProvider = templateProvider;
             _currentUserAccessor = currentUserAccessor;
             _errorMessageProvider = errorMessageProvider;
             _pinHasher = pinHasher;
@@ -481,105 +472,6 @@ namespace Myss.Api.Services
 
             date = default;
             return false;
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSubmissionResponseModel?> GetSubmissionAsync(Guid id, CancellationToken cancellationToken)
-        {
-            FormSubmission? submission = await _dbContext.FormSubmissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-            if (submission is null)
-            {
-                return null;
-            }
-
-            // Fetch the version stamped on the submission, not the latest.
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(
-                submission.FormSpecId, submission.FormSpecVersion, cancellationToken);
-            if (spec is null)
-            {
-                // The content engine no longer has a version that a stored
-                // submission still references.
-                _logger.LogWarning(
-                    "Archived spec {FormSpecId} v{FormSpecVersion} not found for submission {SubmissionId}",
-                    submission.FormSpecId,
-                    submission.FormSpecVersion,
-                    submission.Id);
-            }
-
-            return ToResponse(submission, spec);
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSubmissionResponseModel?> GetBusPassSubmissionForPdfAsync(
-            Guid id,
-            CancellationToken cancellationToken)
-        {
-            FormSubmission? submission = await _dbContext.FormSubmissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-
-            if (submission is null || submission.FormSpecId != BusPassPdfFieldMap.FormSpecId)
-            {
-                return null;
-            }
-
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(
-                submission.FormSpecId,
-                submission.FormSpecVersion,
-                cancellationToken);
-            if (spec is null)
-            {
-                _logger.LogWarning(
-                    "Archived spec {FormSpecId} v{FormSpecVersion} not found for submission {SubmissionId}",
-                    submission.FormSpecId,
-                    submission.FormSpecVersion,
-                    submission.Id);
-            }
-
-            return ToResponse(submission, spec);
-        }
-
-        /// <inheritdoc/>
-        public async Task<byte[]?> GetBusPassSubmissionPdfAsync(Guid id, CancellationToken cancellationToken)
-        {
-            FormSubmissionResponseModel? submission = await GetBusPassSubmissionForPdfAsync(id, cancellationToken);
-            if (submission is null)
-            {
-                return null;
-            }
-
-            byte[] template = await _templateProvider.GetTemplateAsync(BusPassTemplateName, cancellationToken);
-            Dictionary<string, object?> data = BusPassPdfDataBuilder.Build(submission.Answers);
-            byte[] pdf = await _pdfProvider.GenerateFromOdtAsync(template, data, cancellationToken);
-
-            _logger.LogInformation(
-                "Generated bus pass PDF for submission {SubmissionId} ({Bytes} bytes)",
-                id,
-                pdf.Length);
-
-            return pdf;
-        }
-
-        /// <inheritdoc/>
-        public async Task<IReadOnlyList<FormSubmissionSummaryModel>> ListSubmissionsAsync(
-            string formSpecId,
-            CancellationToken cancellationToken
-        )
-        {
-            return await _dbContext
-                .FormSubmissions.AsNoTracking()
-                .Where(s => s.FormSpecId == formSpecId)
-                .OrderByDescending(s => s.SubmittedAt)
-                .Select(s => new FormSubmissionSummaryModel
-                {
-                    Id = s.Id,
-                    FormSpecId = s.FormSpecId,
-                    FormSpecVersion = s.FormSpecVersion,
-                    SubmittedAt = s.SubmittedAt,
-                })
-                .ToListAsync(cancellationToken);
         }
 
         private static FormSubmissionResponseModel ToResponse(FormSubmission submission, FormSpecModel? spec)

@@ -10,10 +10,11 @@ portal (bcgov). Five deployable apps under `Apps/`, plus ADRs under
 
 | App | Stack | Role |
 | --- | --- | --- |
-| `Apps/MyssApi` | C# / ASP.NET Core .NET 10 | The API. Modular monolith; namespace `Myss.Api` |
-| `Apps/MyssWebclient` | React 19 + Vite + TS | Citizen and worker SPA; BC Gov Design System; Form.io renderer |
-| `Apps/MyssAdminApi` | C# / ASP.NET Core .NET 10 | The IDIR administration API (form editor, estimator rates); Strapi only, no database; namespace `Myss.AdminApi` |
-| `Apps/MyssAdminWebclient` | React 19 + Vite + TS | The administration SPA (form editor, estimator rates); IDIR sign-in only |
+| `Apps/MyssApi` | C# / ASP.NET Core .NET 10 | The citizen API. Modular monolith; owns the database migrations; namespace `Myss.Api` |
+| `Apps/MyssWebclient` | React 19 + Vite + TS | Citizen SPA; BC Gov Design System; Form.io renderer |
+| `Apps/MyssAdminApi` | C# / ASP.NET Core .NET 10 | The staff API: form and rates editors, worker application review, bus pass PDF; shares the database, never migrates it; namespace `Myss.AdminApi` |
+| `Apps/MyssAdminWebclient` | React 19 + Vite + TS | The staff SPA (form and rates editors, application review); IDIR sign-in only |
+| `Apps/MyssData` | C# class library | The EF model both APIs use (Forms, Intake, Platform contexts, event store, intake projection); namespace `Myss.Data` (ADR-0010) |
 | `Apps/MyssFormSpec` | C# class library | `FormSpecValidator` and the domain rules it runs, shared by both APIs; namespace `Myss.FormSpec` |
 | `Apps/MyssFormio` | TS package `@myss/formio` | The BC Gov Form.io components, shared by both webclients (npm workspace rooted at `Apps/`) |
 | `Apps/MyssContent` | Strapi 5 | Content engine; owns versioned Form.io specs |
@@ -106,7 +107,10 @@ mode: apply every pending migration of every context, then exit):
 cd Apps/MyssApi && dotnet run -- --migrate
 ```
 
-(Adding a migration: see `Apps/MyssApi/AGENTS.md`. Deployed environments never
+(The Forms, Intake and Platform contexts live in `Apps/MyssData`, shared with
+MyssAdminApi, but their migrations stay in MyssApi — `Configuration/MyssMigrations`
+points them there — and only MyssApi applies them (ADR-0010). Adding a migration: see
+`Apps/MyssApi/AGENTS.md`. Deployed environments never
 run migrations by hand: the pipeline runs `MyssApi --migrate` as a Job from the
 freshly built image before the rollout restart — ADR-0009.)
 
@@ -185,11 +189,15 @@ pipeline: see `Apps/MyssApi/AGENTS.md`.
 
 ### MyssAdminApi
 
-The administration side, split from MyssApi into its own deployable: the form editor
+The staff side, split from MyssApi into its own deployable. The form editor
 (`GET v1/forms`, `GET`/`PUT v1/forms/{id}/draft`, `POST v1/forms/{id}/publish`) and the
-estimator rates editor (`GET`/`POST v1/EligibilityRates`), all behind the `AdminIdir`
-policy. It has no database and holds the only write-scoped Strapi token
-(`Strapi:AdminApiToken`); MyssApi keeps the read-only one. MyssApi caches the rate table
+estimator rates editor (`GET`/`POST v1/EligibilityRates`) are behind the `AdminIdir`
+policy; the worker endpoints (`v1/intake/review/applications/...`, the stored form
+submissions, the bus pass PDF through CDOGS) behind `WorkerWithIdir`; `GET v1/auth/me`
+gives the staff site the caller's roles. It uses MyssApi's database through
+`Apps/MyssData` but never migrates it (ADR-0010), and it holds the only write-scoped
+Strapi token (`Strapi:AdminApiToken`, also used to read specs); MyssApi keeps the
+read-only one. MyssApi caches the rate table
 for five minutes and the admin API cannot clear that cache, so a saved table reaches
 citizens within that window. Its host plumbing (auth, Swagger, observability) is a copy
 of MyssApi's, trimmed: see `Apps/MyssAdminApi/AGENTS.md`.
@@ -250,9 +258,11 @@ in the shared file and every mirror, or a reason in the header — the test suit
 
 ### Platform and Intake
 
-`Myss.Api.Platform` is the shared event log of ADR-0001: one `platform.event` table
+The model below lives in `Apps/MyssData` (`Myss.Data.Platform`, `Myss.Data.Intake`),
+used by MyssApi (the citizen side: `IntakeService`) and MyssAdminApi (the worker side:
+`ReviewService`) — ADR-0010. `Myss.Data.Platform` is the shared event log of ADR-0001: one `platform.event` table
 keyed `(stream_id, version)`, reached only through `IEventStore` (append with an
-expected version, load, load-many, and a fold helper). `Myss.Api.Intake` is
+expected version, load, load-many, and a fold helper). `Myss.Data.Intake` is
 Application Intake: `intake.application_answers` holds a draft's working copy under a
 row version, submit appends one `Submitted` event (`Resubmitted` after a return), and
 workers act through `ReviewService` — `PickedUp` assigns the file to the caller, and
@@ -261,7 +271,8 @@ only that worker can then append `NoteAdded`, `MoreInfoRequested`, `Escalated`,
 (`IApplicationPromotionProvider`, a placeholder that succeeds today), recorded as
 `Promoted` or `PromotionFailed`. State is always the fold in `ApplicationProjection`
 — there is no status column. Modules are
-marked by **namespace** (`Myss.Api.Platform`, `Myss.Api.Intake`), with files in
+marked by **namespace** (`Myss.Data.Platform`, `Myss.Data.Intake` for the shared model;
+`Myss.Api.Intake` and `Myss.AdminApi.Intake` for each API's services), with files in
 subfolders of the layer folders. Design: `docs/development_design/income-assistance-application.md`
 in the workspace; the forms and profile dependencies are ADR-0008.
 

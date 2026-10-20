@@ -8,6 +8,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
 
@@ -339,8 +340,6 @@ namespace Myss.Api.Tests.Services
                 NullLogger<FormsService>.Instance,
                 db,
                 _specProvider,
-                new UnexpectedPdfProvider(),
-                new UnexpectedTemplateProvider(),
                 new StubCurrentUserAccessor("test-subject"),
                 new FakeErrorMessageProvider(),
                 new PinHasher());
@@ -356,17 +355,5 @@ namespace Myss.Api.Tests.Services
 
         private static Task<List<BusPassDispatchEvent>> Events(FormsDbContext db) =>
             db.BusPassDispatchEvents.OrderBy(e => e.OccurredAt).ThenBy(e => e.Type).ToListAsync();
-
-        private sealed class UnexpectedPdfProvider : IPdfProvider
-        {
-            public Task<byte[]> GenerateFromOdtAsync(byte[] odtTemplate, object data, CancellationToken cancellationToken) =>
-                throw new InvalidOperationException("No PDF is rendered on submit.");
-        }
-
-        private sealed class UnexpectedTemplateProvider : ITemplateProvider
-        {
-            public Task<byte[]> GetTemplateAsync(string templateName, CancellationToken cancellationToken) =>
-                throw new InvalidOperationException("No template is read on submit.");
-        }
     }
 }

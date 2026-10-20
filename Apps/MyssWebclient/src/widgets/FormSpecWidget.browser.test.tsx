@@ -160,7 +160,7 @@ test("renders the fetched spec and shows its version", async () => {
     .toBeVisible();
 });
 
-test("submits the version it rendered with, and links to the stored submission", async () => {
+test("submits the version it rendered with, and confirms the stored submission", async () => {
   const posts = stubFormApi();
   const screen = await renderForm();
 
@@ -169,9 +169,6 @@ test("submits the version it rendered with, and links to the stored submission",
 
   await expect.element(screen.getByText("Submission received")).toBeVisible();
   await expect.element(screen.getByText("poc-test-form v7")).toBeVisible();
-  await expect
-    .element(screen.getByRole("link", { name: "View this submission" }))
-    .toBeVisible();
   expect(posts).toHaveLength(1);
   expect(posts[0].body).toMatchObject({
     formSpecVersion: 7,

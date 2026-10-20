@@ -49,7 +49,6 @@ namespace Myss.Api.Tests
             Assert.False((await Evaluate(anonymous, MyssPolicies.Client)).Succeeded);
             Assert.False((await Evaluate(anonymous, MyssPolicies.Worker)).Succeeded);
             Assert.False((await Evaluate(anonymous, MyssPolicies.Admin)).Succeeded);
-            Assert.False((await Evaluate(anonymous, MyssPolicies.WorkerWithIdir)).Succeeded);
         }
 
         [Fact]
@@ -91,34 +90,6 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
-        public async Task WorkerWithIdirRequiresBothTheRoleAndTheIdirClaim()
-        {
-            var withIdir = User(
-                new Claim(KeycloakClaims.RolesClaimType, MyssRoles.Worker),
-                new Claim(KeycloakClaims.IdirUsernameClaimType, "AJONES"));
-
-            Assert.True((await Evaluate(withIdir, MyssPolicies.WorkerWithIdir)).Succeeded);
-        }
-
-        [Fact]
-        public async Task WorkerWithIdirRejectsAWorkerWithoutAnIdirIdentity()
-        {
-            // The hardening control: role alone is not enough.
-            Assert.False(
-                (await Evaluate(WithRoles(MyssRoles.Worker), MyssPolicies.WorkerWithIdir)).Succeeded);
-        }
-
-        [Fact]
-        public async Task WorkerWithIdirRejectsAClientEvenWithAnIdirClaim()
-        {
-            var clientWithIdir = User(
-                new Claim(KeycloakClaims.RolesClaimType, MyssRoles.Client),
-                new Claim(KeycloakClaims.IdirUsernameClaimType, "AJONES"));
-
-            Assert.False((await Evaluate(clientWithIdir, MyssPolicies.WorkerWithIdir)).Succeeded);
-        }
-
-        [Fact]
         public async Task RolesFlattenedFromARealTokenShapeSatisfyPolicies()
         {
             // End-to-end of the permanent core: nested Keycloak claim -> MapInto -> policy.
@@ -132,9 +103,7 @@ namespace Myss.Api.Tests
         [InlineData("alice", MyssPolicies.Client, true)]
         [InlineData("alice", MyssPolicies.Worker, false)]
         [InlineData("worker", MyssPolicies.Worker, true)]
-        [InlineData("worker", MyssPolicies.WorkerWithIdir, true)]
         [InlineData("workernoidir", MyssPolicies.Worker, true)]
-        [InlineData("workernoidir", MyssPolicies.WorkerWithIdir, false)]
         [InlineData("admin", MyssPolicies.Worker, true)]
         [InlineData("admin", MyssPolicies.Admin, true)]
         public async Task MockPersonasAuthorizeAsExpected(string persona, string policy, bool expected)

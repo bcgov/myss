@@ -1,7 +1,7 @@
 import { useEffect } from "react";
+import { Button } from "@bcgov/design-system-react-components";
 import { Outlet, useNavigate } from "react-router";
 
-import { WORKER_ROLE } from "@/auth/RequireWorker";
 import { useSession } from "@/auth/useSession";
 import { paths } from "@/routes/paths";
 import DashboardNav from "@/widgets/layout/DashboardNav";
@@ -11,29 +11,43 @@ import styles from "./DashboardLayout.module.css";
 // current section. Every section route renders into the <Outlet />, so the
 // landing checks below cover all of them, not just Home.
 export default function DashboardLayout() {
-  const { hasProfile, isMeLoading, user } = useSession();
+  const { user, hasProfile, isMeLoading, logout } = useSession();
   const navigate = useNavigate();
-  // Roles come from /auth/me, so this is only known once that has answered.
-  const isWorker =
-    !isMeLoading &&
-    Boolean(user?.idirUsername) &&
-    (user?.roles ?? []).includes(WORKER_ROLE);
 
-  // A Ministry worker has no citizen profile: their landing is the worker
-  // operations view, decided before the registration check below can fire.
+  // Ministry staff work on the admin site, not here. The sign-in chooser no
+  // longer offers IDIR, but an IDIR session can still arrive (Keycloak's own
+  // provider page, or an existing IDIR SSO session on the shared client), and
+  // staff have no citizen profile, so without this they would be sent to
+  // citizen registration.
+  const isStaff = Boolean(user?.idirUsername);
+
   // A citizen without a registered profile is sent to registration. The API
   // refuses to create an application for them too; this is the courtesy.
   useEffect(() => {
-    if (isWorker) {
-      void navigate(paths.workerApplications, { replace: true });
-    } else if (!isMeLoading && hasProfile === false) {
+    if (!isMeLoading && !isStaff && hasProfile === false) {
       void navigate(paths.register, { replace: true });
     }
-  }, [hasProfile, isMeLoading, isWorker, navigate]);
+  }, [hasProfile, isMeLoading, isStaff, navigate]);
 
-  // Hold the menu back until the user is known to belong here, so a worker
-  // or an unregistered citizen never glimpses it on the way past.
-  if (isMeLoading || isWorker || hasProfile !== true) {
+  if (!isMeLoading && isStaff) {
+    return (
+      <div className={styles.content}>
+        <div role="alert">
+          <p>
+            My Self Serve is for citizens. Ministry staff use My Self Serve
+            Administration, signed in with IDIR.
+          </p>
+          <Button variant="secondary" onPress={() => logout()}>
+            Sign out
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Hold the menu back until the user is known to belong here, so an
+  // unregistered citizen never glimpses it on the way past.
+  if (isMeLoading || hasProfile !== true) {
     return (
       <div className={styles.content}>
         <output>Checking your MySS account…</output>

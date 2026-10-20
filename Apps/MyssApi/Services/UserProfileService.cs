@@ -5,6 +5,7 @@ namespace Myss.Api.Services
     using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
     using Myss.Api.Data;
+    using Myss.Data;
 
     /// <summary>
     /// Queries registration profiles owned by the forms module.

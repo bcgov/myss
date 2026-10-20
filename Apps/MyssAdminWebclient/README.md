@@ -1,7 +1,8 @@
 # MySS Admin Web Client
 
 Single-page front-end for **My Self Serve Administration**: the IDIR-only tools
-ministry staff use to manage what citizens see in MySS. It talks to
+ministry staff use to manage what citizens see in MySS, and the queue where
+Ministry workers review submitted Income Assistance applications. It talks to
 **MyssAdminApi** only. Built with React 19, Vite and TypeScript on the
 [BC Government Design System](https://www2.gov.bc.ca/gov/content/digital/design-system),
 like the citizen webclient.
@@ -13,6 +14,8 @@ like the citizen webclient.
 | `/`                            | Admin landing page: the list of admin tools     |
 | `/form-management`             | The forms list, and starting a new form         |
 | `/form-management/:formSpecId` | The form editor (and, for the estimator, rates) |
+| `/applications`                | Applications to review (WORKER or ADMIN role)   |
+| `/applications/:id`            | One application: pick up, decide, notes         |
 | `/auth/callback`               | OIDC redirect target                            |
 | `/signed-out`                  | Where sign-out and idle logout land             |
 
@@ -23,6 +26,12 @@ alive upstream, sign the user straight back in. Signing in again from there is
 a button, never automatic.
 Sign-in always goes straight to IDIR (`kc_idp_hint=azureidir`); there is no
 provider chooser. The API enforces the same rule with its `AdminIdir` policy.
+
+The application review pages also need the WORKER or ADMIN role
+(`auth/RequireWorker.tsx`), read from MyssAdminApi's `GET /v1/auth/me`
+(`auth/useRoles.ts`), the same rule as the API's `WorkerWithIdir` policy. The
+landing page only lists "Applications to review" for those roles; an IDIR user
+without them who opens the URL gets an explanation, not a redirect.
 
 The editor's preview renders specs with the same Form.io components as the
 citizen webclient, from the shared `@myss/formio` workspace

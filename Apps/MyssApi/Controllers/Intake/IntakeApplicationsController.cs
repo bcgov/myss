@@ -12,7 +12,8 @@ namespace Myss.Api.Intake
     using Microsoft.Extensions.Logging;
     using Myss.Api.Configuration;
     using Myss.Api.Models;
-    using Myss.Api.Platform;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
     using Myss.FormSpec;
 
     /// <summary>
@@ -20,7 +21,7 @@ namespace Myss.Api.Intake
     /// Assistance applications. Every route is scoped to the caller; an
     /// application another citizen owns is a 404 here, never a 403, so ids
     /// cannot be enumerated. Workers do not use these routes: the review
-    /// surface is <see cref="ReviewApplicationsController"/>.
+    /// surface is MyssAdminApi's <c>ReviewApplicationsController</c>.
     /// </summary>
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/intake/applications")]

@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptApplicationData, AcceptApplicationErrors, AcceptApplicationResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, DenyApplicationData, DenyApplicationErrors, DenyApplicationResponses, EscalateApplicationData, EscalateApplicationErrors, EscalateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetReviewApplicationData, GetReviewApplicationErrors, GetReviewApplicationResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, ListReviewApplicationsData, ListReviewApplicationsResponses, ReleaseApplicationData, ReleaseApplicationErrors, ReleaseApplicationResponses, RequestMoreApplicationInfoData, RequestMoreApplicationInfoErrors, RequestMoreApplicationInfoResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, StartApplicationReviewData, StartApplicationReviewErrors, StartApplicationReviewResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
+import type { CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -108,12 +108,6 @@ export const submitBusPass = <ThrowOnError extends boolean = false>(options?: Op
 });
 
 /**
- * Generates the BC Bus Pass request PDF for a stored submission. Staff only:
- * a signed-in worker with an IDIR identity.
- */
-export const getBusPassSubmissionPdf = <ThrowOnError extends boolean = false>(options: Options<GetBusPassSubmissionPdfData, ThrowOnError>): RequestResult<GetBusPassSubmissionPdfResponses, GetBusPassSubmissionPdfErrors, ThrowOnError> => (options.client ?? client).get<GetBusPassSubmissionPdfResponses, GetBusPassSubmissionPdfErrors, ThrowOnError>({ url: '/v1/bus-pass/submissions/{id}/pdf', ...options });
-
-/**
  * Returns a placeholder.
  */
 export const getPlaceholder = <ThrowOnError extends boolean = false>(options?: Options<GetPlaceholderData, ThrowOnError>): RequestResult<GetPlaceholderResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetPlaceholderResponses, unknown, ThrowOnError>({ url: '/v1/Demo', ...options });
@@ -143,11 +137,6 @@ export const getFormSpec = <ThrowOnError extends boolean = false>(options: Optio
 export const getErrorMessages = <ThrowOnError extends boolean = false>(options?: Options<GetErrorMessagesData, ThrowOnError>): RequestResult<GetErrorMessagesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetErrorMessagesResponses, unknown, ThrowOnError>({ url: '/v1/forms/error-messages', ...options });
 
 /**
- * Lists a form's submissions, newest first (metadata only).
- */
-export const listFormSubmissions = <ThrowOnError extends boolean = false>(options: Options<ListFormSubmissionsData, ThrowOnError>): RequestResult<ListFormSubmissionsResponses, unknown, ThrowOnError> => (options.client ?? client).get<ListFormSubmissionsResponses, unknown, ThrowOnError>({ url: '/v1/forms/{formSpecId}/submissions', ...options });
-
-/**
  * Stores a submission stamped with the spec version it was rendered with.
  */
 export const submitForm = <ThrowOnError extends boolean = false>(options: Options<SubmitFormData, ThrowOnError>): RequestResult<SubmitFormResponses, SubmitFormErrors, ThrowOnError> => (options.client ?? client).post<SubmitFormResponses, SubmitFormErrors, ThrowOnError>({
@@ -158,11 +147,6 @@ export const submitForm = <ThrowOnError extends boolean = false>(options: Option
         ...options.headers
     }
 });
-
-/**
- * Returns a submission with the archived spec version that rendered it.
- */
-export const getFormSubmission = <ThrowOnError extends boolean = false>(options: Options<GetFormSubmissionData, ThrowOnError>): RequestResult<GetFormSubmissionResponses, GetFormSubmissionErrors, ThrowOnError> => (options.client ?? client).get<GetFormSubmissionResponses, GetFormSubmissionErrors, ThrowOnError>({ url: '/v1/forms/submissions/{id}', ...options });
 
 /**
  * Lists the caller's applications, newest first.
@@ -198,103 +182,6 @@ export const saveApplicationAnswers = <ThrowOnError extends boolean = false>(opt
  */
 export const submitApplication = <ThrowOnError extends boolean = false>(options: Options<SubmitApplicationData, ThrowOnError>): RequestResult<SubmitApplicationResponses, SubmitApplicationErrors, ThrowOnError> => (options.client ?? client).post<SubmitApplicationResponses, SubmitApplicationErrors, ThrowOnError>({
     url: '/v1/intake/applications/{id}/submit',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Lists every submitted application, newest submission first.
- */
-export const listReviewApplications = <ThrowOnError extends boolean = false>(options?: Options<ListReviewApplicationsData, ThrowOnError>): RequestResult<ListReviewApplicationsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListReviewApplicationsResponses, unknown, ThrowOnError>({ url: '/v1/intake/review/applications', ...options });
-
-/**
- * Returns a submitted application with the archived spec that renders it
- * and the actions available right now.
- */
-export const getReviewApplication = <ThrowOnError extends boolean = false>(options: Options<GetReviewApplicationData, ThrowOnError>): RequestResult<GetReviewApplicationResponses, GetReviewApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetReviewApplicationResponses, GetReviewApplicationErrors, ThrowOnError>({ url: '/v1/intake/review/applications/{id}', ...options });
-
-/**
- * Picks the application up from the queue: it goes Under Review,
- * assigned to the caller.
- */
-export const startApplicationReview = <ThrowOnError extends boolean = false>(options: Options<StartApplicationReviewData, ThrowOnError>): RequestResult<StartApplicationReviewResponses, StartApplicationReviewErrors, ThrowOnError> => (options.client ?? client).post<StartApplicationReviewResponses, StartApplicationReviewErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/review',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Accepts the application.
- */
-export const acceptApplication = <ThrowOnError extends boolean = false>(options: Options<AcceptApplicationData, ThrowOnError>): RequestResult<AcceptApplicationResponses, AcceptApplicationErrors, ThrowOnError> => (options.client ?? client).post<AcceptApplicationResponses, AcceptApplicationErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/accept',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Denies the application.
- */
-export const denyApplication = <ThrowOnError extends boolean = false>(options: Options<DenyApplicationData, ThrowOnError>): RequestResult<DenyApplicationResponses, DenyApplicationErrors, ThrowOnError> => (options.client ?? client).post<DenyApplicationResponses, DenyApplicationErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/deny',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Puts the application back in the queue without deciding it. Assignee only.
- */
-export const releaseApplication = <ThrowOnError extends boolean = false>(options: Options<ReleaseApplicationData, ThrowOnError>): RequestResult<ReleaseApplicationResponses, ReleaseApplicationErrors, ThrowOnError> => (options.client ?? client).post<ReleaseApplicationResponses, ReleaseApplicationErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/release',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Returns the application to the applicant for more information. Assignee only.
- */
-export const requestMoreApplicationInfo = <ThrowOnError extends boolean = false>(options: Options<RequestMoreApplicationInfoData, ThrowOnError>): RequestResult<RequestMoreApplicationInfoResponses, RequestMoreApplicationInfoErrors, ThrowOnError> => (options.client ?? client).post<RequestMoreApplicationInfoResponses, RequestMoreApplicationInfoErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/request-more-info',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Escalates the application for a further review. Assignee only.
- */
-export const escalateApplication = <ThrowOnError extends boolean = false>(options: Options<EscalateApplicationData, ThrowOnError>): RequestResult<EscalateApplicationResponses, EscalateApplicationErrors, ThrowOnError> => (options.client ?? client).post<EscalateApplicationResponses, EscalateApplicationErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/escalate',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Adds an internal note. Assignee only, while the application is Under Review.
- * Notes are never shown to the applicant.
- */
-export const addApplicationNote = <ThrowOnError extends boolean = false>(options: Options<AddApplicationNoteData, ThrowOnError>): RequestResult<AddApplicationNoteResponses, AddApplicationNoteErrors, ThrowOnError> => (options.client ?? client).post<AddApplicationNoteResponses, AddApplicationNoteErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/notes',
     ...options,
     headers: {
         'Content-Type': 'application/json',

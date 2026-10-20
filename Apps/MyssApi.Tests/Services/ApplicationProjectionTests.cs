@@ -2,7 +2,8 @@ namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
     using Myss.Api.Intake;
-    using Myss.Api.Platform;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// The fold is a table: same events, same state. Nothing here touches a

@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { acceptApplication, addApplicationNote, createApplication, denyApplication, escalateApplication, getAccount, getApplication, getBusPassSubmissionPdf, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormSpec, getFormSubmission, getMe, getPlaceholder, getReviewApplication, listApplications, listAttachments, listFormSubmissions, listReviewApplications, type Options, releaseApplication, requestMoreApplicationInfo, saveAccountPin, saveApplicationAnswers, startApplicationReview, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment } from '../sdk.gen';
-import type { AcceptApplicationData, AcceptApplicationError, AcceptApplicationResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, DenyApplicationData, DenyApplicationError, DenyApplicationResponse, EscalateApplicationData, EscalateApplicationError, EscalateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfError, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetFormSubmissionData, GetFormSubmissionError, GetFormSubmissionResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetReviewApplicationData, GetReviewApplicationError, GetReviewApplicationResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, ListFormSubmissionsData, ListFormSubmissionsResponse, ListReviewApplicationsData, ListReviewApplicationsResponse, ReleaseApplicationData, ReleaseApplicationError, ReleaseApplicationResponse, RequestMoreApplicationInfoData, RequestMoreApplicationInfoError, RequestMoreApplicationInfoResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, StartApplicationReviewData, StartApplicationReviewError, StartApplicationReviewResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
+import { createApplication, getAccount, getApplication, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormSpec, getMe, getPlaceholder, listApplications, listAttachments, type Options, saveAccountPin, saveApplicationAnswers, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment } from '../sdk.gen';
+import type { CreateApplicationData, CreateApplicationError, CreateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -191,25 +191,6 @@ export const submitBusPassMutation = (options?: Partial<Options<SubmitBusPassDat
     return mutationOptions;
 };
 
-export const getBusPassSubmissionPdfQueryKey = (options: Options<GetBusPassSubmissionPdfData>) => createQueryKey('getBusPassSubmissionPdf', options);
-
-/**
- * Generates the BC Bus Pass request PDF for a stored submission. Staff only:
- * a signed-in worker with an IDIR identity.
- */
-export const getBusPassSubmissionPdfOptions = (options: Options<GetBusPassSubmissionPdfData>) => queryOptions<unknown, GetBusPassSubmissionPdfError, unknown, ReturnType<typeof getBusPassSubmissionPdfQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await getBusPassSubmissionPdf({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getBusPassSubmissionPdfQueryKey(options)
-});
-
 export const getPlaceholderQueryKey = (options?: Options<GetPlaceholderData>) => createQueryKey('getPlaceholder', options);
 
 /**
@@ -304,24 +285,6 @@ export const getErrorMessagesOptions = (options?: Options<GetErrorMessagesData>)
     queryKey: getErrorMessagesQueryKey(options)
 });
 
-export const listFormSubmissionsQueryKey = (options: Options<ListFormSubmissionsData>) => createQueryKey('listFormSubmissions', options);
-
-/**
- * Lists a form's submissions, newest first (metadata only).
- */
-export const listFormSubmissionsOptions = (options: Options<ListFormSubmissionsData>) => queryOptions<ListFormSubmissionsResponse, DefaultError, ListFormSubmissionsResponse, ReturnType<typeof listFormSubmissionsQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await listFormSubmissions({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: listFormSubmissionsQueryKey(options)
-});
-
 /**
  * Stores a submission stamped with the spec version it was rendered with.
  */
@@ -338,24 +301,6 @@ export const submitFormMutation = (options?: Partial<Options<SubmitFormData>>): 
     };
     return mutationOptions;
 };
-
-export const getFormSubmissionQueryKey = (options: Options<GetFormSubmissionData>) => createQueryKey('getFormSubmission', options);
-
-/**
- * Returns a submission with the archived spec version that rendered it.
- */
-export const getFormSubmissionOptions = (options: Options<GetFormSubmissionData>) => queryOptions<GetFormSubmissionResponse, GetFormSubmissionError, GetFormSubmissionResponse, ReturnType<typeof getFormSubmissionQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await getFormSubmission({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getFormSubmissionQueryKey(options)
-});
 
 export const listApplicationsQueryKey = (options?: Options<ListApplicationsData>) => createQueryKey('listApplications', options);
 
@@ -436,164 +381,6 @@ export const submitApplicationMutation = (options?: Partial<Options<SubmitApplic
     const mutationOptions: UseMutationOptions<SubmitApplicationResponse, SubmitApplicationError, Options<SubmitApplicationData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await submitApplication({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-export const listReviewApplicationsQueryKey = (options?: Options<ListReviewApplicationsData>) => createQueryKey('listReviewApplications', options);
-
-/**
- * Lists every submitted application, newest submission first.
- */
-export const listReviewApplicationsOptions = (options?: Options<ListReviewApplicationsData>) => queryOptions<ListReviewApplicationsResponse, DefaultError, ListReviewApplicationsResponse, ReturnType<typeof listReviewApplicationsQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await listReviewApplications({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: listReviewApplicationsQueryKey(options)
-});
-
-export const getReviewApplicationQueryKey = (options: Options<GetReviewApplicationData>) => createQueryKey('getReviewApplication', options);
-
-/**
- * Returns a submitted application with the archived spec that renders it
- * and the actions available right now.
- */
-export const getReviewApplicationOptions = (options: Options<GetReviewApplicationData>) => queryOptions<GetReviewApplicationResponse, GetReviewApplicationError, GetReviewApplicationResponse, ReturnType<typeof getReviewApplicationQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await getReviewApplication({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getReviewApplicationQueryKey(options)
-});
-
-/**
- * Picks the application up from the queue: it goes Under Review,
- * assigned to the caller.
- */
-export const startApplicationReviewMutation = (options?: Partial<Options<StartApplicationReviewData>>): UseMutationOptions<StartApplicationReviewResponse, StartApplicationReviewError, Options<StartApplicationReviewData>> => {
-    const mutationOptions: UseMutationOptions<StartApplicationReviewResponse, StartApplicationReviewError, Options<StartApplicationReviewData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await startApplicationReview({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-/**
- * Accepts the application.
- */
-export const acceptApplicationMutation = (options?: Partial<Options<AcceptApplicationData>>): UseMutationOptions<AcceptApplicationResponse, AcceptApplicationError, Options<AcceptApplicationData>> => {
-    const mutationOptions: UseMutationOptions<AcceptApplicationResponse, AcceptApplicationError, Options<AcceptApplicationData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await acceptApplication({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-/**
- * Denies the application.
- */
-export const denyApplicationMutation = (options?: Partial<Options<DenyApplicationData>>): UseMutationOptions<DenyApplicationResponse, DenyApplicationError, Options<DenyApplicationData>> => {
-    const mutationOptions: UseMutationOptions<DenyApplicationResponse, DenyApplicationError, Options<DenyApplicationData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await denyApplication({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-/**
- * Puts the application back in the queue without deciding it. Assignee only.
- */
-export const releaseApplicationMutation = (options?: Partial<Options<ReleaseApplicationData>>): UseMutationOptions<ReleaseApplicationResponse, ReleaseApplicationError, Options<ReleaseApplicationData>> => {
-    const mutationOptions: UseMutationOptions<ReleaseApplicationResponse, ReleaseApplicationError, Options<ReleaseApplicationData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await releaseApplication({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-/**
- * Returns the application to the applicant for more information. Assignee only.
- */
-export const requestMoreApplicationInfoMutation = (options?: Partial<Options<RequestMoreApplicationInfoData>>): UseMutationOptions<RequestMoreApplicationInfoResponse, RequestMoreApplicationInfoError, Options<RequestMoreApplicationInfoData>> => {
-    const mutationOptions: UseMutationOptions<RequestMoreApplicationInfoResponse, RequestMoreApplicationInfoError, Options<RequestMoreApplicationInfoData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await requestMoreApplicationInfo({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-/**
- * Escalates the application for a further review. Assignee only.
- */
-export const escalateApplicationMutation = (options?: Partial<Options<EscalateApplicationData>>): UseMutationOptions<EscalateApplicationResponse, EscalateApplicationError, Options<EscalateApplicationData>> => {
-    const mutationOptions: UseMutationOptions<EscalateApplicationResponse, EscalateApplicationError, Options<EscalateApplicationData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await escalateApplication({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-/**
- * Adds an internal note. Assignee only, while the application is Under Review.
- * Notes are never shown to the applicant.
- */
-export const addApplicationNoteMutation = (options?: Partial<Options<AddApplicationNoteData>>): UseMutationOptions<AddApplicationNoteResponse, AddApplicationNoteError, Options<AddApplicationNoteData>> => {
-    const mutationOptions: UseMutationOptions<AddApplicationNoteResponse, AddApplicationNoteError, Options<AddApplicationNoteData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await addApplicationNote({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

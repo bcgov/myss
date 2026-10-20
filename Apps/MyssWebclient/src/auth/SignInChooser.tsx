@@ -1,5 +1,6 @@
 // PERMANENT (depends only on useSession). The in-app identity-provider chooser.
 // RULE-IDA-08: Business BCeID is intentionally NOT offered on the sign-in path.
+// Nor is IDIR: Ministry staff sign in on the admin site (MyssAdminWebclient).
 // Used by the /auth/login route and as the RequireAuth fallback.
 
 import { Button } from "@bcgov/design-system-react-components";
@@ -25,13 +26,6 @@ export default function SignInChooser() {
                 onPress={() => login("bceid")}
             >
                 Basic BCeID
-            </Button>
-            <Button
-                variant="secondary"
-                size="large"
-                onPress={() => login("idir")}
-            >
-                IDIR (government staff)
             </Button>
         </div>
     );

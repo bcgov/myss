@@ -8,7 +8,6 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { Link } from "react-router";
 
 import "@formio/js/dist/formio.form.min.css";
 import "./FormSpecWidget.css";
@@ -159,9 +158,6 @@ export default function FormSpecWidget({
             {submit.data.formSpecId} v{submit.data.formSpecVersion}
           </dd>
         </dl>
-        <Link to={`/techdemos/forms/submissions/${submit.data.id}`}>
-          View this submission
-        </Link>
       </section>
     );
   }

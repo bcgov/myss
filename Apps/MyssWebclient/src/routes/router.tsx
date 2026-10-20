@@ -14,13 +14,9 @@ import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
 import BusPassPage from "@/pages/BusPassPage";
-import SubmissionView from "@/pages/SubmissionView";
 import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
 import ApplicationPage from "@/pages/ApplicationPage";
-import WorkerApplicationsPage from "@/pages/WorkerApplicationsPage";
-import WorkerApplicationPage from "@/pages/WorkerApplicationPage";
 import RequireAuth from "@/auth/RequireAuth";
-import RequireWorker from "@/auth/RequireWorker";
 import { paths } from "@/routes/paths";
 
 // App is the shared layout (header/footer + app-wide auth concerns). Child
@@ -50,24 +46,6 @@ export const router = createBrowserRouter([
       { path: paths.signIn, element: <SignInPage /> },
       { path: paths.authCallback, element: <AuthCallbackPage /> },
       { path: paths.simpleLogin, element: <SimpleLoginPage /> },
-
-      // ---- Worker operations: IDIR sign-in with the WORKER role ----
-      {
-        path: paths.workerApplications,
-        element: (
-          <RequireWorker>
-            <WorkerApplicationsPage />
-          </RequireWorker>
-        ),
-      },
-      {
-        path: paths.workerApplication,
-        element: (
-          <RequireWorker>
-            <WorkerApplicationPage />
-          </RequireWorker>
-        ),
-      },
 
       // ---- Dashboard (MYSS-194): the signed-in citizen's sections, framed
       // by the left-hand menu. A section still under development renders the
@@ -118,14 +96,6 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <FormsTechDemo />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "techdemos/forms/submissions/:id",
-        element: (
-          <RequireAuth>
-            <SubmissionView />
           </RequireAuth>
         ),
       },

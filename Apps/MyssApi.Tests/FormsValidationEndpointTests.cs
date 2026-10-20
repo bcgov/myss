@@ -15,6 +15,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data;
     using Myss.FormSpec.Domain;
     using Xunit;
 

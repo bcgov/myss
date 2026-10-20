@@ -2,7 +2,7 @@ namespace Myss.Api.Tests.TestDoubles
 {
     using System.Text.Json;
     using Microsoft.EntityFrameworkCore;
-    using Myss.Api.Platform;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// The platform context over the InMemory provider, which cannot map

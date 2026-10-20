@@ -1,14 +1,20 @@
 namespace Myss.AdminApi
 {
     using System;
+    using Microsoft.AspNetCore.Authentication;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
+    using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
     using Myss.AdminApi.Configuration;
+    using Myss.AdminApi.Intake;
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Services;
+    using Myss.Data;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// Configures the application during startup.
@@ -38,11 +44,14 @@ namespace Myss.AdminApi
             this.startupConfig.ConfigureSwaggerServices(services);
             this.startupConfig.ConfigureTracing(services);
 
-            // Authentication is the Option 1 / Option 2 swap point; the policy and the
-            // typed caller below are unaffected by that choice. Every endpoint here
-            // requires an IDIR identity (AdminIdir), so there is no role calculation.
+            // Authentication is the Option 1 / Option 2 swap point; the policies and the
+            // typed caller below are unaffected by that choice. Effective roles are
+            // computed exactly as MyssApi computes them (RoleCalculator, ADR-0007), so
+            // WorkerWithIdir means the same here: in particular a citizen-IDP token
+            // never keeps WORKER or ADMIN. Runs after every scheme, mock auth included.
             this.startupConfig.ConfigureAuthentication(services);
             services.AddMyssAuthorization();
+            services.AddSingleton<IClaimsTransformation, RoleCalculationClaimsTransformation>();
             services.AddTransient<ICurrentUserAccessor, CurrentUserAccessor>();
 
             // The admin form editor (MYSS-209). The only Strapi token this API holds is
@@ -59,6 +68,55 @@ namespace Myss.AdminApi
             services.AddHttpClient<IEligibilityRateAdminProvider, StrapiEligibilityRateAdminProvider>(
                 client => client.Timeout = TimeSpan.FromSeconds(10));
             services.AddScoped<IEligibilityRatesService, EligibilityRatesService>();
+
+            // The worker side, moved from MyssApi: application review over the shared
+            // data model (MyssData), stored form submissions and the bus pass PDF.
+            // Same connection-string keys and history tables as MyssApi, but this API
+            // never migrates: MyssApi's --migrate Job owns the schema, and a model
+            // change lands there first.
+            IConfiguration configuration = this.startupConfig.Configuration;
+
+            // No database, no startup: the worker screens are nothing without it, and
+            // failing here names the missing key instead of a first query failing with
+            // a less obvious error.
+            if (string.IsNullOrWhiteSpace(configuration.GetConnectionString("FormsDb")))
+            {
+                throw new InvalidOperationException(
+                    "ConnectionStrings:FormsDb is not configured. "
+                    + "Locally: appsettings.Development.json points at the compose Postgres. "
+                    + "Deployed: set ConnectionStrings__FormsDb from the same secret as MyssApi.");
+            }
+
+            services.AddDbContext<FormsDbContext>(options =>
+                options.UseNpgsql(configuration.GetConnectionString("FormsDb")));
+            services.AddDbContext<PlatformDbContext>(options =>
+                options.UseNpgsql(
+                    configuration.GetConnectionString("PlatformDb")
+                        ?? configuration.GetConnectionString("FormsDb"),
+                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "platform")));
+            services.AddDbContext<IntakeDbContext>(options =>
+                options.UseNpgsql(
+                    configuration.GetConnectionString("IntakeDb")
+                        ?? configuration.GetConnectionString("FormsDb"),
+                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "intake")));
+            services.AddScoped<IEventStore, EventStore>();
+
+            // Specs for the worker screens (the version an application or submission
+            // was made on), read with this API's Strapi:AdminApiToken.
+            services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
+            services.AddScoped<IReviewService, ReviewService>();
+
+            // What follows a worker's Accept. Nothing receives applications
+            // yet; the placeholder succeeds without leaving the API.
+            services.AddSingleton<IApplicationPromotionProvider, PlaceholderApplicationPromotionProvider>();
+
+            services.AddHttpClient<IPdfProvider, CdogsPdfProvider>();
+            services.AddSingleton<ITemplateProvider, EmbeddedTemplateProvider>();
+            services.AddScoped<IFormSubmissionsService, FormSubmissionsService>();
+
+            // The event log stamps each append with the request's correlation id.
+            services.AddHttpContextAccessor();
+            services.TryAddSingleton<ICorrelationIdAccessor, CorrelationIdAccessor>();
 
             services.TryAddSingleton(TimeProvider.System);
 

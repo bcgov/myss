@@ -71,6 +71,78 @@ namespace Myss.AdminApi.Tests
             Assert.False((await Evaluate(WithRoles(MyssRoles.Worker), MyssPolicies.AdminIdir)).Succeeded);
         }
 
+        [Fact]
+        public async Task WorkerWithIdirRequiresBothTheRoleAndTheIdirClaim()
+        {
+            var withIdir = User(
+                new Claim(KeycloakClaims.RolesClaimType, MyssRoles.Worker),
+                new Claim(KeycloakClaims.IdirUsernameClaimType, "AJONES"));
+
+            Assert.True((await Evaluate(withIdir, MyssPolicies.WorkerWithIdir)).Succeeded);
+        }
+
+        [Fact]
+        public async Task WorkerWithIdirRejectsAWorkerWithoutAnIdirIdentity()
+        {
+            // The hardening control: role alone is not enough.
+            Assert.False(
+                (await Evaluate(WithRoles(MyssRoles.Worker), MyssPolicies.WorkerWithIdir)).Succeeded);
+        }
+
+        [Fact]
+        public async Task WorkerWithIdirRejectsAClientEvenWithAnIdirClaim()
+        {
+            var clientWithIdir = User(
+                new Claim(KeycloakClaims.RolesClaimType, MyssRoles.Client),
+                new Claim(KeycloakClaims.IdirUsernameClaimType, "AJONES"));
+
+            Assert.False((await Evaluate(clientWithIdir, MyssPolicies.WorkerWithIdir)).Succeeded);
+        }
+
+        [Fact]
+        public async Task WorkerWithIdirRejectsAnonymous()
+        {
+            var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+
+            Assert.False((await Evaluate(anonymous, MyssPolicies.WorkerWithIdir)).Succeeded);
+        }
+
+        [Fact]
+        public async Task WorkerWithIdirRejectsAnIdirUserWithoutAStaffRole()
+        {
+            // AdminIdir lets any IDIR user into the form editor; the worker endpoints
+            // hold citizens' answers and also need WORKER or ADMIN.
+            var idirOnly = User(new Claim(KeycloakClaims.IdirUsernameClaimType, "AJONES"));
+
+            Assert.True((await Evaluate(idirOnly, MyssPolicies.AdminIdir)).Succeeded);
+            Assert.False((await Evaluate(idirOnly, MyssPolicies.WorkerWithIdir)).Succeeded);
+        }
+
+        [Fact]
+        public async Task RolesFlattenedFromARealTokenShapeSatisfyWorkerWithIdir()
+        {
+            // Nested Keycloak claim -> MapInto -> policy, as in MyssApi.
+            var principal = User(
+                new Claim("realm_access", """{"roles":["WORKER"]}"""),
+                new Claim(KeycloakClaims.IdirUsernameClaimType, "AJONES"));
+            KeycloakClaims.MapInto(principal, "sdpr-my-ss-6498");
+
+            Assert.True((await Evaluate(principal, MyssPolicies.WorkerWithIdir)).Succeeded);
+        }
+
+        [Theory]
+        [InlineData("alice", false)]
+        [InlineData("worker", true)]
+        [InlineData("admin", true)]
+        [InlineData("workernoidir", false)]
+        public async Task MockPersonasAuthorizeWorkerWithIdirAsExpected(string persona, bool expected)
+        {
+            var principal = MockAuthenticationHandler.BuildPrincipal(
+                MockAuthenticationHandler.Personas[persona]);
+
+            Assert.Equal(expected, (await Evaluate(principal, MyssPolicies.WorkerWithIdir)).Succeeded);
+        }
+
         [Theory]
         [InlineData("alice", false)]
         [InlineData("worker", true)]

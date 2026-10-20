@@ -4,6 +4,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Data;
     using Myss.Api.Domain;
     using Myss.Api.Services;
+    using Myss.Data;
 
     /// <summary>
     /// Tests for <see cref="PinHasher"/>: what lands in <c>taapcd_aae_passcode</c>

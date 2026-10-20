@@ -3,6 +3,7 @@ namespace Myss.Api.Tests.TestDoubles
     using System.Text.Json;
     using Microsoft.EntityFrameworkCore;
     using Myss.Api.Intake;
+    using Myss.Data.Intake;
 
     /// <summary>
     /// The intake context over the InMemory provider, with the same JSON text

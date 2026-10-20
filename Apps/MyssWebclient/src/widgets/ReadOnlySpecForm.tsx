@@ -9,10 +9,10 @@ import "@formio/js/dist/formio.form.min.css";
 import "@/widgets/FormSpecWidget.css";
 
 // A Form.io spec rendered read-only over a set of answers: how a submitted
-// application is shown, to the applicant and to a reviewing worker alike. The
-// spec's buttons are stripped rather than disabled, because a submitted form
-// must expose no submit control at all, and Form.io's read-only mode only
-// disables one.
+// application is shown to the applicant (the admin site keeps a copy for the
+// reviewing worker). The spec's buttons are stripped rather than disabled,
+// because a submitted form must expose no submit control at all, and
+// Form.io's read-only mode only disables one.
 
 /**
  * The spec without its buttons, recursively, so a button nested in a panel or

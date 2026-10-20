@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The EF Core model the citizen API (MyssApi) and the admin API (MyssAdminApi)
+  share: the forms, intake and platform contexts and their entities, the
+  platform event store, and the intake fold both sides read state from.
+  Migrations are NOT here: they stay in MyssApi, the only service that changes
+  the schema (MigrationsAssembly is set there). MyssAdminApi reads and appends
+  through this model and never migrates. A model change here therefore needs a
+  migration added in MyssApi in the same PR.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Version>0.1.0</Version>
+        <RootNamespace>Myss.Data</RootNamespace>
+        <Nullable>enable</Nullable>
+        <LangVersion>14.0</LangVersion>
+        <AnalysisMode>Recommended</AnalysisMode>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\MyssFormSpec\MyssFormSpec.csproj" />
+    </ItemGroup>
+</Project>

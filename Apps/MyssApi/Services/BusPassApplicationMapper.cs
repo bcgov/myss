@@ -8,7 +8,7 @@ namespace Myss.Api.Services
     /// <summary>
     /// Turns a stored BC Bus Pass submission's answers into the business-language
     /// request the ICM middleware accepts. Pure and static, like
-    /// <see cref="BusPassPdfDataBuilder"/>, so the mapping is testable on its own.
+    /// MyssAdminApi's <c>BusPassPdfDataBuilder</c>, so the mapping is testable on its own.
     /// </summary>
     /// <remarks>
     /// Runs on answers the rules have already accepted (<see cref="BusPassRules"/>),

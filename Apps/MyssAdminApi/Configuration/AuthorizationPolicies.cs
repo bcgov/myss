@@ -3,8 +3,9 @@ namespace Myss.AdminApi.Configuration
     using Microsoft.Extensions.DependencyInjection;
 
     /// <summary>
-    /// The role names carried in the token. The admin API's policy does not test a
-    /// role today; these name the mock personas' roles so they match MyssApi's.
+    /// The role names carried in the token, the same set as MyssApi's. The worker
+    /// endpoints test WORKER and ADMIN; the effective roles come from
+    /// <see cref="RoleCalculator"/>, exactly as in MyssApi.
     /// </summary>
     public static class MyssRoles
     {
@@ -14,7 +15,7 @@ namespace Myss.AdminApi.Configuration
         /// <summary>Ministry staff acting on client files.</summary>
         public const string Worker = "WORKER";
 
-        /// <summary>Elevated staff.</summary>
+        /// <summary>Elevated staff; satisfies the worker policy.</summary>
         public const string Admin = "ADMIN";
     }
 
@@ -27,6 +28,13 @@ namespace Myss.AdminApi.Configuration
         /// admits BCeID citizens signing in; the IDIR claim is the gate.
         /// </summary>
         public const string AdminIdir = "AdminIdir";
+
+        /// <summary>
+        /// Worker endpoints (application review, stored submissions, the bus pass PDF):
+        /// the WORKER or ADMIN role and a government (IDIR) identity. Moved from MyssApi
+        /// with those endpoints, unchanged.
+        /// </summary>
+        public const string WorkerWithIdir = "WorkerWithIdir";
     }
 
     /// <summary>
@@ -49,6 +57,12 @@ namespace Myss.AdminApi.Configuration
                     MyssPolicies.AdminIdir,
                     policy => policy
                         .RequireAuthenticatedUser()
+                        .RequireClaim(KeycloakClaims.IdirUsernameClaimType))
+                .AddPolicy(
+                    MyssPolicies.WorkerWithIdir,
+                    policy => policy
+                        .RequireAuthenticatedUser()
+                        .RequireRole(MyssRoles.Worker, MyssRoles.Admin)
                         .RequireClaim(KeycloakClaims.IdirUsernameClaimType));
 
             return services;

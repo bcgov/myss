@@ -32,7 +32,7 @@ namespace Myss.Api.Providers
     /// <para>
     /// Authentication is a client-credentials token for the middleware, fetched
     /// on first use and cached until shortly before it expires, the arrangement
-    /// <see cref="CdogsPdfProvider"/> uses for CDOGS. Retry, circuit breaking and
+    /// MyssAdminApi's <c>CdogsPdfProvider</c> uses for CDOGS. Retry, circuit breaking and
     /// timeouts live on the named HttpClient (see
     /// <c>Configuration/IcmApiResilience</c>), not in here.
     /// </para>

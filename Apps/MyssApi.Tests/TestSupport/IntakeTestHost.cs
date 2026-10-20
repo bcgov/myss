@@ -10,9 +10,11 @@ namespace Myss.Api.Tests.TestSupport
     using Myss.Api.Configuration;
     using Myss.Api.Data;
     using Myss.Api.Intake;
-    using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
     using Myss.FormSpec.Domain;
 
     /// <summary>
@@ -31,13 +33,11 @@ namespace Myss.Api.Tests.TestSupport
         /// <param name="provider">The fake spec provider every context shares.</param>
         /// <param name="registered">Personas that get a profile row.</param>
         /// <param name="mockAuth">Whether mock auth is on; off makes every call anonymous.</param>
-        /// <param name="promotion">The promotion step, when a test needs other than the placeholder's success.</param>
         public IntakeTestHost(
             WebApplicationFactory<Startup> factory,
             FakeFormSpecProvider provider,
             IReadOnlyList<string> registered,
-            bool mockAuth,
-            IApplicationPromotionProvider? promotion = null)
+            bool mockAuth)
         {
             string dbName = Guid.NewGuid().ToString();
             ServiceProvider efProvider = new ServiceCollection()
@@ -102,12 +102,6 @@ namespace Myss.Api.Tests.TestSupport
                     // reaches for a content engine that is not running here.
                     services.RemoveAll<IErrorMessageProvider>();
                     services.AddSingleton<IErrorMessageProvider>(new FakeErrorMessageProvider());
-
-                    if (promotion is not null)
-                    {
-                        services.RemoveAll<IApplicationPromotionProvider>();
-                        services.AddSingleton(promotion);
-                    }
                 });
             });
             _client = _factory.CreateClient();
@@ -133,44 +127,11 @@ namespace Myss.Api.Tests.TestSupport
             return body.RootElement.GetProperty("payload").GetProperty("id").GetGuid();
         }
 
-        /// <summary>Submits an application as a citizen persona; asserts 200.</summary>
-        public async Task Submit(string persona, Guid id, int version, object answers)
-        {
-            using HttpResponseMessage response = await Send(
-                persona,
-                HttpMethod.Post,
-                $"/v1/intake/applications/{id}/submit",
-                JsonContent.Create(new { version, answers }));
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
-
-        /// <summary>The event types on a stream, oldest first.</summary>
-        public async Task<IReadOnlyList<string>> EventTypes(Guid streamId)
-        {
-            using IServiceScope scope = _factory.Services.CreateScope();
-            return await scope.ServiceProvider.GetRequiredService<PlatformDbContext>()
-                .Events.Where(e => e.StreamId == streamId)
-                .OrderBy(e => e.Version)
-                .Select(e => e.Type)
-                .ToListAsync();
-        }
-
         public async Task<int> CountEvents(Guid streamId)
         {
             using IServiceScope scope = _factory.Services.CreateScope();
             return await scope.ServiceProvider.GetRequiredService<PlatformDbContext>()
                 .Events.CountAsync(e => e.StreamId == streamId);
-        }
-
-        /// <summary>The actor of the newest event on a stream.</summary>
-        public async Task<string?> LastActor(Guid streamId)
-        {
-            using IServiceScope scope = _factory.Services.CreateScope();
-            return await scope.ServiceProvider.GetRequiredService<PlatformDbContext>()
-                .Events.Where(e => e.StreamId == streamId)
-                .OrderByDescending(e => e.Version)
-                .Select(e => e.Actor)
-                .FirstOrDefaultAsync();
         }
 
         public async Task<int> CountApplications()

@@ -30,12 +30,6 @@ namespace Myss.Api.Configuration
 
         /// <summary>Administrative endpoints.</summary>
         public const string Admin = "Admin";
-
-        /// <summary>
-        /// Staff endpoints that additionally require a government (IDIR) identity — a
-        /// deliberate hardening control, not a reproduction of the original behaviour.
-        /// </summary>
-        public const string WorkerWithIdir = "WorkerWithIdir";
     }
 
     /// <summary>
@@ -64,13 +58,7 @@ namespace Myss.Api.Configuration
                         .RequireRole(MyssRoles.Worker, MyssRoles.Admin))
                 .AddPolicy(
                     MyssPolicies.Admin,
-                    policy => policy.RequireAuthenticatedUser().RequireRole(MyssRoles.Admin))
-                .AddPolicy(
-                    MyssPolicies.WorkerWithIdir,
-                    policy => policy
-                        .RequireAuthenticatedUser()
-                        .RequireRole(MyssRoles.Worker, MyssRoles.Admin)
-                        .RequireClaim(KeycloakClaims.IdirUsernameClaimType));
+                    policy => policy.RequireAuthenticatedUser().RequireRole(MyssRoles.Admin));
 
             return services;
         }

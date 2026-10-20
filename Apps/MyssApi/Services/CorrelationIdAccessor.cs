@@ -2,6 +2,7 @@ namespace Myss.Api.Services
 {
     using System.Linq;
     using Microsoft.AspNetCore.Http;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// Resolves the correlation id from the HTTP context: the caller's

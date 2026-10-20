@@ -138,10 +138,10 @@ describe("buildSession", () => {
     it("login preserves an optional return path", () => {
       const auth = fakeAuth();
       const s = buildSession(auth as never, vi.fn());
-      s.login("idir", "/worker/applications");
+      s.login("bceid", "/account");
       expect(auth.signinRedirect).toHaveBeenCalledWith({
-        extraQueryParams: { kc_idp_hint: "azureidir" },
-        state: { returnTo: "/worker/applications" },
+        extraQueryParams: { kc_idp_hint: "bceidboth" },
+        state: { returnTo: "/account" },
       });
     });
 

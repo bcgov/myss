@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyssAdminApi", "MyssAdminAp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyssAdminApi.Tests", "MyssAdminApi.Tests\MyssAdminApi.Tests.csproj", "{55063559-6127-4A66-98EA-B592BA503547}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyssData", "MyssData\MyssData.csproj", "{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -178,6 +180,18 @@ Global
 		{55063559-6127-4A66-98EA-B592BA503547}.Release|x64.Build.0 = Release|Any CPU
 		{55063559-6127-4A66-98EA-B592BA503547}.Release|x86.ActiveCfg = Release|Any CPU
 		{55063559-6127-4A66-98EA-B592BA503547}.Release|x86.Build.0 = Release|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Debug|x64.Build.0 = Debug|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Debug|x86.Build.0 = Debug|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Release|x64.ActiveCfg = Release|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Release|x64.Build.0 = Release|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Release|x86.ActiveCfg = Release|Any CPU
+		{F30DB836-DCB7-4FC5-8940-17FE2DAA6F54}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

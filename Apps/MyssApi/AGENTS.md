@@ -7,7 +7,7 @@ C# conventions, commands); this file adds what is specific to MyssApi.
 ## Layering
 
 `Controllers → Services (I*Service) → Providers (I*Provider) → Data (EF DbContexts)`.
-Providers are the boundary to anything external (Strapi, ClamAV, S3, CDOGS); services
+Providers are the boundary to anything external (Strapi, ClamAV, S3, ICM); services
 hold the rules; everything is registered by interface in `Startup.ConfigureServices` so
 tests substitute fakes (`MyssApi.Tests/TestDoubles/`) rather than mocking HTTP.
 
@@ -33,8 +33,10 @@ is the documented swap point to Option 2 (BFF cookie + OIDC) — the lines marke
 move across verbatim and nothing outside that method changes. Keep it that way.
 
 `Configuration/KeycloakClaims` flattens Keycloak's nested `realm_access`/`resource_access`
-roles so `Configuration/AuthorizationPolicies` (`Client`, `Worker`, `Admin`,
-`WorkerWithIdir`) works identically under either option.
+roles so `Configuration/AuthorizationPolicies` (`Client`, `Worker`, `Admin`) works
+identically under either option. The worker endpoints (application review, stored
+submissions, the bus pass PDF) and their `WorkerWithIdir` policy moved to MyssAdminApi;
+it copies `KeycloakClaims` and `RoleCalculator`, so a role means the same in both.
 
 `Configuration/MockAuthGate` is a three-lock, fail-closed dev sign-in
 (`AllowMockAuth` + `MockAuth` + a non-production `EnvironmentName`, all explicit).
@@ -54,7 +56,16 @@ clamd's `StreamMaxLength`.
 
 Four DbContexts, one per schema, all required, applied manually (see the root
 AGENTS.md for the stack-bootstrap commands). Each has its own history table in its
-schema and its own migrations folder. Adding a migration:
+schema and its own migrations folder.
+
+The forms, platform and intake contexts, their entities, the event store and the
+intake fold are defined in `Apps/MyssData`, which MyssAdminApi shares; only
+`AttachmentsDbContext` is defined here. Their migrations stay in this project: this API
+is the only service that changes the schema. EF looks for migrations in the context's
+own assembly by default, so every place this API builds one of those contexts points it
+here through `Configuration/MyssMigrations` (Startup, `MigrationRunner`, the Postgres
+tests); `Configuration/MyssMigrationsTests` fails if one does not. A model change in
+MyssData needs its migration added here, in the same PR. Adding a migration:
 
 ```bash
 cd Apps/MyssApi

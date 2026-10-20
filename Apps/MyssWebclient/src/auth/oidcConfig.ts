@@ -11,8 +11,9 @@ import { OIDC_AUTHORITY, OIDC_CLIENT_ID } from "@/constants";
 // The aliases are the identity providers enabled on the CSS integration, as
 // the dev realm's own chooser lists them (2026-10-02): `bceidboth` (Basic and
 // Business BCeID on one provider; the API's RoleCalculator decides what to do
-// with a Business GUID), `azureidir` (the Azure-backed IDIR), and BC Services
-// Card. That last one has no fixed alias: CSS creates one BC Services Card
+// with a Business GUID) and BC Services Card. IDIR (`azureidir`) is enabled on
+// the integration too, but staff sign in on the admin site, so this app never
+// hints it. That last one has no fixed alias: CSS creates one BC Services Card
 // broker per integration and names it after the integration's client id, so
 // the hint is the client id itself (SSO docs, "Do skip the Keycloak default
 // login page"). It is therefore built from the resolved runtime below rather
@@ -25,7 +26,6 @@ export function buildIdpAliases(clientId: string) {
   return {
     bceid: "bceidboth",
     bcServicesCard: clientId,
-    idir: "azureidir",
   } as const;
 }
 

@@ -19,6 +19,11 @@
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
 
+        <!-- The shared data model (MyssData) over Postgres. No EF Design package:
+             this API never migrates; MyssApi owns the migrations. -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+
         <!-- Observability: OpenTelemetry -->
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.19.1" />
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
@@ -39,7 +44,13 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- Form spec validation, shared with MyssApi -->
+        <!-- Form spec validation and the data model, shared with MyssApi -->
         <ProjectReference Include="..\MyssFormSpec\MyssFormSpec.csproj" />
+        <ProjectReference Include="..\MyssData\MyssData.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- ODT templates for the bus pass PDF: embedded for use in API loading -->
+        <EmbeddedResource Include="Templates\*.odt" />
     </ItemGroup>
 </Project>

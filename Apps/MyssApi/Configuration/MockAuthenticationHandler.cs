@@ -50,8 +50,9 @@ namespace Myss.Api.Configuration
                 ["worker"] = new("mock-worker", [MyssRoles.Worker], IdirUsername: "MWORKER"),
                 ["admin"] = new("mock-admin", [MyssRoles.Admin], IdirUsername: "MADMIN"),
 
-                // Deliberately has the WORKER role but no IDIR identity, so the
-                // WorkerWithIdir policy can be shown to reject it.
+                // Deliberately has the WORKER role but no IDIR identity. The worker
+                // endpoints it was made to be refused by moved to MyssAdminApi,
+                // which keeps the same persona.
                 ["workernoidir"] = new("mock-worker-no-idir", [MyssRoles.Worker]),
 
                 // Mirrors a REAL Basic BCeID token: an identity_provider claim and NO

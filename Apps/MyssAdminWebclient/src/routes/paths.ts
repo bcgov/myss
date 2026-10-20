@@ -6,6 +6,10 @@ export const paths = {
     formManagement: "/form-management",
     // Editor for one form, opened from the form-management list.
     formEditor: "/form-management/:formSpecId",
+    // The application review queue (MYSS-226), and one application opened
+    // from it. Ministry workers only (WORKER or ADMIN role).
+    applications: "/applications",
+    application: "/applications/:id",
     // The OIDC redirect target.
     authCallback: "/auth/callback",
     // Where sign-out and idle logout land. Deliberately unguarded: a guarded
@@ -31,4 +35,9 @@ export function newFormPath(formSpecId: string, title: string): string {
         params.set("title", title.trim());
     }
     return `${formEditorPath(formSpecId)}?${params.toString()}`;
+}
+
+/** Concrete review URL for one application, kept beside the `application` pattern. */
+export function applicationPath(id: string): string {
+    return `/applications/${encodeURIComponent(id)}`;
 }

@@ -26,24 +26,6 @@ export type MicrosoftAspNetCoreMvcProblemDetails = {
     [key: string]: unknown;
 };
 
-export type MicrosoftAspNetCoreMvcValidationProblemDetails = {
-    type?: string | null;
-    title?: string | null;
-    /**
-     * Nullable<Int32>
-     */
-    status?: number | null;
-    detail?: string | null;
-    instance?: string | null;
-    /**
-     * IDictionary<String>
-     */
-    errors?: {
-        [key: string]: Array<string>;
-    } | null;
-    [key: string]: unknown;
-};
-
 /**
  * Scan lifecycle of an attachment (quarantine -> scan -> release, same
  * naming as the forms architecture). The row is created before the scan,
@@ -90,11 +72,11 @@ export type MyssApiIntakeApplicationSummaryModel = {
     id: string;
     /**
      * Gets or sets the request number shown to the applicant and to
-     * workers (Myss.Api.Intake.ApplicationReference).
+     * workers (Myss.Data.Intake.ApplicationReference).
      */
     referenceNumber: string | null;
     /**
-     * Gets or sets the status code (Myss.Api.Intake.ApplicationStatusCodes).
+     * Gets or sets the status code (Myss.Data.Intake.ApplicationStatusCodes).
      */
     status: string | null;
     /**
@@ -123,153 +105,6 @@ export type MyssApiIntakeApplicationSummaryModel = {
      * Gets or sets when the application was submitted, if it was.
      */
     submittedAt?: string | null;
-};
-
-/**
- * The body of a worker action: the stream version the worker last saw.
- */
-export type MyssApiIntakeReviewActionRequestModel = {
-    /**
-     * Gets or sets the stream version the worker last saw.
-     */
-    streamVersion: number;
-};
-
-/**
- * An application as a worker reads it: the summary plus what the applicant
- * submitted, the spec that renders it, and the actions open right now.
- */
-export type MyssApiIntakeReviewApplicationModel = MyssApiIntakeReviewApplicationSummaryModel & {
-    /**
-     * Gets or sets the submitted answers, from the Submitted event.
-     */
-    answers: unknown;
-    /**
-     * Gets or sets the logical form identifier.
-     */
-    formSpecId: string | null;
-    /**
-     * Gets or sets the pinned spec version.
-     */
-    formSpecVersion: number;
-    spec?: MyssFormSpecFormSpecModel;
-    /**
-     * IReadOnlyList<String>
-     *
-     * Gets or sets the worker actions available in the current state
-     * (Myss.Api.Intake.WorkerActions). The buttons render from this list.
-     */
-    availableActions: Array<string> | null;
-    /**
-     * Gets or sets whether the caller may add an internal note right now:
-     * true for the assignee of a file Under Review.
-     */
-    canAddNote: boolean;
-    /**
-     * IReadOnlyList<ReviewNoteModel>
-     *
-     * Gets or sets the internal notes, oldest first. Workers only.
-     */
-    notes: Array<MyssApiIntakeReviewNoteModel> | null;
-    /**
-     * IReadOnlyList<ReviewHistoryEntryModel>
-     *
-     * Gets or sets what happened to the file, oldest first.
-     */
-    history: Array<MyssApiIntakeReviewHistoryEntryModel> | null;
-};
-
-/**
- * An application as a worker's list shows it.
- */
-export type MyssApiIntakeReviewApplicationSummaryModel = {
-    /**
-     * Gets or sets the application identifier.
-     */
-    id: string;
-    /**
-     * Gets or sets the request number, the same one the applicant was shown.
-     */
-    referenceNumber: string | null;
-    /**
-     * Gets or sets the status code (Myss.Api.Intake.ApplicationStatusCodes).
-     */
-    status: string | null;
-    /**
-     * Gets or sets when the application was submitted.
-     */
-    submittedAt: string;
-    /**
-     * Gets or sets the stream version a worker must send back with an
-     * action. Worker actions are events, so this is the event log's
-     * version, not the applicant's row version.
-     */
-    streamVersion: number;
-    /**
-     * Gets or sets the IDIR of the worker it is assigned to, while it is
-     * Under Review; null otherwise.
-     */
-    assignee?: string | null;
-    /**
-     * Gets or sets whether the application is in the worker queue:
-     * Submitted, Re-submitted or Returned.
-     */
-    inQueue: boolean;
-};
-
-/**
- * One entry of an application's history.
- */
-export type MyssApiIntakeReviewHistoryEntryModel = {
-    /**
-     * Gets or sets what happened (Myss.Api.Intake.ApplicationHistoryCodes).
-     */
-    code: string | null;
-    /**
-     * Gets or sets who did it: APPLICANT, WORKER or SYSTEM.
-     */
-    actorKind: string | null;
-    /**
-     * Gets or sets the worker's IDIR, when a worker did it.
-     */
-    idir?: string | null;
-    /**
-     * Gets or sets when it happened.
-     */
-    occurredAt: string;
-};
-
-/**
- * One internal note on an application.
- */
-export type MyssApiIntakeReviewNoteModel = {
-    /**
-     * Gets or sets what the worker wrote.
-     */
-    text: string | null;
-    /**
-     * Gets or sets the IDIR of the worker who wrote it.
-     */
-    author: string | null;
-    /**
-     * Gets or sets when it was written.
-     */
-    createdAt: string;
-};
-
-/**
- * The body of an internal note: the stream version the worker last saw
- * and the text.
- */
-export type MyssApiIntakeReviewNoteRequestModel = {
-    /**
-     * Gets or sets the stream version the worker last saw.
-     */
-    streamVersion: number;
-    /**
-     * Gets or sets the note's text.
-     */
-    text: string;
 };
 
 /**
@@ -322,13 +157,8 @@ export type MyssApiModelsAccountPhoneModel = {
      * Gets or sets the ten digits, formatting stripped.
      */
     number: string | null;
-    type?: MyssApiModelsAccountPhoneType;
+    type?: MyssDataAccountPhoneType;
 };
-
-/**
- * The kinds of phone number ICM keeps for a contact.
- */
-export type MyssApiModelsAccountPhoneType = 'Home' | 'Cell' | 'Work' | 'Message';
 
 /**
  * Where the citizen stands with the PIN, which decides what Account Info offers.
@@ -377,19 +207,6 @@ export type MyssApiModelsAttachmentResponseModel = {
  */
 export type MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel = {
     payload: MyssApiIntakeApplicationModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<ReviewApplicationModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel = {
-    payload: MyssApiIntakeReviewApplicationModel;
     /**
      * Gets or sets the payload information.
      */
@@ -543,24 +360,6 @@ export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListM
  *
  * Represents the result of a request.
  */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeReviewApplicationSummaryModel = {
-    /**
-     * IReadOnlyList<ReviewApplicationSummaryModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiIntakeReviewApplicationSummaryModel | MyssApiIntakeReviewApplicationModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
 export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsAttachmentResponseModel = {
     /**
      * IReadOnlyList<AttachmentResponseModel>
@@ -568,24 +367,6 @@ export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListM
      * Gets or sets the payload information.
      */
     payload: Array<MyssApiModelsAttachmentResponseModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsFormSubmissionSummaryModel = {
-    /**
-     * IReadOnlyList<FormSubmissionSummaryModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiModelsFormSubmissionSummaryModel> | null;
     /**
      * Gets or sets the payload information.
      */
@@ -854,28 +635,6 @@ export type MyssApiModelsFormSubmissionResponseModel = {
 };
 
 /**
- * A submission summary for list views. Does not include the answers.
- */
-export type MyssApiModelsFormSubmissionSummaryModel = {
-    /**
-     * Gets or sets the submission identifier.
-     */
-    id: string;
-    /**
-     * Gets or sets the logical form identifier.
-     */
-    formSpecId: string | null;
-    /**
-     * Gets or sets the spec version in force at submit time.
-     */
-    formSpecVersion: number;
-    /**
-     * Gets or sets the submission timestamp.
-     */
-    submittedAt: string;
-};
-
-/**
  * A phone number as entered. Both values are checked by the service, so a
  * mistake comes back as a field error rather than a binding failure.
  */
@@ -934,6 +693,12 @@ export type MyssApiModelsUpdatePhonesRequestModel = {
      */
     phones: Array<MyssApiModelsPhoneInputModel> | null;
 };
+
+/**
+ * The kinds of phone number ICM keeps for a contact. Stored by name on
+ * Myss.Data.MyssUserPhone, and returned as is by MyssApi's Account Info.
+ */
+export type MyssDataAccountPhoneType = 'Home' | 'Cell' | 'Work' | 'Message';
 
 /**
  * A versioned Form.io specification served from the content engine.
@@ -1211,42 +976,6 @@ export type SubmitBusPassResponses = {
 
 export type SubmitBusPassResponse = SubmitBusPassResponses[keyof SubmitBusPassResponses];
 
-export type GetBusPassSubmissionPdfData = {
-    body?: never;
-    path: {
-        /**
-         * The submission identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/bus-pass/submissions/{id}/pdf';
-};
-
-export type GetBusPassSubmissionPdfErrors = {
-    /**
-     * Unauthorized
-     */
-    401: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Forbidden
-     */
-    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type GetBusPassSubmissionPdfError = GetBusPassSubmissionPdfErrors[keyof GetBusPassSubmissionPdfErrors];
-
-export type GetBusPassSubmissionPdfResponses = {
-    /**
-     * OK
-     */
-    200: unknown;
-};
-
 export type GetPlaceholderData = {
     body?: never;
     path?: never;
@@ -1350,27 +1079,6 @@ export type GetErrorMessagesResponses = {
 
 export type GetErrorMessagesResponse = GetErrorMessagesResponses[keyof GetErrorMessagesResponses];
 
-export type ListFormSubmissionsData = {
-    body?: never;
-    path: {
-        /**
-         * The logical form identifier.
-         */
-        formSpecId: string;
-    };
-    query?: never;
-    url: '/v1/forms/{formSpecId}/submissions';
-};
-
-export type ListFormSubmissionsResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsFormSubmissionSummaryModel;
-};
-
-export type ListFormSubmissionsResponse = ListFormSubmissionsResponses[keyof ListFormSubmissionsResponses];
-
 export type SubmitFormData = {
     /**
      * The submission payload.
@@ -1403,36 +1111,6 @@ export type SubmitFormResponses = {
 };
 
 export type SubmitFormResponse = SubmitFormResponses[keyof SubmitFormResponses];
-
-export type GetFormSubmissionData = {
-    body?: never;
-    path: {
-        /**
-         * The submission identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/forms/submissions/{id}';
-};
-
-export type GetFormSubmissionErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type GetFormSubmissionError = GetFormSubmissionErrors[keyof GetFormSubmissionErrors];
-
-export type GetFormSubmissionResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel;
-};
-
-export type GetFormSubmissionResponse = GetFormSubmissionResponses[keyof GetFormSubmissionResponses];
 
 export type ListApplicationsData = {
     body?: never;
@@ -1598,312 +1276,3 @@ export type SubmitApplicationResponses = {
 };
 
 export type SubmitApplicationResponse = SubmitApplicationResponses[keyof SubmitApplicationResponses];
-
-export type ListReviewApplicationsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/v1/intake/review/applications';
-};
-
-export type ListReviewApplicationsResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeReviewApplicationSummaryModel;
-};
-
-export type ListReviewApplicationsResponse = ListReviewApplicationsResponses[keyof ListReviewApplicationsResponses];
-
-export type GetReviewApplicationData = {
-    body?: never;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}';
-};
-
-export type GetReviewApplicationErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type GetReviewApplicationError = GetReviewApplicationErrors[keyof GetReviewApplicationErrors];
-
-export type GetReviewApplicationResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type GetReviewApplicationResponse = GetReviewApplicationResponses[keyof GetReviewApplicationResponses];
-
-export type StartApplicationReviewData = {
-    /**
-     * The stream version last seen.
-     */
-    body?: MyssApiIntakeReviewActionRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/review';
-};
-
-export type StartApplicationReviewErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type StartApplicationReviewError = StartApplicationReviewErrors[keyof StartApplicationReviewErrors];
-
-export type StartApplicationReviewResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type StartApplicationReviewResponse = StartApplicationReviewResponses[keyof StartApplicationReviewResponses];
-
-export type AcceptApplicationData = {
-    /**
-     * The stream version last seen.
-     */
-    body?: MyssApiIntakeReviewActionRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/accept';
-};
-
-export type AcceptApplicationErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type AcceptApplicationError = AcceptApplicationErrors[keyof AcceptApplicationErrors];
-
-export type AcceptApplicationResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type AcceptApplicationResponse = AcceptApplicationResponses[keyof AcceptApplicationResponses];
-
-export type DenyApplicationData = {
-    /**
-     * The stream version last seen.
-     */
-    body?: MyssApiIntakeReviewActionRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/deny';
-};
-
-export type DenyApplicationErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type DenyApplicationError = DenyApplicationErrors[keyof DenyApplicationErrors];
-
-export type DenyApplicationResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type DenyApplicationResponse = DenyApplicationResponses[keyof DenyApplicationResponses];
-
-export type ReleaseApplicationData = {
-    /**
-     * The stream version last seen.
-     */
-    body?: MyssApiIntakeReviewActionRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/release';
-};
-
-export type ReleaseApplicationErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type ReleaseApplicationError = ReleaseApplicationErrors[keyof ReleaseApplicationErrors];
-
-export type ReleaseApplicationResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type ReleaseApplicationResponse = ReleaseApplicationResponses[keyof ReleaseApplicationResponses];
-
-export type RequestMoreApplicationInfoData = {
-    /**
-     * The stream version last seen.
-     */
-    body?: MyssApiIntakeReviewActionRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/request-more-info';
-};
-
-export type RequestMoreApplicationInfoErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type RequestMoreApplicationInfoError = RequestMoreApplicationInfoErrors[keyof RequestMoreApplicationInfoErrors];
-
-export type RequestMoreApplicationInfoResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type RequestMoreApplicationInfoResponse = RequestMoreApplicationInfoResponses[keyof RequestMoreApplicationInfoResponses];
-
-export type EscalateApplicationData = {
-    /**
-     * The stream version last seen.
-     */
-    body?: MyssApiIntakeReviewActionRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/escalate';
-};
-
-export type EscalateApplicationErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type EscalateApplicationError = EscalateApplicationErrors[keyof EscalateApplicationErrors];
-
-export type EscalateApplicationResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type EscalateApplicationResponse = EscalateApplicationResponses[keyof EscalateApplicationResponses];
-
-export type AddApplicationNoteData = {
-    /**
-     * The stream version last seen and the note.
-     */
-    body?: MyssApiIntakeReviewNoteRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/notes';
-};
-
-export type AddApplicationNoteErrors = {
-    /**
-     * Bad Request
-     */
-    400: MicrosoftAspNetCoreMvcValidationProblemDetails;
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type AddApplicationNoteError = AddApplicationNoteErrors[keyof AddApplicationNoteErrors];
-
-export type AddApplicationNoteResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type AddApplicationNoteResponse = AddApplicationNoteResponses[keyof AddApplicationNoteResponses];

@@ -34,6 +34,12 @@ namespace Myss.AdminApi.Tests
         [HttpGet("admin-idir")]
         [Microsoft.AspNetCore.Authorization.Authorize(Policy = MyssPolicies.AdminIdir)]
         public string AdminIdir() => this.currentUser.User.IdirUsername ?? string.Empty;
+
+        /// <summary>Worker endpoint: a staff role and an IDIR identity.</summary>
+        /// <returns>The caller's IDIR username.</returns>
+        [HttpGet("worker-idir")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Policy = MyssPolicies.WorkerWithIdir)]
+        public string WorkerWithIdir() => this.currentUser.User.IdirUsername ?? string.Empty;
     }
 
     /// <summary>
@@ -124,6 +130,52 @@ namespace Myss.AdminApi.Tests
             HttpResponseMessage response = await client.SendAsync(Get("/test-only/admin-idir", persona: null));
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task WorkerWithoutIdirIsRejectedByTheHardenedPolicy()
+        {
+            HttpClient client = this.CreateMockAuthClient();
+
+            HttpResponseMessage response =
+                await client.SendAsync(Get("/test-only/worker-idir", "workernoidir"));
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task WorkerWithIdirPassesTheHardenedPolicyAndClaimIsReadable()
+        {
+            HttpClient client = this.CreateMockAuthClient();
+
+            HttpResponseMessage response =
+                await client.SendAsync(Get("/test-only/worker-idir", "worker"));
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("MWORKER", await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public async Task AdminSatisfiesTheWorkerWithIdirPolicy()
+        {
+            HttpClient client = this.CreateMockAuthClient();
+
+            HttpResponseMessage response =
+                await client.SendAsync(Get("/test-only/worker-idir", "admin"));
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("MADMIN", await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public async Task ACitizenIsRejectedByTheWorkerWithIdirPolicy()
+        {
+            HttpClient client = this.CreateMockAuthClient();
+
+            HttpResponseMessage response =
+                await client.SendAsync(Get("/test-only/worker-idir", "alice"));
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
 
         [Fact]

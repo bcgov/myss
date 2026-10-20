@@ -26,32 +26,25 @@ namespace Myss.Api.Controllers
     /// directly. A submission is validated, stored, then handed to ICM through the
     /// middleware; the response says which of those happened. Non-accepted outcomes
     /// carry a stable dotted keyword (e.g. <c>BUSPASS.SUBMIT.REJECTED</c>) for the
-    /// frontend to match on. The PDF of a stored request is for staff: the citizen has
-    /// no account to hold it against, and an anonymous route keyed by id would hand out
-    /// a name, SIN, date of birth and address to anyone who learned the id.
+    /// frontend to match on. The PDF of a stored request is for staff and is served by
+    /// MyssAdminApi, never here: the citizen has no account to hold it against, and an
+    /// anonymous route keyed by id would hand out a name, SIN, date of birth and address
+    /// to anyone who learned the id.
     /// </summary>
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/bus-pass")]
     [ApiController]
     public class BusPassController : Controller
     {
-        private readonly ILogger<BusPassController> _logger;
-        private readonly IFormsService _formsService;
         private readonly IBusPassSubmissionService _submissionService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BusPassController"/> class.
         /// </summary>
-        /// <param name="logger">Injected Logger Provider.</param>
-        /// <param name="formsService">Injected Forms Service.</param>
         /// <param name="submissionService">Injected bus pass submission service.</param>
         public BusPassController(
-            ILogger<BusPassController> logger,
-            IFormsService formsService,
             IBusPassSubmissionService submissionService)
         {
-            _logger = logger;
-            _formsService = formsService;
             _submissionService = submissionService;
         }
 
@@ -114,36 +107,6 @@ namespace Myss.Api.Controllers
                 Payload = response,
                 DatetimeRequested = DateTime.Now,
             };
-        }
-
-        /// <summary>
-        /// Generates the BC Bus Pass request PDF for a stored submission. Staff only:
-        /// a signed-in worker with an IDIR identity.
-        /// </summary>
-        /// <param name="id">The submission identifier.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        [HttpGet("submissions/{id:guid}/pdf")]
-        [Authorize(Policy = MyssPolicies.WorkerWithIdir)]
-        [EndpointName("GetBusPassSubmissionPdf")]
-        [Produces("application/pdf")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetSubmissionPdf(Guid id, CancellationToken cancellationToken)
-        {
-            byte[]? pdf = await _formsService.GetBusPassSubmissionPdfAsync(id, cancellationToken);
-            if (pdf is null)
-            {
-                return NotFound();
-            }
-
-            _logger.LogInformation(
-                "Served bus pass PDF for submission {SubmissionId} ({Bytes} bytes)",
-                id,
-                pdf.Length);
-
-            return File(pdf, "application/pdf", $"bus-pass-{id:N}.pdf");
         }
     }
 }

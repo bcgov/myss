@@ -49,12 +49,6 @@ namespace Myss.Api.Tests
         [HttpGet("worker")]
         [Microsoft.AspNetCore.Authorization.Authorize(Policy = MyssPolicies.Worker)]
         public string Worker() => this.currentUser.User.Subject;
-
-        /// <summary>Staff endpoint additionally requiring an IDIR identity.</summary>
-        /// <returns>The caller's IDIR username.</returns>
-        [HttpGet("worker-idir")]
-        [Microsoft.AspNetCore.Authorization.Authorize(Policy = MyssPolicies.WorkerWithIdir)]
-        public string WorkerWithIdir() => this.currentUser.User.IdirUsername ?? string.Empty;
     }
 
     /// <summary>
@@ -187,29 +181,6 @@ namespace Myss.Api.Tests
             HttpResponseMessage response = await client.SendAsync(Get("/test-only/worker", "admin"));
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task WorkerWithoutIdirIsRejectedByTheHardenedPolicy()
-        {
-            HttpClient client = this.CreateMockAuthClient();
-
-            HttpResponseMessage response =
-                await client.SendAsync(Get("/test-only/worker-idir", "workernoidir"));
-
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task WorkerWithIdirPassesTheHardenedPolicyAndClaimIsReadable()
-        {
-            HttpClient client = this.CreateMockAuthClient();
-
-            HttpResponseMessage response =
-                await client.SendAsync(Get("/test-only/worker-idir", "worker"));
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("MWORKER", await response.Content.ReadAsStringAsync());
         }
 
         [Fact]
