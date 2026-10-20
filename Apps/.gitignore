@@ -38,3 +38,9 @@ Thumbs.db
 
 # Vitest browser-mode failure screenshots
 **/__screenshots__/
+
+# Playwright e2e (Apps/MyssWebclient/playwright.config.ts): generated specs and reports
+.features-gen/
+test-results/
+playwright-report/
+e2e-report/
