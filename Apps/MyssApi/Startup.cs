@@ -66,11 +66,6 @@ namespace Myss.Api
             services.AddDbContext<FormsDbContext>(options =>
                 options.UseNpgsql(this.startupConfig.Configuration.GetConnectionString("FormsDb")));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
-
-            // Admin form editor (MYSS-209) write path: a SEPARATE typed client bound to
-            // the write-scoped Strapi:AdminApiToken, so the citizen read path above keeps
-            // its read-only token. Brokered server-side; the token never reaches the browser.
-            services.AddHttpClient<IFormSpecAdminProvider, StrapiFormSpecAdminProvider>();
             services.AddHttpClient<IPdfProvider, CdogsPdfProvider>();
             services.AddSingleton<ITemplateProvider, EmbeddedTemplateProvider>();
             services.AddScoped<IFormsService, FormsService>();
@@ -91,14 +86,10 @@ namespace Myss.Api
             // falls back to the compiled table; the result is cached so the
             // public endpoint does not hit Strapi on every request.
             services.AddMemoryCache();
+            // The admin form and rates editors live in MyssAdminApi, which holds the
+            // write-scoped Strapi token; this API only ever reads.
             services.AddHttpClient<IEligibilityRateProvider, StrapiEligibilityRateProvider>(
                 client => client.Timeout = TimeSpan.FromSeconds(5));
-
-            // The admin rates editor writes through its own typed client, so the
-            // write token never reaches the anonymous read path above.
-            services.AddHttpClient<IEligibilityRateAdminProvider, StrapiEligibilityRateAdminProvider>(
-                client => client.Timeout = TimeSpan.FromSeconds(10));
-            services.AddScoped<IEligibilityRatesService, EligibilityRatesService>();
 
             // The error message catalogue: the wording a refused submission carries,
             // published in Strapi and overlaid on the compiled defaults. Same

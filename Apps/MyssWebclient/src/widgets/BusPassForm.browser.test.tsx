@@ -4,7 +4,7 @@ import { render } from "vitest-browser-react";
 import { afterEach, expect, test, vi } from "vitest";
 
 import BusPassForm from "@/widgets/BusPassForm";
-import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
+import { registerBcgovComponents } from "@myss/formio";
 
 const currentSpecV1 = {
   formSpecId: "bc-bus-pass",

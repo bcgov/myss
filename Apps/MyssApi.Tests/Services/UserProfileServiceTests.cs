@@ -7,6 +7,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Data;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Tests for <see cref="UserProfileService"/>.

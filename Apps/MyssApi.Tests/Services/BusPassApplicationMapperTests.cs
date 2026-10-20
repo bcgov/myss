@@ -3,6 +3,7 @@ namespace Myss.Api.Tests.Services
     using System.Text.Json;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Tests for <see cref="BusPassApplicationMapper"/>: answers in, the

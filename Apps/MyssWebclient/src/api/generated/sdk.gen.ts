@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptApplicationData, AcceptApplicationErrors, AcceptApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, DenyApplicationData, DenyApplicationErrors, DenyApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormDraftData, GetFormDraftErrors, GetFormDraftResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetReviewApplicationData, GetReviewApplicationErrors, GetReviewApplicationResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormsData, ListFormsErrors, ListFormsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, ListReviewApplicationsData, ListReviewApplicationsResponses, PublishFormData, PublishFormErrors, PublishFormResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SaveEligibilityRatesData, SaveEligibilityRatesErrors, SaveEligibilityRatesResponses, SaveFormDraftData, SaveFormDraftErrors, SaveFormDraftResponses, StartApplicationReviewData, StartApplicationReviewErrors, StartApplicationReviewResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
+import type { AcceptApplicationData, AcceptApplicationErrors, AcceptApplicationResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, DenyApplicationData, DenyApplicationErrors, DenyApplicationResponses, EscalateApplicationData, EscalateApplicationErrors, EscalateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetReviewApplicationData, GetReviewApplicationErrors, GetReviewApplicationResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, ListReviewApplicationsData, ListReviewApplicationsResponses, ReleaseApplicationData, ReleaseApplicationErrors, ReleaseApplicationResponses, RequestMoreApplicationInfoData, RequestMoreApplicationInfoErrors, RequestMoreApplicationInfoResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, StartApplicationReviewData, StartApplicationReviewErrors, StartApplicationReviewResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -40,6 +40,20 @@ export const updateAccountPhones = <ThrowOnError extends boolean = false>(option
  */
 export const updateAccountNotificationPreferences = <ThrowOnError extends boolean = false>(options?: Options<UpdateAccountNotificationPreferencesData, ThrowOnError>): RequestResult<UpdateAccountNotificationPreferencesResponses, UpdateAccountNotificationPreferencesErrors, ThrowOnError> => (options?.client ?? client).put<UpdateAccountNotificationPreferencesResponses, UpdateAccountNotificationPreferencesErrors, ThrowOnError>({
     url: '/v1/account/notification-preferences',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Changes the caller's PIN, or creates it when they have none (MYSS-258).
+ * Basic BCeID only. The PIN is never returned or logged, and is not sent
+ * to ICM (RULE-IDA-04).
+ */
+export const saveAccountPin = <ThrowOnError extends boolean = false>(options?: Options<SaveAccountPinData, ThrowOnError>): RequestResult<SaveAccountPinResponses, SaveAccountPinErrors, ThrowOnError> => (options?.client ?? client).put<SaveAccountPinResponses, SaveAccountPinErrors, ThrowOnError>({
+    url: '/v1/account/pin',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -115,18 +129,6 @@ export const getEstimatorSpec = <ThrowOnError extends boolean = false>(options?:
 export const getEstimatorRates = <ThrowOnError extends boolean = false>(options?: Options<GetEstimatorRatesData, ThrowOnError>): RequestResult<GetEstimatorRatesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetEstimatorRatesResponses, unknown, ThrowOnError>({ url: '/v1/EligibilityEstimator/rates', ...options });
 
 /**
- * Saves a complete rate table as the table effective today, and publishes it.
- */
-export const saveEligibilityRates = <ThrowOnError extends boolean = false>(options?: Options<SaveEligibilityRatesData, ThrowOnError>): RequestResult<SaveEligibilityRatesResponses, SaveEligibilityRatesErrors, ThrowOnError> => (options?.client ?? client).post<SaveEligibilityRatesResponses, SaveEligibilityRatesErrors, ThrowOnError>({
-    url: '/v1/EligibilityRates',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers
-    }
-});
-
-/**
  * Returns the latest published spec for a form (content-engine proxy).
  */
 export const getFormSpec = <ThrowOnError extends boolean = false>(options: Options<GetFormSpecData, ThrowOnError>): RequestResult<GetFormSpecResponses, GetFormSpecErrors, ThrowOnError> => (options.client ?? client).get<GetFormSpecResponses, GetFormSpecErrors, ThrowOnError>({ url: '/v1/forms/{formSpecId}/spec', ...options });
@@ -163,34 +165,6 @@ export const submitForm = <ThrowOnError extends boolean = false>(options: Option
 export const getFormSubmission = <ThrowOnError extends boolean = false>(options: Options<GetFormSubmissionData, ThrowOnError>): RequestResult<GetFormSubmissionResponses, GetFormSubmissionErrors, ThrowOnError> => (options.client ?? client).get<GetFormSubmissionResponses, GetFormSubmissionErrors, ThrowOnError>({ url: '/v1/forms/submissions/{id}', ...options });
 
 /**
- * Lists every form and its versions (admin form editor).
- */
-export const listForms = <ThrowOnError extends boolean = false>(options?: Options<ListFormsData, ThrowOnError>): RequestResult<ListFormsResponses, ListFormsErrors, ThrowOnError> => (options?.client ?? client).get<ListFormsResponses, ListFormsErrors, ThrowOnError>({ url: '/v1/forms', ...options });
-
-/**
- * Returns the spec to open in the editor: the in-progress draft, or the
- * latest published version as the starting point for a new draft.
- */
-export const getFormDraft = <ThrowOnError extends boolean = false>(options: Options<GetFormDraftData, ThrowOnError>): RequestResult<GetFormDraftResponses, GetFormDraftErrors, ThrowOnError> => (options.client ?? client).get<GetFormDraftResponses, GetFormDraftErrors, ThrowOnError>({ url: '/v1/forms/{formSpecId}/draft', ...options });
-
-/**
- * Validates and saves an edited spec as a draft (not published).
- */
-export const saveFormDraft = <ThrowOnError extends boolean = false>(options: Options<SaveFormDraftData, ThrowOnError>): RequestResult<SaveFormDraftResponses, SaveFormDraftErrors, ThrowOnError> => (options.client ?? client).put<SaveFormDraftResponses, SaveFormDraftErrors, ThrowOnError>({
-    url: '/v1/forms/{formSpecId}/draft',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Publishes the current draft as the next version.
- */
-export const publishForm = <ThrowOnError extends boolean = false>(options: Options<PublishFormData, ThrowOnError>): RequestResult<PublishFormResponses, PublishFormErrors, ThrowOnError> => (options.client ?? client).post<PublishFormResponses, PublishFormErrors, ThrowOnError>({ url: '/v1/forms/{formSpecId}/publish', ...options });
-
-/**
  * Lists the caller's applications, newest first.
  */
 export const listApplications = <ThrowOnError extends boolean = false>(options?: Options<ListApplicationsData, ThrowOnError>): RequestResult<ListApplicationsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListApplicationsResponses, unknown, ThrowOnError>({ url: '/v1/intake/applications', ...options });
@@ -206,8 +180,8 @@ export const createApplication = <ThrowOnError extends boolean = false>(options?
 export const getApplication = <ThrowOnError extends boolean = false>(options: Options<GetApplicationData, ThrowOnError>): RequestResult<GetApplicationResponses, GetApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetApplicationResponses, GetApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications/{id}', ...options });
 
 /**
- * Saves the draft's answers. A draft may be incomplete; only submit
- * enforces required fields.
+ * Saves the draft's answers, or a returned application's. Either may
+ * be incomplete; only submit enforces required fields.
  */
 export const saveApplicationAnswers = <ThrowOnError extends boolean = false>(options: Options<SaveApplicationAnswersData, ThrowOnError>): RequestResult<SaveApplicationAnswersResponses, SaveApplicationAnswersErrors, ThrowOnError> => (options.client ?? client).put<SaveApplicationAnswersResponses, SaveApplicationAnswersErrors, ThrowOnError>({
     url: '/v1/intake/applications/{id}/answers',
@@ -219,7 +193,8 @@ export const saveApplicationAnswers = <ThrowOnError extends boolean = false>(opt
 });
 
 /**
- * Submits the draft. After this the application is read-only.
+ * Submits the draft, or resubmits an application returned for more
+ * information. After this the application is read-only.
  */
 export const submitApplication = <ThrowOnError extends boolean = false>(options: Options<SubmitApplicationData, ThrowOnError>): RequestResult<SubmitApplicationResponses, SubmitApplicationErrors, ThrowOnError> => (options.client ?? client).post<SubmitApplicationResponses, SubmitApplicationErrors, ThrowOnError>({
     url: '/v1/intake/applications/{id}/submit',
@@ -242,7 +217,8 @@ export const listReviewApplications = <ThrowOnError extends boolean = false>(opt
 export const getReviewApplication = <ThrowOnError extends boolean = false>(options: Options<GetReviewApplicationData, ThrowOnError>): RequestResult<GetReviewApplicationResponses, GetReviewApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetReviewApplicationResponses, GetReviewApplicationErrors, ThrowOnError>({ url: '/v1/intake/review/applications/{id}', ...options });
 
 /**
- * Marks the application Under Review.
+ * Picks the application up from the queue: it goes Under Review,
+ * assigned to the caller.
  */
 export const startApplicationReview = <ThrowOnError extends boolean = false>(options: Options<StartApplicationReviewData, ThrowOnError>): RequestResult<StartApplicationReviewResponses, StartApplicationReviewErrors, ThrowOnError> => (options.client ?? client).post<StartApplicationReviewResponses, StartApplicationReviewErrors, ThrowOnError>({
     url: '/v1/intake/review/applications/{id}/review',
@@ -270,6 +246,55 @@ export const acceptApplication = <ThrowOnError extends boolean = false>(options:
  */
 export const denyApplication = <ThrowOnError extends boolean = false>(options: Options<DenyApplicationData, ThrowOnError>): RequestResult<DenyApplicationResponses, DenyApplicationErrors, ThrowOnError> => (options.client ?? client).post<DenyApplicationResponses, DenyApplicationErrors, ThrowOnError>({
     url: '/v1/intake/review/applications/{id}/deny',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Puts the application back in the queue without deciding it. Assignee only.
+ */
+export const releaseApplication = <ThrowOnError extends boolean = false>(options: Options<ReleaseApplicationData, ThrowOnError>): RequestResult<ReleaseApplicationResponses, ReleaseApplicationErrors, ThrowOnError> => (options.client ?? client).post<ReleaseApplicationResponses, ReleaseApplicationErrors, ThrowOnError>({
+    url: '/v1/intake/review/applications/{id}/release',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Returns the application to the applicant for more information. Assignee only.
+ */
+export const requestMoreApplicationInfo = <ThrowOnError extends boolean = false>(options: Options<RequestMoreApplicationInfoData, ThrowOnError>): RequestResult<RequestMoreApplicationInfoResponses, RequestMoreApplicationInfoErrors, ThrowOnError> => (options.client ?? client).post<RequestMoreApplicationInfoResponses, RequestMoreApplicationInfoErrors, ThrowOnError>({
+    url: '/v1/intake/review/applications/{id}/request-more-info',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Escalates the application for a further review. Assignee only.
+ */
+export const escalateApplication = <ThrowOnError extends boolean = false>(options: Options<EscalateApplicationData, ThrowOnError>): RequestResult<EscalateApplicationResponses, EscalateApplicationErrors, ThrowOnError> => (options.client ?? client).post<EscalateApplicationResponses, EscalateApplicationErrors, ThrowOnError>({
+    url: '/v1/intake/review/applications/{id}/escalate',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Adds an internal note. Assignee only, while the application is Under Review.
+ * Notes are never shown to the applicant.
+ */
+export const addApplicationNote = <ThrowOnError extends boolean = false>(options: Options<AddApplicationNoteData, ThrowOnError>): RequestResult<AddApplicationNoteResponses, AddApplicationNoteErrors, ThrowOnError> => (options.client ?? client).post<AddApplicationNoteResponses, AddApplicationNoteErrors, ThrowOnError>({
+    url: '/v1/intake/review/applications/{id}/notes',
     ...options,
     headers: {
         'Content-Type': 'application/json',

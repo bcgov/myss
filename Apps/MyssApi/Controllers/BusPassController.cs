@@ -17,6 +17,7 @@ namespace Myss.Api.Controllers
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.FormSpec;
 
     /// <summary>
     /// BC Bus Pass submission endpoints.

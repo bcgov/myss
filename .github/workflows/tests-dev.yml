@@ -82,6 +82,12 @@ jobs:
         env:
           MYSS_TEST_POSTGRES: "Host=localhost;Port=5432;Database=myss;Username=myss;Password=myss-ci"
 
+      - name: Run form spec library tests
+        run: dotnet test Apps/MyssFormSpec.Tests --configuration Release
+
+      - name: Run admin API tests
+        run: dotnet test Apps/MyssAdminApi.Tests --configuration Release
+
       - name: Run ICM client tests
         run: dotnet test Apps/IcmApi.Tests --configuration Release
 
@@ -126,12 +132,19 @@ jobs:
           retention-days: 1
 
   webclient-tests:
-    name: Web client tests
+    name: Web client tests (${{ matrix.workspace }})
     runs-on: ubuntu-latest
+
+    # The two webclients and the Form.io component package they share are one
+    # npm workspace rooted at Apps/ (one lockfile), tested one workspace per job.
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [MyssFormio, MyssWebclient, MyssAdminWebclient]
 
     defaults:
       run:
-        working-directory: Apps/MyssWebclient
+        working-directory: Apps
 
     steps:
       - uses: actions/checkout@v6
@@ -141,28 +154,29 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: Apps/MyssWebclient/package-lock.json
+          cache-dependency-path: Apps/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      # `tsc -b && vite build` — the same command the image build runs.
-      # Vitest transpiles with esbuild and never typechecks, so without this
-      # step type errors first surface in the deploy pipeline, after merge.
+      # `tsc -b && vite build` for the apps (`tsc -b` for the package) — the
+      # same command the image build runs. Vitest transpiles with esbuild and
+      # never typechecks, so without this step type errors first surface in
+      # the deploy pipeline, after merge.
       - name: Typecheck and build
-        run: npm run build
+        run: npm run build --workspace ${{ matrix.workspace }}
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
       - name: Run tests with coverage
-        run: npm run test:coverage
+        run: npm run test:coverage --workspace ${{ matrix.workspace }}
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
-          name: webclient-coverage
-          path: Apps/MyssWebclient/coverage/lcov.info
+          name: webclient-coverage-${{ matrix.workspace }}
+          path: Apps/${{ matrix.workspace }}/coverage/lcov.info
           retention-days: 1
 
   sonarcloud-api:
@@ -196,11 +210,16 @@ jobs:
           /d:sonar.token="$SONAR_TOKEN"
           /d:sonar.sourceEncoding="UTF-8"
           /d:sonar.scanner.scanAll="false"
-          /d:sonar.cs.opencover.reportsPaths="Apps/MyssApi.Tests/TestResults/**/coverage.opencover.xml"
+          /d:sonar.cs.opencover.reportsPaths="Apps/MyssApi.Tests/TestResults/**/coverage.opencover.xml,Apps/MyssFormSpec.Tests/TestResults/**/coverage.opencover.xml,Apps/MyssAdminApi.Tests/TestResults/**/coverage.opencover.xml"
           /d:sonar.qualitygate.wait="true"
 
+      # The form spec library and the admin API are analysed under the MySS API
+      # project: both were split out of it, and each test run reports the
+      # coverage of the code it exercises. One build of the solution filter, so
+      # the scanner sees each project once (three test-project builds would each
+      # rebuild the shared library inside the same analysis).
       - name: Build MySS API
-        run: dotnet build Apps/MyssApi.Tests --configuration Release --no-incremental --disable-build-servers
+        run: dotnet build Apps/MyssApi.Sonar.slnf --configuration Release --no-incremental --disable-build-servers
 
       - name: Run API tests with coverage
         run: >-
@@ -209,6 +228,26 @@ jobs:
           --no-build
           --collect:"XPlat Code Coverage"
           --results-directory Apps/MyssApi.Tests/TestResults
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: Run form spec library tests with coverage
+        run: >-
+          dotnet test Apps/MyssFormSpec.Tests
+          --configuration Release
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --results-directory Apps/MyssFormSpec.Tests/TestResults
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: Run admin API tests with coverage
+        run: >-
+          dotnet test Apps/MyssAdminApi.Tests
+          --configuration Release
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --results-directory Apps/MyssAdminApi.Tests/TestResults
           --
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
@@ -286,18 +325,28 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: Apps/MyssWebclient/package-lock.json
+          cache-dependency-path: Apps/package-lock.json
 
       - name: Install dependencies
-        working-directory: Apps/MyssWebclient
+        working-directory: Apps
         run: npm ci
 
+      # One artifact per workspace, each unpacked into its own coverage/.
       - name: Download coverage
         uses: actions/download-artifact@v4
         with:
-          name: webclient-coverage
-          path: Apps/MyssWebclient/coverage
+          pattern: webclient-coverage-*
+          path: coverage-artifacts
 
+      - name: Place coverage reports
+        run: |
+          for ws in MyssFormio MyssWebclient MyssAdminWebclient; do
+            mkdir -p "Apps/$ws/coverage"
+            cp "coverage-artifacts/webclient-coverage-$ws/lcov.info" "Apps/$ws/coverage/lcov.info"
+          done
+
+      # The admin webclient and the shared Form.io package are analysed under
+      # the Web Client project: both were split out of it.
       - name: Analyze MySS Web Client
         uses: SonarSource/sonarqube-scan-action@v7
         env:
@@ -308,11 +357,11 @@ jobs:
             "-Dsonar.projectName=MySS Web Client"
             -Dsonar.organization=bcgov-sonarcloud
             -Dsonar.sourceEncoding=UTF-8
-            -Dsonar.sources=Apps/MyssWebclient/src
-            -Dsonar.tests=Apps/MyssWebclient/src
-            -Dsonar.exclusions=Apps/MyssWebclient/src/**/*.unit.test.ts,Apps/MyssWebclient/src/**/*.browser.test.tsx,Apps/MyssWebclient/src/api/generated/**
-            -Dsonar.test.inclusions=Apps/MyssWebclient/src/**/*.unit.test.ts,Apps/MyssWebclient/src/**/*.browser.test.tsx
-            -Dsonar.javascript.lcov.reportPaths=Apps/MyssWebclient/coverage/lcov.info
+            -Dsonar.sources=Apps/MyssWebclient/src,Apps/MyssAdminWebclient/src,Apps/MyssFormio/src
+            -Dsonar.tests=Apps/MyssWebclient/src,Apps/MyssAdminWebclient/src,Apps/MyssFormio/src
+            -Dsonar.exclusions=Apps/*/src/**/*.unit.test.ts,Apps/*/src/**/*.browser.test.tsx,Apps/MyssWebclient/src/api/generated/**
+            -Dsonar.test.inclusions=Apps/*/src/**/*.unit.test.ts,Apps/*/src/**/*.browser.test.tsx
+            -Dsonar.javascript.lcov.reportPaths=Apps/MyssWebclient/coverage/lcov.info,Apps/MyssAdminWebclient/coverage/lcov.info,Apps/MyssFormio/coverage/lcov.info
             -Dsonar.qualitygate.wait=true
 
   sonarcloud-content:

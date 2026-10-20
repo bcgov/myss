@@ -9,6 +9,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// What the in-memory suite cannot prove about a phone update: that a type

@@ -4,11 +4,12 @@ namespace Myss.Api.Tests.Services
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging.Abstractions;
     using Myss.Api.Data;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Tests for <see cref="BusPassSubmissionService"/>: what is stored, what
@@ -340,7 +341,6 @@ namespace Myss.Api.Tests.Services
                 _specProvider,
                 new UnexpectedPdfProvider(),
                 new UnexpectedTemplateProvider(),
-                new FakeFormSpecAdminProvider(),
                 new StubCurrentUserAccessor("test-subject"),
                 new FakeErrorMessageProvider(),
                 new PinHasher());

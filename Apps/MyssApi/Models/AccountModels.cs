@@ -3,6 +3,7 @@ namespace Myss.Api.Models
     using System;
     using System.Collections.Generic;
     using System.Text.Json.Serialization;
+    using Myss.FormSpec;
 
     /// <summary>
     /// What Account Info shows the citizen (MYSS-271): case details, which come

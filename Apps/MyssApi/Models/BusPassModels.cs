@@ -3,6 +3,8 @@ namespace Myss.Api.Models
     using System;
     using System.Collections.Generic;
     using System.Text.Json.Serialization;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// What the applicant is asking the BC Bus Pass Program for.

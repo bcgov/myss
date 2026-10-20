@@ -44,8 +44,9 @@ dotnet run --project Apps/MySS.AspireHost
 
 It starts the compose containers' equivalents (Postgres 17, ClamAV, MinIO with its
 bucket-creation one-shot), applies the four EF migration contexts once Postgres is healthy,
-then starts `MySSApi` (http://localhost:5000), `MySSContent` (Strapi,
-http://localhost:1337, run with npm on the host), `MyssWebClient` (Vite) and, when an
+then starts `MySSApi` (http://localhost:5000), `MySSAdminApi` (http://localhost:5010),
+`MySSContent` (Strapi, http://localhost:1337, run with npm on the host), `MyssWebClient`
+(Vite, http://localhost:5173), `MyssAdminWebClient` (Vite, http://localhost:5174) and, when an
 ICM base URL is configured (`Icm:BaseUrl` in the shared user-secret store), the ICM
 middleware `IcmApi` (http://localhost:5100; see `Apps/IcmApi.Host/README.md`) — with a
 dashboard (URL printed at startup) showing every resource's logs, health and telemetry.
@@ -57,7 +58,10 @@ Aspire and compose paths share one set of data in either direction — but only 
 two can be up at a time (same host ports).
 
 Still manual, because they live inside Strapi's admin UI: the first-visit admin user,
-and the API token for `Strapi:ApiToken` (goes in `Apps/MyssApi/appsettings.local.json`).
+the API token for `Strapi:ApiToken` (goes in `Apps/MyssApi/appsettings.local.json`), and
+the write-scoped token for `Strapi:AdminApiToken` (goes in
+`Apps/MyssAdminApi/appsettings.local.json`; `find`, `findOne`, `create` and `update` on
+Form Spec and Eligibility Rate, never `delete`). Only the admin API holds the write token.
 The token is read-only and scoped: it needs `find` and `findOne` on Form Spec,
 Eligibility Rate and Error Message. A token created before the Error Message collection
 existed lacks the last grant; MyssApi then logs a warning and words refused submissions
@@ -109,10 +113,15 @@ compose Postgres.
 ## Run the apps
 
 - API: `cd Apps/MyssApi && dotnet run` → http://localhost:5000
+- Admin API: `cd Apps/MyssAdminApi && dotnet run` → http://localhost:5010
 - ICM middleware: `dotnet run --project Apps/IcmApi.Host` → http://localhost:5100
   (needs the `Icm:*` user secrets; see `Apps/IcmApi.Host/README.md`)
-- Webclient: `cd Apps/MyssWebclient && npm install && npm run dev` →
-  http://localhost:5173 (the forms demo is under `/techdemos/forms`)
+- Webclients: the two webclients and the shared Form.io package (`Apps/MyssFormio`)
+  are one npm workspace, so install once from `Apps/` with `cd Apps && npm install`. Then:
+  - Webclient: `cd Apps/MyssWebclient && npm run dev` → http://localhost:5173 (the
+    forms demo is under `/techdemos/forms`)
+  - Admin webclient: `cd Apps/MyssAdminWebclient && npm run dev` →
+    http://localhost:5174 (IDIR sign-in; the form editor and the estimator rates)
 - Strapi admin: http://localhost:1337/admin — the first visit asks you to
   create the initial admin user (local account, any credentials)
 
@@ -123,11 +132,13 @@ compose Postgres.
   attachment scanning misbehaves; on a first-ever ClamAV start it will say the
   daemon is not answering until the signature download finishes.
 - API: `dotnet test Apps/MyssApi.Tests`
+- Form spec library and admin API: `dotnet test Apps/MyssFormSpec.Tests` and
+  `dotnet test Apps/MyssAdminApi.Tests`
 - ICM client and middleware: `dotnet test Apps/IcmApi.Tests` and
   `dotnet test Apps/IcmApi.Host.Tests`
-- Webclient: `cd Apps/MyssWebclient && npm run test:unit` and
-  `npm run test:browser-headless` — the browser tests need a one-time
-  `npx playwright install chromium`
+- Webclients and the Form.io package: in `Apps/MyssWebclient`, `Apps/MyssAdminWebclient`
+  and `Apps/MyssFormio`, `npm run test:unit` and `npm run test:browser-headless` — the
+  browser tests need a one-time `npx playwright install chromium`
 
 ## SonarQube Cloud
 
@@ -142,7 +153,11 @@ cannot access the `SONAR_TOKEN` secret.
 | MySS Content    | `bcgov-sonarcloud_myss_content`   |
 | MySS ICM Client | `bcgov-sonarcloud_myss_icmapi`    |
 
-The workflow imports OpenCover reports from the .NET tests and LCOV reports from both
+The code split out of the API and the web client is analysed under its origin project
+until it has its own: MySS API also covers `MyssFormSpec` and `MyssAdminApi`, and MySS Web
+Client also covers `MyssAdminWebclient` and `MyssFormio`.
+
+The workflow imports OpenCover reports from the .NET tests and LCOV reports from the
 TypeScript test suites. Configure the `SONAR_TOKEN` GitHub Actions secret for the
 `bcgov-sonarcloud` organization, and disable Automatic Analysis for all four projects
 so the CI analyses are the single source of results.

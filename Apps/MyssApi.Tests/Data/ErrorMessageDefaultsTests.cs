@@ -4,8 +4,8 @@ namespace Myss.Api.Tests.Data
     using System.Text.Json;
     using System.Text.RegularExpressions;
     using Myss.Api.Data;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Keeps <see cref="ErrorMessageDefaults"/> identical to the shared catalogue

@@ -51,6 +51,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Form spec validation, shared with MyssAdminApi -->
+        <ProjectReference Include="..\MyssFormSpec\MyssFormSpec.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
         <!-- ODT templates: embedded for use in API loading -->
         <EmbeddedResource Include="Templates\*.odt" />
     </ItemGroup>

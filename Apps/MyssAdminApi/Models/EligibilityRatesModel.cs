@@ -1,0 +1,77 @@
+namespace Myss.AdminApi.Models
+{
+    using System.Collections.Generic;
+
+    /// <summary>
+    /// The rate table the browser computes the eligibility estimate against
+    /// (Option B — the estimate is not calculated on the server). Served by
+    /// GET /v{version}/EligibilityEstimator/rates.
+    /// </summary>
+    public sealed class EligibilityRatesModel
+    {
+        /// <summary>Gets the date these values take effect (ISO yyyy-MM-dd).</summary>
+        public required string EffectiveDate { get; init; }
+
+        /// <summary>Gets the monthly income-limit rows, one per family size.</summary>
+        public required IReadOnlyList<EligibilityRateRowModel> IncomeRows { get; init; }
+
+        /// <summary>Gets the asset ceilings by category.</summary>
+        public required EligibilityAssetLimitsModel AssetLimits { get; init; }
+    }
+
+    /// <summary>
+    /// One family-size row of monthly income limits, by client type A–I.
+    /// Dependants affect the family size only; PWD takes priority over 65+.
+    /// The couple columns (A, C, D, F, H, I) hold 0 at family size 1.
+    /// </summary>
+    public sealed class EligibilityRateRowModel
+    {
+        /// <summary>Gets the family unit size (1-7; 7 is the cap).</summary>
+        public required int FamilySize { get; init; }
+
+        /// <summary>Gets the limit for type A: a couple, both under 65, neither PWD.</summary>
+        public required decimal A { get; init; }
+
+        /// <summary>Gets the limit for type B: a single adult, under 65, not PWD.</summary>
+        public required decimal B { get; init; }
+
+        /// <summary>Gets the limit for type C: a couple, both 65 or older, neither PWD.</summary>
+        public required decimal C { get; init; }
+
+        /// <summary>Gets the limit for type D: a couple, one 65 or older, neither PWD.</summary>
+        public required decimal D { get; init; }
+
+        /// <summary>Gets the limit for type E: a single adult, 65 or older, not PWD.</summary>
+        public required decimal E { get; init; }
+
+        /// <summary>Gets the limit for type F: a couple, one PWD, the other under 65 and not PWD.</summary>
+        public required decimal F { get; init; }
+
+        /// <summary>Gets the limit for type G: a single adult, PWD.</summary>
+        public required decimal G { get; init; }
+
+        /// <summary>Gets the limit for type H: a couple, both PWD.</summary>
+        public required decimal H { get; init; }
+
+        /// <summary>Gets the limit for type I: a couple, one PWD and the other 65 or older.</summary>
+        public required decimal I { get; init; }
+    }
+
+    /// <summary>
+    /// The asset ceilings by category A-D (a separate axis from the income types).
+    /// </summary>
+    public sealed class EligibilityAssetLimitsModel
+    {
+        /// <summary>Gets the asset ceiling for category A.</summary>
+        public required decimal A { get; init; }
+
+        /// <summary>Gets the asset ceiling for category B.</summary>
+        public required decimal B { get; init; }
+
+        /// <summary>Gets the asset ceiling for category C.</summary>
+        public required decimal C { get; init; }
+
+        /// <summary>Gets the asset ceiling for category D.</summary>
+        public required decimal D { get; init; }
+    }
+}

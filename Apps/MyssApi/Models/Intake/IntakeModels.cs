@@ -5,6 +5,7 @@ namespace Myss.Api.Intake
     using System.ComponentModel.DataAnnotations;
     using System.Text.Json;
     using Myss.Api.Models;
+    using Myss.FormSpec;
 
     /// <summary>
     /// An application as the list endpoint returns it: identity, status and dates.

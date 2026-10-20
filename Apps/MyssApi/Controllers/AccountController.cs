@@ -11,9 +11,10 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Routing;
     using Myss.Api.Configuration;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// The citizen's Account Info (MYSS-271): case and contact details, the

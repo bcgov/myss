@@ -3,6 +3,7 @@ namespace Myss.Api.Providers
     using System.Threading;
     using System.Threading.Tasks;
     using Myss.Api.Models;
+    using Myss.FormSpec;
 
     /// <summary>
     /// Provides versioned form specifications from the content engine.

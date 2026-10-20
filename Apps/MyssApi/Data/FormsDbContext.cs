@@ -1,6 +1,7 @@
 namespace Myss.Api.Data
 {
     using Microsoft.EntityFrameworkCore;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// EF Core context for the forms module. Owns the "forms" schema only,

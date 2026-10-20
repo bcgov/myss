@@ -2,6 +2,7 @@ namespace Myss.Api.Data
 {
     using System;
     using System.Collections.Generic;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Registration details linked to the authenticated identity subject.

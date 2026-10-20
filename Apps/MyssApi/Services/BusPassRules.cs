@@ -3,8 +3,9 @@ namespace Myss.Api.Services
     using System;
     using System.Collections.Generic;
     using System.Text.Json;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// The BC Bus Pass business rules the Form.io spec cannot express on its

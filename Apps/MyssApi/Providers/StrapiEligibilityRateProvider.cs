@@ -30,12 +30,14 @@ namespace Myss.Api.Providers
         private const string RatesQuery =
             "/api/eligibility-rates?sort=effectiveDate:desc&pagination[limit]=1";
 
+        // The admin rates editor saves through MyssAdminApi, another process that
+        // cannot clear this cache, so a saved table reaches citizens within this window.
         private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
         // The compiled fallback is cached under a short TTL so a Strapi outage does
         // not make every anonymous /rates request retry Strapi (and wait out the
         // HttpClient timeout). Kept much shorter than the success TTL so a recovered
-        // Strapi — or an admin's freshly published table — is picked up promptly.
+        // Strapi is picked up promptly.
         private static readonly TimeSpan FallbackCacheDuration = TimeSpan.FromSeconds(30);
 
         private readonly ILogger<StrapiEligibilityRateProvider> _logger;
@@ -105,9 +107,6 @@ namespace Myss.Api.Providers
             _cache.Set(CacheKey, fallback, FallbackCacheDuration);
             return fallback;
         }
-
-        /// <inheritdoc/>
-        public void InvalidateCache() => _cache.Remove(CacheKey);
 
         private static EligibilityRatesModel Map(JsonElement entry)
         {

@@ -4,8 +4,8 @@ namespace Myss.Api.Services
     using System.Globalization;
     using System.Linq;
     using System.Text.Json;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// The BC Bus Pass form's component keys and the readers the rules and the

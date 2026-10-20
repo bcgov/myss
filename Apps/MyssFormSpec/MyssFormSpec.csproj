@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Form spec validation shared by the citizen API (MyssApi) and the admin API
+  (MyssAdminApi). The admin editor refuses a spec with the same structural
+  rules the citizen API later validates answers against, so both must run
+  exactly this code. Keep it free of hosting, database and HTTP concerns.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Version>0.1.0</Version>
+        <RootNamespace>Myss.FormSpec</RootNamespace>
+        <Nullable>enable</Nullable>
+        <LangVersion>14.0</LangVersion>
+        <AnalysisMode>Recommended</AnalysisMode>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+</Project>

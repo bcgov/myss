@@ -9,12 +9,12 @@ namespace Myss.Api.Tests
     using Microsoft.Extensions.DependencyInjection.Extensions;
     using Myss.Api.Configuration;
     using Myss.Api.Data;
-    using Myss.Api.Domain;
     using Myss.Api.Intake;
     using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// The applicant slice of Application Intake over real HTTP: ownership,

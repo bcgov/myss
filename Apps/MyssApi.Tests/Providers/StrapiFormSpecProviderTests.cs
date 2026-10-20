@@ -7,6 +7,7 @@ namespace Myss.Api.Tests.Providers
     using Microsoft.Extensions.Logging.Abstractions;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.FormSpec;
 
     /// <summary>
     /// Tests for <see cref="StrapiFormSpecProvider"/>.

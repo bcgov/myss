@@ -8,11 +8,12 @@ namespace Myss.Api.Intake
     using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Applicant-side intake over the intake schema and the platform event

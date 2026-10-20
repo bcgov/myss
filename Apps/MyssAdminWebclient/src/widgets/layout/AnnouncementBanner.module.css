@@ -1,0 +1,28 @@
+/* Prod ".sub-header.announcement": full-width BC gold band, black text,
+   centred content. */
+.banner {
+    width: 100%;
+    background-color: var(--theme-primary-gold);
+    padding: var(--layout-padding-medium);
+}
+
+.content {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--layout-margin-small);
+    justify-content: center;
+    text-align: center;
+    color: var(--typography-color-primary);
+    font: var(--typography-regular-body);
+}
+
+.content a {
+    color: var(--typography-color-primary);
+    text-decoration: underline;
+}
+
+.icon {
+    flex-shrink: 0;
+}

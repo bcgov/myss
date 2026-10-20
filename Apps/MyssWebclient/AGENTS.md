@@ -29,14 +29,21 @@ what is specific to the webclient. Full docs:
 ## Layout of `src/`
 
 `pages/` (routed screens + page-scoped logic) · `widgets/` (composed
-sections; `widgets/formio/` is the Form.io bridge: every stock input type
-is re-registered with a design system wrapper on the shared `bcgovField`
-base, plus the client half of the validation rule registry) ·
+sections) ·
 `components/` (shared presentational leaves) · `hooks/` (`useX` naming)
 · `routes/paths.ts` (every URL) · `ui/` (global CSS layers) · `api/`
 (generated — regenerate with `npm run generate:schema`, never
 hand-edit) · `auth/` · `lib/` · `constants.ts` (config + external
 links, the only registry).
+
+The Form.io bridge (every stock input type re-registered with a design
+system wrapper on the shared `bcgovField` base, plus the client half of
+the validation rule registry) is the `@myss/formio` workspace in
+`Apps/MyssFormio`, shared with the admin webclient so the editor's
+preview renders a spec exactly as citizens see it. Change it there, and
+run its own test suites. Install from `Apps/` (npm workspace root, one
+lockfile). The admin pages (form management, form editor, rates) live in
+`Apps/MyssAdminWebclient`.
 
 Migration status and the current→target mapping are in
 [Docs/frontend-architecture.md](Docs/frontend-architecture.md) — new

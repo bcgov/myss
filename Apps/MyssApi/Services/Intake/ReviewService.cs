@@ -11,6 +11,7 @@ namespace Myss.Api.Intake
     using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.FormSpec;
 
     /// <summary>
     /// Worker-side intake over the intake schema and the platform event store.

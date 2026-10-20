@@ -3,6 +3,7 @@ namespace Myss.Api.Services
     using System;
     using System.Text.Json;
     using Myss.Api.Models;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Turns a stored BC Bus Pass submission's answers into the business-language

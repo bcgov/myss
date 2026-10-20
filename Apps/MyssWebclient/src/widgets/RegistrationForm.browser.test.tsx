@@ -4,7 +4,7 @@ import { render } from "vitest-browser-react";
 
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
 import type { IdentityDetails } from "./registrationSpec";
-import { registerBcgovComponents } from "./formio/bcgovComponents";
+import { registerBcgovComponents } from "@myss/formio";
 
 const formState = vi.hoisted(() => ({
     spec: {

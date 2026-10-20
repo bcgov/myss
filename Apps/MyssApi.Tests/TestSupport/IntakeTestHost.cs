@@ -13,6 +13,7 @@ namespace Myss.Api.Tests.TestSupport
     using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// One in-memory host per test: the three contexts the slice touches

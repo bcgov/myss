@@ -1,0 +1,58 @@
+#root {
+    color: var(--typography-color-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+}
+
+main {
+    flex: 1 1 auto;
+    padding: var(--layout-padding-xlarge);
+    width: 100%;
+    max-width: 1100px;
+}
+
+@media (max-width: 991px) {
+    main {
+        padding: var(--layout-padding-xlarge) var(--layout-padding-xlarge);
+    }
+}
+
+@media (max-width: 576px) {
+    main {
+        padding: var(--layout-padding-xlarge) var(--layout-padding-medium);
+    }
+}
+
+/* Header actions (Sign out) sit at the far right of the header row. */
+.app-header-actions {
+    margin-left: auto;
+}
+
+/* The header spans the full window, its content 64px in from each edge
+   (BCDS centres it in an 1100px box). No token is that large. On a phone
+   64px would take a third of the width, so it drops to the page's own
+   side padding there. */
+.bcds-header > .bcds-header--container {
+    max-width: none;
+    padding-left: 64px;
+    padding-right: 64px;
+    box-sizing: border-box;
+}
+
+/* BCDS also pads the header bar itself by 16px a side; the 64px above is
+   measured from the window edge. `body` outranks BCDS's runtime-injected
+   one-class rule. */
+body .bcds-header {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+@media (max-width: 576px) {
+    .bcds-header > .bcds-header--container {
+        padding-left: var(--layout-padding-medium);
+        padding-right: var(--layout-padding-medium);
+    }
+}

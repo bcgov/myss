@@ -1,0 +1,445 @@
+/*
+ * MySS theme — faithful reproduction of the production gov/myss styling that
+ * sits on top of Bootstrap 3. Values lifted directly from the prod
+ * govt-styles / myss-styles bundles. Loaded AFTER bootstrap.css so these win.
+ */
+
+/* ===== Base ===== */
+/* BC Sans is the official BC Gov typeface (bundled via main.tsx) and stands in
+ * for Myriad-Pro used on the live site. Headings follow the design spec:
+ * BC Sans bold, 36/32/28/24/20/18px, line-height 1.3 (h1-h3) or 1.4 (h4-h6). */
+body {
+    font-family: "BC Sans", "Myriad-Pro", Calibri, Arial, sans-serif;
+    font-size: 14px;
+    color: #333;
+    background-color: #fff;
+    margin: 0;
+}
+a {
+    color: #1a5a96;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: "BC Sans", "Myriad-Pro", Calibri, Arial, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0;
+    color: var(--typography-color-primary, #2d2d2d);
+}
+h1,
+h2,
+h3 {
+    padding-top: 20px;
+    margin-top: 0;
+    line-height: 1.3;
+}
+h4,
+h5,
+h6 {
+    line-height: 1.4;
+}
+h1 {
+    font-size: 36px;
+}
+h2 {
+    font-size: 32px;
+}
+h3 {
+    font-size: 28px;
+}
+h4 {
+    font-size: 24px;
+}
+h5 {
+    font-size: 20px;
+}
+h6 {
+    font-size: 18px;
+}
+h1.jumbo {
+    font-size: 42px;
+    font-weight: 400;
+    padding-top: 35px;
+}
+/* ===== Form fields =====
+ * The design system styles each field with its own classes. Its stylesheet
+ * is injected at runtime, after this file, so every rule here carries a
+ * `body` prefix: one more element than the design system's selector, so
+ * these win on specificity rather than on stylesheet order. */
+:root {
+    /* Error message text. A darker red than the design system's danger
+     * colour (#CE3E39, still used for the error border); no token for it. */
+    --myss-color-error-text: #a32d29;
+}
+
+/* Input labels: 16px bold in the secondary text colour, where the design
+ * system uses 14px regular in the primary colour. They sit close above their
+ * input (about 6px from the text to the border): no padding below the label,
+ * where the design system has 4px, and none of Bootstrap's 5px label margin. */
+body .bcds-react-aria-TextField--Label,
+body .bcds-react-aria-TextArea--Label,
+body .bcds-react-aria-NumberField--Label,
+body .bcds-react-aria-Select--Label,
+body .bcds-react-aria-DatePicker--Label,
+body .bcds-react-aria-TimeField--Label,
+body .bcds-react-aria-RadioGroup--label,
+body .bcds-react-aria-CheckboxGroup--label {
+    font: var(--typography-bold-body, 700 16px/27px "BC Sans", sans-serif);
+    color: var(--typography-color-secondary, #474543);
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+/* The "(required)" after a label: 14px regular in the primary colour, so the
+ * label text stands out. It carries the label's class too, hence the list. */
+body .bcds-react-aria-TextField--Label.required,
+body .bcds-react-aria-TextArea--Label.required,
+body .bcds-react-aria-NumberField--Label.required,
+body .bcds-react-aria-DatePicker--Label.required,
+body .bcds-react-aria-TimeField--Label.required,
+body .bcds-react-aria-TextField--Label .required,
+body .bcds-react-aria-TextArea--Label .required,
+body .bcds-react-aria-NumberField--Label .required,
+body .bcds-react-aria-RadioGroup--label [data-myss-required],
+body .bcds-react-aria-CheckboxGroup--label [data-myss-required] {
+    font: var(--typography-regular-small-body, 400 14px/21px "BC Sans", sans-serif);
+    color: var(--typography-color-primary, #2d2d2d);
+}
+/* The radio wrapper, and a checkbox under a question, draw their own label
+ * (see bcgovComponents.tsx and CheckboxField.tsx), so they miss the text
+ * field's spacing: give them the same space above the label. */
+body .bcds-react-aria-RadioGroup--label,
+body .bcds-react-aria-CheckboxGroup--label {
+    padding-top: var(--layout-padding-xsmall, 4px);
+}
+
+/* Every input fills the width of its form column, as the dropdown and the
+ * date picker already do. The design system draws text, text area and number
+ * fields inline, sized to the browser's default input width (about 20
+ * characters) or to a longer label, so their widths varied field to field. */
+body .bcds-react-aria-TextField,
+body .bcds-react-aria-TextArea,
+body .bcds-react-aria-NumberField {
+    display: flex;
+    width: 100%;
+}
+body .bcds-react-aria-TextField--Input,
+body .bcds-react-aria-TextArea--Input,
+body .bcds-react-aria-NumberField--Input {
+    min-width: 0;
+}
+/* The date picker paints its whole block white, label and format hint
+ * included; like the other fields, only its input box is white. */
+body .bcds-react-aria-DatePicker {
+    background-color: transparent;
+}
+body .bcds-react-aria-DatePicker--Group {
+    background-color: var(--surface-color-forms-default, #ffffff);
+}
+/* Input boxes: a mid grey border at rest (the design system's lighter grey
+ * is for disabled boxes here), near-black on hover (the design system's own),
+ * and 2px in blue on focus or red when invalid. The second pixel is an inset
+ * shadow, so the box does not change size, and it replaces the design
+ * system's keyboard focus ring: the 2px border is the focus indicator. */
+body .bcds-react-aria-TextField--container,
+body .bcds-react-aria-TextArea--Container,
+body .bcds-react-aria-NumberField--Group,
+body .bcds-react-aria-Select--Button,
+body .bcds-react-aria-DatePicker--Group {
+    border-color: var(--surface-color-border-medium, #898785);
+}
+body .bcds-react-aria-TextField[data-disabled] > .bcds-react-aria-TextField--container,
+body .bcds-react-aria-TextArea[data-disabled] > .bcds-react-aria-TextArea--Container,
+body .bcds-react-aria-NumberField--Group[data-disabled],
+body .bcds-react-aria-Select--Button[data-disabled],
+body .bcds-react-aria-DatePicker--Group[data-disabled] {
+    border-color: var(--surface-color-border-default, #d8d8d8);
+}
+body .bcds-react-aria-TextField[data-invalid] > .bcds-react-aria-TextField--container,
+body .bcds-react-aria-TextArea[data-invalid] > .bcds-react-aria-TextArea--Container,
+body .bcds-react-aria-NumberField[data-invalid] > .bcds-react-aria-NumberField--Group,
+body .bcds-react-aria-Select[data-invalid] > .bcds-react-aria-Select--Button,
+body .bcds-react-aria-DatePicker[data-invalid] > .bcds-react-aria-DatePicker--Group {
+    border-color: var(--support-border-color-danger, #ce3e39);
+    box-shadow: inset 0 0 0 1px var(--support-border-color-danger, #ce3e39);
+}
+/* Focus, by the browser's own :focus-within rather than react-aria's
+ * data-focused (which the form fields' inputs do not get), and after the
+ * invalid rule at the same specificity so a field being corrected shows blue. */
+body .bcds-react-aria-TextField > .bcds-react-aria-TextField--container:focus-within,
+body .bcds-react-aria-TextArea > .bcds-react-aria-TextArea--Container:focus-within,
+body .bcds-react-aria-NumberField > .bcds-react-aria-NumberField--Group:focus-within,
+body .bcds-react-aria-Select > .bcds-react-aria-Select--Button:focus,
+body .bcds-react-aria-DatePicker > .bcds-react-aria-DatePicker--Group:focus-within {
+    border-color: var(--surface-color-border-active, #2e5dd7);
+    border-radius: var(--layout-border-radius-medium, 4px);
+    box-shadow: inset 0 0 0 1px var(--surface-color-border-active, #2e5dd7);
+    outline: none;
+}
+/* No warning icon inside an invalid box or before its message; the red
+ * border and the message say it. */
+body .bcds-react-aria-TextField[data-invalid] > .bcds-react-aria-TextField--container > svg,
+body .bcds-react-aria-DatePicker[data-invalid] > .bcds-react-aria-DatePicker--Group > svg,
+body .bcds-react-aria-Select[data-invalid] .bcds-react-aria-Select--Button svg:not(:last-child),
+body .bcds-react-aria-TextArea--Error > svg {
+    display: none;
+}
+/* Error messages: 16px in the error text red. */
+body .bcds-react-aria-TextField--Error,
+body .bcds-react-aria-TextArea--Error,
+body .bcds-react-aria-NumberField--Error,
+body .bcds-react-aria-Select--Error,
+body .bcds-react-aria-DatePicker--Error,
+body .bcds-react-aria-RadioGroup .react-aria-FieldError,
+body .bcds-react-aria-CheckboxGroup .react-aria-FieldError {
+    font: var(--typography-regular-body, 400 16px/27px "BC Sans", sans-serif);
+    color: var(--myss-color-error-text);
+}
+/* Form.io wraps a field with an error in a pink panel (.formio-error-wrapper:
+ * pink fill, dark red text, 1em padding). The field's red border and message
+ * already say it, so drop the panel, and its padding, which shifted an
+ * invalid field right of its neighbours. Errors Form.io writes itself (a
+ * component without a design system wrapper) take the error text red. */
+body .formio-error-wrapper {
+    padding: 0;
+    background-color: transparent;
+    border-color: transparent;
+    color: inherit;
+}
+body .formio-error-wrapper .formio-errors .error {
+    color: var(--myss-color-error-text);
+}
+/* Radio and checkbox options: 16px regular, the body text size, where the
+ * design system uses 14px. Colour stays the design system's. */
+body .bcds-react-aria-Radio,
+body .bcds-react-aria-Checkbox > .label {
+    font: var(--typography-regular-body, 400 16px/27px "BC Sans", sans-serif);
+}
+/* The radio circle and the checkbox box sit on the middle of the option's
+ * first line. The design system lines them up by baseline with a margin
+ * tuned for its 14px text, which leaves them high beside 16px text, and lets
+ * the circle shrink, so an option that wraps to two lines drew an oval. */
+body .bcds-react-aria-Radio::before {
+    align-self: flex-start;
+    flex-shrink: 0;
+    margin-top: calc((1.688rem - var(--icons-size-xsmall, 14px)) / 2);
+}
+/* The box is `.checkbox`, also a Bootstrap 3 class, whose 10px bottom margin
+ * made the row taller than the text and pushed the text below the box. */
+body .bcds-react-aria-Checkbox > .checkbox {
+    align-self: flex-start;
+    flex-shrink: 0;
+    margin-top: calc((1.688rem - var(--icons-size-small, 16px)) / 2);
+    margin-bottom: 0;
+}
+/* The design system names a checkbox's text `.label`, which is also
+ * Bootstrap 3's badge class: it pads the text, centres it, rounds it and
+ * stops it wrapping (long acknowledgements ran off in one line). Undo the
+ * badge styles there; font and colour come from the rule above. */
+body .bcds-react-aria-Checkbox > .label {
+    padding: 0;
+    text-align: left;
+    white-space: normal;
+    border-radius: 0;
+    border: 0;
+}
+/* A question a form writes as text above a lone checkbox ("can we leave a
+ * message?"), set like an input label. Form specs apply it by class. */
+.myss-question-label {
+    font: var(--typography-bold-body, 700 16px/27px "BC Sans", sans-serif);
+    color: var(--typography-color-primary, #2d2d2d);
+    margin: 0;
+    padding: var(--layout-padding-xsmall, 4px) 0;
+}
+@media (max-width: 767px) {
+    body {
+        font-size: 12px;
+    }
+    h1.jumbo {
+        font-size: 24px;
+    }
+}
+
+/* ===== Header ===== */
+#header-main {
+    background-color: #036;
+    border: none;
+    border-bottom: 2px solid #fcba19;
+    height: 61px;
+    margin-bottom: 0;
+    border-radius: 0;
+    position: relative;
+}
+#logo {
+    float: left;
+    padding-top: 10px;
+}
+#logo img {
+    height: 44px;
+    width: auto;
+}
+.bcgov-title p {
+    color: #fff;
+    font-weight: 300;
+    margin: 0;
+    padding-left: 20px;
+    line-height: 14px;
+}
+@media (min-width: 992px) {
+    #header-main {
+        height: 84px;
+    }
+    #logo img {
+        height: 52px;
+    }
+}
+
+/* Accessibility skip links: off-screen until focused */
+#access {
+    display: inline;
+    position: absolute;
+    z-index: 9;
+}
+#access ul {
+    padding-left: 10px;
+    list-style: none;
+    margin: 0;
+}
+#access li a {
+    position: absolute;
+    top: 0;
+    left: -5000px;
+    width: 90px;
+    padding: 5px;
+    color: #fcba19;
+    background-color: #036;
+}
+#access li a:focus {
+    left: 0;
+    z-index: 20;
+}
+
+/* ===== Announcement sub-header ===== */
+.sub-header {
+    font-size: 16px;
+}
+.sub-header .sub-header-content {
+    padding: 15px 0;
+    display: block;
+}
+.sub-header .fa-warning {
+    padding-right: 5px;
+}
+.sub-header.announcement {
+    background-color: #fcba19;
+    color: #000;
+}
+
+/* ===== App content ===== */
+#appContent {
+    min-height: calc(100vh - 260px);
+    overflow-x: hidden;
+    padding-bottom: 40px;
+}
+#appContent p,
+#appContent ul,
+#appContent li,
+#appContent a {
+    line-height: 1.6em;
+}
+#appContent .app-content-first-row {
+    padding-top: 15px;
+}
+
+/* ===== Wells / launch page ===== */
+.well {
+    background: #f1f1f1;
+    border: none;
+    box-shadow: none;
+}
+#launch-page.container {
+    font-size: 16px;
+}
+#launch-page .btn-lg {
+    width: 180px;
+}
+
+/* ===== Custom radio styling (myss) ===== */
+.radio input[type="radio"] {
+    height: 20px;
+    width: 20px;
+    z-index: 2;
+    position: absolute;
+    top: 0.5em;
+    left: 2em;
+}
+.radio label {
+    padding-left: 0;
+    font-size: 16px;
+    width: 100%;
+}
+.radio span {
+    display: block;
+    padding: 1rem;
+    padding-left: 6rem;
+    width: 100%;
+}
+.radio input[type="radio"]:checked + span {
+    background: #eee;
+    border-radius: 25px;
+    border: 1px solid #ddd;
+}
+
+/* ===== Buttons (matches prod computed styles) ===== */
+.btn-primary {
+    background-color: #1a5a96;
+    border-color: #1a5a96;
+    color: #fff;
+}
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: #15496f;
+    border-color: #15496f;
+    color: #fff;
+}
+.btn-link {
+    color: #1a5a96;
+}
+/* Live site renders large buttons at 16px (not Bootstrap's default 18px). */
+.btn-lg {
+    font-size: 16px;
+}
+
+/* ===== Footer ===== */
+#footer {
+    border-top: 2px solid #fcba19;
+}
+#footerAdminSection {
+    background-color: #036;
+}
+#footer ul.inline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+#footer ul.inline li {
+    float: left;
+    padding: 2px 10px;
+    position: relative;
+}
+#footer ul.inline li + li {
+    border-left: 1px solid #4b5e73;
+}
+#footer ul.inline li a {
+    color: #fff;
+    display: block;
+    text-align: center;
+}
+#footerAdminSection ul {
+    clear: both;
+    padding: 10px 0;
+}

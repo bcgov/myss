@@ -9,6 +9,8 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Tests for <see cref="FormsService"/>.
@@ -26,7 +28,6 @@ namespace Myss.Api.Tests.Services
 
         private readonly FakeFormSpecProvider _provider = new();
         private readonly IPdfProvider _pdfProvider = new UnexpectedPdfProvider();
-        private readonly FakeFormSpecAdminProvider _adminProvider = new();
         private readonly ITemplateProvider _templateProvider = new UnexpectedTemplateProvider();
         private readonly FakeErrorMessageProvider _errorMessages = new();
         private readonly PinHasher _pinHasher = new();
@@ -772,7 +773,6 @@ namespace Myss.Api.Tests.Services
                 _provider,
                 _pdfProvider,
                 _templateProvider,
-                _adminProvider,
                 currentUserAccessor ?? new StubCurrentUserAccessor("test-subject"),
                 _errorMessages,
                 _pinHasher);

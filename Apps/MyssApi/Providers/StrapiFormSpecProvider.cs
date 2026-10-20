@@ -10,6 +10,7 @@ namespace Myss.Api.Providers
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging;
     using Myss.Api.Models;
+    using Myss.FormSpec;
 
     /// <summary>
     /// Reads form specs from the Strapi content engine over its REST API.

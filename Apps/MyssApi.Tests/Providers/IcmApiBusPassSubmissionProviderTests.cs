@@ -10,6 +10,7 @@ namespace Myss.Api.Tests.Providers
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Tests for <see cref="IcmApiBusPassSubmissionProvider"/>, over a scripted

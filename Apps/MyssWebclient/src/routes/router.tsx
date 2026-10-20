@@ -16,14 +16,10 @@ import FormsTechDemo from "@/pages/FormsTechDemo";
 import BusPassPage from "@/pages/BusPassPage";
 import SubmissionView from "@/pages/SubmissionView";
 import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
-import AdminPage from "@/pages/AdminPage";
-import FormManagementPage from "@/pages/FormManagementPage";
-import FormEditorPage from "@/pages/FormEditorPage";
 import ApplicationPage from "@/pages/ApplicationPage";
 import WorkerApplicationsPage from "@/pages/WorkerApplicationsPage";
 import WorkerApplicationPage from "@/pages/WorkerApplicationPage";
 import RequireAuth from "@/auth/RequireAuth";
-import RequireIdir from "@/auth/RequireIdir";
 import RequireWorker from "@/auth/RequireWorker";
 import { paths } from "@/routes/paths";
 
@@ -54,32 +50,6 @@ export const router = createBrowserRouter([
       { path: paths.signIn, element: <SignInPage /> },
       { path: paths.authCallback, element: <AuthCallbackPage /> },
       { path: paths.simpleLogin, element: <SimpleLoginPage /> },
-
-      // ---- Administration: direct URL entry for authenticated IDIR users ----
-      {
-        path: paths.admin,
-        element: (
-          <RequireIdir>
-            <AdminPage />
-          </RequireIdir>
-        ),
-      },
-      {
-        path: paths.adminFormManagement,
-        element: (
-          <RequireIdir>
-            <FormManagementPage />
-          </RequireIdir>
-        ),
-      },
-      {
-        path: paths.adminFormEditor,
-        element: (
-          <RequireIdir>
-            <FormEditorPage />
-          </RequireIdir>
-        ),
-      },
 
       // ---- Worker operations: IDIR sign-in with the WORKER role ----
       {

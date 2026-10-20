@@ -12,10 +12,10 @@ namespace Myss.Api.Tests
     using Microsoft.Extensions.DependencyInjection.Extensions;
     using Myss.Api.Configuration;
     using Myss.Api.Data;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.FormSpec.Domain;
     using Xunit;
 
     /// <summary>

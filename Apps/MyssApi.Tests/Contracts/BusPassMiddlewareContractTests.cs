@@ -3,6 +3,7 @@ namespace Myss.Api.Tests.Contracts
     using System.Text.Json;
     using System.Text.Json.Nodes;
     using Myss.Api.Models;
+    using Myss.FormSpec.Domain;
     using Xunit;
 
     /// <summary>

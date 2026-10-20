@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
-import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
+import { registerBcgovComponents } from "@myss/formio";
 
 // End-to-end of the estimator page against a stubbed anonymous API, driving the
 // v5 spec: residency is a hard gate (the status question reveals only for "Yes",

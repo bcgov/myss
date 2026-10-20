@@ -1,5 +1,5 @@
 import type { CurrentUser } from "@/auth/currentUser";
-import { formatPhone as displayPhone, phoneDigits } from "@/lib/phone";
+import { formatPhone as displayPhone, phoneDigits } from "@myss/formio/phone";
 
 // Prepares the Strapi registration spec for rendering: fills fields from the
 // sign-in identity and drops the spec's own submit button, because the widget

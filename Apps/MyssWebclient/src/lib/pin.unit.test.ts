@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { setErrorCatalogue } from "@/lib/errorCatalogue";
+import { setErrorCatalogue } from "@myss/formio/errorCatalogue";
 import {
   checkNewPin,
   checkPin,
@@ -19,7 +19,7 @@ interface Vector {
 }
 
 // Read from disk rather than imported, for the reason validationRules.unit.test
-// gives: the image build cannot import a file outside Apps/MyssWebclient.
+// (in @myss/formio) gives: the image build cannot import a file outside Apps/.
 function readShared<T>(file: string): T {
   const url = new URL(`../../../../Shared/validation/${file}`, import.meta.url);
   return JSON.parse(readFileSync(fileURLToPath(url), "utf8")) as T;

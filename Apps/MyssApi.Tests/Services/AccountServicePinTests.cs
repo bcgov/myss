@@ -9,6 +9,8 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Creating and changing the PIN on Account Info (MYSS-258): the checks,

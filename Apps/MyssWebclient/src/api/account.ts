@@ -1,7 +1,7 @@
 import { API_URL } from "@/constants";
 import { authHeaders } from "@/auth/accessToken";
 import { readValidationErrors, type FormValidationError } from "@/api/forms";
-import type { PhoneType } from "@/lib/phone";
+import type { PhoneType } from "@myss/formio/phone";
 
 // Calls to the account API (/v1/account): the citizen's Account Info
 // (MYSS-271) and PIN (MYSS-258). Always the caller's own account. Responses come wrapped in the
