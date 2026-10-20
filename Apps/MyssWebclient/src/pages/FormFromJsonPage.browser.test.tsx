@@ -1,6 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createMemoryRouter, RouterProvider } from "react-router";
-import { userEvent } from "vitest/browser";
+import {
+  createBrowserRouter,
+  createMemoryRouter,
+  RouterProvider,
+} from "react-router";
+import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -160,17 +164,16 @@ function newQueryClient() {
   });
 }
 
+const routes = [
+  { path: paths.adminFormFromJson, element: <FormFromJsonPage /> },
+  {
+    path: paths.adminFormManagement,
+    element: <h1>Form management list</h1>,
+  },
+];
+
 async function renderPage(url: string, queryClient = newQueryClient()) {
-  const router = createMemoryRouter(
-    [
-      { path: paths.adminFormFromJson, element: <FormFromJsonPage /> },
-      {
-        path: paths.adminFormManagement,
-        element: <h1>Form management list</h1>,
-      },
-    ],
-    { initialEntries: [url] },
-  );
+  const router = createMemoryRouter(routes, { initialEntries: [url] });
   const screen = await render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -1161,5 +1164,85 @@ describe("FormFromJsonPage: saving and leaving", () => {
     await jsonBody(screen).fill("{");
 
     await vi.waitFor(() => expect(reload()).toBe(true));
+  });
+
+  // The browser's own history: after Back, and after the router's undo of it,
+  // the browser can restore a scroll position once the question has appeared.
+  it("asks on the browser's Back button, with the question in view", async () => {
+    const { innerWidth, innerHeight } = window;
+    const startUrl = `${location.pathname}${location.search}`;
+    await page.viewport(800, 500);
+    const startState: unknown = history.state;
+    mockListForms.mockResolvedValue([]);
+    history.pushState(null, "", paths.adminFormManagement);
+    // A list long enough to be left scrolled part of the way down.
+    const router = createBrowserRouter([
+      routes[0],
+      {
+        path: paths.adminFormManagement,
+        element: (
+          <h1 style={{ marginBottom: "200vh" }}>Form management list</h1>
+        ),
+      },
+    ]);
+    let pops = 0;
+    const countPop = () => {
+      pops += 1;
+    };
+    window.addEventListener("popstate", countPop);
+    try {
+      const screen = await render(
+        <QueryClientProvider client={newQueryClient()}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>,
+      );
+      window.scrollTo(0, 300);
+      await router.navigate(
+        "/admin/form-management/zz-free-id/from-json?title=Check",
+      );
+      await jsonBody(screen).fill("{");
+      await expect
+        .element(screen.getByRole("heading", { name: "There is a problem" }))
+        .toBeVisible();
+      window.scrollTo(0, 0);
+
+      // Back, then the router's undo of it, then two frames.
+      async function back() {
+        const before = pops;
+        history.back();
+        await vi.waitFor(() => expect(pops).toBe(before + 2));
+        await new Promise((done) => requestAnimationFrame(done));
+        await new Promise((done) => requestAnimationFrame(done));
+      }
+      // Measured once, so a late jump out of view fails it.
+      const name = "Discard this JSON? Nothing has been saved.";
+      async function expectQuestionInView() {
+        await expect
+          .element(screen.getByRole("heading", { name }))
+          .toHaveFocus();
+        // The whole question, buttons included, within a pixel of rounding.
+        const box = screen
+          .getByRole("region", { name })
+          .element()
+          .getBoundingClientRect();
+        expect(box.top).toBeGreaterThanOrEqual(0);
+        expect(box.bottom).toBeLessThanOrEqual(window.innerHeight + 1);
+        expect(location.pathname).toBe(
+          "/admin/form-management/zz-free-id/from-json",
+        );
+      }
+
+      await back();
+      await expectQuestionInView();
+
+      // Back again, while the question is shown.
+      await back();
+      await expectQuestionInView();
+    } finally {
+      window.removeEventListener("popstate", countPop);
+      router.dispose();
+      history.replaceState(startState, "", startUrl);
+      await page.viewport(innerWidth, innerHeight);
+    }
   });
 });

@@ -664,6 +664,7 @@ function InlineConfirm({
   confirmLabel,
   cancelLabel,
   danger = false,
+  keepInViewOnBack = false,
   onConfirm,
   onCancel,
 }: Readonly<{
@@ -672,17 +673,45 @@ function InlineConfirm({
   confirmLabel: string;
   cancelLabel: string;
   danger?: boolean;
+  /** Shows and focuses it again after each browser Back or Forward. */
+  keepInViewOnBack?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }>) {
   const headingId = useId();
+  const sectionRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     headingRef.current?.focus();
+    // After a blocked browser Back, the browser restores the scroll of the
+    // page it was going to, once this has run; the next frame undoes that.
+    const frame = requestAnimationFrame(() =>
+      sectionRef.current?.scrollIntoView({ block: "nearest" }),
+    );
+    return () => cancelAnimationFrame(frame);
   }, []);
+  // The browser can restore a scroll position after any Back or Forward,
+  // the router's undo of a blocked Back included.
+  useEffect(() => {
+    if (!keepInViewOnBack) return;
+    let frame = 0;
+    const onPopState = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        headingRef.current?.focus();
+        sectionRef.current?.scrollIntoView({ block: "nearest" });
+      });
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      cancelAnimationFrame(frame);
+    };
+  }, [keepInViewOnBack]);
 
   return (
     <section
+      ref={sectionRef}
       className={danger ? styles.confirmDanger : styles.confirm}
       aria-labelledby={headingId}
     >
@@ -1220,6 +1249,7 @@ function JsonPage({ formSpecId }: Readonly<{ formSpecId: string }>) {
       {blocker.state === "blocked" && (
         <InlineConfirm
           danger
+          keepInViewOnBack
           heading={leaveQuestion(busy !== null, record !== null)}
           confirmLabel="Discard"
           cancelLabel="Keep editing"

@@ -37,17 +37,32 @@
     padding: 0;
 }
 
-.versionItem {
+/* A version label is a button that opens that version's JSON. */
+.versionButton {
     align-items: center;
-    background-color: var(--surface-color-background-light, #f2f2f2);
-    border: 1px solid var(--surface-color-border-default, #d0d5dd);
-    border-radius: 4px;
-    color: var(--typography-color-primary, #1a1a1a);
+    background-color: var(--surface-color-background-light-gray);
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    border-radius: var(--layout-border-radius-medium);
+    color: var(--typography-color-primary);
+    cursor: pointer;
     display: inline-flex;
-    font-size: 0.875rem;
+    font-family: inherit;
+    font-size: var(--typography-font-size-small-body);
     font-weight: 700;
-    gap: var(--layout-margin-small, 8px);
-    padding: 4px 10px;
+    gap: var(--layout-margin-small);
+    padding: var(--layout-padding-xsmall) var(--layout-padding-small);
+}
+
+.versionButton:hover {
+    background-color: var(--surface-color-secondary-button-hover);
+    border-color: var(--surface-color-border-dark);
+}
+
+.versionButton:focus-visible {
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-small);
 }
 
 .versionNumber {
@@ -125,7 +140,40 @@
     margin-top: 0;
 }
 
-.newFormCancel {
+/* New form and Create form from JSON, side by side. */
+.openButtons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+    margin-top: var(--layout-margin-large);
+}
+
+.openButtons .newFormButton {
+    margin-top: 0;
+}
+
+.newFormHeading {
+    font: var(--typography-bold-h4);
+    margin: 0;
+}
+
+/* An existing form's title, shown but not editable. */
+.newFormField input[aria-invalid="true"] {
+    border-color: var(--support-border-color-danger);
+}
+
+.newFormField input[readonly] {
+    background-color: var(--surface-color-forms-disabled);
+}
+
+.hint {
+    color: var(--typography-color-secondary);
+    font: var(--typography-regular-small-body);
+    margin: calc(-1 * var(--layout-margin-small)) 0 0;
+}
+
+/* The outlined button: Cancel in the panel. */
+.secondaryButton {
     background-color: var(--surface-color-background-white, #ffffff);
     border: 1px solid var(--surface-color-primary-button-default, #234075);
     border-radius: 4px;
