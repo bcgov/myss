@@ -76,10 +76,10 @@ namespace Myss.Api.Tests.Providers
         [InlineData("https://notify.test", null)]
         [InlineData("https://notify.test", " ")]
         [InlineData("http://notify.test", "test-key")]
-        public async Task WithoutAnHttpsBaseUrlAndAKeyNothingIsCalled(string? baseUrl, string? apiKey)
+        public async Task WithoutAnHttpsBaseUrlAndAKeyNothingIsCalled(string? baseAddress, string? apiKey)
         {
             var handler = new CapturingHandler(HttpStatusCode.Accepted, "{}");
-            var config = new NotifyConfig { BaseUrl = baseUrl is null ? null : new Uri(baseUrl), ApiKey = apiKey };
+            var config = new NotifyConfig { BaseUrl = baseAddress is null ? null : new Uri(baseAddress), ApiKey = apiKey };
 
             await Assert.ThrowsAsync<EmailNotSentException>(
                 () => NewProvider(handler, config).SendAsync(Message, CancellationToken.None));

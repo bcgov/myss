@@ -58,7 +58,7 @@ namespace Myss.Api.Tests.Services
             MyssUserProfile profile = await Profile();
             string token = _email.LastResetToken();
             Assert.NotNull(profile.PinResetTokenHash);
-            Assert.Equal(64, profile.PinResetTokenHash!.Length);
+            Assert.Equal(64, profile.PinResetTokenHash.Length);
             Assert.DoesNotContain(token, profile.PinResetTokenHash, StringComparison.OrdinalIgnoreCase);
             Assert.Equal(_clock.GetUtcNow(), profile.PinResetRequestedAt);
         }
@@ -283,6 +283,21 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task WithoutALinkBaseUrlNoEmailIsSentAndNothingIsSaved()
+        {
+            _config.LinkBaseUrl = null;
+            await Seed(pin: "4821");
+
+            PinResetResultModel result = await Request();
+
+            Assert.Equal(PinResetOutcome.EmailNotSent, result.Outcome);
+            Assert.Empty(_email.Sent);
+            MyssUserProfile profile = await Profile();
+            Assert.Null(profile.PinResetTokenHash);
+            Assert.Null(profile.PinResetRequestedAt);
+        }
+
+        [Fact]
         public async Task AFailedSendStillCountsTowardsTheCooldown()
         {
             await Seed(pin: "4821");
@@ -320,19 +335,19 @@ namespace Myss.Api.Tests.Services
         [InlineData("http://myss.gov.bc.ca")]
         [InlineData("http://10.0.0.5:5173")]
         [InlineData("ftp://myss.gov.bc.ca")]
-        public void ALinkBaseUrlThatIsNotHttpsIsRefusedAtStartup(string url)
+        public void ALinkBaseUrlThatIsNotHttpsIsRefusedAtStartup(string address)
         {
             Assert.Throws<InvalidOperationException>(() =>
-                PinResetConfig.Validate(new PinResetConfig { LinkBaseUrl = new Uri(url) }));
+                PinResetConfig.Validate(new PinResetConfig { LinkBaseUrl = new Uri(address) }));
         }
 
         [Theory]
         [InlineData("https://myss.gov.bc.ca")]
         [InlineData("http://localhost:5173")]
         [InlineData("http://127.0.0.1:5173")]
-        public void AnHttpsOrLocalLinkBaseUrlIsAccepted(string url)
+        public void AnHttpsOrLocalLinkBaseUrlIsAccepted(string address)
         {
-            PinResetConfig.Validate(new PinResetConfig { LinkBaseUrl = new Uri(url) });
+            PinResetConfig.Validate(new PinResetConfig { LinkBaseUrl = new Uri(address) });
         }
 
         private async Task<PinResetResultModel> Request(string? bceidGuid = BceidGuid)

@@ -94,6 +94,19 @@ namespace Myss.Api.Services
                 return PinResetResultModel.TooSoon(lastRequest + _config.RequestCooldown);
             }
 
+            // Checked here rather than at startup, as the Notify key is, so a
+            // checkout without it still boots. A deployment that forgot it gets
+            // the same logged 503 as one Notify refuses, and nothing is saved, so
+            // no cooldown starts on an email that never went out.
+            if (_config.LinkBaseUrl is null)
+            {
+                _logger.LogError(
+                    "No PIN reset email for profile {ProfileId}: Account:PinReset:LinkBaseUrl is not set "
+                    + "(deployed: Myss_Account__PinReset__LinkBaseUrl)",
+                    profile.Id);
+                return PinResetResultModel.Refused(PinResetOutcome.EmailNotSent);
+            }
+
             // Random bytes from the CSPRNG rather than Guid.NewGuid, whose
             // randomness source is a platform detail; the token is still a GUID.
             var token = new Guid(RandomNumberGenerator.GetBytes(16));
