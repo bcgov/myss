@@ -24,6 +24,12 @@ namespace Myss.Api.Services
     /// </summary>
     public class PinResetService : IPinResetService
     {
+        /// <summary>
+        /// How many times a request is tried when the profile's concurrency
+        /// tokens changed between its read and its write. Each try reads afresh.
+        /// </summary>
+        private const int MaxRequestTries = 3;
+
         private readonly ILogger<PinResetService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly ICurrentUserAccessor _currentUserAccessor;
@@ -73,6 +79,26 @@ namespace Myss.Api.Services
                 throw new InvalidOperationException("An authenticated identity is required to request a PIN reset.");
             }
 
+            // The save below lands only if the profile's concurrency tokens (the
+            // reset token and the PIN columns) are as this request read them. One
+            // that loses the race starts again from what the winner wrote: after
+            // another reset request that is the cooldown, after a PIN change it
+            // goes ahead. The race is lost at the save, before any email is sent.
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    return await TryRequestAsync(user, cancellationToken);
+                }
+                catch (DbUpdateConcurrencyException) when (attempt < MaxRequestTries)
+                {
+                    _dbContext.ChangeTracker.Clear();
+                }
+            }
+        }
+
+        private async Task<PinResetResultModel> TryRequestAsync(CurrentUser user, CancellationToken cancellationToken)
+        {
             MyssUserProfile? profile = await _dbContext.MyssUserProfiles
                 .SingleOrDefaultAsync(p => p.Subject == user.Subject, cancellationToken);
             if (profile is null)
@@ -117,17 +143,7 @@ namespace Myss.Api.Services
             profile.PinResetTokenHash = HashToken(token);
             profile.PinResetRequestedAt = now;
             profile.UpdatedAt = now;
-            try
-            {
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                // The token hash is a concurrency token: another request for this
-                // profile saved between this one's read and write, and is sending
-                // its email now. This one is inside that request's cooldown.
-                return PinResetResultModel.TooSoon(now + _config.RequestCooldown);
-            }
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             try
             {

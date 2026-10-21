@@ -298,6 +298,37 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task TwoRequestsAtOnceSendOneEmail()
+        {
+            await Seed(pin: "4821");
+
+            // The other request reads, saves and sends between this one's read and write.
+            PinResetResultModel result = await RequestInterruptedBy(() => Request());
+
+            Assert.Equal(PinResetOutcome.TooSoon, result.Outcome);
+            Assert.Single(_email.Sent);
+            Assert.Equal(PinResetOutcome.Ok, (await Reset(_email.LastResetToken(), "7350", "7350")).Outcome);
+        }
+
+        [Fact]
+        public async Task APinChangeDuringARequestDoesNotStopTheEmail()
+        {
+            await Seed(pin: "4821");
+
+            PinResetResultModel result = await RequestInterruptedBy(async () =>
+            {
+                using var db = new InMemoryFormsDbContext(_options);
+                MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync(p => p.Subject == Subject);
+                profile.PinHash = _hasher.Hash(Pin.TryCreate("1111").Value!);
+                await db.SaveChangesAsync();
+            });
+
+            Assert.Equal(PinResetOutcome.Ok, result.Outcome);
+            Assert.Single(_email.Sent);
+            Assert.NotNull((await Profile()).PinResetTokenHash);
+        }
+
+        [Fact]
         public async Task AFailedSendStillCountsTowardsTheCooldown()
         {
             await Seed(pin: "4821");
@@ -356,6 +387,13 @@ namespace Myss.Api.Tests.Services
             return await NewService(db, bceidGuid).RequestAsync(CancellationToken.None);
         }
 
+        /// <summary>A request whose first save is preceded by <paramref name="interruption"/>.</summary>
+        private async Task<PinResetResultModel> RequestInterruptedBy(Func<Task> interruption)
+        {
+            using var db = new InterruptibleFormsDbContext(_options) { BeforeNextSave = interruption };
+            return await NewService(db, BceidGuid).RequestAsync(CancellationToken.None);
+        }
+
         private async Task<PinResetResultModel> Reset(string? token, string? next, string? confirm)
         {
             using var db = new InMemoryFormsDbContext(_options);
@@ -401,6 +439,28 @@ namespace Myss.Api.Tests.Services
         {
             using var db = new InMemoryFormsDbContext(_options);
             return await db.MyssUserProfiles.AsNoTracking().SingleAsync(p => p.Subject == Subject);
+        }
+
+        /// <summary>
+        /// Lets another request write between a request's read of the profile and
+        /// its write: the save is the step in between.
+        /// </summary>
+        private sealed class InterruptibleFormsDbContext(DbContextOptions<FormsDbContext> options)
+            : InMemoryFormsDbContext(options)
+        {
+            public Func<Task>? BeforeNextSave { get; set; }
+
+            public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+            {
+                Func<Task>? interruption = BeforeNextSave;
+                BeforeNextSave = null;
+                if (interruption is not null)
+                {
+                    await interruption();
+                }
+
+                return await base.SaveChangesAsync(cancellationToken);
+            }
         }
     }
 }
