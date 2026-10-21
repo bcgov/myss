@@ -26,6 +26,24 @@ export type MicrosoftAspNetCoreMvcProblemDetails = {
     [key: string]: unknown;
 };
 
+export type MicrosoftAspNetCoreMvcValidationProblemDetails = {
+    type?: string | null;
+    title?: string | null;
+    /**
+     * Nullable<Int32>
+     */
+    status?: number | null;
+    detail?: string | null;
+    instance?: string | null;
+    /**
+     * IDictionary<String>
+     */
+    errors?: {
+        [key: string]: Array<string>;
+    } | null;
+    [key: string]: unknown;
+};
+
 /**
  * Scan lifecycle of an attachment (quarantine -> scan -> release, same
  * naming as the forms architecture). The row is created before the scan,
@@ -142,6 +160,23 @@ export type MyssApiIntakeReviewApplicationModel = MyssApiIntakeReviewApplication
      * (Myss.Api.Intake.WorkerActions). The buttons render from this list.
      */
     availableActions: Array<string> | null;
+    /**
+     * Gets or sets whether the caller may add an internal note right now:
+     * true for the assignee of a file Under Review.
+     */
+    canAddNote: boolean;
+    /**
+     * IReadOnlyList<ReviewNoteModel>
+     *
+     * Gets or sets the internal notes, oldest first. Workers only.
+     */
+    notes: Array<MyssApiIntakeReviewNoteModel> | null;
+    /**
+     * IReadOnlyList<ReviewHistoryEntryModel>
+     *
+     * Gets or sets what happened to the file, oldest first.
+     */
+    history: Array<MyssApiIntakeReviewHistoryEntryModel> | null;
 };
 
 /**
@@ -170,6 +205,71 @@ export type MyssApiIntakeReviewApplicationSummaryModel = {
      * version, not the applicant's row version.
      */
     streamVersion: number;
+    /**
+     * Gets or sets the IDIR of the worker it is assigned to, while it is
+     * Under Review; null otherwise.
+     */
+    assignee?: string | null;
+    /**
+     * Gets or sets whether the application is in the worker queue:
+     * Submitted, Re-submitted or Returned.
+     */
+    inQueue: boolean;
+};
+
+/**
+ * One entry of an application's history.
+ */
+export type MyssApiIntakeReviewHistoryEntryModel = {
+    /**
+     * Gets or sets what happened (Myss.Api.Intake.ApplicationHistoryCodes).
+     */
+    code: string | null;
+    /**
+     * Gets or sets who did it: APPLICANT, WORKER or SYSTEM.
+     */
+    actorKind: string | null;
+    /**
+     * Gets or sets the worker's IDIR, when a worker did it.
+     */
+    idir?: string | null;
+    /**
+     * Gets or sets when it happened.
+     */
+    occurredAt: string;
+};
+
+/**
+ * One internal note on an application.
+ */
+export type MyssApiIntakeReviewNoteModel = {
+    /**
+     * Gets or sets what the worker wrote.
+     */
+    text: string | null;
+    /**
+     * Gets or sets the IDIR of the worker who wrote it.
+     */
+    author: string | null;
+    /**
+     * Gets or sets when it was written.
+     */
+    createdAt: string;
+};
+
+/**
+ * The body of an internal note: the stream version the worker last saw
+ * and the text.
+ */
+export type MyssApiIntakeReviewNoteRequestModel = {
+    /**
+     * Gets or sets the stream version the worker last saw.
+     */
+    streamVersion: number;
+    /**
+     * Gets or sets the note's text.
+     */
+    text: string;
 };
 
 /**
@@ -211,6 +311,7 @@ export type MyssApiModelsAccountModel = {
      * Gets or sets a value indicating whether the citizen wants the monthly report reminder.
      */
     monthlyReportReminder?: boolean;
+    pinStatus?: MyssApiModelsAccountPinStatus;
 };
 
 /**
@@ -228,6 +329,11 @@ export type MyssApiModelsAccountPhoneModel = {
  * The kinds of phone number ICM keeps for a contact.
  */
 export type MyssApiModelsAccountPhoneType = 'Home' | 'Cell' | 'Work' | 'Message';
+
+/**
+ * Where the citizen stands with the PIN, which decides what Account Info offers.
+ */
+export type MyssApiModelsAccountPinStatus = 'NotApplicable' | 'NotSet' | 'Set';
 
 /**
  * A stored attachment's metadata. The API doesn't return file content in
@@ -388,6 +494,19 @@ export type MyssApiModelsBaseResponseModelMyssApiModelsFormSpecModel = {
  */
 export type MyssApiModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel = {
     payload: MyssApiModelsFormSubmissionResponseModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<PinResetRequestedModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssApiModelsBaseResponseModelMyssApiModelsPinResetRequestedModel = {
+    payload: MyssApiModelsPinResetRequestedModel;
     /**
      * Gets or sets the payload information.
      */
@@ -759,6 +878,17 @@ export type MyssApiModelsFormSubmissionRequestModel = {
      * Gets or sets the submitted answers, keyed by component key.
      */
     answers: unknown;
+    /**
+     * Gets or sets the 4-digit PIN a Basic BCeID citizen creates at
+     * registration (MYSS-258). Registration only. Deliberately outside
+     * Myss.Api.Models.FormSubmissionRequestModel.Answers, which are stored as submitted: only the PIN's
+     * salted hash is kept, on the profile.
+     */
+    pin?: string | null;
+    /**
+     * Gets or sets the PIN typed a second time, which must match Myss.Api.Models.FormSubmissionRequestModel.Pin.
+     */
+    pinConfirmation?: string | null;
 };
 
 /**
@@ -862,6 +992,16 @@ export type MyssApiModelsPhoneInputModel = {
 };
 
 /**
+ * The answer to a PIN reset request (MYSS-36): the email is on its way.
+ */
+export type MyssApiModelsPinResetRequestedModel = {
+    /**
+     * Gets or sets when the emailed link stops working.
+     */
+    expiresAt?: string;
+};
+
+/**
  * The result of publishing a form: the version number that went live.
  */
 export type MyssApiModelsPublishResultModel = {
@@ -869,6 +1009,25 @@ export type MyssApiModelsPublishResultModel = {
      * Gets or sets the version number that was published.
      */
     version: number;
+};
+
+/**
+ * The body of a PIN reset from the emailed link. All three are checked by
+ * the service, so a mistake comes back as a refusal or a field error.
+ */
+export type MyssApiModelsResetPinRequestModel = {
+    /**
+     * Gets or sets the token from the link.
+     */
+    token?: string | null;
+    /**
+     * Gets or sets the new 4-digit PIN.
+     */
+    newPin?: string | null;
+    /**
+     * Gets or sets the new PIN typed a second time.
+     */
+    confirmPin?: string | null;
 };
 
 /**
@@ -897,6 +1056,26 @@ export type MyssApiModelsSaveEligibilityRatesRequestModel = {
      */
     incomeRows: Array<MyssApiModelsEligibilityRateRowModel> | null;
     assetLimits: MyssApiModelsEligibilityAssetLimitsModel;
+};
+
+/**
+ * The body of a PIN save: a change when a PIN is set, otherwise its
+ * creation, in which case Myss.Api.Models.SavePinRequestModel.CurrentPin is ignored. All three are
+ * checked by the service, so a mistake comes back as a field error.
+ */
+export type MyssApiModelsSavePinRequestModel = {
+    /**
+     * Gets or sets the PIN the citizen has now. Required to change one.
+     */
+    currentPin?: string | null;
+    /**
+     * Gets or sets the new 4-digit PIN.
+     */
+    newPin?: string | null;
+    /**
+     * Gets or sets the new PIN typed a second time.
+     */
+    confirmPin?: string | null;
 };
 
 /**
@@ -1026,6 +1205,42 @@ export type UpdateAccountNotificationPreferencesResponses = {
 };
 
 export type UpdateAccountNotificationPreferencesResponse = UpdateAccountNotificationPreferencesResponses[keyof UpdateAccountNotificationPreferencesResponses];
+
+export type SaveAccountPinData = {
+    /**
+     * The current PIN, when there is one, and the new one twice.
+     */
+    body?: MyssApiModelsSavePinRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/account/pin';
+};
+
+export type SaveAccountPinErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Unprocessable Content
+     */
+    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+    /**
+     * Too Many Requests
+     */
+    429: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type SaveAccountPinError = SaveAccountPinErrors[keyof SaveAccountPinErrors];
+
+export type SaveAccountPinResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+};
+
+export type SaveAccountPinResponse = SaveAccountPinResponses[keyof SaveAccountPinResponses];
 
 export type ListAttachmentsData = {
     body?: never;
@@ -1690,6 +1905,71 @@ export type SubmitApplicationResponses = {
 
 export type SubmitApplicationResponse = SubmitApplicationResponses[keyof SubmitApplicationResponses];
 
+export type RequestPinResetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/pin-reset/requests';
+};
+
+export type RequestPinResetErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Too Many Requests
+     */
+    429: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Service Unavailable
+     */
+    503: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type RequestPinResetError = RequestPinResetErrors[keyof RequestPinResetErrors];
+
+export type RequestPinResetResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiModelsPinResetRequestedModel;
+};
+
+export type RequestPinResetResponse = RequestPinResetResponses[keyof RequestPinResetResponses];
+
+export type ResetPinData = {
+    /**
+     * The token from the link and the new PIN twice.
+     */
+    body?: MyssApiModelsResetPinRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/pin-reset';
+};
+
+export type ResetPinErrors = {
+    /**
+     * Gone
+     */
+    410: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Unprocessable Content
+     */
+    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+};
+
+export type ResetPinError = ResetPinErrors[keyof ResetPinErrors];
+
+export type ResetPinResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type ResetPinResponse = ResetPinResponses[keyof ResetPinResponses];
+
 export type ListReviewApplicationsData = {
     body?: never;
     path?: never;
@@ -1846,3 +2126,155 @@ export type DenyApplicationResponses = {
 };
 
 export type DenyApplicationResponse = DenyApplicationResponses[keyof DenyApplicationResponses];
+
+export type ReleaseApplicationData = {
+    /**
+     * The stream version last seen.
+     */
+    body?: MyssApiIntakeReviewActionRequestModel;
+    path: {
+        /**
+         * The application identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/review/applications/{id}/release';
+};
+
+export type ReleaseApplicationErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type ReleaseApplicationError = ReleaseApplicationErrors[keyof ReleaseApplicationErrors];
+
+export type ReleaseApplicationResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
+};
+
+export type ReleaseApplicationResponse = ReleaseApplicationResponses[keyof ReleaseApplicationResponses];
+
+export type RequestMoreApplicationInfoData = {
+    /**
+     * The stream version last seen.
+     */
+    body?: MyssApiIntakeReviewActionRequestModel;
+    path: {
+        /**
+         * The application identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/review/applications/{id}/request-more-info';
+};
+
+export type RequestMoreApplicationInfoErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type RequestMoreApplicationInfoError = RequestMoreApplicationInfoErrors[keyof RequestMoreApplicationInfoErrors];
+
+export type RequestMoreApplicationInfoResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
+};
+
+export type RequestMoreApplicationInfoResponse = RequestMoreApplicationInfoResponses[keyof RequestMoreApplicationInfoResponses];
+
+export type EscalateApplicationData = {
+    /**
+     * The stream version last seen.
+     */
+    body?: MyssApiIntakeReviewActionRequestModel;
+    path: {
+        /**
+         * The application identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/review/applications/{id}/escalate';
+};
+
+export type EscalateApplicationErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type EscalateApplicationError = EscalateApplicationErrors[keyof EscalateApplicationErrors];
+
+export type EscalateApplicationResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
+};
+
+export type EscalateApplicationResponse = EscalateApplicationResponses[keyof EscalateApplicationResponses];
+
+export type AddApplicationNoteData = {
+    /**
+     * The stream version last seen and the note.
+     */
+    body?: MyssApiIntakeReviewNoteRequestModel;
+    path: {
+        /**
+         * The application identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/review/applications/{id}/notes';
+};
+
+export type AddApplicationNoteErrors = {
+    /**
+     * Bad Request
+     */
+    400: MicrosoftAspNetCoreMvcValidationProblemDetails;
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type AddApplicationNoteError = AddApplicationNoteErrors[keyof AddApplicationNoteErrors];
+
+export type AddApplicationNoteResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
+};
+
+export type AddApplicationNoteResponse = AddApplicationNoteResponses[keyof AddApplicationNoteResponses];
