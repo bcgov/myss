@@ -15,7 +15,7 @@ namespace Myss.Api.Services
         /// replacing any link sent before (RULE-IDA-02).
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Ok with the expiry, ProfileRequired, PinNotAvailable or EmailNotSent.</returns>
+        /// <returns>Ok with the expiry, ProfileRequired, PinNotAvailable, TooSoon or EmailNotSent.</returns>
         Task<PinResetResultModel> RequestAsync(CancellationToken cancellationToken);
 
         /// <summary>

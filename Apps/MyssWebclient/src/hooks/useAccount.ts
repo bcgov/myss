@@ -22,6 +22,7 @@ export {
   AccountRequestError,
   PIN_LOCKED_KEYWORD,
   PIN_RESET_LINK_INVALID_KEYWORD,
+  PIN_RESET_TOO_SOON_KEYWORD,
 } from "@/api/account";
 export type {
   AccountPayload,

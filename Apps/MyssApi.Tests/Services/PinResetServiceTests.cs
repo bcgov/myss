@@ -132,6 +132,7 @@ namespace Myss.Api.Tests.Services
             await Seed(pin: "4821");
             await Request();
             string first = _email.LastResetToken();
+            _clock.Advance(TimeSpan.FromSeconds(60));
             await Request();
 
             PinResetResultModel result = await Reset(first, "7350", "7350");
@@ -236,6 +237,69 @@ namespace Myss.Api.Tests.Services
             await Request();
 
             Assert.Contains($"expires in {expected}.", _email.Sent[^1].MarkdownBody, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task ASecondRequestInsideTheCooldownSendsNothing()
+        {
+            await Seed(pin: "4821");
+            await Request();
+            string first = _email.LastResetToken();
+            _clock.Advance(TimeSpan.FromSeconds(59));
+
+            PinResetResultModel result = await Request();
+
+            Assert.Equal(PinResetOutcome.TooSoon, result.Outcome);
+            Assert.Equal(_clock.GetUtcNow().AddSeconds(1), result.RetryAt);
+            Assert.Single(_email.Sent);
+
+            // The first link still works: a refused request changes nothing.
+            Assert.Equal(PinResetOutcome.Ok, (await Reset(first, "7350", "7350")).Outcome);
+        }
+
+        [Fact]
+        public async Task AfterTheCooldownAnotherEmailIsSent()
+        {
+            await Seed(pin: "4821");
+            await Request();
+            _clock.Advance(TimeSpan.FromSeconds(60));
+
+            PinResetResultModel result = await Request();
+
+            Assert.Equal(PinResetOutcome.Ok, result.Outcome);
+            Assert.Equal(2, _email.Sent.Count);
+        }
+
+        [Fact]
+        public async Task AUsedLinkLiftsTheCooldown()
+        {
+            await Seed(pin: "4821");
+            await Request();
+            await Reset(_email.LastResetToken(), "7350", "7350");
+
+            PinResetResultModel result = await Request();
+
+            Assert.Equal(PinResetOutcome.Ok, result.Outcome);
+        }
+
+        [Fact]
+        public async Task AFailedSendStillCountsTowardsTheCooldown()
+        {
+            await Seed(pin: "4821");
+            _email.Unavailable = true;
+            await Request();
+            _email.Unavailable = false;
+
+            PinResetResultModel result = await Request();
+
+            Assert.Equal(PinResetOutcome.TooSoon, result.Outcome);
+        }
+
+        [Fact]
+        public void ACooldownBelowOneSecondIsRefusedAtStartup()
+        {
+            Assert.Throws<InvalidOperationException>(() =>
+                PinResetConfig.Validate(new PinResetConfig { RequestCooldownSeconds = 0 }));
         }
 
         [Fact]

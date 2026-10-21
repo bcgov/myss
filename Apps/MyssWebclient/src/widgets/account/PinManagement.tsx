@@ -5,6 +5,7 @@ import PinField from "@/components/PinField";
 import {
   AccountRequestError,
   PIN_LOCKED_KEYWORD,
+  PIN_RESET_TOO_SOON_KEYWORD,
   useRequestPinReset,
   useSavePin,
   type AccountPayload,
@@ -288,13 +289,23 @@ export default function PinManagement({
               />
             </output>
           )}
-          {requestReset.isError && (
-            <InlineAlert
-              variant="danger"
-              role="alert"
-              description={`We could not send the email. ${requestReset.error.message}`}
-            />
-          )}
+          {requestReset.isError &&
+            (requestReset.error instanceof AccountRequestError &&
+            requestReset.error.keyword === PIN_RESET_TOO_SOON_KEYWORD ? (
+              // Not a failure: an email went out moments ago, and the API
+              // says when another may be sent.
+              <InlineAlert
+                variant="warning"
+                role="alert"
+                description={requestReset.error.message}
+              />
+            ) : (
+              <InlineAlert
+                variant="danger"
+                role="alert"
+                description={`We could not send the email. ${requestReset.error.message}`}
+              />
+            ))}
           <div>
             <Button
               variant="secondary"

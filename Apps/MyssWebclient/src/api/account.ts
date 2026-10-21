@@ -86,6 +86,9 @@ export const PIN_LOCKED_KEYWORD = "ACCOUNT.PIN.LOCKED";
 /** The keyword of a 410 for a reset link that is unknown, used, or expired. */
 export const PIN_RESET_LINK_INVALID_KEYWORD = "ACCOUNT.PIN_RESET.LINK_INVALID";
 
+/** The keyword of a 429 when a reset email went out too recently to send another. */
+export const PIN_RESET_TOO_SOON_KEYWORD = "ACCOUNT.PIN_RESET.TOO_SOON";
+
 async function readProblem(res: Response): Promise<AccountProblem> {
   try {
     const body = (await res.json()) as AccountProblem;

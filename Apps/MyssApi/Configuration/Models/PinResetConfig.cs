@@ -21,6 +21,15 @@ namespace Myss.Api.Configuration.Models
         public int TokenLifetimeMinutes { get; set; } = 60;
 
         /// <summary>
+        /// Gets or sets how long a citizen waits after one reset email before
+        /// asking for another, in seconds (env var
+        /// <c>Myss_Account__PinReset__RequestCooldownSeconds</c>). Every request
+        /// sends an email, so this caps what one account, or a stolen access
+        /// token, can send to a mailbox and through Notify.
+        /// </summary>
+        public int RequestCooldownSeconds { get; set; } = 60;
+
+        /// <summary>
         /// Gets or sets the webclient's public origin the link is built on, e.g.
         /// <c>https://myss.example.gov.bc.ca</c>. Checked at the first request, not
         /// at startup, as the Notify settings are.
@@ -29,6 +38,9 @@ namespace Myss.Api.Configuration.Models
 
         /// <summary>Gets the link lifetime.</summary>
         public TimeSpan TokenLifetime => TimeSpan.FromMinutes(TokenLifetimeMinutes);
+
+        /// <summary>Gets the wait between reset emails.</summary>
+        public TimeSpan RequestCooldown => TimeSpan.FromSeconds(RequestCooldownSeconds);
 
         /// <summary>
         /// Refuses a lifetime that would make every link dead on arrival, and a
@@ -47,6 +59,13 @@ namespace Myss.Api.Configuration.Models
                 throw new InvalidOperationException(
                     "Account:PinReset is not usable: TokenLifetimeMinutes must be at least 1 "
                     + $"(got {config.TokenLifetimeMinutes}).");
+            }
+
+            if (config.RequestCooldownSeconds < 1)
+            {
+                throw new InvalidOperationException(
+                    "Account:PinReset is not usable: RequestCooldownSeconds must be at least 1 "
+                    + $"(got {config.RequestCooldownSeconds}).");
             }
 
             if (config.LinkBaseUrl is { } url

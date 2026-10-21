@@ -611,6 +611,31 @@ describe("PIN management", () => {
     expect(writes).toEqual([{ route: "pin-reset", body: null }]);
   });
 
+  it("says an email already went out when asked again too soon", async () => {
+    stubApi({
+      account: account(),
+      resetRequest: {
+        status: 429,
+        body: {
+          title: "A reset email was sent recently.",
+          detail:
+            "We just sent you a reset email. Check your inbox, or try again in 45 seconds.",
+          keyword: "ACCOUNT.PIN_RESET.TOO_SOON",
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Reset PIN" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(
+        "We just sent you a reset email. Check your inbox, or try again in 45 seconds.",
+      );
+    expect(screen.getByText(/We could not send the email/).query()).toBeNull();
+  });
+
   it("says so when the reset email could not be sent", async () => {
     stubApi({
       account: account(),

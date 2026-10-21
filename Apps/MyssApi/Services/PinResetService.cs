@@ -85,18 +85,36 @@ namespace Myss.Api.Services
                 return PinResetResultModel.Refused(PinResetOutcome.PinNotAvailable);
             }
 
+            // One email per cooldown, counted from the stored request time so a
+            // restart or a second instance does not reset it. A used link clears
+            // that time, so a citizen who has just reset can ask again at once.
+            DateTimeOffset now = _timeProvider.GetUtcNow();
+            if (profile.PinResetRequestedAt is { } lastRequest && now < lastRequest + _config.RequestCooldown)
+            {
+                return PinResetResultModel.TooSoon(lastRequest + _config.RequestCooldown);
+            }
+
             // Random bytes from the CSPRNG rather than Guid.NewGuid, whose
             // randomness source is a platform detail; the token is still a GUID.
             var token = new Guid(RandomNumberGenerator.GetBytes(16));
             Uri link = _config.BuildLink(token);
-            DateTimeOffset now = _timeProvider.GetUtcNow();
 
             // Saved before sending, so the link works the moment it arrives. A
             // new request replaces the token, which kills any earlier link.
             profile.PinResetTokenHash = HashToken(token);
             profile.PinResetRequestedAt = now;
             profile.UpdatedAt = now;
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // The token hash is a concurrency token: another request for this
+                // profile saved between this one's read and write, and is sending
+                // its email now. This one is inside that request's cooldown.
+                return PinResetResultModel.TooSoon(now + _config.RequestCooldown);
+            }
 
             try
             {
@@ -104,7 +122,8 @@ namespace Myss.Api.Services
             }
             catch (EmailNotSentException ex)
             {
-                // The token stays: nobody received it, and asking again replaces it.
+                // The token stays: nobody received it, and asking again after the
+                // cooldown replaces it.
                 _logger.LogError(ex, "PIN reset email for profile {ProfileId} was not sent", profile.Id);
                 return PinResetResultModel.Refused(PinResetOutcome.EmailNotSent);
             }

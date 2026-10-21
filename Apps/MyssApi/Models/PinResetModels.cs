@@ -45,6 +45,9 @@ namespace Myss.Api.Models
         /// <summary>The email could not be sent; nothing the citizen did wrong.</summary>
         EmailNotSent,
 
+        /// <summary>A reset email was sent too recently; <see cref="PinResetResultModel.RetryAt"/> says when to ask again.</summary>
+        TooSoon,
+
         /// <summary>The link is unknown, already used, or expired.</summary>
         LinkInvalid,
 
@@ -60,11 +63,13 @@ namespace Myss.Api.Models
         private PinResetResultModel(
             PinResetOutcome outcome,
             DateTimeOffset? expiresAt = null,
-            IReadOnlyList<ValidationErrorModel>? errors = null)
+            IReadOnlyList<ValidationErrorModel>? errors = null,
+            DateTimeOffset? retryAt = null)
         {
             Outcome = outcome;
             ExpiresAt = expiresAt;
             Errors = errors ?? [];
+            RetryAt = retryAt;
         }
 
         /// <summary>Gets how the operation ended.</summary>
@@ -75,6 +80,9 @@ namespace Myss.Api.Models
 
         /// <summary>Gets the validation failures when the outcome is <see cref="PinResetOutcome.Invalid"/>.</summary>
         public IReadOnlyList<ValidationErrorModel> Errors { get; }
+
+        /// <summary>Gets when another request will be accepted, when the outcome is <see cref="PinResetOutcome.TooSoon"/>.</summary>
+        public DateTimeOffset? RetryAt { get; }
 
         /// <summary>Creates the success of a request: the email was accepted for sending.</summary>
         /// <param name="expiresAt">When the link expires.</param>
@@ -89,6 +97,12 @@ namespace Myss.Api.Models
         /// <param name="outcome">Which.</param>
         /// <returns>The result.</returns>
         public static PinResetResultModel Refused(PinResetOutcome outcome) => new(outcome);
+
+        /// <summary>Creates a refusal inside the cooldown after the last reset email.</summary>
+        /// <param name="retryAt">When another request will be accepted.</param>
+        /// <returns>The result.</returns>
+        public static PinResetResultModel TooSoon(DateTimeOffset retryAt) =>
+            new(PinResetOutcome.TooSoon, retryAt: retryAt);
 
         /// <summary>Creates a validation failure.</summary>
         /// <param name="errors">Every failure found.</param>

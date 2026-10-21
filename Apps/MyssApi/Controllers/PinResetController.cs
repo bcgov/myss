@@ -2,6 +2,7 @@ namespace Myss.Api.Controllers
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Threading;
     using System.Threading.Tasks;
     using Asp.Versioning;
@@ -30,21 +31,29 @@ namespace Myss.Api.Controllers
         /// <summary>The reset email could not be sent.</summary>
         public const string EmailNotSentKeyword = "ACCOUNT.PIN_RESET.EMAIL_NOT_SENT";
 
+        /// <summary>A reset email was sent too recently to send another.</summary>
+        public const string TooSoonKeyword = "ACCOUNT.PIN_RESET.TOO_SOON";
+
         private readonly IPinResetService _pinResetService;
+        private readonly TimeProvider _timeProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PinResetController"/> class.
         /// </summary>
         /// <param name="pinResetService">Injected PIN reset service.</param>
-        public PinResetController(IPinResetService pinResetService)
+        /// <param name="timeProvider">The clock the request cooldown is measured by.</param>
+        public PinResetController(IPinResetService pinResetService, TimeProvider timeProvider)
         {
             _pinResetService = pinResetService;
+            _timeProvider = timeProvider;
         }
 
         /// <summary>
         /// Emails the caller a single-use link to reset their PIN, at the address
         /// they registered with. Basic BCeID only. A new request replaces any
-        /// earlier link.
+        /// earlier link. One email per cooldown
+        /// (<c>Account:PinReset:RequestCooldownSeconds</c>); a request inside it
+        /// is a 429 with Retry-After.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPost("requests")]
@@ -53,6 +62,7 @@ namespace Myss.Api.Controllers
         [EndpointName("RequestPinReset")]
         [ProducesResponseType(typeof(BaseResponseModel<PinResetRequestedModel>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
         public async Task<ActionResult<BaseResponseModel<PinResetRequestedModel>>> RequestReset(CancellationToken cancellationToken)
         {
@@ -129,6 +139,9 @@ namespace Myss.Api.Controllers
                         title: "The reset email could not be sent.",
                         detail: "Try again in a few minutes."), EmailNotSentKeyword);
 
+                case PinResetOutcome.TooSoon:
+                    return TooSoon(result.RetryAt!.Value);
+
                 case PinResetOutcome.LinkInvalid:
                     return Keyed(Problem(
                         statusCode: StatusCodes.Status410Gone,
@@ -139,6 +152,29 @@ namespace Myss.Api.Controllers
                 default:
                     throw new InvalidOperationException($"Unmapped PIN reset outcome {result.Outcome}.");
             }
+        }
+
+        /// <summary>
+        /// 429 in the shape the PIN lockout uses: a Retry-After header and a
+        /// ProblemDetails with a stable keyword and the time to retry at.
+        /// </summary>
+        private ObjectResult TooSoon(DateTimeOffset retryAt)
+        {
+            int seconds = Math.Max(1, (int)Math.Ceiling((retryAt - _timeProvider.GetUtcNow()).TotalSeconds));
+            Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
+            int minutes = (int)Math.Ceiling(seconds / 60.0);
+            string wait = seconds < 60
+                ? $"{seconds} second{(seconds == 1 ? string.Empty : "s")}"
+                : $"{minutes} minute{(minutes == 1 ? string.Empty : "s")}";
+
+            ObjectResult tooSoon = Keyed(
+                Problem(
+                    statusCode: StatusCodes.Status429TooManyRequests,
+                    title: "A reset email was sent recently.",
+                    detail: $"We just sent you a reset email. Check your inbox, or try again in {wait}."),
+                TooSoonKeyword);
+            ((ProblemDetails)tooSoon.Value!).Extensions["retryAt"] = retryAt;
+            return tooSoon;
         }
 
         private static ObjectResult Keyed(ObjectResult problem, string keyword)

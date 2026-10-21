@@ -74,6 +74,23 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
+        public async Task AskingAgainAtOnceIs429WithRetryAfter()
+        {
+            var email = new FakeEmailProvider();
+            using IntakeTestHost host = NewHost(registered: ["alice"], email: email);
+            using (await host.Send("alice", HttpMethod.Post, Requests))
+            {
+            }
+
+            using HttpResponseMessage response = await host.Send("alice", HttpMethod.Post, Requests);
+
+            Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+            Assert.NotNull(response.Headers.RetryAfter?.Delta);
+            Assert.Equal(PinResetController.TooSoonKeyword, await Keyword(response));
+            Assert.Single(email.Sent);
+        }
+
+        [Fact]
         public async Task AnEmailThatCannotBeSentIs503()
         {
             using IntakeTestHost host = NewHost(registered: ["alice"], email: new FakeEmailProvider { Unavailable = true });
