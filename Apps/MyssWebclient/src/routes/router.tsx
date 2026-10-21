@@ -20,6 +20,8 @@ import AdminPage from "@/pages/AdminPage";
 import FormManagementPage from "@/pages/FormManagementPage";
 import FormEditorPage from "@/pages/FormEditorPage";
 import ApplicationPage from "@/pages/ApplicationPage";
+import AfaServiceRequestPage from "@/pages/AfaServiceRequestPage";
+import ServiceRequestsPage from "@/pages/ServiceRequestsPage";
 import WorkerApplicationsPage from "@/pages/WorkerApplicationsPage";
 import WorkerApplicationPage from "@/pages/WorkerApplicationPage";
 import RequireAuth from "@/auth/RequireAuth";
@@ -120,8 +122,9 @@ export const router = createBrowserRouter([
           },
           {
             path: paths.serviceRequests,
-            element: <UnderDevelopmentPage title="Service Requests" />,
+            element: <ServiceRequestsPage />,
           },
+          { path: paths.afaServiceRequest, element: <AfaServiceRequestPage /> },
           { path: paths.accountInfo, element: <AccountInfoPage /> },
         ],
       },
