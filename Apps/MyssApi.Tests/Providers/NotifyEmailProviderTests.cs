@@ -75,7 +75,8 @@ namespace Myss.Api.Tests.Providers
         [InlineData(null, "test-key")]
         [InlineData("https://notify.test", null)]
         [InlineData("https://notify.test", " ")]
-        public async Task WithoutBaseUrlAndKeyNothingIsCalled(string? baseUrl, string? apiKey)
+        [InlineData("http://notify.test", "test-key")]
+        public async Task WithoutAnHttpsBaseUrlAndAKeyNothingIsCalled(string? baseUrl, string? apiKey)
         {
             var handler = new CapturingHandler(HttpStatusCode.Accepted, "{}");
             var config = new NotifyConfig { BaseUrl = baseUrl is null ? null : new Uri(baseUrl), ApiKey = apiKey };

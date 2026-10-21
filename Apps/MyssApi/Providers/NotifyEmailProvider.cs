@@ -60,7 +60,7 @@ namespace Myss.Api.Providers
             if (!_config.IsConfigured)
             {
                 throw new EmailNotSentException(
-                    "Notify is not configured (BaseUrl and ApiKey are required). "
+                    "Notify is not configured (an https BaseUrl and an ApiKey are required). "
                     + "Locally: set Notify:ApiKey in appsettings.local.json. "
                     + "Deployed: set Myss_Notify__BaseUrl and Myss_Notify__ApiKey from the secret.");
             }

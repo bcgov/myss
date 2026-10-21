@@ -28,8 +28,13 @@ namespace Myss.Api.Configuration.Models
         /// <summary>Gets or sets how long one send may take, in seconds.</summary>
         public int TimeoutSeconds { get; set; } = 15;
 
-        /// <summary>Gets a value indicating whether a send can be attempted.</summary>
+        /// <summary>
+        /// Gets a value indicating whether a send can be attempted: an HTTPS base
+        /// URL, so the API key never travels in cleartext, and a key.
+        /// </summary>
         public bool IsConfigured =>
-            BaseUrl is { IsAbsoluteUri: true } && !string.IsNullOrWhiteSpace(ApiKey);
+            BaseUrl is { IsAbsoluteUri: true } url
+                && url.Scheme == Uri.UriSchemeHttps
+                && !string.IsNullOrWhiteSpace(ApiKey);
     }
 }
