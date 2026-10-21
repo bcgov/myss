@@ -29,6 +29,9 @@ export const dashboardSections: readonly DashboardSection[] = [
 
 /** True when `pathname` is one of the dashboard sections (trailing slash allowed). */
 export function isDashboardPath(pathname: string): boolean {
+  if (matchPath({ path: paths.afaServiceRequest, end: true }, pathname)) {
+    return true;
+  }
   return dashboardSections.some(
     (section) =>
       matchPath({ path: section.path, end: true }, pathname) !== null,

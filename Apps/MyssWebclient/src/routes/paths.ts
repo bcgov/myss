@@ -8,6 +8,7 @@ export const paths = {
   notifications: "/notifications",
   messages: "/messages",
   serviceRequests: "/service-requests",
+  afaServiceRequest: "/service-requests/:id",
   accountInfo: "/account",
   eligibilityEstimator: "/eligibility-estimator",
   busPass: "/buspass",
@@ -56,6 +57,11 @@ export function adminNewFormPath(formSpecId: string, title: string): string {
 /** Concrete URL for one application, kept beside the `application` pattern. */
 export function applicationPath(id: string): string {
   return `/applications/${encodeURIComponent(id)}`;
+}
+
+/** Citizen URL for a saved AFA service request. */
+export function afaServiceRequestPath(id: string): string {
+  return `/service-requests/${encodeURIComponent(id)}`;
 }
 
 /** Concrete worker URL for one application, beside `workerApplication`. */

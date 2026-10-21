@@ -67,6 +67,29 @@ namespace Myss.Api.Intake
                 Envelope(result.Application));
         }
 
+        /// <summary>Starts an AFA draft only when the product-authored form is published.</summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpPost("afa")]
+        [Produces("application/json")]
+        [EndpointName("CreateAfaApplication")]
+        [ProducesResponseType(typeof(BaseResponseModel<ApplicationModel>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
+        public async Task<ActionResult<BaseResponseModel<ApplicationModel>>> CreateAfa(CancellationToken cancellationToken)
+        {
+            IntakeResultModel result = await _intakeService.CreateAfaAsync(cancellationToken);
+            if (result.Outcome != IntakeOutcome.Ok)
+            {
+                return Map(result);
+            }
+
+            return CreatedAtAction(
+                nameof(Get),
+                new { version = "1", id = result.Application!.Id },
+                Envelope(result.Application));
+        }
+
         /// <summary>
         /// Lists the caller's applications, newest first.
         /// </summary>
@@ -86,6 +109,22 @@ namespace Myss.Api.Intake
             };
         }
 
+        /// <summary>Lists the caller's AFA service requests, excluding other applications.</summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpGet("afa")]
+        [Produces("application/json")]
+        [EndpointName("ListAfaApplications")]
+        [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ApplicationSummaryModel>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<BaseResponseModel<IReadOnlyList<ApplicationSummaryModel>>>> ListAfa(
+            CancellationToken cancellationToken)
+        {
+            return new BaseResponseModel<IReadOnlyList<ApplicationSummaryModel>>
+            {
+                Payload = await _intakeService.ListMyAfaAsync(cancellationToken),
+                DatetimeRequested = DateTime.Now,
+            };
+        }
+
         /// <summary>
         /// Returns one of the caller's applications with the archived spec that renders it.
         /// </summary>
@@ -99,6 +138,19 @@ namespace Myss.Api.Intake
         public async Task<ActionResult<BaseResponseModel<ApplicationModel>>> Get(Guid id, CancellationToken cancellationToken)
         {
             return Map(await _intakeService.GetAsync(id, cancellationToken));
+        }
+
+        /// <summary>Returns one of the caller's AFA requests, never another intake form type.</summary>
+        /// <param name="id">The AFA request identifier.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpGet("afa/{id:guid}")]
+        [Produces("application/json")]
+        [EndpointName("GetAfaApplication")]
+        [ProducesResponseType(typeof(BaseResponseModel<ApplicationModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<BaseResponseModel<ApplicationModel>>> GetAfa(Guid id, CancellationToken cancellationToken)
+        {
+            return Map(await _intakeService.GetAfaAsync(id, cancellationToken));
         }
 
         /// <summary>
@@ -216,6 +268,14 @@ namespace Myss.Api.Intake
                         statusCode: StatusCodes.Status502BadGateway,
                         title: "Content engine unavailable",
                         detail: "The request could not be completed because the content engine is unavailable. Please try again.");
+
+                case IntakeOutcome.SpecNotPublished:
+                    return Keyworded(
+                        StatusCodes.Status404NotFound,
+                        IntakeKeywords.SpecNotPublished,
+                        "Application for Assistance is not available yet.",
+                        "The form must be published before starting an application.",
+                        currentVersion: null);
 
                 default:
                     throw new InvalidOperationException($"Unmapped intake outcome {result.Outcome}.");
