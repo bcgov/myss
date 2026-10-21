@@ -227,8 +227,11 @@ namespace Myss.Api.Services
 
         /// <summary>
         /// SHA-256 of the token's canonical text, lower-case hex. Unsalted on
-        /// purpose: the token is 128 random bits, so there is nothing to
-        /// precompute, and an unsalted hash can be looked up by.
+        /// purpose: the token is 128 random bits, so there is no small space of
+        /// values to precompute, and the anonymous reset has only the token to
+        /// find the profile by. A salted hash would need the salt from a row it
+        /// has not found yet; this one is the key of the unique index on
+        /// <c>pin_reset_token_hash</c>.
         /// </summary>
         /// <param name="token">The token.</param>
         /// <returns>64 hex characters.</returns>
