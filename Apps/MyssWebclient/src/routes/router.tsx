@@ -9,6 +9,7 @@ import UnderDevelopmentPage from "@/pages/UnderDevelopmentPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
+import PinResetPage from "@/pages/PinResetPage";
 import AuthCallbackPage from "@/pages/AuthCallbackPage";
 import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
@@ -21,6 +22,8 @@ import FormManagementPage from "@/pages/FormManagementPage";
 import FormEditorPage from "@/pages/FormEditorPage";
 import FormFromJsonPage from "@/pages/FormFromJsonPage";
 import ApplicationPage from "@/pages/ApplicationPage";
+import AfaServiceRequestPage from "@/pages/AfaServiceRequestPage";
+import ServiceRequestsPage from "@/pages/ServiceRequestsPage";
 import WorkerApplicationsPage from "@/pages/WorkerApplicationsPage";
 import WorkerApplicationPage from "@/pages/WorkerApplicationPage";
 import RequireAuth from "@/auth/RequireAuth";
@@ -32,8 +35,9 @@ import { paths } from "@/routes/paths";
 // routes render into its <Outlet />.
 //
 // Route composition (see doc/myss-vs-rebuild-merge-analysis.md §6):
-//   PUBLIC    - landing, eligibility estimator, and the sign-in / callback
-//               pages. Any anonymous user can reach these.
+//   PUBLIC    - landing, eligibility estimator, the sign-in / callback
+//               pages, and the emailed PIN reset link. Any anonymous user
+//               can reach these.
 //   PROTECTED - the Forms / Strapi tech-demo pages, wrapped in <RequireAuth>
 //               so they only render once the user has authenticated.
 export const router = createBrowserRouter([
@@ -54,6 +58,7 @@ export const router = createBrowserRouter([
       },
       { path: paths.signIn, element: <SignInPage /> },
       { path: paths.authCallback, element: <AuthCallbackPage /> },
+      { path: paths.pinReset, element: <PinResetPage /> },
       { path: paths.simpleLogin, element: <SimpleLoginPage /> },
 
       // ---- Administration: direct URL entry for authenticated IDIR users ----
@@ -129,8 +134,9 @@ export const router = createBrowserRouter([
           },
           {
             path: paths.serviceRequests,
-            element: <UnderDevelopmentPage title="Service Requests" />,
+            element: <ServiceRequestsPage />,
           },
+          { path: paths.afaServiceRequest, element: <AfaServiceRequestPage /> },
           { path: paths.accountInfo, element: <AccountInfoPage /> },
         ],
       },

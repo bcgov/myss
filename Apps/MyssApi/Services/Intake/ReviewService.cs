@@ -61,6 +61,7 @@ namespace Myss.Api.Intake
             // replaces this once volume warrants it (design: deferred).
             List<ApplicationAnswers> rows = await _dbContext.Applications
                 .AsNoTracking()
+                .Where(a => a.FormSpecId == IntakeService.FormSpecId)
                 .ToListAsync(cancellationToken);
             IReadOnlyDictionary<Guid, EventStream> streams = await _eventStore.LoadManyAsync(
                 rows.Select(r => r.Id).ToList(),
@@ -291,7 +292,7 @@ namespace Myss.Api.Intake
         {
             return _dbContext.Applications
                 .AsNoTracking()
-                .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(a => a.Id == id && a.FormSpecId == IntakeService.FormSpecId, cancellationToken);
         }
 
         private static ReviewApplicationSummaryModel ToSummary(ApplicationAnswers row, ApplicationState state)

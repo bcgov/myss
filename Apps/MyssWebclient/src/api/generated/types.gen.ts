@@ -501,6 +501,19 @@ export type MyssApiModelsBaseResponseModelMyssApiModelsFormSubmissionResponseMod
 };
 
 /**
+ * BaseResponseModel<PinResetRequestedModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssApiModelsBaseResponseModelMyssApiModelsPinResetRequestedModel = {
+    payload: MyssApiModelsPinResetRequestedModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
  * BaseResponseModel<PublishResultModel>
  *
  * Represents the result of a request.
@@ -979,6 +992,16 @@ export type MyssApiModelsPhoneInputModel = {
 };
 
 /**
+ * The answer to a PIN reset request (MYSS-36): the email is on its way.
+ */
+export type MyssApiModelsPinResetRequestedModel = {
+    /**
+     * Gets or sets when the emailed link stops working.
+     */
+    expiresAt?: string;
+};
+
+/**
  * The result of publishing a form: the version number that went live.
  */
 export type MyssApiModelsPublishResultModel = {
@@ -986,6 +1009,25 @@ export type MyssApiModelsPublishResultModel = {
      * Gets or sets the version number that was published.
      */
     version: number;
+};
+
+/**
+ * The body of a PIN reset from the emailed link. All three are checked by
+ * the service, so a mistake comes back as a refusal or a field error.
+ */
+export type MyssApiModelsResetPinRequestModel = {
+    /**
+     * Gets or sets the token from the link.
+     */
+    token?: string | null;
+    /**
+     * Gets or sets the new 4-digit PIN.
+     */
+    newPin?: string | null;
+    /**
+     * Gets or sets the new PIN typed a second time.
+     */
+    confirmPin?: string | null;
 };
 
 /**
@@ -1917,6 +1959,71 @@ export type SubmitApplicationResponses = {
 };
 
 export type SubmitApplicationResponse = SubmitApplicationResponses[keyof SubmitApplicationResponses];
+
+export type RequestPinResetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/pin-reset/requests';
+};
+
+export type RequestPinResetErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Too Many Requests
+     */
+    429: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Service Unavailable
+     */
+    503: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type RequestPinResetError = RequestPinResetErrors[keyof RequestPinResetErrors];
+
+export type RequestPinResetResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiModelsPinResetRequestedModel;
+};
+
+export type RequestPinResetResponse = RequestPinResetResponses[keyof RequestPinResetResponses];
+
+export type ResetPinData = {
+    /**
+     * The token from the link and the new PIN twice.
+     */
+    body?: MyssApiModelsResetPinRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/pin-reset';
+};
+
+export type ResetPinErrors = {
+    /**
+     * Gone
+     */
+    410: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Unprocessable Content
+     */
+    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+};
+
+export type ResetPinError = ResetPinErrors[keyof ResetPinErrors];
+
+export type ResetPinResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type ResetPinResponse = ResetPinResponses[keyof ResetPinResponses];
 
 export type ListReviewApplicationsData = {
     body?: never;

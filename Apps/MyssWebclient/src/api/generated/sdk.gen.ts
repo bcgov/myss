@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptApplicationData, AcceptApplicationErrors, AcceptApplicationResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, DenyApplicationData, DenyApplicationErrors, DenyApplicationResponses, EscalateApplicationData, EscalateApplicationErrors, EscalateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormDraftData, GetFormDraftErrors, GetFormDraftResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetFormVersionData, GetFormVersionErrors, GetFormVersionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetReviewApplicationData, GetReviewApplicationErrors, GetReviewApplicationResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormsData, ListFormsErrors, ListFormsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, ListReviewApplicationsData, ListReviewApplicationsResponses, PublishFormData, PublishFormErrors, PublishFormResponses, ReleaseApplicationData, ReleaseApplicationErrors, ReleaseApplicationResponses, RequestMoreApplicationInfoData, RequestMoreApplicationInfoErrors, RequestMoreApplicationInfoResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SaveEligibilityRatesData, SaveEligibilityRatesErrors, SaveEligibilityRatesResponses, SaveFormDraftData, SaveFormDraftErrors, SaveFormDraftResponses, StartApplicationReviewData, StartApplicationReviewErrors, StartApplicationReviewResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
+import type { AcceptApplicationData, AcceptApplicationErrors, AcceptApplicationResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, DenyApplicationData, DenyApplicationErrors, DenyApplicationResponses, EscalateApplicationData, EscalateApplicationErrors, EscalateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormDraftData, GetFormDraftErrors, GetFormDraftResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetFormVersionData, GetFormVersionErrors, GetFormVersionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetReviewApplicationData, GetReviewApplicationErrors, GetReviewApplicationResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormsData, ListFormsErrors, ListFormsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, ListReviewApplicationsData, ListReviewApplicationsResponses, PublishFormData, PublishFormErrors, PublishFormResponses, ReleaseApplicationData, ReleaseApplicationErrors, ReleaseApplicationResponses, RequestMoreApplicationInfoData, RequestMoreApplicationInfoErrors, RequestMoreApplicationInfoResponses, RequestPinResetData, RequestPinResetErrors, RequestPinResetResponses, ResetPinData, ResetPinErrors, ResetPinResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SaveEligibilityRatesData, SaveEligibilityRatesErrors, SaveEligibilityRatesResponses, SaveFormDraftData, SaveFormDraftErrors, SaveFormDraftResponses, StartApplicationReviewData, StartApplicationReviewErrors, StartApplicationReviewResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -249,6 +249,29 @@ export const submitApplication = <ThrowOnError extends boolean = false>(options:
     headers: {
         'Content-Type': 'application/json',
         ...options.headers
+    }
+});
+
+/**
+ * Emails the caller a single-use link to reset their PIN, at the address
+ * they registered with. Basic BCeID only. A new request replaces any
+ * earlier link. One email per cooldown
+ * (`Account:PinReset:RequestCooldownSeconds`); a request inside it
+ * is a 429 with Retry-After.
+ */
+export const requestPinReset = <ThrowOnError extends boolean = false>(options?: Options<RequestPinResetData, ThrowOnError>): RequestResult<RequestPinResetResponses, RequestPinResetErrors, ThrowOnError> => (options?.client ?? client).post<RequestPinResetResponses, RequestPinResetErrors, ThrowOnError>({ url: '/v1/pin-reset/requests', ...options });
+
+/**
+ * Sets a new PIN from an emailed link and uses the link up. Anonymous:
+ * the token in the body is the credential. The PIN is never returned or
+ * logged, and is not sent to ICM (RULE-IDA-04).
+ */
+export const resetPin = <ThrowOnError extends boolean = false>(options?: Options<ResetPinData, ThrowOnError>): RequestResult<ResetPinResponses, ResetPinErrors, ThrowOnError> => (options?.client ?? client).post<ResetPinResponses, ResetPinErrors, ThrowOnError>({
+    url: '/v1/pin-reset',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
     }
 });
 

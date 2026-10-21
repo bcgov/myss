@@ -18,18 +18,18 @@
         "upgrade:dry": "npx @strapi/upgrade latest --dry"
     },
     "dependencies": {
-        "@strapi/database": "5.54.0",
-        "@strapi/plugin-cloud": "5.54.0",
-        "@strapi/plugin-users-permissions": "5.54.0",
-        "@strapi/strapi": "5.54.0",
-        "pg": "8.23.0",
+        "@strapi/database": "5.57.0",
+        "@strapi/plugin-cloud": "5.57.0",
+        "@strapi/plugin-users-permissions": "5.57.0",
+        "@strapi/strapi": "5.57.0",
+        "pg": "8.23.1",
         "react": "^18.0.0",
         "react-dom": "^18.0.0",
         "react-router-dom": "^6.30.3",
         "styled-components": "^6.0.0"
     },
     "devDependencies": {
-        "@types/node": "^20",
+        "@types/node": "^24.0.0",
         "@types/react": "^18",
         "@types/react-dom": "^18",
         "@vitest/coverage-v8": "^4.1.11",

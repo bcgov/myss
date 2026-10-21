@@ -20,12 +20,22 @@ namespace Myss.Api.Intake
         /// <returns>Ok, ProfileRequired or SpecUnavailable.</returns>
         Task<IntakeResultModel> CreateAsync(CancellationToken cancellationToken);
 
+        /// <summary>Creates an AFA draft from the latest published product-authored form.</summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Ok, ProfileRequired or SpecUnavailable.</returns>
+        Task<IntakeResultModel> CreateAfaAsync(CancellationToken cancellationToken);
+
         /// <summary>
         /// Lists the caller's applications, newest first.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The summaries.</returns>
         Task<IReadOnlyList<ApplicationSummaryModel>> ListMineAsync(CancellationToken cancellationToken);
+
+        /// <summary>Lists only the caller's AFA service requests.</summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The AFA summaries.</returns>
+        Task<IReadOnlyList<ApplicationSummaryModel>> ListMyAfaAsync(CancellationToken cancellationToken);
 
         /// <summary>
         /// Reads one of the caller's applications with the archived spec.
@@ -34,6 +44,12 @@ namespace Myss.Api.Intake
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Ok or NotFound.</returns>
         Task<IntakeResultModel> GetAsync(Guid id, CancellationToken cancellationToken);
+
+        /// <summary>Reads only an AFA request owned by the caller.</summary>
+        /// <param name="id">The AFA request.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Ok or NotFound.</returns>
+        Task<IntakeResultModel> GetAfaAsync(Guid id, CancellationToken cancellationToken);
 
         /// <summary>
         /// Saves the working copy of a draft, or of an application returned

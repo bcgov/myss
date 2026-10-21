@@ -1,0 +1,45 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+    max-width: 900px;
+    width: 100%;
+}
+
+.requests {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--layout-margin-medium);
+}
+
+.request {
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    padding: var(--layout-padding-medium);
+    display: flex;
+    align-items: center;
+    gap: var(--layout-margin-medium);
+    flex-wrap: wrap;
+}
+
+.details {
+    flex: 1;
+}
+
+.details h3,
+.details p {
+    margin: 0 0 var(--layout-margin-small);
+}
+
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
