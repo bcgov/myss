@@ -32,7 +32,10 @@ namespace Myss.Api.Configuration.Models
 
         /// <summary>
         /// Refuses a lifetime that would make every link dead on arrival, and a
-        /// base URL that could not be clicked.
+        /// base URL that is not HTTPS. The token rides in the fragment, which is
+        /// never sent, but a page served over plain HTTP can be altered in
+        /// transit to read it; so HTTP is allowed only on a loopback host, for
+        /// the local Vite dev server.
         /// </summary>
         /// <param name="config">The bound configuration.</param>
         /// <exception cref="InvalidOperationException">When either value is unusable.</exception>
@@ -47,10 +50,12 @@ namespace Myss.Api.Configuration.Models
             }
 
             if (config.LinkBaseUrl is { } url
-                && (!url.IsAbsoluteUri || (url.Scheme != Uri.UriSchemeHttps && url.Scheme != Uri.UriSchemeHttp)))
+                && !(url.IsAbsoluteUri
+                    && (url.Scheme == Uri.UriSchemeHttps || (url.Scheme == Uri.UriSchemeHttp && url.IsLoopback))))
             {
                 throw new InvalidOperationException(
-                    "Account:PinReset is not usable: LinkBaseUrl must be an absolute http(s) URL.");
+                    "Account:PinReset is not usable: LinkBaseUrl must be an absolute https URL "
+                    + "(http is accepted only for localhost, in local development).");
             }
         }
 

@@ -252,6 +252,25 @@ namespace Myss.Api.Tests.Services
                 PinResetConfig.Validate(new PinResetConfig { LinkBaseUrl = new Uri("/myss", UriKind.Relative) }));
         }
 
+        [Theory]
+        [InlineData("http://myss.gov.bc.ca")]
+        [InlineData("http://10.0.0.5:5173")]
+        [InlineData("ftp://myss.gov.bc.ca")]
+        public void ALinkBaseUrlThatIsNotHttpsIsRefusedAtStartup(string url)
+        {
+            Assert.Throws<InvalidOperationException>(() =>
+                PinResetConfig.Validate(new PinResetConfig { LinkBaseUrl = new Uri(url) }));
+        }
+
+        [Theory]
+        [InlineData("https://myss.gov.bc.ca")]
+        [InlineData("http://localhost:5173")]
+        [InlineData("http://127.0.0.1:5173")]
+        public void AnHttpsOrLocalLinkBaseUrlIsAccepted(string url)
+        {
+            PinResetConfig.Validate(new PinResetConfig { LinkBaseUrl = new Uri(url) });
+        }
+
         private async Task<PinResetResultModel> Request(string? bceidGuid = BceidGuid)
         {
             using var db = new InMemoryFormsDbContext(_options);
