@@ -287,7 +287,9 @@ namespace Myss.Api.Services
         }
 
         /// <summary>Only a Basic BCeID sign-in uses a PIN (MYSS-258).</summary>
-        private static bool UsesPin(CurrentUser user) => !string.IsNullOrWhiteSpace(user.BceidGuid);
+        /// <param name="user">The caller.</param>
+        /// <returns>True for a Basic BCeID sign-in.</returns>
+        internal static bool UsesPin(CurrentUser user) => !string.IsNullOrWhiteSpace(user.BceidGuid);
 
         private async Task<AccountResultModel> RecordWrongPinAsync(
             MyssUserProfile profile,

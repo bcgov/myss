@@ -5,6 +5,8 @@ import PinField from "@/components/PinField";
 import {
   AccountRequestError,
   PIN_LOCKED_KEYWORD,
+  PIN_RESET_TOO_SOON_KEYWORD,
+  useRequestPinReset,
   useSavePin,
   type AccountPayload,
 } from "@/hooks/useAccount";
@@ -32,6 +34,14 @@ function fieldName(field: string): string {
   return FIELD_NAMES[field] ?? "PIN";
 }
 
+/** "3:45 p.m." in the citizen's own time zone. */
+function timeOfDay(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-CA", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** Mirrors the API's checks, so a mistake is caught before the round trip. */
 function validate(
   isChange: boolean,
@@ -55,6 +65,7 @@ export default function PinManagement({
   account,
 }: Readonly<{ account: AccountPayload }>) {
   const save = useSavePin();
+  const requestReset = useRequestPinReset();
   const [isOpen, setIsOpen] = useState(false);
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
@@ -130,7 +141,9 @@ export default function PinManagement({
       {
         onSuccess: () => {
           setSavedMessage(
-            isChange ? "Your PIN has been changed." : "Your PIN has been created.",
+            isChange
+              ? "Your PIN has been changed."
+              : "Your PIN has been created.",
           );
           close();
         },
@@ -268,8 +281,39 @@ export default function PinManagement({
       {isChange && (
         <>
           <p>We can email you a link to reset your 4-digit PIN.</p>
+          {requestReset.isSuccess && (
+            <output className={styles.confirmation}>
+              <InlineAlert
+                variant="success"
+                description={`We sent a link to reset your PIN to ${account.email}. It works once and expires at ${timeOfDay(requestReset.data.expiresAt)}.`}
+              />
+            </output>
+          )}
+          {requestReset.isError &&
+            (requestReset.error instanceof AccountRequestError &&
+            requestReset.error.keyword === PIN_RESET_TOO_SOON_KEYWORD ? (
+              // Not a failure: an email went out moments ago, and the API
+              // says when another may be sent.
+              <InlineAlert
+                variant="warning"
+                role="alert"
+                description={requestReset.error.message}
+              />
+            ) : (
+              <InlineAlert
+                variant="danger"
+                role="alert"
+                description={`We could not send the email. ${requestReset.error.message}`}
+              />
+            ))}
           <div>
-            <Button variant="secondary">Reset PIN</Button>
+            <Button
+              variant="secondary"
+              onPress={() => requestReset.mutate()}
+              isDisabled={requestReset.isPending}
+            >
+              Reset PIN
+            </Button>
           </div>
         </>
       )}

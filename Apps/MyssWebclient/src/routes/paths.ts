@@ -15,6 +15,10 @@ export const paths = {
   // In-app sign-in chooser (Option 1) and the OIDC redirect target.
   signIn: "/auth/login",
   authCallback: "/auth/callback",
+  // Where the emailed PIN reset link lands (MYSS-36). Public: the link's
+  // token is the credential. MyssApi builds the link from this path
+  // (PinResetConfig.LinkPath), so change both together.
+  pinReset: "/pin-reset",
   // Direct-entry route for IDIR administrative capabilities.
   admin: "/admin",
   adminFormManagement: "/admin/form-management",

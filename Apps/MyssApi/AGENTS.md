@@ -7,7 +7,7 @@ C# conventions, commands); this file adds what is specific to MyssApi.
 ## Layering
 
 `Controllers → Services (I*Service) → Providers (I*Provider) → Data (EF DbContexts)`.
-Providers are the boundary to anything external (Strapi, ClamAV, S3, CDOGS); services
+Providers are the boundary to anything external (Strapi, ClamAV, S3, CDOGS, BC Gov Notify for email); services
 hold the rules; everything is registered by interface in `Startup.ConfigureServices` so
 tests substitute fakes (`MyssApi.Tests/TestDoubles/`) rather than mocking HTTP.
 

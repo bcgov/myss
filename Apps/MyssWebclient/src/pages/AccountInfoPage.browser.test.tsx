@@ -35,6 +35,8 @@ interface Stub {
   nextWrite?: Answer;
   /** A canned answer for the read. */
   read?: Answer;
+  /** The answer to a PIN reset request (MYSS-36); a sent email by default. */
+  resetRequest?: Answer;
 }
 
 function json(status: number, body: unknown) {
@@ -50,6 +52,14 @@ function stubApi(stub: Stub) {
     const url = String(input);
     const method = init?.method ?? "GET";
 
+    if (url.endsWith("/v1/pin-reset/requests") && method === "POST") {
+      writes.push({ route: "pin-reset", body: null });
+      const answer = stub.resetRequest ?? {
+        status: 200,
+        body: { payload: { expiresAt: "2026-10-20T23:45:00Z" } },
+      };
+      return json(answer.status, answer.body);
+    }
     if (url.endsWith("/v1/account") && method === "GET") {
       return stub.read
         ? json(stub.read.status, stub.read.body)
@@ -439,7 +449,9 @@ describe("PIN management", () => {
     const writes = stubApi({ account: account({ pinStatus: "NotSet" }) });
     const screen = await renderPage();
 
-    expect(screen.getByRole("button", { name: "Reset PIN" }).query()).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Reset PIN" }).query(),
+    ).toBeNull();
     await screen.getByRole("button", { name: "Create a PIN" }).click();
     expect(pinInput(screen, "Current PIN").query()).toBeNull();
     await userEvent.fill(pinInput(screen, "New PIN"), "4821");
@@ -581,5 +593,69 @@ describe("PIN management", () => {
       .element(screen.getByRole("button", { name: "Change my PIN" }))
       .toBeVisible();
     expect(writes).toEqual([]);
+  });
+
+  it("emails a reset link on Reset PIN and says where it went", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Reset PIN" }).click();
+
+    await expect
+      .element(
+        screen.getByText(
+          /^We sent a link to reset your PIN to alex@example\.com\. It works once and expires at /,
+        ),
+      )
+      .toBeVisible();
+    expect(writes).toEqual([{ route: "pin-reset", body: null }]);
+  });
+
+  it("says an email already went out when asked again too soon", async () => {
+    stubApi({
+      account: account(),
+      resetRequest: {
+        status: 429,
+        body: {
+          title: "A reset email was sent recently.",
+          detail:
+            "We just sent you a reset email. Check your inbox, or try again in 45 seconds.",
+          keyword: "ACCOUNT.PIN_RESET.TOO_SOON",
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Reset PIN" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(
+        "We just sent you a reset email. Check your inbox, or try again in 45 seconds.",
+      );
+    expect(screen.getByText(/We could not send the email/).query()).toBeNull();
+  });
+
+  it("says so when the reset email could not be sent", async () => {
+    stubApi({
+      account: account(),
+      resetRequest: {
+        status: 503,
+        body: {
+          title: "The reset email could not be sent.",
+          detail: "Try again in a few minutes.",
+          keyword: "ACCOUNT.PIN_RESET.EMAIL_NOT_SENT",
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Reset PIN" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(
+        "We could not send the email. Try again in a few minutes.",
+      );
   });
 });
