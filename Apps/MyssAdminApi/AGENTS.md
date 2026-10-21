@@ -29,19 +29,24 @@ no `Database.Migrate`, no `EnsureCreated`, no EF Design package. MyssApi owns th
 migrations and its `--migrate` Job runs before either API restarts; a model change in
 MyssData lands with its migration in MyssApi.
 
-## Shared and copied code
+## Shared code
 
 - `MyssFormSpec` (project reference) holds `FormSpecValidator` and the models it
   uses. The admin save and the citizen submit must run the same rules, so this
   code is shared, never copied.
 - `MyssData` (project reference) holds the EF model both APIs use. Shared, never
   copied: two copies of a model over one schema would drift.
-- The host plumbing (`Configuration/`), `KeycloakClaims`, `RoleCalculator`, mock auth
-  (the same personas as MyssApi's), the rate table columns, `FddRateData`,
-  `BusPassAnswers` and `StrapiFormSpecProvider` are copies of MyssApi's and may
-  diverge. Keep `RoleCalculator` identical: it is what stops a citizen-IDP token from
-  keeping WORKER or ADMIN. If you change the rate table shape, change both copies and
-  MyssContent's schema.
+- `MyssCommon` (project reference) holds what both APIs must do the same way: the host
+  setup (`StartupConfiguration`, `ProgramConfiguration`, logging, tracing, Swagger,
+  CORS), `KeycloakClaims`, `RoleCalculator` (what stops a citizen-IDP token from
+  keeping WORKER or ADMIN), mock auth (the same personas; this API defaults to
+  `admin`), `CurrentUser`, the Strapi readers (`StrapiFormSpecProvider`,
+  `EligibilityRateTableReader`), the rate table (`EligibilityRateColumns`,
+  `FddRateData`) and `BusPassAnswers`. A change there changes both APIs. If you change
+  the rate table shape, change MyssContent's schema with it.
+- What differs stays here: the authorization policies, `/auth/me` (no registration
+  fields), and `StrapiEligibilityRateProvider`, which reads through the shared reader
+  but is not cached and returns a 502 instead of falling back.
 - `MyssAdminApi.Tests` references MyssApi too (alias `citizen`), only for
   `TestSupport/CitizenAndStaffTestHost`: the review tests follow one file from a
   citizen's submit in MyssApi to a worker's decision here, over one in-memory copy of
@@ -49,10 +54,11 @@ MyssData lands with its migration in MyssApi.
 
 ## Configuration
 
-Same layering and `Myss_` env var prefix as MyssApi. The only Strapi token this
-API holds is `Strapi:AdminApiToken` (write-scoped); MyssApi keeps the read-only
-`Strapi:ApiToken`. The worker screens read form specs with it too (it has find and
-findOne on form-spec). The bus pass PDF needs `Cdogs:BaseUrl`, `Cdogs:TokenEndpoint`,
+Same layering and `Myss_` env var prefix as MyssApi (the same `ProgramConfiguration`).
+The only Strapi token this API holds is `Strapi:AdminApiToken` (write-scoped); MyssApi
+keeps the read-only `Strapi:ApiToken`. The shared readers read with it too (it has find
+and findOne): `Startup` registers `StrapiReadOptions` with this setting.
+`AllowOrigins` lists the admin webclient's origins (`*` is refused). The bus pass PDF needs `Cdogs:BaseUrl`, `Cdogs:TokenEndpoint`,
 `Cdogs:ClientId` and `Cdogs:ClientSecret` (checked at the first render, not at startup,
 as in MyssApi before the move). Copy `appsettings.local.sample.json` to
 `appsettings.local.json` for local dev; it listens on http://localhost:5010.

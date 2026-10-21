@@ -12,6 +12,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Data;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// The attachments endpoint through the real pipeline: multipart binding,

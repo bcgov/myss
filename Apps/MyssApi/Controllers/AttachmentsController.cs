@@ -13,6 +13,7 @@ namespace Myss.Api.Controllers
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The attachments controller: virus-scanned file uploads into object

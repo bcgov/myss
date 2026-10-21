@@ -6,6 +6,7 @@ namespace Myss.Api.Services
     using Myss.Api.Models;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
+    using Myss.Common.BusPass;
 
     /// <summary>
     /// The BC Bus Pass business rules the Form.io spec cannot express on its

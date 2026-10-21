@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, TextField } from "@bcgov/design-system-react-components";
 
-import type { EligibilityRates } from "@/api/eligibilityRates";
-import { RatesRejectedError } from "@/api/eligibilityRates";
+import { RatesRejectedError, type EligibilityRates } from "@/api/eligibilityRates";
 import { useEstimatorRates, useSaveEstimatorRates } from "@/hooks/useEstimatorRates";
 import {
     ASSET_COLUMNS,

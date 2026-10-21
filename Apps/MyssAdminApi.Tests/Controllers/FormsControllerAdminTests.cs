@@ -13,6 +13,7 @@ namespace Myss.AdminApi.Tests.Controllers
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Services;
     using Myss.FormSpec;
+    using Myss.Common.Models;
 
     /// <summary>
     /// Response-shaping tests for the admin actions on <see cref="FormsController"/>:

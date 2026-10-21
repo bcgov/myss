@@ -1,16 +1,18 @@
 namespace Myss.Api.Tests.Providers
 {
     using System.Net;
-    using System.Net.Http.Headers;
     using System.Text;
     using Microsoft.Extensions.Caching.Memory;
-    using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Logging.Abstractions;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Common.Content;
 
     /// <summary>
-    /// Tests for <see cref="StrapiEligibilityRateProvider"/>.
+    /// Tests for <see cref="StrapiEligibilityRateProvider"/>: the citizen read caches the
+    /// table and falls back to the compiled one. Reading and checking the table itself
+    /// is tested in MyssCommon.Tests (EligibilityRateTableReaderTests).
     /// </summary>
     public class StrapiEligibilityRateProviderTests
     {
@@ -45,7 +47,7 @@ namespace Myss.Api.Tests.Providers
 
         private readonly StubHttpHandler _http = new();
 
-        private readonly CapturingLogger _logger = new();
+        private readonly CapturingLogger _readerLogger = new();
 
         [Fact]
         public async Task GetRates_MapsThePublishedTable()
@@ -63,30 +65,6 @@ namespace Myss.Api.Tests.Providers
             Assert.Equal(222.5m, rates.IncomeRows[0].G);
             Assert.Equal(95m, rates.IncomeRows[6].I);
             Assert.Equal(1m, rates.AssetLimits.A);
-            Assert.Equal(4m, rates.AssetLimits.D);
-        }
-
-        [Fact]
-        public async Task GetRates_MapsEveryLetterToItsOwnColumn()
-        {
-            _http.Body = RateBody;
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
-
-            EligibilityRateRowModel fs2 = rates.IncomeRows.Single(r => r.FamilySize == 2);
-            Assert.Equal(10m, fs2.A);
-            Assert.Equal(20m, fs2.B);
-            Assert.Equal(30m, fs2.C);
-            Assert.Equal(40m, fs2.D);
-            Assert.Equal(50m, fs2.E);
-            Assert.Equal(60m, fs2.F);
-            Assert.Equal(70m, fs2.G);
-            Assert.Equal(80m, fs2.H);
-            Assert.Equal(90m, fs2.I);
-            Assert.Equal(1m, rates.AssetLimits.A);
-            Assert.Equal(2m, rates.AssetLimits.B);
-            Assert.Equal(3m, rates.AssetLimits.C);
             Assert.Equal(4m, rates.AssetLimits.D);
         }
 
@@ -126,91 +104,7 @@ namespace Myss.Api.Tests.Providers
             EligibilityRateRowModel fs2 = rates.IncomeRows.Single(r => r.FamilySize == 2);
             Assert.Equal(2200.00m, fs2.C);
             Assert.Equal(2290.50m, fs2.F);
-            Assert.Contains(_logger.Messages, m => m.Contains("family size 1 has no column f", StringComparison.Ordinal));
-        }
-
-        [Fact]
-        public async Task GetRates_RowMissingAColumn_FallsBack()
-        {
-            _http.Body = RateBody.Replace("\"h\": 85, \"i\": 95 }", "\"h\": 85 }", StringComparison.Ordinal);
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
-
-            Assert.Equal(FallbackDate, rates.EffectiveDate);
-            Assert.Equal(7, rates.IncomeRows.Count);
-            Assert.Contains(_logger.Messages, m => m.Contains("family size 7 has no column i", StringComparison.Ordinal));
-        }
-
-        [Fact]
-        public async Task GetRates_AssetLimitsMissingAColumn_FallsBack()
-        {
-            _http.Body = RateBody.Replace("\"c\": 3, \"d\": 4 }", "\"c\": 3 }", StringComparison.Ordinal);
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
-
-            Assert.Equal(FallbackDate, rates.EffectiveDate);
-            Assert.Contains(_logger.Messages, m => m.Contains("asset limits have no column d", StringComparison.Ordinal));
-        }
-
-        [Fact]
-        public async Task GetRates_IncompletePublishedTable_FallsBack()
-        {
-            // A published entry that is missing family-size rows (here only 1 and 2)
-            // must NOT be served: the browser would throw on the absent sizes. The
-            // provider treats it as invalid and serves the complete compiled table.
-            _http.Body = """
-                {
-                  "data": [
-                    {
-                      "id": 1,
-                      "documentId": "rate-doc-partial",
-                      "effectiveDate": "2099-01-01",
-                      "incomeRows": [
-                        { "familySize": 1, "a": 0, "b": 111.5, "c": 0, "d": 0, "e": 333.5, "f": 0, "g": 222.5, "h": 0, "i": 0 },
-                        { "familySize": 2, "a": 10, "b": 20, "c": 30, "d": 40, "e": 50, "f": 60, "g": 70, "h": 80, "i": 90 }
-                      ],
-                      "assetLimits": { "a": 1, "b": 2, "c": 3, "d": 4 }
-                    }
-                  ],
-                  "meta": { "pagination": { "total": 1 } }
-                }
-                """;
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
-
-            Assert.Equal(FallbackDate, rates.EffectiveDate);
-            Assert.Equal(7, rates.IncomeRows.Count);
-        }
-
-        [Fact]
-        public async Task GetRates_QueriesTheLatestPublishedEntry()
-        {
-            _http.Body = RateBody;
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            await provider.GetRatesAsync(CancellationToken.None);
-
-            Assert.Equal("/api/eligibility-rates", _http.LastRequest!.RequestUri!.AbsolutePath);
-            string query = _http.LastRequest!.RequestUri!.Query;
-            Assert.Contains("sort=effectiveDate:desc", query);
-            Assert.Contains("pagination[limit]=1", query);
-        }
-
-        [Fact]
-        public async Task GetRates_SendsTheConfiguredApiTokenAsABearerHeader()
-        {
-            _http.Body = RateBody;
-            StrapiEligibilityRateProvider provider = NewProvider("tok-rate-123");
-
-            await provider.GetRatesAsync(CancellationToken.None);
-
-            AuthenticationHeaderValue? auth = _http.LastRequest!.Headers.Authorization;
-            Assert.NotNull(auth);
-            Assert.Equal("Bearer", auth.Scheme);
-            Assert.Equal("tok-rate-123", auth.Parameter);
+            Assert.Contains(_readerLogger.Messages, m => m.Contains("family size 1 has no column f", StringComparison.Ordinal));
         }
 
         [Fact]
@@ -235,80 +129,6 @@ namespace Myss.Api.Tests.Providers
             Assert.Equal(2961.00m, fs3.H); // couple, both PWD
             Assert.Equal(5000.00m, rates.AssetLimits.A);
             Assert.Equal(200000.00m, rates.AssetLimits.D);
-        }
-
-        [Fact]
-        public async Task GetRates_UpstreamError_FallbackMapsEveryLetterToItsOwnColumn()
-        {
-            // Every amount at family size 2 differs, so any swapped letter fails here.
-            _http.Status = HttpStatusCode.InternalServerError;
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
-
-            EligibilityRateRowModel fs2 = rates.IncomeRows.Single(r => r.FamilySize == 2);
-            Assert.Equal(1650.00m, fs2.A);
-            Assert.Equal(1405.00m, fs2.B);
-            Assert.Equal(2200.00m, fs2.C);
-            Assert.Equal(1950.00m, fs2.D);
-            Assert.Equal(1705.00m, fs2.E);
-            Assert.Equal(2290.50m, fs2.F);
-            Assert.Equal(1880.50m, fs2.G);
-            Assert.Equal(2766.00m, fs2.H);
-            Assert.Equal(2590.50m, fs2.I);
-            Assert.Equal(5000.00m, rates.AssetLimits.A);
-            Assert.Equal(10000.00m, rates.AssetLimits.B);
-            Assert.Equal(100000.00m, rates.AssetLimits.C);
-            Assert.Equal(200000.00m, rates.AssetLimits.D);
-        }
-
-        [Fact]
-        public async Task GetRates_EmptyData_FallsBack()
-        {
-            _http.Body = """{ "data": [], "meta": {} }""";
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
-
-            Assert.Equal(FallbackDate, rates.EffectiveDate);
-            Assert.Equal(7, rates.IncomeRows.Count);
-        }
-
-        [Fact]
-        public async Task GetRates_NegativeAmount_FallsBack()
-        {
-            // A complete 7-row table (so it passes the row-count check) but with one
-            // negative income amount must NOT be served: it would yield a nonsensical
-            // estimate. The provider treats it as invalid and serves the fallback.
-            _http.Body = RateBody.Replace("\"b\": 111.5", "\"b\": -111.5", StringComparison.Ordinal);
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
-
-            Assert.Equal(FallbackDate, rates.EffectiveDate);
-            Assert.Equal(7, rates.IncomeRows.Count);
-        }
-
-        [Fact]
-        public async Task GetRates_NegativeAmountInANewColumn_FallsBack()
-        {
-            _http.Body = RateBody.Replace("\"i\": 93", "\"i\": -93", StringComparison.Ordinal);
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
-
-            Assert.Equal(FallbackDate, rates.EffectiveDate);
-        }
-
-        [Fact]
-        public async Task GetRates_NegativeAssetLimit_FallsBack()
-        {
-            _http.Body = RateBody.Replace("\"d\": 4 }", "\"d\": -4 }", StringComparison.Ordinal);
-            StrapiEligibilityRateProvider provider = NewProvider();
-
-            EligibilityRatesModel rates = await provider.GetRatesAsync(CancellationToken.None);
-
-            Assert.Equal(FallbackDate, rates.EffectiveDate);
         }
 
         [Fact]
@@ -339,26 +159,20 @@ namespace Myss.Api.Tests.Providers
             Assert.Equal(1, _http.Calls);
         }
 
-        private StrapiEligibilityRateProvider NewProvider(string? apiToken = null)
+        private StrapiEligibilityRateProvider NewProvider()
         {
-            var settings = new Dictionary<string, string?> { ["Strapi:BaseUrl"] = "http://strapi.test" };
-            if (apiToken is not null)
-            {
-                settings["Strapi:ApiToken"] = apiToken;
-            }
-
-            IConfiguration config = new ConfigurationBuilder()
-                .AddInMemoryCollection(settings)
-                .Build();
+            var reader = new EligibilityRateTableReader(
+                _readerLogger,
+                new HttpClient(_http),
+                new StrapiReadOptions { BaseAddress = new Uri("http://strapi.test"), TokenSettingName = "Strapi:ApiToken" });
 
             return new StrapiEligibilityRateProvider(
-                _logger,
-                new HttpClient(_http),
-                new MemoryCache(new MemoryCacheOptions()),
-                config);
+                NullLogger<StrapiEligibilityRateProvider>.Instance,
+                reader,
+                new MemoryCache(new MemoryCacheOptions()));
         }
 
-        private sealed class CapturingLogger : ILogger<StrapiEligibilityRateProvider>
+        private sealed class CapturingLogger : ILogger<EligibilityRateTableReader>
         {
             public List<string> Messages { get; } = [];
 

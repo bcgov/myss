@@ -22,6 +22,10 @@ export { findDuplicateKeys, findUnknownConditionalTargets } from "./specRules";
 // The phone number input, shared with the citizen app's own forms.
 export { default as PhoneInput } from "./PhoneInput";
 
+// A spec drawn read-only over submitted answers: the applicant's view of their
+// application and the worker's review view.
+export { default as ReadOnlySpecForm } from "./ReadOnlySpecForm";
+
 // Also exported, as their own entry points so code that only needs them (and
 // its node-environment unit tests) does not load Form.io:
 //   @myss/formio/errorCatalogue  the catalogue the components word rule

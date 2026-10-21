@@ -1,12 +1,8 @@
-import type {
-  AssetColumn,
-  IncomeColumn,
-} from "@/api/eligibilityRates";
+import type { AssetColumn, IncomeColumn } from "@myss/web-common/api";
 
 // The rate-table columns, defined once so every view of the rate table iterates
 // the same list. The letters match the APIs' EligibilityRateColumns and
-// MyssContent's eligibility-rate-rules.ts. A copy of the citizen webclient's
-// lib/rateColumns.ts; keep the two in step.
+// MyssContent's eligibility-rate-rules.ts.
 
 /** The family sizes a table has a row for; 7 also serves larger households. */
 export const FAMILY_SIZES: readonly number[] = [1, 2, 3, 4, 5, 6, 7];

@@ -1,8 +1,8 @@
 import { Button, TextArea } from "@bcgov/design-system-react-components";
+import { ApplicationRequestError } from "@myss/web-common/api";
 
 import styles from "./ReviewNotes.module.css";
 
-import { ApplicationRequestError } from "@/api/intake";
 import type { ReviewApplicationPayload } from "@/hooks/useReview";
 
 // The internal notes on a file, oldest first, and — for the worker who has it

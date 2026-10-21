@@ -13,6 +13,8 @@ namespace Myss.AdminApi.Tests.Controllers
     using Myss.AdminApi.Services;
     using Myss.AdminApi.Tests.TestSupport;
     using Myss.FormSpec;
+    using Myss.Common.Content;
+    using Myss.Common.Models;
 
     /// <summary>
     /// Response-shaping and authorization-attribute tests for
@@ -58,7 +60,7 @@ namespace Myss.AdminApi.Tests.Controllers
 
             ActionResult<BaseResponseModel<EligibilityRatesModel>> result = await Save();
 
-            Assert.Equal(502, Assert.IsAssignableFrom<ObjectResult>(result.Result).StatusCode);
+            Assert.Equal(502, Assert.IsType<ObjectResult>(result.Result, exactMatch: false).StatusCode);
         }
 
         [Fact]
@@ -68,7 +70,7 @@ namespace Myss.AdminApi.Tests.Controllers
 
             ActionResult<BaseResponseModel<EligibilityRatesModel>> result = await Save();
 
-            Assert.Equal(502, Assert.IsAssignableFrom<ObjectResult>(result.Result).StatusCode);
+            Assert.Equal(502, Assert.IsType<ObjectResult>(result.Result, exactMatch: false).StatusCode);
         }
 
         [Fact]
@@ -91,7 +93,7 @@ namespace Myss.AdminApi.Tests.Controllers
                 await new EligibilityRatesController(NullLogger<EligibilityRatesController>.Instance, _service)
                     .Get(CancellationToken.None);
 
-            Assert.Equal(502, Assert.IsAssignableFrom<ObjectResult>(result.Result).StatusCode);
+            Assert.Equal(502, Assert.IsType<ObjectResult>(result.Result, exactMatch: false).StatusCode);
             Assert.Null(result.Value);
         }
 

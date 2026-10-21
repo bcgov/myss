@@ -4,6 +4,7 @@ namespace Myss.Api.Tests.TestDoubles
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.FormSpec;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Fake <see cref="IFormSpecProvider"/> that records calls, so tests can

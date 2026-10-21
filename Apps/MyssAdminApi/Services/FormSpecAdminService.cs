@@ -59,7 +59,7 @@ namespace Myss.AdminApi.Services
             {
                 _logger.LogInformation(
                     "Rejected draft save for {FormSpecId}: {ErrorCount} structural error(s)",
-                    formSpecId,
+                    ForLog(formSpecId),
                     errors.Count);
                 return FormSpecWriteResultModel<FormSpecModel>.Refused(errors);
             }
@@ -229,7 +229,7 @@ namespace Myss.AdminApi.Services
 
             string safeMessage = string.IsNullOrWhiteSpace(message)
                 ? "The content engine refused the change."
-                : message!;
+                : message;
 
             return keywords
                 .Select(keyword => new ValidationErrorModel
@@ -239,6 +239,16 @@ namespace Myss.AdminApi.Services
                     Message = safeMessage,
                 })
                 .ToList();
+        }
+
+        /// <summary>
+        /// A route value made safe to log: line breaks removed, so a crafted id cannot
+        /// start a fake log entry.
+        /// </summary>
+        private static string ForLog(string value)
+        {
+            return value.Replace("\r", string.Empty, StringComparison.Ordinal)
+                .Replace("\n", string.Empty, StringComparison.Ordinal);
         }
     }
 }

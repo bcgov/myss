@@ -10,6 +10,8 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Routing;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using Myss.Common.Auth;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The auth surface of the API. <c>/me</c> is the SPA's single source of the caller's
@@ -41,25 +43,26 @@ namespace Myss.Api.Controllers
         }
 
         /// <summary>
-        /// Returns the caller's effective identity: subject, effective roles, and the
-        /// keystone identifiers (BCeID GUID / IDIR username).
+        /// Returns the caller's effective identity: subject, effective roles, the
+        /// keystone identifiers (BCeID GUID / IDIR username), and whether they have
+        /// registered.
         /// </summary>
         /// <returns>The caller's identity.</returns>
         [HttpGet("me")]
         [Produces("application/json")]
         [EndpointName("GetMe")]
-        [ProducesResponseType(typeof(BaseResponseModel<CurrentUser>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseModel<MeModel>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<BaseResponseModel<CurrentUser>>> GetMe(CancellationToken cancellationToken)
+        public async Task<ActionResult<BaseResponseModel<MeModel>>> GetMe(CancellationToken cancellationToken)
         {
             CurrentUser user = this.currentUser.User;
             bool hasProfile = await this.userProfileService.HasProfileAsync(user.Subject, cancellationToken);
             string? profileFirstName = hasProfile
                 ? await this.userProfileService.GetFirstNameAsync(user.Subject, cancellationToken)
                 : null;
-            return new BaseResponseModel<CurrentUser>
+            return new BaseResponseModel<MeModel>
             {
-                Payload = user with { HasProfile = hasProfile, ProfileFirstName = profileFirstName },
+                Payload = new MeModel(user) { HasProfile = hasProfile, ProfileFirstName = profileFirstName },
                 DatetimeRequested = DateTime.Now,
             };
         }

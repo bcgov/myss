@@ -17,6 +17,8 @@ namespace Myss.Api.Tests
     using Myss.Api.Tests.TestDoubles;
     using Myss.Data;
     using Xunit;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// The bus pass submission endpoint over real HTTP, with the middleware

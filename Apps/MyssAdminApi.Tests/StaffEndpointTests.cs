@@ -10,6 +10,8 @@ namespace Myss.AdminApi.Tests
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Tests.TestDoubles;
     using Myss.Data;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// The staff reads moved from MyssApi, over real HTTP: who may read stored
@@ -36,7 +38,7 @@ namespace Myss.AdminApi.Tests
             // birth and address; an anonymous route keyed by id must not exist.
             HttpClient client = CreateClient(mockAuth: false);
 
-            using HttpResponseMessage response = await client.GetAsync($"/v1/bus-pass/submissions/{Guid.NewGuid()}/pdf");
+            using HttpResponseMessage response = await client.GetAsync(new Uri($"/v1/bus-pass/submissions/{Guid.NewGuid()}/pdf", UriKind.Relative));
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -62,7 +64,7 @@ namespace Myss.AdminApi.Tests
         {
             HttpClient client = CreateClient(mockAuth: false);
 
-            using HttpResponseMessage list = await client.GetAsync("/v1/forms/bc-bus-pass/submissions");
+            using HttpResponseMessage list = await client.GetAsync(new Uri("/v1/forms/bc-bus-pass/submissions", UriKind.Relative));
 
             Assert.Equal(HttpStatusCode.Unauthorized, list.StatusCode);
         }
@@ -140,7 +142,7 @@ namespace Myss.AdminApi.Tests
         {
             HttpClient client = CreateClient(mockAuth: false);
 
-            using HttpResponseMessage response = await client.GetAsync("/v1/auth/me");
+            using HttpResponseMessage response = await client.GetAsync(new Uri("/v1/auth/me", UriKind.Relative));
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }

@@ -2,6 +2,7 @@ namespace Myss.AdminApi.Tests.TestDoubles
 {
     using Myss.AdminApi.Models;
     using Myss.AdminApi.Providers;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Fake <see cref="IEligibilityRateAdminProvider"/> that records each save and

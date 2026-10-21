@@ -3,6 +3,7 @@ namespace Myss.AdminApi.Services
     using System.Threading;
     using System.Threading.Tasks;
     using Myss.AdminApi.Models;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Reads and saves the eligibility rate table an admin edits.

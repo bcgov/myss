@@ -24,6 +24,7 @@
         "@formio/react": "^6.2.1",
         "@internationalized/date": "3.12.4",
         "@myss/formio": "*",
+        "@myss/web-common": "*",
         "@tanstack/react-query": "5.104.1",
         "oidc-client-ts": "3.5.0",
         "react": "19.3.0",

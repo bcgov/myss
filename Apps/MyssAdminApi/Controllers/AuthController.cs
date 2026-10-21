@@ -8,6 +8,8 @@ namespace Myss.AdminApi.Controllers
     using Microsoft.AspNetCore.Routing;
     using Myss.AdminApi.Models;
     using Myss.AdminApi.Services;
+    using Myss.Common.Auth;
+    using Myss.Common.Models;
 
     /// <summary>
     /// Who the caller is, for the admin webclient: it shows the form editor to any
@@ -22,7 +24,7 @@ namespace Myss.AdminApi.Controllers
     [Route("v{version:apiVersion}/auth")]
     [ApiController]
     [Authorize]
-    public class AuthController : Controller
+    public class AuthController : ControllerBase
     {
         private readonly ICurrentUserAccessor currentUser;
 

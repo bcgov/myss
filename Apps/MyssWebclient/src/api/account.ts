@@ -1,5 +1,5 @@
 import { API_URL } from "@/constants";
-import { authHeaders } from "@/auth/accessToken";
+import { authHeaders } from "@myss/web-common/auth";
 import { readValidationErrors, type FormValidationError } from "@/api/forms";
 import type { PhoneType } from "@myss/formio/phone";
 

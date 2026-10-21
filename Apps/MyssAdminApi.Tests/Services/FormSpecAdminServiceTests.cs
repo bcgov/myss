@@ -196,7 +196,7 @@ namespace Myss.AdminApi.Tests.Services
             Assert.False(result.IsValid);
             ValidationErrorModel error = Assert.Single(result.Errors);
             Assert.Equal("FORMSPEC.COMPONENT_KEY.DUPLICATE", error.Keyword);
-            Assert.Contains("Duplicate component key", error.Message);
+            Assert.Contains("Duplicate component key", error.Message, StringComparison.Ordinal);
         }
 
         [Fact]

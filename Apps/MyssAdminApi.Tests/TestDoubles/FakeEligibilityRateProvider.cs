@@ -3,6 +3,7 @@ namespace Myss.AdminApi.Tests.TestDoubles
     using Myss.AdminApi.Models;
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Tests.TestSupport;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Fake <see cref="IEligibilityRateProvider"/> that serves the seeded table and

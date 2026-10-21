@@ -4,8 +4,8 @@
 // publishing the token is all there is.
 
 import { useAuth } from "react-oidc-context";
+import { setAccessToken } from "@myss/web-common/auth";
 
-import { setAccessToken } from "@/auth/accessToken";
 
 export function useApiAuth(): void {
     const auth = useAuth();

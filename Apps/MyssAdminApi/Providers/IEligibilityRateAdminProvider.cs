@@ -4,6 +4,7 @@ namespace Myss.AdminApi.Providers
     using System.Threading;
     using System.Threading.Tasks;
     using Myss.AdminApi.Models;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Writes eligibility rate tables to the content engine.

@@ -15,6 +15,7 @@ namespace Myss.Api.Controllers
     using Myss.Api.Services;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The citizen's Account Info (MYSS-271): case and contact details, the

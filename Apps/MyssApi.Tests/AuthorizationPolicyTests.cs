@@ -6,6 +6,7 @@ namespace Myss.Api.Tests
     using Microsoft.Extensions.DependencyInjection;
     using Myss.Api.Configuration;
     using Xunit;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// Policies are evaluated directly through <see cref="IAuthorizationService"/>, which is the

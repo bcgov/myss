@@ -14,6 +14,7 @@ namespace Myss.Api.Services
     using Myss.Api.Data;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// Attachments module service: validate -> insert row (quarantined) ->

@@ -3,6 +3,7 @@ namespace Myss.Api.Tests.TestDoubles
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;
     using Myss.Api.Configuration;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// Sets the three mock-auth gate values as the last (highest-precedence)

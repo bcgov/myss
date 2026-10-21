@@ -16,6 +16,8 @@ namespace Myss.Api.Tests.TestSupport
     using Myss.Data.Intake;
     using Myss.Data.Platform;
     using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// One in-memory host per test: the three contexts the slice touches

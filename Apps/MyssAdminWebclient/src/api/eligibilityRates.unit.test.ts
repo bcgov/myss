@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setAccessToken } from "@myss/web-common/auth";
 
 import {
   getEstimatorRates,
@@ -6,7 +7,6 @@ import {
   saveEstimatorRates,
 } from "@/api/eligibilityRates";
 import type { SaveEstimatorRatesInput } from "@/api/eligibilityRates";
-import { setAccessToken } from "@/auth/accessToken";
 
 function jsonResponse(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {

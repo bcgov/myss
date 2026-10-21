@@ -12,6 +12,7 @@ namespace Myss.AdminApi.Providers
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging;
     using Myss.AdminApi.Models;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Writes eligibility rate tables to Strapi over its stock Content REST API,

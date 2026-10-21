@@ -6,6 +6,7 @@ namespace Myss.AdminApi.Tests
     using Microsoft.Extensions.DependencyInjection;
     using Myss.AdminApi.Configuration;
     using Xunit;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// The AdminIdir policy evaluated directly through <see cref="IAuthorizationService"/>,

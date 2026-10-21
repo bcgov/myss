@@ -15,6 +15,8 @@ namespace Myss.AdminApi.Controllers
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Services;
     using Myss.FormSpec;
+    using Myss.Common.Content;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The admin rates editor's endpoints, for IDIR staff only: read the table being
@@ -24,7 +26,7 @@ namespace Myss.AdminApi.Controllers
     [Route("v{version:apiVersion}/EligibilityRates")]
     [ApiController]
     [Authorize(Policy = MyssPolicies.AdminIdir)]
-    public class EligibilityRatesController : Controller
+    public class EligibilityRatesController : ControllerBase
     {
         private readonly ILogger<EligibilityRatesController> _logger;
         private readonly IEligibilityRatesService _ratesService;

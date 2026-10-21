@@ -1,23 +1,7 @@
 namespace Myss.AdminApi.Configuration
 {
     using Microsoft.Extensions.DependencyInjection;
-
-    /// <summary>
-    /// The role names carried in the token, the same set as MyssApi's. The worker
-    /// endpoints test WORKER and ADMIN; the effective roles come from
-    /// <see cref="RoleCalculator"/>, exactly as in MyssApi.
-    /// </summary>
-    public static class MyssRoles
-    {
-        /// <summary>A citizen using their own file.</summary>
-        public const string Client = "CLIENT";
-
-        /// <summary>Ministry staff acting on client files.</summary>
-        public const string Worker = "WORKER";
-
-        /// <summary>Elevated staff; satisfies the worker policy.</summary>
-        public const string Admin = "ADMIN";
-    }
+    using Myss.Common.Auth;
 
     /// <summary>Authorization policy names used by <c>[Authorize(Policy = ...)]</c>.</summary>
     public static class MyssPolicies

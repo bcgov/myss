@@ -24,6 +24,9 @@ in the editor's preview as it does for citizens.
   preview uses the compiled default wording.
 - `@myss/formio/phone` and `PhoneInput`: phone number rules and input, also used
   by the citizen app's own forms.
+- `ReadOnlySpecForm`: a spec drawn read-only over submitted answers, with its
+  buttons removed. The citizen app shows an applicant their submitted
+  application with it; the admin app shows it to the reviewing worker.
 
 ## How it is consumed
 

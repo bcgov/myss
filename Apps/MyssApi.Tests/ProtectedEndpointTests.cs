@@ -13,6 +13,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
     using Xunit;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// A test-only controller exercising the policies over real HTTP. It lives in the test

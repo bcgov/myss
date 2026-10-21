@@ -9,6 +9,8 @@ namespace Myss.AdminApi.Tests.Services
     using Myss.AdminApi.Tests.TestDoubles;
     using Myss.AdminApi.Tests.TestSupport;
     using Myss.FormSpec;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Tests for <see cref="EligibilityRatesService"/>.

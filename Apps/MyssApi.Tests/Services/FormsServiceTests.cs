@@ -12,6 +12,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Data;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// Tests for <see cref="FormsService"/>.

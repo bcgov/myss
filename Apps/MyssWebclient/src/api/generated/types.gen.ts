@@ -201,197 +201,6 @@ export type MyssApiModelsAttachmentResponseModel = {
 };
 
 /**
- * BaseResponseModel<ApplicationModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel = {
-    payload: MyssApiIntakeApplicationModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<AccountModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsAccountModel = {
-    payload: MyssApiModelsAccountModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<AttachmentResponseModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsAttachmentResponseModel = {
-    payload: MyssApiModelsAttachmentResponseModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<BusPassSubmissionResponseModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsBusPassSubmissionResponseModel = {
-    payload: MyssApiModelsBusPassSubmissionResponseModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<CurrentUser>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsCurrentUser = {
-    payload: MyssApiModelsCurrentUser;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<DemoModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsDemoModel = {
-    payload: MyssApiModelsDemoModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<EligibilityRatesModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsEligibilityRatesModel = {
-    payload: MyssApiModelsEligibilityRatesModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<FormSubmissionResponseModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel = {
-    payload: MyssApiModelsFormSubmissionResponseModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<FormSpecModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssFormSpecFormSpecModel = {
-    payload: MyssFormSpecFormSpecModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyDictionary`2>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString = {
-    /**
-     * IReadOnlyDictionary<String>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: {
-        [key: string]: string;
-    } | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeApplicationSummaryModel = {
-    /**
-     * IReadOnlyList<ApplicationSummaryModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiIntakeApplicationSummaryModel | MyssApiIntakeApplicationModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsAttachmentResponseModel = {
-    /**
-     * IReadOnlyList<AttachmentResponseModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiModelsAttachmentResponseModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel = {
-    /**
-     * IReadOnlyList<ValidationErrorModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssFormSpecValidationErrorModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
  * How the hand-off to ICM ended, as reported to the citizen.
  */
 export type MyssApiModelsBusPassSubmissionOutcome = 'Accepted' | 'Rejected' | 'Failed';
@@ -439,46 +248,6 @@ export type MyssApiModelsBusPassSubmissionResponseModel = {
 };
 
 /**
- * The typed identity of the caller for the current request.
- *
- * PERMANENT core: identical under Option 1 (bearer token) and Option 2 (session cookie).
- * Services depend on this rather than on `HttpContext.User` so they stay unaware of
- * how the caller was authenticated.
- */
-export type MyssApiModelsCurrentUser = {
-    /**
-     * Gets a value indicating whether the caller is authenticated.
-     */
-    isAuthenticated?: boolean;
-    /**
-     * Gets the Keycloak subject identifier (`sub`).
-     */
-    subject?: string | null;
-    /**
-     * IReadOnlyList<String>
-     *
-     * Gets the caller's roles, flattened by Myss.Api.Configuration.KeycloakClaims.
-     */
-    roles?: Array<string> | null;
-    /**
-     * Gets a value indicating whether the caller has completed MySS registration.
-     */
-    hasProfile?: boolean;
-    /**
-     * Gets the caller's first name as stored in their MySS profile.
-     */
-    profileFirstName?: string | null;
-    /**
-     * Gets the Basic BCeID user GUID, when the caller signed in with BCeID.
-     */
-    bceidGuid?: string | null;
-    /**
-     * Gets the IDIR username, when the caller is government staff.
-     */
-    idirUsername?: string | null;
-};
-
-/**
  * Placeholder model
  */
 export type MyssApiModelsDemoModel = {
@@ -490,95 +259,6 @@ export type MyssApiModelsDemoModel = {
      * Gets or sets Bar.
      */
     bar?: string | null;
-};
-
-/**
- * The asset ceilings by category A-D (a separate axis from the income types).
- */
-export type MyssApiModelsEligibilityAssetLimitsModel = {
-    /**
-     * Gets the asset ceiling for category A.
-     */
-    a: number;
-    /**
-     * Gets the asset ceiling for category B.
-     */
-    b: number;
-    /**
-     * Gets the asset ceiling for category C.
-     */
-    c: number;
-    /**
-     * Gets the asset ceiling for category D.
-     */
-    d: number;
-};
-
-/**
- * One family-size row of monthly income limits, by client type A–I.
- * Dependants affect the family size only; PWD takes priority over 65+.
- * The couple columns (A, C, D, F, H, I) hold 0 at family size 1.
- */
-export type MyssApiModelsEligibilityRateRowModel = {
-    /**
-     * Gets the family unit size (1-7; 7 is the cap).
-     */
-    familySize: number;
-    /**
-     * Gets the limit for type A: a couple, both under 65, neither PWD.
-     */
-    a: number;
-    /**
-     * Gets the limit for type B: a single adult, under 65, not PWD.
-     */
-    b: number;
-    /**
-     * Gets the limit for type C: a couple, both 65 or older, neither PWD.
-     */
-    c: number;
-    /**
-     * Gets the limit for type D: a couple, one 65 or older, neither PWD.
-     */
-    d: number;
-    /**
-     * Gets the limit for type E: a single adult, 65 or older, not PWD.
-     */
-    e: number;
-    /**
-     * Gets the limit for type F: a couple, one PWD, the other under 65 and not PWD.
-     */
-    f: number;
-    /**
-     * Gets the limit for type G: a single adult, PWD.
-     */
-    g: number;
-    /**
-     * Gets the limit for type H: a couple, both PWD.
-     */
-    h: number;
-    /**
-     * Gets the limit for type I: a couple, one PWD and the other 65 or older.
-     */
-    i: number;
-};
-
-/**
- * The rate table the browser computes the eligibility estimate against
- * (Option B — the estimate is not calculated on the server). Served by
- * GET /v{version}/EligibilityEstimator/rates.
- */
-export type MyssApiModelsEligibilityRatesModel = {
-    /**
-     * Gets the date these values take effect (ISO yyyy-MM-dd).
-     */
-    effectiveDate: string | null;
-    /**
-     * IReadOnlyList<EligibilityRateRowModel>
-     *
-     * Gets the monthly income-limit rows, one per family size.
-     */
-    incomeRows: Array<MyssApiModelsEligibilityRateRowModel> | null;
-    assetLimits: MyssApiModelsEligibilityAssetLimitsModel;
 };
 
 /**
@@ -632,6 +312,43 @@ export type MyssApiModelsFormSubmissionResponseModel = {
      */
     submittedAt: string;
     spec?: MyssFormSpecFormSpecModel;
+};
+
+/**
+ * The citizen API's answer to `GET /v1/auth/me`: the caller's identity and
+ * whether they have completed MySS registration.
+ */
+export type MyssApiModelsMeModel = {
+    /**
+     * Gets a value indicating whether the caller is authenticated.
+     */
+    isAuthenticated?: boolean;
+    /**
+     * Gets the Keycloak subject identifier (`sub`).
+     */
+    subject?: string | null;
+    /**
+     * IReadOnlyList<String>
+     *
+     * Gets the caller's roles, flattened by Myss.Common.Auth.KeycloakClaims.
+     */
+    roles?: Array<string> | null;
+    /**
+     * Gets the Basic BCeID user GUID, when the caller signed in with BCeID.
+     */
+    bceidGuid?: string | null;
+    /**
+     * Gets the IDIR username, when the caller is government staff.
+     */
+    idirUsername?: string | null;
+    /**
+     * Gets a value indicating whether the caller has completed MySS registration.
+     */
+    hasProfile?: boolean;
+    /**
+     * Gets the caller's first name as stored in their MySS profile.
+     */
+    profileFirstName?: string | null;
 };
 
 /**
@@ -692,6 +409,286 @@ export type MyssApiModelsUpdatePhonesRequestModel = {
      * Gets or sets the phone numbers, in order.
      */
     phones: Array<MyssApiModelsPhoneInputModel> | null;
+};
+
+/**
+ * The asset ceilings by category A-D (a separate axis from the income types).
+ */
+export type MyssCommonContentEligibilityAssetLimitsModel = {
+    /**
+     * Gets the asset ceiling for category A.
+     */
+    a: number;
+    /**
+     * Gets the asset ceiling for category B.
+     */
+    b: number;
+    /**
+     * Gets the asset ceiling for category C.
+     */
+    c: number;
+    /**
+     * Gets the asset ceiling for category D.
+     */
+    d: number;
+};
+
+/**
+ * One family-size row of monthly income limits, by client type A–I.
+ * Dependants affect the family size only; PWD takes priority over 65+.
+ * The couple columns (A, C, D, F, H, I) hold 0 at family size 1.
+ */
+export type MyssCommonContentEligibilityRateRowModel = {
+    /**
+     * Gets the family unit size (1-7; 7 is the cap).
+     */
+    familySize: number;
+    /**
+     * Gets the limit for type A: a couple, both under 65, neither PWD.
+     */
+    a: number;
+    /**
+     * Gets the limit for type B: a single adult, under 65, not PWD.
+     */
+    b: number;
+    /**
+     * Gets the limit for type C: a couple, both 65 or older, neither PWD.
+     */
+    c: number;
+    /**
+     * Gets the limit for type D: a couple, one 65 or older, neither PWD.
+     */
+    d: number;
+    /**
+     * Gets the limit for type E: a single adult, 65 or older, not PWD.
+     */
+    e: number;
+    /**
+     * Gets the limit for type F: a couple, one PWD, the other under 65 and not PWD.
+     */
+    f: number;
+    /**
+     * Gets the limit for type G: a single adult, PWD.
+     */
+    g: number;
+    /**
+     * Gets the limit for type H: a couple, both PWD.
+     */
+    h: number;
+    /**
+     * Gets the limit for type I: a couple, one PWD and the other 65 or older.
+     */
+    i: number;
+};
+
+/**
+ * The rate table the browser computes the eligibility estimate against
+ * (Option B — the estimate is not calculated on the server). Served by
+ * GET /v{version}/EligibilityEstimator/rates.
+ */
+export type MyssCommonContentEligibilityRatesModel = {
+    /**
+     * Gets the date these values take effect (ISO yyyy-MM-dd).
+     */
+    effectiveDate: string | null;
+    /**
+     * IReadOnlyList<EligibilityRateRowModel>
+     *
+     * Gets the monthly income-limit rows, one per family size.
+     */
+    incomeRows: Array<MyssCommonContentEligibilityRateRowModel> | null;
+    assetLimits: MyssCommonContentEligibilityAssetLimitsModel;
+};
+
+/**
+ * BaseResponseModel<ApplicationModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel = {
+    payload: MyssApiIntakeApplicationModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<AccountModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel = {
+    payload: MyssApiModelsAccountModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<AttachmentResponseModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsAttachmentResponseModel = {
+    payload: MyssApiModelsAttachmentResponseModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<BusPassSubmissionResponseModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsBusPassSubmissionResponseModel = {
+    payload: MyssApiModelsBusPassSubmissionResponseModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<DemoModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsDemoModel = {
+    payload: MyssApiModelsDemoModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<FormSubmissionResponseModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel = {
+    payload: MyssApiModelsFormSubmissionResponseModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<MeModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsMeModel = {
+    payload: MyssApiModelsMeModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<EligibilityRatesModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssCommonContentEligibilityRatesModel = {
+    payload: MyssCommonContentEligibilityRatesModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<FormSpecModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssFormSpecFormSpecModel = {
+    payload: MyssFormSpecFormSpecModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyDictionary`2>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString = {
+    /**
+     * IReadOnlyDictionary<String>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: {
+        [key: string]: string;
+    } | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyList`1>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeApplicationSummaryModel = {
+    /**
+     * IReadOnlyList<ApplicationSummaryModel>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: Array<MyssApiIntakeApplicationSummaryModel | MyssApiIntakeApplicationModel> | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyList`1>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsAttachmentResponseModel = {
+    /**
+     * IReadOnlyList<AttachmentResponseModel>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: Array<MyssApiModelsAttachmentResponseModel> | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyList`1>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel = {
+    /**
+     * IReadOnlyList<ValidationErrorModel>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: Array<MyssFormSpecValidationErrorModel> | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
 };
 
 /**
@@ -760,7 +757,7 @@ export type GetAccountResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
 };
 
 export type GetAccountResponse = GetAccountResponses[keyof GetAccountResponses];
@@ -783,7 +780,7 @@ export type UpdateAccountPhonesErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
 };
 
 export type UpdateAccountPhonesError = UpdateAccountPhonesErrors[keyof UpdateAccountPhonesErrors];
@@ -792,7 +789,7 @@ export type UpdateAccountPhonesResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
 };
 
 export type UpdateAccountPhonesResponse = UpdateAccountPhonesResponses[keyof UpdateAccountPhonesResponses];
@@ -820,7 +817,7 @@ export type UpdateAccountNotificationPreferencesResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
 };
 
 export type UpdateAccountNotificationPreferencesResponse = UpdateAccountNotificationPreferencesResponses[keyof UpdateAccountNotificationPreferencesResponses];
@@ -843,7 +840,7 @@ export type SaveAccountPinErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
     /**
      * Too Many Requests
      */
@@ -856,7 +853,7 @@ export type SaveAccountPinResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
 };
 
 export type SaveAccountPinResponse = SaveAccountPinResponses[keyof SaveAccountPinResponses];
@@ -872,7 +869,7 @@ export type ListAttachmentsResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsAttachmentResponseModel;
+    200: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsAttachmentResponseModel;
 };
 
 export type ListAttachmentsResponse = ListAttachmentsResponses[keyof ListAttachmentsResponses];
@@ -910,7 +907,7 @@ export type UploadAttachmentResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsAttachmentResponseModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAttachmentResponseModel;
 };
 
 export type UploadAttachmentResponse = UploadAttachmentResponses[keyof UploadAttachmentResponses];
@@ -935,7 +932,7 @@ export type GetMeResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsCurrentUser;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsMeModel;
 };
 
 export type GetMeResponse = GetMeResponses[keyof GetMeResponses];
@@ -954,7 +951,7 @@ export type SubmitBusPassErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
     /**
      * Too Many Requests
      */
@@ -971,7 +968,7 @@ export type SubmitBusPassResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsBusPassSubmissionResponseModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsBusPassSubmissionResponseModel;
 };
 
 export type SubmitBusPassResponse = SubmitBusPassResponses[keyof SubmitBusPassResponses];
@@ -987,7 +984,7 @@ export type GetPlaceholderResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsDemoModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsDemoModel;
 };
 
 export type GetPlaceholderResponse = GetPlaceholderResponses[keyof GetPlaceholderResponses];
@@ -1012,7 +1009,7 @@ export type GetEstimatorSpecResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssFormSpecFormSpecModel;
+    200: MyssCommonModelsBaseResponseModelMyssFormSpecFormSpecModel;
 };
 
 export type GetEstimatorSpecResponse = GetEstimatorSpecResponses[keyof GetEstimatorSpecResponses];
@@ -1028,7 +1025,7 @@ export type GetEstimatorRatesResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsEligibilityRatesModel;
+    200: MyssCommonModelsBaseResponseModelMyssCommonContentEligibilityRatesModel;
 };
 
 export type GetEstimatorRatesResponse = GetEstimatorRatesResponses[keyof GetEstimatorRatesResponses];
@@ -1058,7 +1055,7 @@ export type GetFormSpecResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssFormSpecFormSpecModel;
+    200: MyssCommonModelsBaseResponseModelMyssFormSpecFormSpecModel;
 };
 
 export type GetFormSpecResponse = GetFormSpecResponses[keyof GetFormSpecResponses];
@@ -1074,7 +1071,7 @@ export type GetErrorMessagesResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString;
+    200: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString;
 };
 
 export type GetErrorMessagesResponse = GetErrorMessagesResponses[keyof GetErrorMessagesResponses];
@@ -1098,7 +1095,7 @@ export type SubmitFormErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
 };
 
 export type SubmitFormError = SubmitFormErrors[keyof SubmitFormErrors];
@@ -1107,7 +1104,7 @@ export type SubmitFormResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel;
 };
 
 export type SubmitFormResponse = SubmitFormResponses[keyof SubmitFormResponses];
@@ -1123,7 +1120,7 @@ export type ListApplicationsResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeApplicationSummaryModel;
+    200: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeApplicationSummaryModel;
 };
 
 export type ListApplicationsResponse = ListApplicationsResponses[keyof ListApplicationsResponses];
@@ -1152,7 +1149,7 @@ export type CreateApplicationResponses = {
     /**
      * Created
      */
-    201: MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel;
+    201: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
 };
 
 export type CreateApplicationResponse = CreateApplicationResponses[keyof CreateApplicationResponses];
@@ -1182,7 +1179,7 @@ export type GetApplicationResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
 };
 
 export type GetApplicationResponse = GetApplicationResponses[keyof GetApplicationResponses];
@@ -1214,7 +1211,7 @@ export type SaveApplicationAnswersErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
     /**
      * Bad Gateway
      */
@@ -1227,7 +1224,7 @@ export type SaveApplicationAnswersResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
 };
 
 export type SaveApplicationAnswersResponse = SaveApplicationAnswersResponses[keyof SaveApplicationAnswersResponses];
@@ -1259,7 +1256,7 @@ export type SubmitApplicationErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
     /**
      * Bad Gateway
      */
@@ -1272,7 +1269,7 @@ export type SubmitApplicationResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
 };
 
 export type SubmitApplicationResponse = SubmitApplicationResponses[keyof SubmitApplicationResponses];

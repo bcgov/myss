@@ -13,6 +13,8 @@ namespace Myss.AdminApi.Services
     using Myss.AdminApi.Models;
     using Myss.AdminApi.Providers;
     using Myss.FormSpec;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// The only path that writes an eligibility rate table: validate, date the table

@@ -5,6 +5,7 @@ namespace Myss.Api.Providers
     using System.Threading.Tasks;
     using Myss.Api.Services;
     using Myss.Data.Platform;
+    using Myss.Common.Hosting;
 
     /// <summary>
     /// Puts the current request's correlation id on every outbound call, so the

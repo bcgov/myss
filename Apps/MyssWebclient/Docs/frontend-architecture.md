@@ -92,7 +92,7 @@ branches are open, to minimize merge conflicts:
 | Today                                                 | Target                                               |
 | ----------------------------------------------------- | ---------------------------------------------------- |
 | `components/home/*` (AccountPanel, ChequeCalendar, …) | `widgets/home/*`                                     |
-| `components/layout/*` (AnnouncementBanner, …)         | `widgets/layout/*`                                   |
+| `components/layout/*` (AnnouncementBanner, …)         | `widgets/layout/*`; AnnouncementBanner in `@myss/web-common/components` |
 | `components/AttachmentUpload.*`                       | `widgets/`                                           |
 | `formio/`                                             | `@myss/formio` (`Apps/MyssFormio`, done)             |
 | `data/`                                               | fold into `lib/` or the owning page                  |

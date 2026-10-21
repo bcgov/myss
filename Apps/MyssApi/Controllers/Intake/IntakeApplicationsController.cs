@@ -15,6 +15,7 @@ namespace Myss.Api.Intake
     using Myss.Data.Intake;
     using Myss.Data.Platform;
     using Myss.FormSpec;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The applicant side of Application Intake: a citizen's own Income

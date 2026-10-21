@@ -1,7 +1,7 @@
 namespace Myss.AdminApi.Tests.TestSupport
 {
-    using Myss.AdminApi.Data;
     using Myss.AdminApi.Models;
+    using Myss.Common.Content;
 
     /// <summary>
     /// The seeded rate table as request and response models, built from the compiled

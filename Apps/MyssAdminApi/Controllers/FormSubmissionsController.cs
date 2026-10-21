@@ -12,6 +12,7 @@ namespace Myss.AdminApi.Controllers
     using Myss.AdminApi.Configuration;
     using Myss.AdminApi.Models;
     using Myss.AdminApi.Services;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The staff reads of stored form submissions, moved from MyssApi with the
@@ -24,7 +25,7 @@ namespace Myss.AdminApi.Controllers
     [Route("v{version:apiVersion}/forms")]
     [ApiController]
     [Authorize(Policy = MyssPolicies.WorkerWithIdir)]
-    public class FormSubmissionsController : Controller
+    public class FormSubmissionsController : ControllerBase
     {
         private readonly IFormSubmissionsService _submissionsService;
 

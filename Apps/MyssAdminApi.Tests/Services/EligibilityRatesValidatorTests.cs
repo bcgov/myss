@@ -6,6 +6,7 @@ namespace Myss.AdminApi.Tests.Services
     using Myss.AdminApi.Services;
     using Myss.FormSpec;
     using static Myss.AdminApi.Tests.TestSupport.EligibilityRatesTestData;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Tests for <see cref="EligibilityRatesValidator"/>.

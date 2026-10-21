@@ -15,9 +15,9 @@ namespace Myss.AdminApi.Tests.TestSupport
     using Myss.Data;
     using Myss.Data.Intake;
     using Myss.Data.Platform;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
     using CitizenErrorMessageProvider = citizen::Myss.Api.Providers.IErrorMessageProvider;
-    using CitizenFormSpecProvider = citizen::Myss.Api.Providers.IFormSpecProvider;
-    using CitizenFormSpecModel = Myss.FormSpec.FormSpecModel;
     using CitizenStartup = citizen::Myss.Api.Startup;
 
     /// <summary>
@@ -112,8 +112,10 @@ namespace Myss.AdminApi.Tests.TestSupport
                 {
                     SharedStores(services);
 
-                    services.RemoveAll<CitizenFormSpecProvider>();
-                    services.AddSingleton<CitizenFormSpecProvider>(new CitizenSpecs(provider));
+                    // Both APIs read specs through the shared IFormSpecProvider
+                    // (MyssCommon): one fake, so both see one content engine.
+                    services.RemoveAll<IFormSpecProvider>();
+                    services.AddSingleton<IFormSpecProvider>(provider);
 
                     // The compiled defaults, so a refused save or submit never
                     // reaches for a content engine that is not running here.
@@ -218,17 +220,6 @@ namespace Myss.AdminApi.Tests.TestSupport
             _staff.Dispose();
             _citizenFactory.Dispose();
             _staffFactory.Dispose();
-        }
-
-        // MyssApi reads specs through its own provider interface; this hands it
-        // the same fake the staff side reads, so both see one content engine.
-        private sealed class CitizenSpecs(FakeFormSpecProvider inner) : CitizenFormSpecProvider
-        {
-            public Task<CitizenFormSpecModel?> GetLatestAsync(string formSpecId, CancellationToken cancellationToken) =>
-                inner.GetLatestAsync(formSpecId, cancellationToken);
-
-            public Task<CitizenFormSpecModel?> GetVersionAsync(string formSpecId, int version, CancellationToken cancellationToken) =>
-                inner.GetVersionAsync(formSpecId, version, cancellationToken);
         }
 
         private sealed class CompiledErrorMessages : CitizenErrorMessageProvider

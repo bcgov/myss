@@ -13,6 +13,7 @@ namespace Myss.AdminApi.Intake
     using Myss.AdminApi.Models;
     using Myss.Data.Intake;
     using Myss.Data.Platform;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The worker side of Application Intake for the POC: the list of
@@ -25,7 +26,7 @@ namespace Myss.AdminApi.Intake
     [Route("v{version:apiVersion}/intake/review/applications")]
     [ApiController]
     [Authorize(Policy = MyssPolicies.WorkerWithIdir)]
-    public class ReviewApplicationsController : Controller
+    public class ReviewApplicationsController : ControllerBase
     {
         private readonly IReviewService _reviewService;
 

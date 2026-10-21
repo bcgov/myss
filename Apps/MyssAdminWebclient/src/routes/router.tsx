@@ -1,10 +1,10 @@
 import { createBrowserRouter } from "react-router";
+import { AuthCallbackPage } from "@myss/web-common/components";
 
 import App from "@/App";
 import AdminPage from "@/pages/AdminPage";
 import FormManagementPage from "@/pages/FormManagementPage";
 import FormEditorPage from "@/pages/FormEditorPage";
-import AuthCallbackPage from "@/pages/AuthCallbackPage";
 import SignedOutPage from "@/pages/SignedOutPage";
 import ApplicationsPage from "@/pages/ApplicationsPage";
 import ApplicationReviewPage from "@/pages/ApplicationReviewPage";
@@ -21,7 +21,10 @@ export const router = createBrowserRouter([
         path: paths.home,
         element: <App />,
         children: [
-            { path: paths.authCallback, element: <AuthCallbackPage /> },
+            {
+                path: paths.authCallback,
+                element: <AuthCallbackPage fallbackPath={paths.home} />,
+            },
             { path: paths.signedOut, element: <SignedOutPage /> },
             {
                 index: true,

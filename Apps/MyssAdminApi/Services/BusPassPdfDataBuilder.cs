@@ -4,6 +4,7 @@ namespace Myss.AdminApi.Services
     using System.Collections.Generic;
     using System.Text.Json;
     using Myss.AdminApi.Models;
+    using Myss.Common.BusPass;
 
     /// <summary>
     /// Builds the PDF template data object for a BC Bus Pass submission, using

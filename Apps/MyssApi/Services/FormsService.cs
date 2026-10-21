@@ -18,6 +18,8 @@ namespace Myss.Api.Services
     using Myss.Data;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Forms module service backed by the forms schema and the content engine.

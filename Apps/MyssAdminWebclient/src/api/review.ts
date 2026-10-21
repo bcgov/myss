@@ -1,9 +1,12 @@
 import type { JSON as FormioJson } from "@formio/react/lib/components/Form";
+import {
+  throwApplicationRequestError,
+  type ApplicationStatus,
+} from "@myss/web-common/api";
+import { authHeaders } from "@myss/web-common/auth";
 
 import { API_URL } from "@/constants";
-import { authHeaders } from "@/auth/accessToken";
 import type { FormSpecPayload } from "@/api/forms";
-import { ApplicationRequestError, type ApplicationStatus } from "@/api/intake";
 
 // Calls to the review API (/v1/intake/review/applications): the worker side
 // of Application Intake. List every submitted application, read one with the
@@ -106,38 +109,8 @@ export type ReviewActionRoute =
 
 const BASE_URL = `${API_URL}/v1/intake/review/applications`;
 
-async function readProblem(res: Response): Promise<{
-  keyword?: string;
-  currentVersion?: number;
-  detail?: string;
-}> {
-  try {
-    const problem = await res.json();
-    return {
-      keyword:
-        typeof problem?.keyword === "string" ? problem.keyword : undefined,
-      currentVersion:
-        typeof problem?.currentVersion === "number"
-          ? problem.currentVersion
-          : undefined,
-      detail: typeof problem?.detail === "string" ? problem.detail : undefined,
-    };
-  } catch {
-    // Not a ProblemDetails body; the status alone will have to do.
-    return {};
-  }
-}
-
 /** Every review refusal is a problem-details body with a stable keyword. */
-async function throwFor(res: Response): Promise<never> {
-  const problem = await readProblem(res);
-  throw new ApplicationRequestError(
-    res.status,
-    problem.keyword,
-    problem.currentVersion,
-    problem.detail,
-  );
-}
+const throwFor = throwApplicationRequestError;
 
 /** Every submitted application, newest submission first. Drafts never appear. */
 export async function listReviewQueue(): Promise<

@@ -15,6 +15,7 @@ namespace Myss.AdminApi.Controllers
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Services;
     using Myss.FormSpec;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The admin form editor's endpoints, for IDIR staff only: list the forms, open
@@ -25,7 +26,7 @@ namespace Myss.AdminApi.Controllers
     [Route("v{version:apiVersion}/forms")]
     [ApiController]
     [Authorize(Policy = MyssPolicies.AdminIdir)]
-    public class FormsController : Controller
+    public class FormsController : ControllerBase
     {
         private readonly ILogger<FormsController> _logger;
 

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setAccessToken } from "@myss/web-common/auth";
 
 import {
   getDraft,
@@ -8,7 +9,6 @@ import {
   SpecRejectedError,
   type FormSummary,
 } from "@/api/forms";
-import { setAccessToken } from "@/auth/accessToken";
 
 // Unit tests for the admin form-editor API client. fetch is mocked, so these
 // assert the seam between the UI and MyssAdminApi: the right URL + method, the auth

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApplicationRequestError } from "@myss/web-common/api";
 
-import { ApplicationRequestError } from "@/api/intake";
 import {
   addReviewNote,
   getReviewApplication,

@@ -18,6 +18,9 @@ namespace Myss.Api
     using Myss.Data;
     using Myss.Data.Intake;
     using Myss.Data.Platform;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
+    using Myss.Common.Hosting;
 
     /// <summary>
     /// Configures the application during startup.
@@ -71,6 +74,10 @@ namespace Myss.Api
                 options.UseNpgsql(
                     this.startupConfig.Configuration.GetConnectionString("FormsDb"),
                     npgsql => MyssMigrations.Configure(npgsql, historySchema: null)));
+            // The shared Strapi readers (MyssCommon) read with this API's
+            // read-only token.
+            services.AddSingleton(StrapiReadOptions.FromConfiguration(
+                this.startupConfig.Configuration, "Strapi:ApiToken"));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
             services.AddScoped<IFormsService, FormsService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
@@ -92,8 +99,9 @@ namespace Myss.Api
             services.AddMemoryCache();
             // The admin form and rates editors live in MyssAdminApi, which holds the
             // write-scoped Strapi token; this API only ever reads.
-            services.AddHttpClient<IEligibilityRateProvider, StrapiEligibilityRateProvider>(
+            services.AddHttpClient<EligibilityRateTableReader>(
                 client => client.Timeout = TimeSpan.FromSeconds(5));
+            services.AddTransient<IEligibilityRateProvider, StrapiEligibilityRateProvider>();
 
             // The error message catalogue: the wording a refused submission carries,
             // published in Strapi and overlaid on the compiled defaults. Same
@@ -217,7 +225,7 @@ namespace Myss.Api
 
             // The submit route is anonymous and every accepted call files a service
             // request in ICM, so it is throttled per client address (see
-            // BusPassRateLimit; UseRateLimiter is in StartupConfiguration.UseHttp).
+            // BusPassRateLimit; UseHttp adds UseRateLimiter when asked, below).
             BusPassRateLimitConfig rateLimit = new();
             configuration.GetSection("BusPass:SubmitRateLimit").Bind(rateLimit);
             BusPassRateLimit.Validate(rateLimit);
@@ -242,7 +250,7 @@ namespace Myss.Api
         public void Configure(IApplicationBuilder app)
         {
             this.startupConfig.UseForwardHeaders(app);
-            this.startupConfig.UseHttp(app);
+            this.startupConfig.UseHttp(app, useRateLimiter: true);
             this.startupConfig.UseResponseCaching(app);
             this.startupConfig.UseEnrichTracing(app);
             this.startupConfig.UseRest(app);

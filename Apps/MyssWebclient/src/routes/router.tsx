@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import { AuthCallbackPage } from "@myss/web-common/components";
 
 import App from "@/App";
 import HomePage from "@/pages/HomePage";
@@ -9,7 +10,6 @@ import UnderDevelopmentPage from "@/pages/UnderDevelopmentPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
-import AuthCallbackPage from "@/pages/AuthCallbackPage";
 import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
@@ -44,7 +44,10 @@ export const router = createBrowserRouter([
         element: <BusPassPage />,
       },
       { path: paths.signIn, element: <SignInPage /> },
-      { path: paths.authCallback, element: <AuthCallbackPage /> },
+      {
+        path: paths.authCallback,
+        element: <AuthCallbackPage fallbackPath={paths.dashboard} />,
+      },
       { path: paths.simpleLogin, element: <SimpleLoginPage /> },
 
       // ---- Dashboard (MYSS-194): the signed-in citizen's sections, framed

@@ -16,7 +16,9 @@ portal (bcgov). Five deployable apps under `Apps/`, plus ADRs under
 | `Apps/MyssAdminWebclient` | React 19 + Vite + TS | The staff SPA (form and rates editors, application review); IDIR sign-in only |
 | `Apps/MyssData` | C# class library | The EF model both APIs use (Forms, Intake, Platform contexts, event store, intake projection); namespace `Myss.Data` (ADR-0010) |
 | `Apps/MyssFormSpec` | C# class library | `FormSpecValidator` and the domain rules it runs, shared by both APIs; namespace `Myss.FormSpec` |
+| `Apps/MyssCommon` | C# class library | What both APIs run the same way: the web host setup (logging, tracing, Swagger, CORS), sign-in and roles (`KeycloakClaims`, `RoleCalculator`, mock sign-in), the Strapi readers, the rate table, bus pass answers; namespace `Myss.Common` |
 | `Apps/MyssFormio` | TS package `@myss/formio` | The BC Gov Form.io components, shared by both webclients (npm workspace rooted at `Apps/`) |
+| `Apps/MyssWebCommon` | TS package `@myss/web-common` | What both webclients run the same way: sign-in (access token, OIDC settings, SiteMinder sign-out, idle timeout, `/auth/me`), runtime settings, the API shapes both APIs share, and a few components |
 | `Apps/MyssContent` | Strapi 5 | Content engine; owns versioned Form.io specs |
 | `Apps/IcmApi` | C# class library + Refit | Typed client for ICM (Siebel); namespace `Icm.Api` |
 | `Apps/IcmApi.Host` | C# / ASP.NET Core .NET 10 | The ICM middleware: hosts IcmApi behind `POST v1/bus-pass/applications` for MyssApi; namespace `Icm.Api.Host` |
@@ -120,7 +122,7 @@ Run:
 cd Apps/MyssApi && dotnet run                 # http://localhost:5000, Swagger at /swagger
 cd Apps/MyssAdminApi && dotnet run            # http://localhost:5010, Swagger at /swagger
 dotnet run --project Apps/IcmApi.Host        # http://localhost:5100, Swagger at /swagger (needs Icm:* user secrets)
-cd Apps && npm install                        # once: the npm workspace (MyssFormio + both webclients)
+cd Apps && npm install                        # once: the npm workspace (MyssFormio, MyssWebCommon + both webclients)
 cd Apps/MyssWebclient && npm run dev          # http://localhost:5173
 cd Apps/MyssAdminWebclient && npm run dev     # http://localhost:5174
                                               # Strapi admin: http://localhost:1337/admin
@@ -131,6 +133,7 @@ Test:
 ```bash
 dotnet test Apps/MyssApi.Tests
 dotnet test Apps/MyssFormSpec.Tests --filter "FullyQualifiedName~FormSpecValidatorTests"
+dotnet test Apps/MyssCommon.Tests
 dotnet test Apps/MyssAdminApi.Tests
 MYSS_TEST_POSTGRES="Host=localhost;Port=5432;Database=myss;Username=myss;Password=myss-local-dev" \
   dotnet test Apps/MyssApi.Tests          # also runs the [PostgresFact] tests against the compose Postgres
@@ -143,15 +146,16 @@ npm run test:unit                             # *.unit.test.ts, node env
 npm run test:browser-headless                 # *.browser.test.tsx, needs `npx playwright install chromium`
 npx vitest --config=vitest.config.ts --project=unit src/auth/decodeJwt.unit.test.ts
 npm run lint && npm run format:check
-# The same scripts exist in Apps/MyssAdminWebclient and Apps/MyssFormio (no dev/format there),
+# The same scripts exist in Apps/MyssAdminWebclient, Apps/MyssFormio and Apps/MyssWebCommon
+# (no dev/format in the two packages),
 # or from Apps/: npm run test:unit --workspace MyssFormio
 
 cd Apps/MyssContent && npm test               # vitest run
 ```
 
 CI (`.github/workflows/tests-dev.yml`, on PRs into `dev`) runs the API, form spec,
-admin API, ICM client and ICM middleware tests, and both suites of each npm workspace
-(MyssFormio, MyssWebclient, MyssAdminWebclient). `dev` is the main branch.
+shared API library (MyssCommon), admin API, ICM client and ICM middleware tests, and both suites of each npm workspace
+(MyssFormio, MyssWebCommon, MyssWebclient, MyssAdminWebclient). `dev` is the main branch.
 
 After changing an API contract, regenerate the typed client: with the API running,
 `cd Apps/MyssWebclient && npm run generate:schema` (writes `src/api/generated/`, never
@@ -199,8 +203,8 @@ gives the staff site the caller's roles. It uses MyssApi's database through
 Strapi token (`Strapi:AdminApiToken`, also used to read specs); MyssApi keeps the
 read-only one. MyssApi caches the rate table
 for five minutes and the admin API cannot clear that cache, so a saved table reaches
-citizens within that window. Its host plumbing (auth, Swagger, observability) is a copy
-of MyssApi's, trimmed: see `Apps/MyssAdminApi/AGENTS.md`.
+citizens within that window. Its host setup, auth and Strapi readers are MyssApi's,
+shared through `Apps/MyssCommon`: see `Apps/MyssAdminApi/AGENTS.md`.
 
 ### Forms
 
@@ -323,13 +327,14 @@ compiled wording cannot drift apart.
   namespace; XML doc comments on all public members (`GenerateDocumentationFile` is on
   and feeds Swagger). `Apps/.editorconfig` (870 lines) force-enables analyzer rules with
   `EnforceCodeStyleInBuild` — build warnings are the linter. Services use `_camelCase`
-  private fields; the `Configuration/` host classes use `this.`-qualified fields.
+  private fields; the host classes (`MyssCommon/Hosting`, `MyssCommon/Auth`) use
+  `this.`-qualified fields.
 - **Comments explain *why*, and record what was measured.** Several files carry
   observations verified against a running system on a date. Do not delete those; if you
   change the behaviour they describe, update the note.
-- **Admin webclient and Form.io package**: see `Apps/MyssAdminWebclient/AGENTS.md` and
-  `Apps/MyssFormio/AGENTS.md`. The three are one npm workspace rooted at `Apps/` with a
-  single `Apps/package-lock.json`; install from `Apps/`.
+- **Admin webclient and the shared packages**: see `Apps/MyssAdminWebclient/AGENTS.md`,
+  `Apps/MyssFormio/AGENTS.md` and `Apps/MyssWebCommon/AGENTS.md`. The four are one npm
+  workspace rooted at `Apps/` with a single `Apps/package-lock.json`; install from `Apps/`.
 - **Webclient**: see `Apps/MyssWebclient/AGENTS.md` — frontend architecture
   (pages/widgets/components hierarchy), token rules, BCDS-first components, test and
   runtime-config conventions — and the full docs under `Apps/MyssWebclient/Docs/`.

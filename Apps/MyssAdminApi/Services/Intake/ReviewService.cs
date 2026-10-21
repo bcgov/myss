@@ -13,6 +13,8 @@ namespace Myss.AdminApi.Intake
     using Myss.Data.Intake;
     using Myss.Data.Platform;
     using Myss.FormSpec;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Worker-side intake over the intake schema and the platform event store.

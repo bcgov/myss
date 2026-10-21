@@ -85,6 +85,9 @@ jobs:
       - name: Run form spec library tests
         run: dotnet test Apps/MyssFormSpec.Tests --configuration Release
 
+      - name: Run shared API library tests
+        run: dotnet test Apps/MyssCommon.Tests --configuration Release
+
       - name: Run admin API tests
         run: dotnet test Apps/MyssAdminApi.Tests --configuration Release
 
@@ -135,12 +138,13 @@ jobs:
     name: Web client tests (${{ matrix.workspace }})
     runs-on: ubuntu-latest
 
-    # The two webclients and the Form.io component package they share are one
-    # npm workspace rooted at Apps/ (one lockfile), tested one workspace per job.
+    # The two webclients and the two packages they share (the Form.io
+    # components, and the sign-in plumbing and common pieces) are one npm
+    # workspace rooted at Apps/ (one lockfile), tested one workspace per job.
     strategy:
       fail-fast: false
       matrix:
-        workspace: [MyssFormio, MyssWebclient, MyssAdminWebclient]
+        workspace: [MyssFormio, MyssWebCommon, MyssWebclient, MyssAdminWebclient]
 
     defaults:
       run:
@@ -210,14 +214,15 @@ jobs:
           /d:sonar.token="$SONAR_TOKEN"
           /d:sonar.sourceEncoding="UTF-8"
           /d:sonar.scanner.scanAll="false"
-          /d:sonar.cs.opencover.reportsPaths="Apps/MyssApi.Tests/TestResults/**/coverage.opencover.xml,Apps/MyssFormSpec.Tests/TestResults/**/coverage.opencover.xml,Apps/MyssAdminApi.Tests/TestResults/**/coverage.opencover.xml"
+          /d:sonar.cs.opencover.reportsPaths="Apps/MyssApi.Tests/TestResults/**/coverage.opencover.xml,Apps/MyssFormSpec.Tests/TestResults/**/coverage.opencover.xml,Apps/MyssCommon.Tests/TestResults/**/coverage.opencover.xml,Apps/MyssAdminApi.Tests/TestResults/**/coverage.opencover.xml"
           /d:sonar.qualitygate.wait="true"
 
-      # The form spec library and the admin API are analysed under the MySS API
-      # project: both were split out of it, and each test run reports the
-      # coverage of the code it exercises. One build of the solution filter, so
-      # the scanner sees each project once (three test-project builds would each
-      # rebuild the shared library inside the same analysis).
+      # The shared libraries (form spec, data model, MyssCommon) and the admin
+      # API are analysed under the MySS API project: all were split out of it,
+      # and each test run reports the coverage of the code it exercises. One
+      # build of the solution filter, so the scanner sees each project once
+      # (separate test-project builds would each rebuild the shared libraries
+      # inside the same analysis).
       - name: Build MySS API
         run: dotnet build Apps/MyssApi.Sonar.slnf --configuration Release --no-incremental --disable-build-servers
 
@@ -238,6 +243,16 @@ jobs:
           --no-build
           --collect:"XPlat Code Coverage"
           --results-directory Apps/MyssFormSpec.Tests/TestResults
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: Run shared API library tests with coverage
+        run: >-
+          dotnet test Apps/MyssCommon.Tests
+          --configuration Release
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --results-directory Apps/MyssCommon.Tests/TestResults
           --
           DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
@@ -340,13 +355,13 @@ jobs:
 
       - name: Place coverage reports
         run: |
-          for ws in MyssFormio MyssWebclient MyssAdminWebclient; do
+          for ws in MyssFormio MyssWebCommon MyssWebclient MyssAdminWebclient; do
             mkdir -p "Apps/$ws/coverage"
             cp "coverage-artifacts/webclient-coverage-$ws/lcov.info" "Apps/$ws/coverage/lcov.info"
           done
 
-      # The admin webclient and the shared Form.io package are analysed under
-      # the Web Client project: both were split out of it.
+      # The admin webclient and the shared packages are analysed under the Web
+      # Client project: all were split out of it.
       - name: Analyze MySS Web Client
         uses: SonarSource/sonarqube-scan-action@v7
         env:
@@ -357,11 +372,11 @@ jobs:
             "-Dsonar.projectName=MySS Web Client"
             -Dsonar.organization=bcgov-sonarcloud
             -Dsonar.sourceEncoding=UTF-8
-            -Dsonar.sources=Apps/MyssWebclient/src,Apps/MyssAdminWebclient/src,Apps/MyssFormio/src
-            -Dsonar.tests=Apps/MyssWebclient/src,Apps/MyssAdminWebclient/src,Apps/MyssFormio/src
+            -Dsonar.sources=Apps/MyssWebclient/src,Apps/MyssAdminWebclient/src,Apps/MyssFormio/src,Apps/MyssWebCommon/src
+            -Dsonar.tests=Apps/MyssWebclient/src,Apps/MyssAdminWebclient/src,Apps/MyssFormio/src,Apps/MyssWebCommon/src
             -Dsonar.exclusions=Apps/*/src/**/*.unit.test.ts,Apps/*/src/**/*.browser.test.tsx,Apps/MyssWebclient/src/api/generated/**
             -Dsonar.test.inclusions=Apps/*/src/**/*.unit.test.ts,Apps/*/src/**/*.browser.test.tsx
-            -Dsonar.javascript.lcov.reportPaths=Apps/MyssWebclient/coverage/lcov.info,Apps/MyssAdminWebclient/coverage/lcov.info,Apps/MyssFormio/coverage/lcov.info
+            -Dsonar.javascript.lcov.reportPaths=Apps/MyssWebclient/coverage/lcov.info,Apps/MyssAdminWebclient/coverage/lcov.info,Apps/MyssFormio/coverage/lcov.info,Apps/MyssWebCommon/coverage/lcov.info
             -Dsonar.qualitygate.wait=true
 
   sonarcloud-content:

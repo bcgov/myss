@@ -3,6 +3,7 @@ namespace Myss.AdminApi
     using System.Threading.Tasks;
     using Microsoft.Extensions.Hosting;
     using Myss.AdminApi.Configuration;
+    using Myss.Common.Hosting;
 
     /// <summary>
     /// The entry point for the project.

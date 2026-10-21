@@ -41,9 +41,14 @@ system wrapper on the shared `bcgovField` base, plus the client half of
 the validation rule registry) is the `@myss/formio` workspace in
 `Apps/MyssFormio`, shared with the admin webclient so the editor's
 preview renders a spec exactly as citizens see it. Change it there, and
-run its own test suites. Install from `Apps/` (npm workspace root, one
-lockfile). The admin pages (form management, form editor, rates) live in
-`Apps/MyssAdminWebclient`.
+run its own test suites. The sign-in plumbing (access token, OIDC
+settings, SiteMinder sign-out, idle timeout, `/auth/me` query, callback
+page), the runtime settings resolver and a few components (`StatusPill`,
+`AnnouncementBanner`) are the `@myss/web-common` workspace in
+`Apps/MyssWebCommon`, also shared with the admin webclient; the modules
+left in `auth/` bind it to this app. Install from `Apps/` (npm workspace
+root, one lockfile). The admin pages (form management, form editor,
+rates) live in `Apps/MyssAdminWebclient`.
 
 Migration status and the current→target mapping are in
 [Docs/frontend-architecture.md](Docs/frontend-architecture.md) — new

@@ -22,7 +22,7 @@ namespace Myss.AdminApi.Controllers
     [Route("v{version:apiVersion}/bus-pass")]
     [ApiController]
     [Authorize(Policy = MyssPolicies.WorkerWithIdir)]
-    public class BusPassSubmissionsController : Controller
+    public class BusPassSubmissionsController : ControllerBase
     {
         private readonly ILogger<BusPassSubmissionsController> _logger;
         private readonly IFormSubmissionsService _submissionsService;

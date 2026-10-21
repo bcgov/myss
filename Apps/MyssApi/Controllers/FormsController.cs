@@ -14,6 +14,7 @@ namespace Myss.Api.Controllers
     using Myss.Api.Models;
     using Myss.Api.Services;
     using Myss.FormSpec;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The forms controller: versioned specs and submissions.

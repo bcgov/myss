@@ -18,6 +18,8 @@ namespace Myss.Api.Tests
     using Myss.Data;
     using Myss.FormSpec.Domain;
     using Xunit;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// The test that proves the server is authoritative.

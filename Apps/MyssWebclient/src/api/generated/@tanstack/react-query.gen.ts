@@ -152,8 +152,9 @@ export const uploadAttachmentMutation = (options?: Partial<Options<UploadAttachm
 export const getMeQueryKey = (options?: Options<GetMeData>) => createQueryKey('getMe', options);
 
 /**
- * Returns the caller's effective identity: subject, effective roles, and the
- * keystone identifiers (BCeID GUID / IDIR username).
+ * Returns the caller's effective identity: subject, effective roles, the
+ * keystone identifiers (BCeID GUID / IDIR username), and whether they have
+ * registered.
  */
 export const getMeOptions = (options?: Options<GetMeData>) => queryOptions<GetMeResponse, GetMeError, GetMeResponse, ReturnType<typeof getMeQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {

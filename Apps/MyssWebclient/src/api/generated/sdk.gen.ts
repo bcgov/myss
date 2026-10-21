@@ -84,8 +84,9 @@ export const uploadAttachment = <ThrowOnError extends boolean = false>(options?:
 });
 
 /**
- * Returns the caller's effective identity: subject, effective roles, and the
- * keystone identifiers (BCeID GUID / IDIR username).
+ * Returns the caller's effective identity: subject, effective roles, the
+ * keystone identifiers (BCeID GUID / IDIR username), and whether they have
+ * registered.
  */
 export const getMe = <ThrowOnError extends boolean = false>(options?: Options<GetMeData, ThrowOnError>): RequestResult<GetMeResponses, GetMeErrors, ThrowOnError> => (options?.client ?? client).get<GetMeResponses, GetMeErrors, ThrowOnError>({ url: '/v1/auth/me', ...options });
 

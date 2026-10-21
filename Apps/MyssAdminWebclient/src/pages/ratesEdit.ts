@@ -1,5 +1,9 @@
-import type { AssetColumn, EligibilityRates, IncomeColumn } from "@/api/eligibilityRates";
-import type { SaveEstimatorRatesInput } from "@/api/eligibilityRates";
+import type { AssetColumn, IncomeColumn } from "@myss/web-common/api";
+
+import type {
+  EligibilityRates,
+  SaveEstimatorRatesInput,
+} from "@/api/eligibilityRates";
 import {
   ASSET_COLUMNS,
   FAMILY_SIZES,

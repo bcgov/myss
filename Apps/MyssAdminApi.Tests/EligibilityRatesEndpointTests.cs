@@ -12,6 +12,7 @@ namespace Myss.AdminApi.Tests
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Tests.TestDoubles;
     using Myss.AdminApi.Tests.TestSupport;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// <c>GET</c> and <c>POST /v1/EligibilityRates</c> through the real pipeline (routing,

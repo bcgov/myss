@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setAccessToken } from "@myss/web-common/auth";
 
 import { SubmissionRejectedError } from "@/api/forms";
 import {
@@ -11,7 +12,6 @@ import {
   submitApplication,
   type ApplicationPayload,
 } from "@/api/intake";
-import { setAccessToken } from "@/auth/accessToken";
 
 // Unit tests for the intake API client. fetch is mocked, so these assert the
 // seam between the UI and MyssApi: the right URL + method, the auth header,

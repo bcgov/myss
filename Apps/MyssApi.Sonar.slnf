@@ -5,6 +5,8 @@
       "MyssApi\\MyssApi.csproj",
       "MyssApi.Tests\\MyssApi.Tests.csproj",
       "MyssData\\MyssData.csproj",
+      "MyssCommon\\MyssCommon.csproj",
+      "MyssCommon.Tests\\MyssCommon.Tests.csproj",
       "MyssFormSpec\\MyssFormSpec.csproj",
       "MyssFormSpec.Tests\\MyssFormSpec.Tests.csproj",
       "MyssAdminApi\\MyssAdminApi.csproj",

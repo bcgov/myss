@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setAccessToken } from "@myss/web-common/auth";
+import { ApplicationRequestError } from "@myss/web-common/api";
 
-import { ApplicationRequestError } from "@/api/intake";
 import {
   addReviewNote,
   getReviewApplication,
@@ -10,7 +11,6 @@ import {
   type ReviewApplicationPayload,
   type ReviewApplicationSummaryPayload,
 } from "@/api/review";
-import { setAccessToken } from "@/auth/accessToken";
 
 // Unit tests for the review API client: the right URL and method, the auth
 // header, the body shape, and that each refusal surfaces as the typed error

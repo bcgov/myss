@@ -3,6 +3,7 @@ namespace Myss.Api.Providers
     using System.Threading;
     using System.Threading.Tasks;
     using Myss.Api.Models;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Provides the eligibility rate table from the content engine, with a

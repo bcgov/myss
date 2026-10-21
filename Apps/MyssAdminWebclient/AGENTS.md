@@ -19,11 +19,14 @@ adds what is specific to the admin app.
   `authHeaders()`. Do not call the citizen MyssApi from here.
 - **Form.io comes from `@myss/formio`** (`Apps/MyssFormio`), the same code the
   citizen app renders with. Change components there, not here.
-- **Copied, not shared:** the auth plumbing (`auth/`, including `useMe`),
-  `lib/rateColumns.ts`, the rate table types, `components/StatusPill.tsx`,
-  `widgets/ReadOnlySpecForm.tsx` and the intake status and error types
-  (`api/intake.ts`) started as copies of the citizen webclient's.
-  They are allowed to diverge; the API contract is what keeps them in step.
+- **Shared with the citizen app through `@myss/web-common`** (`Apps/MyssWebCommon`):
+  the access token, OIDC settings, SiteMinder sign-out, idle timeout, `/auth/me`
+  query, sign-in callback page, runtime settings (`constants.ts`), `StatusPill`,
+  `AnnouncementBanner`, and the API shapes both APIs answer with (form specs and
+  the 422 error list, the application status and refusal, the rate table).
+  `ReadOnlySpecForm` comes from `@myss/formio`. The files in `auth/` that remain
+  bind the shared code to this app (IDIR hint, `/signed-out`, MyssAdminApi);
+  change the shared behaviour in the package, not here.
 - **`npm run build` is the only full type-check** (`tsc -b`); run it before
   considering a change done.
 - Install from `Apps/` (npm workspace root, one lockfile).
@@ -33,6 +36,6 @@ adds what is specific to the admin app.
 `pages/` (the landing page, form management, the editor, the rates panel,
 the application review queue and review page) · `hooks/` (`useForms`,
 `useEstimatorRates`, `useReview`) · `api/` (raw fetches to MyssAdminApi; no
-generated client) · `auth/` · `components/` · `lib/` · `routes/` (`paths.ts`,
+generated client) · `auth/` · `lib/` (rate column metadata) · `routes/` (`paths.ts`,
 every URL) · `widgets/review/` (queue, application, history, notes) ·
-`widgets/layout/` · `constants.ts` (runtime config).
+`constants.ts` (runtime config).

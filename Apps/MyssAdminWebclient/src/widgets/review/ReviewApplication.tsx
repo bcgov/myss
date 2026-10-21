@@ -1,11 +1,12 @@
 import { Button } from "@bcgov/design-system-react-components";
 import { useCallback, useState } from "react";
 import { Link } from "react-router";
+import { StatusPill } from "@myss/web-common/components";
+import { ReadOnlySpecForm } from "@myss/formio";
+import { ApplicationRequestError } from "@myss/web-common/api";
 
 import styles from "./ReviewApplication.module.css";
 
-import { ApplicationRequestError } from "@/api/intake";
-import StatusPill from "@/components/StatusPill";
 import {
   REVIEW_KEYWORDS,
   useAddReviewNote,
@@ -15,7 +16,6 @@ import {
   type ReviewActionRoute,
 } from "@/hooks/useReview";
 import { paths } from "@/routes/paths";
-import ReadOnlySpecForm from "@/widgets/ReadOnlySpecForm";
 import ReviewHistory from "@/widgets/review/ReviewHistory";
 import ReviewNotes from "@/widgets/review/ReviewNotes";
 

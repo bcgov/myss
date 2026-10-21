@@ -1,34 +1,23 @@
 namespace Myss.Api.Providers
 {
     using System;
-    using System.Collections.Generic;
-    using System.Globalization;
-    using System.Linq;
-    using System.Net.Http;
-    using System.Net.Http.Headers;
-    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Extensions.Caching.Memory;
-    using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging;
-    using Myss.Api.Data;
-    using Myss.Api.Domain;
-    using Myss.Api.Models;
+    using Myss.Common.Content;
 
     /// <summary>
-    /// Reads the eligibility rate table from the Strapi content engine over its
-    /// REST API and caches it. When Strapi cannot be read, or its table is not in
-    /// the nine-column shape, the compiled table (<see cref="FddRateData"/>) is
-    /// returned so the public estimator keeps working.
+    /// Serves the eligibility rate table to the public estimator: the latest
+    /// published table from the Strapi content engine (read by
+    /// <see cref="EligibilityRateTableReader"/>), cached. When Strapi cannot be read,
+    /// or its table is not in the nine-column shape, the compiled table
+    /// (<see cref="EligibilityRateTableReader.CompiledTable"/>) is returned so the
+    /// estimator keeps working.
     /// </summary>
     public class StrapiEligibilityRateProvider : IEligibilityRateProvider
     {
         private const string CacheKey = "eligibility-rate-table";
-
-        // The latest published entry: newest effective date first, one row.
-        private const string RatesQuery =
-            "/api/eligibility-rates?sort=effectiveDate:desc&pagination[limit]=1";
 
         // The admin rates editor saves through MyssAdminApi, another process that
         // cannot clear this cache, so a saved table reaches citizens within this window.
@@ -41,38 +30,23 @@ namespace Myss.Api.Providers
         private static readonly TimeSpan FallbackCacheDuration = TimeSpan.FromSeconds(30);
 
         private readonly ILogger<StrapiEligibilityRateProvider> _logger;
-        private readonly HttpClient _httpClient;
+        private readonly EligibilityRateTableReader _reader;
         private readonly IMemoryCache _cache;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StrapiEligibilityRateProvider"/> class.
         /// </summary>
         /// <param name="logger">Injected Logger Provider.</param>
-        /// <param name="httpClient">Injected HTTP client.</param>
+        /// <param name="reader">Injected content engine reader.</param>
         /// <param name="cache">Injected in-memory cache.</param>
-        /// <param name="configuration">Injected configuration provider.</param>
         public StrapiEligibilityRateProvider(
             ILogger<StrapiEligibilityRateProvider> logger,
-            HttpClient httpClient,
-            IMemoryCache cache,
-            IConfiguration configuration)
+            EligibilityRateTableReader reader,
+            IMemoryCache cache)
         {
             _logger = logger;
-            _httpClient = httpClient;
+            _reader = reader;
             _cache = cache;
-            _httpClient.BaseAddress = new Uri(
-                configuration.GetValue<string>("Strapi:BaseUrl") ?? "http://localhost:1337");
-
-            // Same scoped read-only token as the form-spec reader: the Public role
-            // no longer grants eligibility-rate find/findOne (see the MyssContent
-            // bootstrap). An unset token means anonymous reads, which fall through
-            // to the compiled fallback rather than serving blank rates.
-            string? apiToken = configuration.GetValue<string>("Strapi:ApiToken");
-            if (!string.IsNullOrWhiteSpace(apiToken))
-            {
-                _httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", apiToken.Trim());
-            }
         }
 
         /// <inheritdoc/>
@@ -85,7 +59,7 @@ namespace Myss.Api.Providers
 
             try
             {
-                EligibilityRatesModel? rates = await this.FetchAsync(cancellationToken);
+                EligibilityRatesModel? rates = await _reader.ReadPublishedAsync(cancellationToken);
                 if (rates is not null)
                 {
                     _cache.Set(CacheKey, rates, CacheDuration);
@@ -93,7 +67,7 @@ namespace Myss.Api.Providers
                 }
 
                 _logger.LogWarning(
-                    "The content engine returned no published eligibility-rate entry; using the compiled fallback.");
+                    "The content engine returned no usable eligibility-rate entry; using the compiled fallback.");
             }
             catch (Exception ex)
                 when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
@@ -103,205 +77,9 @@ namespace Myss.Api.Providers
                     "Could not read the eligibility rate table from the content engine; using the compiled fallback.");
             }
 
-            EligibilityRatesModel fallback = Fallback();
+            EligibilityRatesModel fallback = EligibilityRateTableReader.CompiledTable();
             _cache.Set(CacheKey, fallback, FallbackCacheDuration);
             return fallback;
-        }
-
-        private static EligibilityRatesModel Map(JsonElement entry)
-        {
-            var rows = new List<EligibilityRateRowModel>();
-            foreach (JsonElement row in entry.GetProperty("incomeRows").EnumerateArray())
-            {
-                rows.Add(new EligibilityRateRowModel
-                {
-                    FamilySize = row.GetProperty("familySize").GetInt32(),
-                    A = row.GetProperty("a").GetDecimal(),
-                    B = row.GetProperty("b").GetDecimal(),
-                    C = row.GetProperty("c").GetDecimal(),
-                    D = row.GetProperty("d").GetDecimal(),
-                    E = row.GetProperty("e").GetDecimal(),
-                    F = row.GetProperty("f").GetDecimal(),
-                    G = row.GetProperty("g").GetDecimal(),
-                    H = row.GetProperty("h").GetDecimal(),
-                    I = row.GetProperty("i").GetDecimal(),
-                });
-            }
-
-            JsonElement limits = entry.GetProperty("assetLimits");
-            var assetLimits = new EligibilityAssetLimitsModel
-            {
-                A = limits.GetProperty("a").GetDecimal(),
-                B = limits.GetProperty("b").GetDecimal(),
-                C = limits.GetProperty("c").GetDecimal(),
-                D = limits.GetProperty("d").GetDecimal(),
-            };
-
-            string effectiveDate = entry.TryGetProperty("effectiveDate", out JsonElement date)
-                ? date.GetString() ?? string.Empty
-                : string.Empty;
-
-            return new EligibilityRatesModel
-            {
-                EffectiveDate = effectiveDate,
-                IncomeRows = rows,
-                AssetLimits = assetLimits,
-            };
-        }
-
-        private static EligibilityRatesModel Fallback()
-        {
-            List<EligibilityRateRowModel> rows = FddRateData.RateRows
-                .Select(row => new EligibilityRateRowModel
-                {
-                    FamilySize = row.FamilySize,
-                    A = row.TypeA,
-                    B = row.TypeB,
-                    C = row.TypeC,
-                    D = row.TypeD,
-                    E = row.TypeE,
-                    F = row.TypeF,
-                    G = row.TypeG,
-                    H = row.TypeH,
-                    I = row.TypeI,
-                })
-                .ToList();
-
-            Dictionary<string, decimal> byCategory =
-                FddRateData.AssetLimits.ToDictionary(limit => limit.LimitType, limit => limit.Limit);
-
-            return new EligibilityRatesModel
-            {
-                EffectiveDate = FddRateData.EffectiveFrom.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                IncomeRows = rows,
-                AssetLimits = new EligibilityAssetLimitsModel
-                {
-                    A = byCategory["A"],
-                    B = byCategory["B"],
-                    C = byCategory["C"],
-                    D = byCategory["D"],
-                },
-            };
-        }
-
-        private async Task<EligibilityRatesModel?> FetchAsync(CancellationToken cancellationToken)
-        {
-            using HttpResponseMessage response = await _httpClient.GetAsync(RatesQuery, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning(
-                    "The content engine returned {StatusCode} for the eligibility rate table.",
-                    (int)response.StatusCode);
-            }
-
-            response.EnsureSuccessStatusCode();
-
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using JsonDocument document =
-                await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-
-            JsonElement data = document.RootElement.GetProperty("data");
-            if (data.ValueKind != JsonValueKind.Array || data.GetArrayLength() == 0)
-            {
-                return null;
-            }
-
-            string? missingColumn = FindMissingColumn(data[0]);
-            if (missingColumn is not null)
-            {
-                _logger.LogWarning(
-                    "The content engine returned an eligibility-rate entry that is not in the nine-column shape ({Reason}); using the compiled fallback.",
-                    missingColumn);
-                return null;
-            }
-
-            EligibilityRatesModel mapped = Map(data[0]);
-            if (!IsComplete(mapped, out string reason))
-            {
-                _logger.LogWarning(
-                    "The content engine returned an incomplete eligibility-rate entry ({Reason}); using the compiled fallback.",
-                    reason);
-                return null;
-            }
-
-            return mapped;
-        }
-
-        /// <summary>
-        /// Names the first rate column missing from an entry, or returns null when
-        /// every income row has all nine columns and the asset limits all four. A table
-        /// in the old A-E shape is refused here: its letters mean different households.
-        /// </summary>
-        private static string? FindMissingColumn(JsonElement entry)
-        {
-            int position = 0;
-            foreach (JsonElement row in entry.GetProperty("incomeRows").EnumerateArray())
-            {
-                position++;
-                foreach (EligibilityRateColumn<EligibilityRateRowModel> column in EligibilityRateColumns.Income)
-                {
-                    if (!row.TryGetProperty(column.Letter, out _))
-                    {
-                        string label = row.TryGetProperty("familySize", out JsonElement size)
-                            ? $"family size {size.GetRawText()}"
-                            : $"income row {position}";
-                        return $"{label} has no column {column.Letter}";
-                    }
-                }
-            }
-
-            JsonElement limits = entry.GetProperty("assetLimits");
-            foreach (EligibilityRateColumn<EligibilityAssetLimitsModel> column in EligibilityRateColumns.Asset)
-            {
-                if (!limits.TryGetProperty(column.Letter, out _))
-                {
-                    return $"asset limits have no column {column.Letter}";
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Confirms a mapped table is safe to serve: a non-empty effective date,
-        /// exactly one income row for every family size 1..7, and no negative amounts.
-        /// Missing columns are refused before mapping (<see cref="FindMissingColumn"/>),
-        /// so this guards the gaps that would otherwise pass silently: missing whole
-        /// rows, or a negative amount.
-        /// </summary>
-        private static bool IsComplete(EligibilityRatesModel rates, out string reason)
-        {
-            if (string.IsNullOrWhiteSpace(rates.EffectiveDate))
-            {
-                reason = "missing effective date";
-                return false;
-            }
-
-            for (int size = 1; size <= EligibilityRateColumns.MaxFamilySize; size++)
-            {
-                int matches = rates.IncomeRows.Count(row => row.FamilySize == size);
-                if (matches != 1)
-                {
-                    reason = matches == 0
-                        ? $"no income row for family size {size}"
-                        : $"{matches} income rows for family size {size}";
-                    return false;
-                }
-            }
-
-            // A table stored before Strapi validated rate values could still hold a
-            // negative amount, which would yield a nonsensical estimate, so treat it as
-            // invalid and fall back. Zero is legitimate (the couple columns hold 0 at
-            // family size 1), hence the strict < 0 test.
-            if (rates.IncomeRows.Any(row => EligibilityRateColumns.Income.Any(column => column.Amount(row) < 0))
-                || EligibilityRateColumns.Asset.Any(column => column.Amount(rates.AssetLimits) < 0))
-            {
-                reason = "negative income or asset amount";
-                return false;
-            }
-
-            reason = string.Empty;
-            return true;
         }
     }
 }

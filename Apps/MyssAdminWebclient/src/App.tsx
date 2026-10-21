@@ -1,8 +1,8 @@
 import { Button, Header } from "@bcgov/design-system-react-components";
 import { Outlet } from "react-router";
+import { AnnouncementBanner } from "@myss/web-common/components";
 
 import "./App.css";
-import AnnouncementBanner from "@/widgets/layout/AnnouncementBanner";
 import { useApiAuth } from "@/auth/useApiAuth";
 import { useIdleLogout } from "@/auth/useIdleLogout";
 import { useSession } from "@/auth/useSession";

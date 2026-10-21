@@ -11,6 +11,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Data;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
+    using Myss.Common.BusPass;
 
     /// <summary>
     /// Tests for <see cref="BusPassSubmissionService"/>: what is stored, what

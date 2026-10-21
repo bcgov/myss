@@ -1,10 +1,12 @@
-import type {
-  FormType,
-  JSON as FormioJson,
-} from "@formio/react/lib/components/Form";
+import type { JSON as FormioJson } from "@formio/react/lib/components/Form";
+import {
+  readValidationErrors,
+  type FormSpecPayload,
+  type FormValidationError,
+} from "@myss/web-common/api";
+import { authHeaders } from "@myss/web-common/auth";
 
 import { API_URL } from "@/constants";
-import { authHeaders } from "@/auth/accessToken";
 
 // Calls to the forms API (/v1/forms): fetch form specs and post submissions.
 // Responses come wrapped in the API's payload envelope. The staff calls (the
@@ -13,13 +15,16 @@ import { authHeaders } from "@/auth/accessToken";
 //
 // These endpoints are not in the generated client yet, hence the raw fetches
 // with authHeaders(). Swap for the SDK after regenerating the schema.
+//
+// The spec and validation-error shapes, and the 422 reader, are shared with
+// the admin webclient (@myss/web-common/api); re-exported here for this app's
+// callers.
 
-export interface FormSpecPayload {
-  formSpecId: string;
-  version: number;
-  title?: string | null;
-  spec: FormType;
-}
+export {
+  readValidationErrors,
+  type FormSpecPayload,
+  type FormValidationError,
+};
 
 export interface FormSubmissionPayload {
   id: string;
@@ -28,20 +33,6 @@ export interface FormSubmissionPayload {
   answers: { [key: string]: FormioJson };
   submittedAt: string;
   spec?: FormSpecPayload | null;
-}
-
-/**
- * One field-scoped refusal from the API.
- *
- * `keyword` is the stable half of the contract (`IDA.SIN.INVALID_CHECKSUM` and
- * friends) and `message` the human half. Key UI decisions off the keyword, not
- * the message — the message is destined to be sourced from the content engine
- * and translated, so its wording will move.
- */
-export interface FormValidationError {
-  field: string;
-  keyword: string;
-  message: string;
 }
 
 /**
@@ -75,38 +66,6 @@ export class SubmissionRejectedError extends Error {
     // keeps the check in PocForm correct regardless of compile target.
     Object.setPrototypeOf(this, SubmissionRejectedError.prototype);
   }
-}
-
-function isValidationError(value: unknown): value is FormValidationError {
-  if (typeof value !== "object" || value === null) return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.field === "string" &&
-    typeof candidate.keyword === "string" &&
-    typeof candidate.message === "string"
-  );
-}
-
-/**
- * Pulls the error collection out of a failed response, tolerating anything
- * that is not the shape we expect. A failure to parse must never mask the
- * original failure with a JSON error, so every fault here degrades to an
- * empty list and lets the status speak for itself.
- *
- * Exported because the bus pass endpoint answers 422 in the same shape.
- */
-export async function readValidationErrors(res: Response): Promise<FormValidationError[]> {
-  let body: unknown;
-  try {
-    body = await res.json();
-  } catch {
-    return [];
-  }
-
-  const payload = (body as { payload?: unknown } | null)?.payload;
-  if (!Array.isArray(payload)) return [];
-
-  return payload.filter(isValidationError);
 }
 
 /** The latest published spec for a form. */

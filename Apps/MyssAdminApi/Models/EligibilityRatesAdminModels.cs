@@ -4,6 +4,7 @@ namespace Myss.AdminApi.Models
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using Myss.FormSpec;
+    using Myss.Common.Content;
 
     /// <summary>
     /// An admin's save of the complete rate table. The server assigns the effective

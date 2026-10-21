@@ -15,6 +15,9 @@ namespace Myss.AdminApi
     using Myss.Data;
     using Myss.Data.Intake;
     using Myss.Data.Platform;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
+    using Myss.Common.Hosting;
 
     /// <summary>
     /// Configures the application during startup.
@@ -46,25 +49,30 @@ namespace Myss.AdminApi
 
             // Authentication is the Option 1 / Option 2 swap point; the policies and the
             // typed caller below are unaffected by that choice. Effective roles are
-            // computed exactly as MyssApi computes them (RoleCalculator, ADR-0007), so
+            // computed by the same RoleCalculator as MyssApi's (MyssCommon, ADR-0007), so
             // WorkerWithIdir means the same here: in particular a citizen-IDP token
             // never keeps WORKER or ADMIN. Runs after every scheme, mock auth included.
-            this.startupConfig.ConfigureAuthentication(services);
+            this.startupConfig.ConfigureAuthentication(services, mockDefaultPersona: "admin");
             services.AddMyssAuthorization();
             services.AddSingleton<IClaimsTransformation, RoleCalculationClaimsTransformation>();
             services.AddTransient<ICurrentUserAccessor, CurrentUserAccessor>();
 
             // The admin form editor (MYSS-209). The only Strapi token this API holds is
             // the write-scoped Strapi:AdminApiToken; the citizen API keeps the read-only
-            // one. Brokered server-side; the token never reaches the browser.
+            // one. Brokered server-side; the token never reaches the browser. The
+            // shared readers (MyssCommon) read with it too: it also grants find and
+            // findOne, so reading needs no second secret here.
+            services.AddSingleton(StrapiReadOptions.FromConfiguration(
+                this.startupConfig.Configuration, "Strapi:AdminApiToken"));
             services.AddHttpClient<IFormSpecAdminProvider, StrapiFormSpecAdminProvider>();
             services.AddScoped<IFormSpecAdminService, FormSpecAdminService>();
 
             // The admin rates editor: an uncached read of the published table, and the
             // write. MyssApi caches the table it serves citizens, so a save reaches
             // them when that cache expires.
-            services.AddHttpClient<IEligibilityRateProvider, StrapiEligibilityRateProvider>(
+            services.AddHttpClient<EligibilityRateTableReader>(
                 client => client.Timeout = TimeSpan.FromSeconds(5));
+            services.AddTransient<IEligibilityRateProvider, StrapiEligibilityRateProvider>();
             services.AddHttpClient<IEligibilityRateAdminProvider, StrapiEligibilityRateAdminProvider>(
                 client => client.Timeout = TimeSpan.FromSeconds(10));
             services.AddScoped<IEligibilityRatesService, EligibilityRatesService>();
@@ -79,7 +87,8 @@ namespace Myss.AdminApi
             // No database, no startup: the worker screens are nothing without it, and
             // failing here names the missing key instead of a first query failing with
             // a less obvious error.
-            if (string.IsNullOrWhiteSpace(configuration.GetConnectionString("FormsDb")))
+            string? formsDb = configuration.GetConnectionString("FormsDb");
+            if (string.IsNullOrWhiteSpace(formsDb))
             {
                 throw new InvalidOperationException(
                     "ConnectionStrings:FormsDb is not configured. "
@@ -88,16 +97,16 @@ namespace Myss.AdminApi
             }
 
             services.AddDbContext<FormsDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("FormsDb")));
+                options.UseNpgsql(formsDb));
             services.AddDbContext<PlatformDbContext>(options =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("PlatformDb")
-                        ?? configuration.GetConnectionString("FormsDb"),
+                        ?? formsDb,
                     npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "platform")));
             services.AddDbContext<IntakeDbContext>(options =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("IntakeDb")
-                        ?? configuration.GetConnectionString("FormsDb"),
+                        ?? formsDb,
                     npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "intake")));
             services.AddScoped<IEventStore, EventStore>();
 

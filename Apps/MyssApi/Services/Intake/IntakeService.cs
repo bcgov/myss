@@ -15,6 +15,8 @@ namespace Myss.Api.Intake
     using Myss.Data.Platform;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Applicant-side intake over the intake schema and the platform event

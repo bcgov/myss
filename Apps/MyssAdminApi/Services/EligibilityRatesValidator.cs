@@ -7,6 +7,7 @@ namespace Myss.AdminApi.Services
     using Myss.AdminApi.Domain;
     using Myss.AdminApi.Models;
     using Myss.FormSpec;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Validates an admin's rate-table save before anything is written. Pure: the

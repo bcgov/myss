@@ -4,6 +4,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Models;
     using Myss.Api.Services;
     using Myss.FormSpec.Domain;
+    using Myss.Common.BusPass;
 
     /// <summary>
     /// Tests for <see cref="BusPassApplicationMapper"/>: answers in, the

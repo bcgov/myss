@@ -118,8 +118,9 @@ compose Postgres.
 - Admin API: `cd Apps/MyssAdminApi && dotnet run` → http://localhost:5010
 - ICM middleware: `dotnet run --project Apps/IcmApi.Host` → http://localhost:5100
   (needs the `Icm:*` user secrets; see `Apps/IcmApi.Host/README.md`)
-- Webclients: the two webclients and the shared Form.io package (`Apps/MyssFormio`)
-  are one npm workspace, so install once from `Apps/` with `cd Apps && npm install`. Then:
+- Webclients: the two webclients and the two packages they share (`Apps/MyssFormio`,
+  the Form.io components, and `Apps/MyssWebCommon`, sign-in and other common code) are
+  one npm workspace, so install once from `Apps/` with `cd Apps && npm install`. Then:
   - Webclient: `cd Apps/MyssWebclient && npm run dev` → http://localhost:5173 (the
     forms demo is under `/techdemos/forms`)
   - Admin webclient: `cd Apps/MyssAdminWebclient && npm run dev` →
@@ -135,13 +136,14 @@ compose Postgres.
   attachment scanning misbehaves; on a first-ever ClamAV start it will say the
   daemon is not answering until the signature download finishes.
 - API: `dotnet test Apps/MyssApi.Tests`
-- Form spec library and admin API: `dotnet test Apps/MyssFormSpec.Tests` and
-  `dotnet test Apps/MyssAdminApi.Tests`
+- Shared libraries and admin API: `dotnet test Apps/MyssFormSpec.Tests`,
+  `dotnet test Apps/MyssCommon.Tests` and `dotnet test Apps/MyssAdminApi.Tests`
 - ICM client and middleware: `dotnet test Apps/IcmApi.Tests` and
   `dotnet test Apps/IcmApi.Host.Tests`
-- Webclients and the Form.io package: in `Apps/MyssWebclient`, `Apps/MyssAdminWebclient`
-  and `Apps/MyssFormio`, `npm run test:unit` and `npm run test:browser-headless` — the
-  browser tests need a one-time `npx playwright install chromium`
+- Webclients and the shared packages: in `Apps/MyssWebclient`, `Apps/MyssAdminWebclient`,
+  `Apps/MyssFormio` and `Apps/MyssWebCommon`, `npm run test:unit` and
+  `npm run test:browser-headless` — the browser tests need a one-time
+  `npx playwright install chromium`
 
 ## SonarQube Cloud
 
@@ -157,8 +159,8 @@ cannot access the `SONAR_TOKEN` secret.
 | MySS ICM Client | `bcgov-sonarcloud_myss_icmapi`    |
 
 The code split out of the API and the web client is analysed under its origin project
-until it has its own: MySS API also covers `MyssFormSpec` and `MyssAdminApi`, and MySS Web
-Client also covers `MyssAdminWebclient` and `MyssFormio`.
+until it has its own: MySS API also covers `MyssFormSpec`, `MyssData`, `MyssCommon` and `MyssAdminApi`, and MySS Web
+Client also covers `MyssAdminWebclient`, `MyssFormio` and `MyssWebCommon`.
 
 The workflow imports OpenCover reports from the .NET tests and LCOV reports from the
 TypeScript test suites. Configure the `SONAR_TOKEN` GitHub Actions secret for the

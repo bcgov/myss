@@ -11,6 +11,7 @@ namespace Myss.AdminApi.Tests
     using Myss.AdminApi.Services;
     using Myss.AdminApi.Tests.TestDoubles;
     using Xunit;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// A test-only controller exercising the AdminIdir policy over real HTTP. It lives in
