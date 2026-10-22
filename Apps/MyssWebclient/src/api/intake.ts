@@ -1,6 +1,5 @@
 import type { JSON as FormioJson } from "@formio/react/lib/components/Form";
 import {
-  ApplicationRequestError,
   throwApplicationRequestError,
   type ApplicationStatus,
 } from "@myss/web-common/api";
@@ -28,7 +27,10 @@ import {
 // app's callers. The applicant edits a DRAFT, and a RETURNED application once
 // a worker asks for more information; every other status is shown to them
 // read-only.
-export { ApplicationRequestError, type ApplicationStatus };
+export {
+  ApplicationRequestError,
+  type ApplicationStatus,
+} from "@myss/web-common/api";
 
 /** Whether the applicant may change the answers: a draft, or a returned application. */
 export function isEditableStatus(status: ApplicationStatus): boolean {

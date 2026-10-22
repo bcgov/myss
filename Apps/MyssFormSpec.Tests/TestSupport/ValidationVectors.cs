@@ -19,18 +19,6 @@ namespace Myss.FormSpec.Tests.TestSupport
     {
         private static readonly JsonDocument Document = Load();
 
-        /// <summary>A case: the input, and the keyword expected when it fails.</summary>
-        /// <param name="Value">The input value.</param>
-        /// <param name="Keyword">The expected failure keyword, if any.</param>
-        /// <param name="Note">The note recorded in the fixture, for test output.</param>
-        public record Vector(string Value, string? Keyword, string? Note);
-
-        /// <summary>A confirmation-match case.</summary>
-        /// <param name="Value">The address.</param>
-        /// <param name="Confirmation">The confirmation field's value.</param>
-        /// <param name="Keyword">The expected failure keyword, if any.</param>
-        public record ConfirmationVector(string Value, string Confirmation, string? Keyword);
-
         /// <summary>Gets the valid cases for a rule.</summary>
         /// <param name="rule">The fixture section, e.g. "sin".</param>
         /// <returns>Every valid case.</returns>
@@ -40,13 +28,6 @@ namespace Myss.FormSpec.Tests.TestSupport
         /// <param name="rule">The fixture section, e.g. "sin".</param>
         /// <returns>Every invalid case.</returns>
         public static IReadOnlyList<Vector> Invalid(string rule) => Read(rule, "invalid");
-
-        /// <summary>A day/month/year group case for the dateParts rule.</summary>
-        /// <param name="Day">The day as typed.</param>
-        /// <param name="Month">The month as typed.</param>
-        /// <param name="Year">The year as typed.</param>
-        /// <param name="Keyword">The expected failure keyword, if any.</param>
-        public record DatePartsVector(string Day, string Month, string Year, string? Keyword);
 
         /// <summary>Gets the dateParts cases.</summary>
         /// <param name="section">"valid", "invalid" or "incomplete".</param>
@@ -136,4 +117,23 @@ namespace Myss.FormSpec.Tests.TestSupport
             return JsonDocument.Parse(File.ReadAllText(path));
         }
     }
+
+    /// <summary>A case: the input, and the keyword expected when it fails.</summary>
+    /// <param name="Value">The input value.</param>
+    /// <param name="Keyword">The expected failure keyword, if any.</param>
+    /// <param name="Note">The note recorded in the fixture, for test output.</param>
+    public record Vector(string Value, string? Keyword, string? Note);
+
+    /// <summary>A confirmation-match case.</summary>
+    /// <param name="Value">The address.</param>
+    /// <param name="Confirmation">The confirmation field's value.</param>
+    /// <param name="Keyword">The expected failure keyword, if any.</param>
+    public record ConfirmationVector(string Value, string Confirmation, string? Keyword);
+
+    /// <summary>A day/month/year group case for the dateParts rule.</summary>
+    /// <param name="Day">The day as typed.</param>
+    /// <param name="Month">The month as typed.</param>
+    /// <param name="Year">The year as typed.</param>
+    /// <param name="Keyword">The expected failure keyword, if any.</param>
+    public record DatePartsVector(string Day, string Month, string Year, string? Keyword);
 }

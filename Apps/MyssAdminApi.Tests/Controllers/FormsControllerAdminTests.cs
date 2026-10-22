@@ -72,7 +72,7 @@ namespace Myss.AdminApi.Tests.Controllers
         [Fact]
         public async Task SaveDraft_Accepted_WrapsTheSavedSpec()
         {
-            _service.SaveResult = FormSpecWriteResultModel<FormSpecModel>.Accepted(
+            _service.SaveResult = FormSpecWriteResultModel.Accepted<FormSpecModel>(
                 new FormSpecModel { FormSpecId = "estimator", Version = 4, Spec = Spec("{}") });
 
             ActionResult<BaseResponseModel<FormSpecModel>> result = await NewController().SaveDraft(
@@ -87,7 +87,7 @@ namespace Myss.AdminApi.Tests.Controllers
         [Fact]
         public async Task SaveDraft_Refused_Returns422WithTheErrorCollection()
         {
-            _service.SaveResult = FormSpecWriteResultModel<FormSpecModel>.Refused(
+            _service.SaveResult = FormSpecWriteResultModel.Refused<FormSpecModel>(
             [
                 new ValidationErrorModel { Field = "dupe", Keyword = "FORMSPEC.COMPONENT_KEY.DUPLICATE", Message = "Duplicate." },
             ]);
@@ -106,7 +106,7 @@ namespace Myss.AdminApi.Tests.Controllers
         [Fact]
         public async Task Publish_Accepted_WrapsTheNewVersion()
         {
-            _service.PublishResult = FormSpecWriteResultModel<PublishResultModel>.Accepted(
+            _service.PublishResult = FormSpecWriteResultModel.Accepted<PublishResultModel>(
                 new PublishResultModel { Version = 5 });
 
             ActionResult<BaseResponseModel<PublishResultModel>> result =
@@ -119,7 +119,7 @@ namespace Myss.AdminApi.Tests.Controllers
         [Fact]
         public async Task Publish_Refused_Returns422()
         {
-            _service.PublishResult = FormSpecWriteResultModel<PublishResultModel>.Refused(
+            _service.PublishResult = FormSpecWriteResultModel.Refused<PublishResultModel>(
             [
                 new ValidationErrorModel { Field = "formSpecId", Keyword = "FORMSPEC.PUBLISH.NO_DRAFT", Message = "Nothing to publish." },
             ]);
@@ -248,10 +248,10 @@ namespace Myss.AdminApi.Tests.Controllers
             public FormSpecModel? Draft { get; set; }
 
             public FormSpecWriteResultModel<FormSpecModel> SaveResult { get; set; } =
-                FormSpecWriteResultModel<FormSpecModel>.Refused([]);
+                FormSpecWriteResultModel.Refused<FormSpecModel>([]);
 
             public FormSpecWriteResultModel<PublishResultModel> PublishResult { get; set; } =
-                FormSpecWriteResultModel<PublishResultModel>.Refused([]);
+                FormSpecWriteResultModel.Refused<PublishResultModel>([]);
 
             public Exception? SaveException { get; set; }
 

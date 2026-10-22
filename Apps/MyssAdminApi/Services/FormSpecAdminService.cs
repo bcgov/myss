@@ -61,13 +61,13 @@ namespace Myss.AdminApi.Services
                     "Rejected draft save for {FormSpecId}: {ErrorCount} structural error(s)",
                     ForLog(formSpecId),
                     errors.Count);
-                return FormSpecWriteResultModel<FormSpecModel>.Refused(errors);
+                return FormSpecWriteResultModel.Refused<FormSpecModel>(errors);
             }
 
             try
             {
                 FormSpecModel saved = await _formSpecAdminProvider.SaveDraftAsync(formSpecId, spec, title, cancellationToken);
-                return FormSpecWriteResultModel<FormSpecModel>.Accepted(saved);
+                return FormSpecWriteResultModel.Accepted<FormSpecModel>(saved);
             }
             catch (StrapiWriteException ex) when (IsLifecycleRefusal(ex))
             {
@@ -75,7 +75,7 @@ namespace Myss.AdminApi.Services
                 // (duplicate key, version sequence, immutability) - a validation outcome.
                 // Any other status (401/403/5xx) is an infrastructure fault and is left to
                 // propagate; the controller maps it to 502, not a 422 "invalid form".
-                return FormSpecWriteResultModel<FormSpecModel>.Refused(TranslateStrapiRefusal(ex));
+                return FormSpecWriteResultModel.Refused<FormSpecModel>(TranslateStrapiRefusal(ex));
             }
         }
 
@@ -91,19 +91,19 @@ namespace Myss.AdminApi.Services
                 IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.ValidateSpecStructure(draft.Spec);
                 if (errors.Count > 0)
                 {
-                    return FormSpecWriteResultModel<PublishResultModel>.Refused(errors);
+                    return FormSpecWriteResultModel.Refused<PublishResultModel>(errors);
                 }
             }
 
             try
             {
                 int version = await _formSpecAdminProvider.PublishAsync(formSpecId, cancellationToken);
-                return FormSpecWriteResultModel<PublishResultModel>.Accepted(new PublishResultModel { Version = version });
+                return FormSpecWriteResultModel.Accepted<PublishResultModel>(new PublishResultModel { Version = version });
             }
             catch (NoDraftToPublishException ex)
             {
                 // No in-progress draft to publish - an expected outcome, not a fault.
-                return FormSpecWriteResultModel<PublishResultModel>.Refused(
+                return FormSpecWriteResultModel.Refused<PublishResultModel>(
                 [
                     new ValidationErrorModel
                     {
@@ -115,7 +115,7 @@ namespace Myss.AdminApi.Services
             }
             catch (StrapiWriteException ex) when (IsLifecycleRefusal(ex))
             {
-                return FormSpecWriteResultModel<PublishResultModel>.Refused(TranslateStrapiRefusal(ex));
+                return FormSpecWriteResultModel.Refused<PublishResultModel>(TranslateStrapiRefusal(ex));
             }
         }
 
@@ -201,7 +201,7 @@ namespace Myss.AdminApi.Services
         /// </summary>
         /// <param name="ex">The refusal from the admin provider (already logged by it).</param>
         /// <returns>One validation error per recognized keyword.</returns>
-        private static IReadOnlyList<ValidationErrorModel> TranslateStrapiRefusal(StrapiWriteException ex)
+        private static List<ValidationErrorModel> TranslateStrapiRefusal(StrapiWriteException ex)
         {
             string? message = null;
             List<string> keywords = [];

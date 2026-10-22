@@ -18,6 +18,10 @@ namespace Myss.AdminApi.Tests.Services
     /// </summary>
     public class FormSpecAdminServiceTests
     {
+        private static readonly string[] DuplicateAndUnknownField = ["FORMSPEC.COMPONENT_KEY.DUPLICATE", "FORMSPEC.CONDITIONAL.UNKNOWN_FIELD"];
+
+        private static readonly string[] MissingAndDuplicate = ["FORMSPEC.COMPONENT_KEY.MISSING", "FORMSPEC.COMPONENT_KEY.DUPLICATE"];
+
         private readonly FakeFormSpecAdminProvider _admin = new();
 
         [Fact]
@@ -210,7 +214,7 @@ namespace Myss.AdminApi.Tests.Services
                 "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None);
 
             Assert.Equal(
-                new[] { "FORMSPEC.COMPONENT_KEY.DUPLICATE", "FORMSPEC.CONDITIONAL.UNKNOWN_FIELD" },
+                DuplicateAndUnknownField,
                 result.Errors.Select(e => e.Keyword));
         }
 
@@ -259,7 +263,7 @@ namespace Myss.AdminApi.Tests.Services
                 "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None);
 
             Assert.Equal(
-                new[] { "FORMSPEC.COMPONENT_KEY.MISSING", "FORMSPEC.COMPONENT_KEY.DUPLICATE" },
+                MissingAndDuplicate,
                 result.Errors.Select(e => e.Keyword));
         }
 

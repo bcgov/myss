@@ -16,7 +16,7 @@ namespace Myss.AdminApi.Controllers
     /// IDIR user and the review screens to WORKER or ADMIN. Same route and envelope
     /// as MyssApi's <c>GET v1/auth/me</c>, without its MySS profile fields: staff
     /// have no citizen profile. The roles are the effective ones (after
-    /// <see cref="Configuration.RoleCalculator"/>), the same set the policies test,
+    /// <see cref="RoleCalculator"/>), the same set the policies test,
     /// so the screens shown match what the API will allow. The API still enforces
     /// every rule itself.
     /// </summary>

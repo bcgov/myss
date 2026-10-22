@@ -13,7 +13,7 @@ namespace Myss.Common.Tests.Content
     /// and refusing one that is not in the nine-column shape or is incomplete. What each
     /// API does when there is no usable table is tested with its own provider.
     /// </summary>
-    public class EligibilityRateTableReaderTests
+    public sealed class EligibilityRateTableReaderTests : IDisposable
     {
         // The effective date of the compiled table, which matches the seeded table.
         private const string FallbackDate = "2026-10-02";
@@ -47,6 +47,9 @@ namespace Myss.Common.Tests.Content
         private readonly StubHttpHandler _http = new();
 
         private readonly CapturingLogger _logger = new();
+
+        /// <inheritdoc/>
+        public void Dispose() => _http.Dispose();
 
         [Fact]
         public async Task ReadPublished_MapsThePublishedTable()

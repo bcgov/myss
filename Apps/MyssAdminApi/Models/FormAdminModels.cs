@@ -88,15 +88,23 @@ namespace Myss.AdminApi.Models
 
         /// <summary>Gets a value indicating whether the write was accepted.</summary>
         public bool IsValid => Errors.Count == 0;
+    }
 
+    /// <summary>Creates <see cref="FormSpecWriteResultModel{T}"/> values.</summary>
+    public static class FormSpecWriteResultModel
+    {
         /// <summary>Creates an accepted result.</summary>
+        /// <typeparam name="T">The success payload type.</typeparam>
         /// <param name="value">The produced value.</param>
         /// <returns>An accepted result.</returns>
-        public static FormSpecWriteResultModel<T> Accepted(T value) => new() { Value = value };
+        public static FormSpecWriteResultModel<T> Accepted<T>(T value)
+            where T : class => new() { Value = value };
 
         /// <summary>Creates a refused result.</summary>
+        /// <typeparam name="T">The success payload type.</typeparam>
         /// <param name="errors">Every reason for refusal.</param>
         /// <returns>A refused result.</returns>
-        public static FormSpecWriteResultModel<T> Refused(IReadOnlyList<ValidationErrorModel> errors) => new() { Errors = errors };
+        public static FormSpecWriteResultModel<T> Refused<T>(IReadOnlyList<ValidationErrorModel> errors)
+            where T : class => new() { Errors = errors };
     }
 }

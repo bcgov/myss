@@ -18,6 +18,9 @@ namespace Myss.Common.Content
     /// </summary>
     public sealed class StrapiReadOptions
     {
+        // The local compose stack's content engine, used when Strapi:BaseUrl is unset.
+        private static readonly Uri LocalStrapi = new UriBuilder(Uri.UriSchemeHttp, "localhost", 1337).Uri;
+
         /// <summary>Gets the content engine's base address.</summary>
         public required Uri BaseAddress { get; init; }
 
@@ -41,7 +44,9 @@ namespace Myss.Common.Content
             string? token = configuration.GetValue<string>(tokenSettingName);
             return new StrapiReadOptions
             {
-                BaseAddress = new Uri(configuration.GetValue<string>("Strapi:BaseUrl") ?? "http://localhost:1337"),
+                BaseAddress = configuration.GetValue<string>("Strapi:BaseUrl") is { } baseUrl
+                    ? new Uri(baseUrl)
+                    : LocalStrapi,
                 ApiToken = string.IsNullOrWhiteSpace(token) ? null : token.Trim(),
                 TokenSettingName = tokenSettingName,
             };

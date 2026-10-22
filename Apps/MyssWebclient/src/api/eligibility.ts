@@ -1,12 +1,6 @@
 import type { FormType } from "@formio/react/lib/components/Form";
 
-import type {
-  AssetColumn,
-  EligibilityAssetLimits,
-  EligibilityRateRow,
-  EligibilityRates,
-  IncomeColumn,
-} from "@myss/web-common/api";
+import type { EligibilityRates } from "@myss/web-common/api";
 
 import { API_URL } from "@/constants";
 
@@ -59,7 +53,7 @@ export type {
   EligibilityRateRow,
   EligibilityRates,
   IncomeColumn,
-};
+} from "@myss/web-common/api";
 
 /**
  * The estimate. Mirrors the old server response without the Support/Shelter

@@ -27,6 +27,8 @@ namespace Myss.Api
     /// </summary>
     public class Startup
     {
+        private const string FormsDbConnection = "FormsDb";
+
         private readonly StartupConfiguration startupConfig;
 
         /// <summary>
@@ -72,7 +74,7 @@ namespace Myss.Api
             // MyssData; their migrations live here (see MyssMigrations).
             services.AddDbContext<FormsDbContext>(options =>
                 options.UseNpgsql(
-                    this.startupConfig.Configuration.GetConnectionString("FormsDb"),
+                    this.startupConfig.Configuration.GetConnectionString(FormsDbConnection),
                     npgsql => MyssMigrations.Configure(npgsql, historySchema: null)));
             // The shared Strapi readers (MyssCommon) read with this API's
             // read-only token.
@@ -121,7 +123,7 @@ namespace Myss.Api
             services.AddDbContext<AttachmentsDbContext>(options =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("AttachmentsDb")
-                        ?? configuration.GetConnectionString("FormsDb"),
+                        ?? configuration.GetConnectionString(FormsDbConnection),
                     npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "attachments")));
             services.AddSingleton<IVirusScanProvider, ClamAvScanProvider>();
 
@@ -147,7 +149,7 @@ namespace Myss.Api
             services.AddDbContext<PlatformDbContext>(options =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("PlatformDb")
-                        ?? configuration.GetConnectionString("FormsDb"),
+                        ?? configuration.GetConnectionString(FormsDbConnection),
                     npgsql => MyssMigrations.Configure(npgsql, "platform")));
             services.AddScoped<IEventStore, EventStore>();
 
@@ -158,7 +160,7 @@ namespace Myss.Api
             services.AddDbContext<IntakeDbContext>(options =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("IntakeDb")
-                        ?? configuration.GetConnectionString("FormsDb"),
+                        ?? configuration.GetConnectionString(FormsDbConnection),
                     npgsql => MyssMigrations.Configure(npgsql, "intake")));
             services.AddScoped<IIntakeService, IntakeService>();
 

@@ -191,24 +191,24 @@ namespace Myss.Common.Content
             foreach (JsonElement row in entry.GetProperty("incomeRows").EnumerateArray())
             {
                 position++;
-                foreach (EligibilityRateColumn<EligibilityRateRowModel> column in EligibilityRateColumns.Income)
+                foreach (string letter in EligibilityRateColumns.Income.Select(column => column.Letter))
                 {
-                    if (!row.TryGetProperty(column.Letter, out _))
+                    if (!row.TryGetProperty(letter, out _))
                     {
                         string label = row.TryGetProperty("familySize", out JsonElement size)
                             ? $"family size {size.GetRawText()}"
                             : $"income row {position}";
-                        return $"{label} has no column {column.Letter}";
+                        return $"{label} has no column {letter}";
                     }
                 }
             }
 
             JsonElement limits = entry.GetProperty("assetLimits");
-            foreach (EligibilityRateColumn<EligibilityAssetLimitsModel> column in EligibilityRateColumns.Asset)
+            foreach (string letter in EligibilityRateColumns.Asset.Select(column => column.Letter))
             {
-                if (!limits.TryGetProperty(column.Letter, out _))
+                if (!limits.TryGetProperty(letter, out _))
                 {
-                    return $"asset limits have no column {column.Letter}";
+                    return $"asset limits have no column {letter}";
                 }
             }
 
