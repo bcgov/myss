@@ -68,9 +68,7 @@ export default function RegistrationPage() {
 
     if (registered) return <RegistrationComplete pinCreated={requirePin} />;
 
-    // A BCeID token carries a BCeID GUID; a citizen registering without one
-    // signed in with BC Services Card (IDIR users do not register).
-    const signedInWith = user?.bceidGuid ? "BCeID" : "BC Services Card";
+    const signedInWith = user?.idirUsername ? "IDIR" : user?.bceidGuid ? "BCeID" : "BC Services Card";
 
     let body: ReactNode;
     if (isLoading) {
