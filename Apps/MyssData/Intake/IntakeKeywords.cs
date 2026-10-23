@@ -9,6 +9,9 @@ namespace Myss.Data.Intake
         /// <summary>The caller has no registered profile, so cannot start an application.</summary>
         public const string ProfileRequired = "INTAKE.APPLICATION.PROFILE_REQUIRED";
 
+        /// <summary>No published AFA spec exists yet.</summary>
+        public const string SpecNotPublished = "INTAKE.APPLICATION.SPEC_NOT_PUBLISHED";
+
         /// <summary>The caller's row version is behind the stored one: another tab saved first.</summary>
         public const string Conflict = "INTAKE.APPLICATION.CONFLICT";
 

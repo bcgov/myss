@@ -66,6 +66,20 @@ namespace Myss.Data
         /// </summary>
         public DateTimeOffset? PinLockedUntil { get; set; }
 
+        /// <summary>
+        /// Gets or sets the SHA-256 hash (lower-case hex) of the single-use PIN
+        /// reset token emailed to the citizen (MYSS-36, RULE-IDA-02). Null when no
+        /// reset is outstanding, and nulled when the token is used. The token
+        /// itself is a random GUID that exists only in the email.
+        /// </summary>
+        public string? PinResetTokenHash { get; set; }
+
+        /// <summary>
+        /// Gets or sets when the outstanding PIN reset token was issued; the link
+        /// expires a configured time after it. Null with no reset outstanding.
+        /// </summary>
+        public DateTimeOffset? PinResetRequestedAt { get; set; }
+
         /// <summary>Gets or sets the citizen's phone numbers, in their chosen order.</summary>
         public List<MyssUserPhone> Phones { get; set; } = [];
 

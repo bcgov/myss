@@ -2,6 +2,7 @@ namespace Myss.AdminApi.Models
 {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel.DataAnnotations;
     using System.Text.Json;
     using Myss.FormSpec;
 
@@ -44,7 +45,8 @@ namespace Myss.AdminApi.Models
     }
 
     /// <summary>
-    /// The body of a save-draft request: the edited spec and its title.
+    /// The body of a save-draft request: the edited spec, its title and, optionally,
+    /// the version the save must create.
     /// </summary>
     public class SaveDraftRequestModel
     {
@@ -57,6 +59,14 @@ namespace Myss.AdminApi.Models
         /// Gets or sets the human-readable title, or null to leave it unset.
         /// </summary>
         public string? Title { get; set; }
+
+        /// <summary>
+        /// Gets or sets the version this save must create as a new draft, or null for
+        /// an ordinary save. With a value, the save never updates an existing draft and
+        /// is refused when that version is taken.
+        /// </summary>
+        [Range(1, int.MaxValue)]
+        public int? NewVersion { get; set; }
     }
 
     /// <summary>
@@ -74,7 +84,7 @@ namespace Myss.AdminApi.Models
     /// The outcome of an admin form-spec write (save draft or publish): the
     /// value produced, or the reasons it was refused. Mirrors
     /// MyssApi's <c>FormSubmissionResultModel</c> so the controller can shape a
-    /// 422-with-errors the same way for both.
+    /// 422-with-errors the same way for both; a conflict becomes a 409 with the same body.
     /// </summary>
     /// <typeparam name="T">The success payload type.</typeparam>
     public class FormSpecWriteResultModel<T>
@@ -88,6 +98,12 @@ namespace Myss.AdminApi.Models
 
         /// <summary>Gets a value indicating whether the write was accepted.</summary>
         public bool IsValid => Errors.Count == 0;
+
+        /// <summary>
+        /// Gets a value indicating whether the write was refused because the version it
+        /// would create is taken, rather than because the spec is invalid.
+        /// </summary>
+        public bool IsConflict { get; init; }
     }
 
     /// <summary>Creates <see cref="FormSpecWriteResultModel{T}"/> values.</summary>
@@ -106,5 +122,12 @@ namespace Myss.AdminApi.Models
         /// <returns>A refused result.</returns>
         public static FormSpecWriteResultModel<T> Refused<T>(IReadOnlyList<ValidationErrorModel> errors)
             where T : class => new() { Errors = errors };
+
+        /// <summary>Creates a result refused because the version it would create is taken.</summary>
+        /// <typeparam name="T">The success payload type.</typeparam>
+        /// <param name="errors">Every reason for refusal.</param>
+        /// <returns>A refused result marked as a conflict.</returns>
+        public static FormSpecWriteResultModel<T> Conflict<T>(IReadOnlyList<ValidationErrorModel> errors)
+            where T : class => new() { Errors = errors, IsConflict = true };
     }
 }

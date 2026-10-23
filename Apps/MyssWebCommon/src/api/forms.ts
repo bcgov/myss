@@ -59,3 +59,36 @@ export async function readValidationErrors(
 
   return payload.filter(isValidationError);
 }
+
+/**
+ * A submission the API refused, carrying every reason it gave.
+ *
+ * The endpoint answers 422 with the FULL error collection precisely so the
+ * client can build a WCAG error summary in one pass rather than surfacing
+ * faults one at a time. Collapsing that body into a bare status string throws
+ * away the whole point, so it is preserved here.
+ *
+ * `errors` is empty for non-422 failures (401, 500, a proxy error page), where
+ * there is no collection to parse — callers should handle that case rather
+ * than assuming a non-empty list.
+ */
+export class SubmissionRejectedError extends Error {
+  readonly status: number;
+  readonly errors: readonly FormValidationError[];
+
+  constructor(status: number, errors: readonly FormValidationError[]) {
+    super(
+      errors.length > 0
+        ? errors.map((error) => error.message).join(" ")
+        : `Submission failed (${status})`,
+    );
+    this.name = "SubmissionRejectedError";
+    this.status = status;
+    this.errors = errors;
+
+    // Subclassing a built-in loses the prototype link when TypeScript downlevels
+    // the class, which silently breaks `instanceof`. Restoring it explicitly
+    // keeps the check in PocForm correct regardless of compile target.
+    Object.setPrototypeOf(this, SubmissionRejectedError.prototype);
+  }
+}

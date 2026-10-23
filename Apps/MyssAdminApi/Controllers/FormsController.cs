@@ -112,15 +112,60 @@ namespace Myss.AdminApi.Controllers
         }
 
         /// <summary>
-        /// Validates and saves an edited spec as a draft (not published).
+        /// Returns one version of a form, published or draft.
         /// </summary>
         /// <param name="formSpecId">The logical form identifier.</param>
-        /// <param name="request">The edited spec and title.</param>
+        /// <param name="versionNumber">The version number.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        // Not "{version}": the controller route already binds that name to the API version.
+        [HttpGet("{formSpecId}/versions/{versionNumber:int:min(1)}")]
+        [Produces("application/json")]
+        [EndpointName("GetFormVersion")]
+        [ProducesResponseType(typeof(BaseResponseModel<FormSpecModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status502BadGateway)]
+        public async Task<ActionResult<BaseResponseModel<FormSpecModel>>> GetVersion(
+            string formSpecId,
+            int versionNumber,
+            CancellationToken cancellationToken
+        )
+        {
+            FormSpecModel? spec;
+            try
+            {
+                spec = await _formsService.GetFormVersionAsync(formSpecId, versionNumber, cancellationToken);
+            }
+            catch (ContentEngineUnavailableException ex)
+            {
+                return ContentEngineUnavailable(ex);
+            }
+
+            if (spec is null)
+            {
+                return NotFound();
+            }
+
+            return new BaseResponseModel<FormSpecModel>
+            {
+                Payload = spec,
+                DatetimeRequested = DateTime.Now,
+            };
+        }
+
+        /// <summary>
+        /// Validates and saves an edited spec as a draft (not published). With
+        /// <c>newVersion</c>, it creates exactly that version and answers 409 when the
+        /// version is taken.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="request">The edited spec, its title and, optionally, the version to create.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPut("{formSpecId}/draft")]
         [Produces("application/json")]
         [EndpointName("SaveFormDraft")]
         [ProducesResponseType(typeof(BaseResponseModel<FormSpecModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ValidationErrorModel>>), StatusCodes.Status409Conflict)]
         [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ValidationErrorModel>>), StatusCodes.Status422UnprocessableEntity)]
         [ProducesResponseType(StatusCodes.Status502BadGateway)]
         public async Task<ActionResult<BaseResponseModel<FormSpecModel>>> SaveDraft(
@@ -132,12 +177,20 @@ namespace Myss.AdminApi.Controllers
             FormSpecWriteResultModel<FormSpecModel> result;
             try
             {
-                result = await _formsService.SaveDraftAsync(
-                    formSpecId,
-                    request.Spec,
-                    request.Title,
-                    cancellationToken
-                );
+                result = request.NewVersion is int newVersion
+                    ? await _formsService.CreateDraftVersionAsync(
+                        formSpecId,
+                        newVersion,
+                        request.Spec,
+                        request.Title,
+                        cancellationToken
+                    )
+                    : await _formsService.SaveDraftAsync(
+                        formSpecId,
+                        request.Spec,
+                        request.Title,
+                        cancellationToken
+                    );
             }
             catch (StrapiWriteException ex)
             {
@@ -146,6 +199,17 @@ namespace Myss.AdminApi.Controllers
             catch (ContentEngineUnavailableException ex)
             {
                 return ContentEngineUnavailable(ex);
+            }
+
+            if (result.IsConflict)
+            {
+                return Conflict(
+                    new BaseResponseModel<IReadOnlyList<ValidationErrorModel>>
+                    {
+                        Payload = result.Errors,
+                        DatetimeRequested = DateTime.Now,
+                    }
+                );
             }
 
             // 422 with the full error collection

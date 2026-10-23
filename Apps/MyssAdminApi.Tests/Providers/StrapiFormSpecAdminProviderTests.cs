@@ -74,6 +74,81 @@ namespace Myss.AdminApi.Tests.Providers
         }
 
         [Fact]
+        public async Task GetVersion_PublishedVersion_ReadsOnlyThePublishedEntry()
+        {
+            _http.Enqueue(Ok(Data(RowWithSpec("form-x", 12, "F", """{ "display": "form" }"""))));
+
+            FormSpecModel? spec = await NewProvider().GetVersionAsync("form-x", 12, CancellationToken.None);
+
+            Assert.NotNull(spec);
+            Assert.Equal(12, spec.Version);
+            Assert.Equal("form", spec.Spec.GetProperty("display").GetString());
+            HttpRequestMessage get = Assert.Single(_http.Requests);
+            Assert.Contains("filters[formSpecId][$eq]=form-x&", get.RequestUri!.Query);
+            Assert.Contains("filters[version][$eq]=12&", get.RequestUri!.Query);
+            Assert.Contains("status=published", get.RequestUri!.Query);
+        }
+
+        [Fact]
+        public async Task GetVersion_UnpublishedVersion_FallsBackToTheDraftEntry()
+        {
+            _http.Enqueue(Ok("""{ "data": [] }"""));                                                 // published -> none
+            _http.Enqueue(Ok(Data(RowWithSpec("form-x", 14, "F", """{ "display": "form" }"""))));   // draft -> v14
+
+            FormSpecModel? spec = await NewProvider().GetVersionAsync("form-x", 14, CancellationToken.None);
+
+            Assert.NotNull(spec);
+            Assert.Equal(14, spec.Version);
+            Assert.Equal(2, _http.Requests.Count);
+            Assert.Contains("status=published", _http.Requests[0].RequestUri!.Query);
+            Assert.Contains("filters[version][$eq]=14&", _http.Requests[0].RequestUri!.Query);
+            Assert.Contains("status=draft", _http.Requests[1].RequestUri!.Query);
+            Assert.Contains("filters[version][$eq]=14&", _http.Requests[1].RequestUri!.Query);
+        }
+
+        [Fact]
+        public async Task GetVersion_UnknownVersion_ReturnsNull()
+        {
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+
+            FormSpecModel? spec = await NewProvider().GetVersionAsync("form-x", 99, CancellationToken.None);
+
+            Assert.Null(spec);
+            Assert.Equal(2, _http.Requests.Count);
+        }
+
+        [Fact]
+        public async Task GetVersion_RowForAnotherVersion_ThrowsContentEngineUnavailable()
+        {
+            // An ignored filter must not hand back, for copying, a version nobody asked for.
+            _http.Enqueue(Ok(Data(RowWithSpec("form-x", 7, "F", "{}"))));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetVersionAsync("form-x", 12, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetVersion_EscapesTheFormSpecId()
+        {
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+
+            await NewProvider().GetVersionAsync("a&b", 1, CancellationToken.None);
+
+            Assert.Contains("filters[formSpecId][$eq]=a%26b", _http.Requests[0].RequestUri!.Query);
+        }
+
+        [Fact]
+        public async Task GetVersion_ScalarSpec_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("""{ "data": [ { "documentId": "d", "formSpecId": "f", "version": 2, "spec": "scalar" } ] }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().GetVersionAsync("f", 2, CancellationToken.None));
+        }
+
+        [Fact]
         public async Task SaveDraft_NewForm_CreatesDraftAtVersionOne()
         {
             _http.Enqueue(Ok("""{ "data": [] }"""));                 // draft latest -> none
@@ -125,6 +200,141 @@ namespace Myss.AdminApi.Tests.Providers
             Assert.Equal(HttpMethod.Put, put.Method);
             Assert.Contains("/api/form-specs/d4", put.RequestUri!.AbsolutePath);
             Assert.Contains("status=draft", put.RequestUri!.Query);
+        }
+
+        [Fact]
+        public async Task GetVersionState_DraftAboveThePublishedVersion_IsTheInProgressDraft()
+        {
+            _http.Enqueue(Ok(Data(Row("f", 4, "F"))));   // draft latest -> v4
+            _http.Enqueue(Ok(Data(Row("f", 3, "F"))));   // published latest -> v3
+
+            FormSpecVersionState state = await NewProvider().GetVersionStateAsync("f", CancellationToken.None);
+
+            Assert.Equal(new FormSpecVersionState(LatestVersion: 4, InProgressDraftVersion: 4), state);
+            Assert.Contains("status=draft", _http.Requests[0].RequestUri!.Query);
+            Assert.Contains("status=published", _http.Requests[1].RequestUri!.Query);
+        }
+
+        [Fact]
+        public async Task GetVersionState_OnlyThePublishedVersionsDraftCopy_HasNoInProgressDraft()
+        {
+            _http.Enqueue(Ok(Data(Row("f", 3, "F"))));   // draft latest -> v3, the published copy's draft
+            _http.Enqueue(Ok(Data(Row("f", 3, "F"))));   // published latest -> v3
+
+            FormSpecVersionState state = await NewProvider().GetVersionStateAsync("f", CancellationToken.None);
+
+            Assert.Equal(new FormSpecVersionState(LatestVersion: 3, InProgressDraftVersion: null), state);
+        }
+
+        [Fact]
+        public async Task GetVersionState_NeverPublishedDraft_IsTheInProgressDraft()
+        {
+            _http.Enqueue(Ok(Data(Row("f", 1, "F"))));   // draft latest -> v1
+            _http.Enqueue(Ok("""{ "data": [] }"""));     // published latest -> none
+
+            FormSpecVersionState state = await NewProvider().GetVersionStateAsync("f", CancellationToken.None);
+
+            Assert.Equal(new FormSpecVersionState(LatestVersion: 1, InProgressDraftVersion: 1), state);
+        }
+
+        [Fact]
+        public async Task GetVersionState_UnknownForm_IsVersionZeroWithNoDraft()
+        {
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+            _http.Enqueue(Ok("""{ "data": [] }"""));
+
+            FormSpecVersionState state = await NewProvider().GetVersionStateAsync("nope", CancellationToken.None);
+
+            Assert.Equal(new FormSpecVersionState(LatestVersion: 0, InProgressDraftVersion: null), state);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_SendsOnePostWithTheGivenVersion()
+        {
+            _http.Enqueue(Ok(SingleData(RowWithSpec("f", 9, "F", "{}"))));
+
+            JsonElement spec = Spec("""{ "display": "form", "components": [] }""");
+            FormSpecModel created = await NewProvider().CreateDraftVersionAsync("f", 9, spec, "F", CancellationToken.None);
+
+            Assert.Equal(9, created.Version);
+
+            // No read for an in-progress draft, so this write can never update one.
+            HttpRequestMessage post = Assert.Single(_http.Requests);
+            Assert.Equal(HttpMethod.Post, post.Method);
+            Assert.Equal("/api/form-specs", post.RequestUri!.AbsolutePath);
+            Assert.Contains("status=draft", post.RequestUri!.Query);
+            JsonElement data = JsonDocument.Parse(_http.Bodies[0]!).RootElement.GetProperty("data");
+            Assert.Equal("f", data.GetProperty("formSpecId").GetString());
+            Assert.Equal(9, data.GetProperty("version").GetInt32());
+            Assert.Equal("F", data.GetProperty("title").GetString());
+            Assert.Equal("form", data.GetProperty("spec").GetProperty("display").GetString());
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_VersionNotNext_SurfacesTheStrapiRefusal()
+        {
+            const string errorBody = """{ "error": { "name": "ApplicationError", "message": "Version must be 10 for \"f\".", "details": { "keywords": ["FORMSPEC.VERSION.NOT_NEXT"] } } }""";
+            _http.Enqueue(new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent(errorBody, Encoding.UTF8, "application/json"),
+            });
+
+            StrapiWriteException ex = await Assert.ThrowsAsync<StrapiWriteException>(() =>
+                NewProvider().CreateDraftVersionAsync("f", 9, Spec("{}"), "F", CancellationToken.None));
+
+            Assert.Equal(HttpStatusCode.BadRequest, ex.StatusCode);
+            Assert.Contains("FORMSPEC.VERSION.NOT_NEXT", ex.Body);
+            Assert.Single(_http.Requests);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_NullTitle_LeavesTitleOutOfTheBody()
+        {
+            _http.Enqueue(Ok(SingleData(RowWithSpec("f", 9, null, "{}"))));
+
+            await NewProvider().CreateDraftVersionAsync("f", 9, Spec("{}"), null, CancellationToken.None);
+
+            JsonElement data = JsonDocument.Parse(_http.Bodies[0]!).RootElement.GetProperty("data");
+            Assert.False(data.TryGetProperty("title", out _));
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_EchoesAnotherVersion_ThrowsContentEngineUnavailable()
+        {
+            // The caller is promised exactly the version it asked for.
+            _http.Enqueue(Ok(SingleData(RowWithSpec("f", 10, "F", "{}"))));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().CreateDraftVersionAsync("f", 9, Spec("{}"), "F", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_ResponseOmitsVersion_UsesTheRequestedVersion()
+        {
+            _http.Enqueue(Ok("""{ "data": { "formSpecId": "f", "spec": {} } }"""));
+
+            FormSpecModel created = await NewProvider().CreateDraftVersionAsync("f", 9, Spec("{}"), "F", CancellationToken.None);
+
+            Assert.Equal(9, created.Version);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_EmptyDataObject_ThrowsContentEngineUnavailable()
+        {
+            // A 200 whose entity is {} is not evidence Strapi created the draft.
+            _http.Enqueue(Ok("""{ "data": {} }"""));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().CreateDraftVersionAsync("f", 9, Spec("{}"), "F", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_MalformedBody_ThrowsContentEngineUnavailable()
+        {
+            _http.Enqueue(Ok("not json"));
+
+            await Assert.ThrowsAsync<ContentEngineUnavailableException>(() =>
+                NewProvider().CreateDraftVersionAsync("f", 9, Spec("{}"), "F", CancellationToken.None));
         }
 
         [Fact]

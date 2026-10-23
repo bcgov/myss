@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { toValidationErrors } from "@/lib/formioErrors";
+import { toValidationErrors } from "./formioErrors";
 
 describe("toValidationErrors", () => {
   it("maps Form.io's errors to the API's field, keyword and message shape", () => {

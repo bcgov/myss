@@ -215,6 +215,16 @@ namespace Myss.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("pin_locked_until");
 
+                    b.Property<DateTimeOffset?>("PinResetRequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pin_reset_requested_at");
+
+                    b.Property<string>("PinResetTokenHash")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("pin_reset_token_hash");
+
                     b.Property<string>("Sin")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -232,6 +242,9 @@ namespace Myss.Api.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PinResetTokenHash")
+                        .IsUnique();
 
                     b.HasIndex("Subject")
                         .IsUnique();

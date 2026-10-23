@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import styles from "./SubmissionErrors.module.css";
-import { SubmissionRejectedError } from "@/api/forms";
+import { SubmissionRejectedError } from "../api/forms";
 
 /** Whether an element can take focus the way a citizen would give it. */
 function isFocusable(element: HTMLElement): boolean {

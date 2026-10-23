@@ -13,8 +13,7 @@ import "@formio/js/dist/formio.form.min.css";
 import "./FormSpecWidget.css";
 
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
-import SubmissionErrors from "@/components/SubmissionErrors";
-import { useClientValidation } from "@/hooks/useClientValidation";
+import { SubmissionErrors, useClientValidation } from "@myss/web-common/components";
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
 
 interface FormSpecWidgetProps {

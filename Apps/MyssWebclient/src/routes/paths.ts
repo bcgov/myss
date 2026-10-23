@@ -8,12 +8,17 @@ export const paths = {
   notifications: "/notifications",
   messages: "/messages",
   serviceRequests: "/service-requests",
+  afaServiceRequest: "/service-requests/:id",
   accountInfo: "/account",
   eligibilityEstimator: "/eligibility-estimator",
   busPass: "/buspass",
   // In-app sign-in chooser (Option 1) and the OIDC redirect target.
   signIn: "/auth/login",
   authCallback: "/auth/callback",
+  // Where the emailed PIN reset link lands (MYSS-36). Public: the link's
+  // token is the credential. MyssApi builds the link from this path
+  // (PinResetConfig.LinkPath), so change both together.
+  pinReset: "/pin-reset",
   // Minimal standalone login harness. Deliberately independent of the home
   // page so home can keep changing without disturbing a known-good way to
   // exercise the auth flow end to end.
@@ -30,4 +35,9 @@ export type AppPath = (typeof paths)[keyof typeof paths];
 /** Concrete URL for one application, kept beside the `application` pattern. */
 export function applicationPath(id: string): string {
   return `/applications/${encodeURIComponent(id)}`;
+}
+
+/** Citizen URL for a saved AFA service request. */
+export function afaServiceRequestPath(id: string): string {
+  return `/service-requests/${encodeURIComponent(id)}`;
 }

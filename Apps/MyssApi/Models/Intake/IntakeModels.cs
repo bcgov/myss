@@ -124,6 +124,9 @@ namespace Myss.Api.Intake
 
         /// <summary>The content engine could not supply the spec.</summary>
         SpecUnavailable,
+
+        /// <summary>The product team has not published the AFA form yet.</summary>
+        SpecNotPublished,
     }
 
     /// <summary>
@@ -217,6 +220,13 @@ namespace Myss.Api.Intake
         public static IntakeResultModel SpecUnavailable()
         {
             return new(IntakeOutcome.SpecUnavailable);
+        }
+
+        /// <summary>Builds an unpublished-form result.</summary>
+        /// <returns>The result.</returns>
+        public static IntakeResultModel SpecNotPublished()
+        {
+            return new(IntakeOutcome.SpecNotPublished);
         }
     }
 }

@@ -240,6 +240,21 @@ namespace Myss.Api
             PinLockoutConfig.Validate(pinLockout);
             services.AddSingleton(pinLockout);
 
+            // Forgotten PIN (MYSS-36): a single-use link emailed through BC Gov
+            // Notify. The link lifetime is validated here; the Notify key and the
+            // link's base URL are checked at the first request, as the service
+            // account's credentials are, so a checkout without secrets still boots.
+            PinResetConfig pinReset = new();
+            configuration.GetSection("Account:PinReset").Bind(pinReset);
+            PinResetConfig.Validate(pinReset);
+            services.AddSingleton(pinReset);
+            services.Configure<NotifyConfig>(configuration.GetSection(NotifyConfig.SectionName));
+            NotifyConfig notify = new();
+            configuration.GetSection(NotifyConfig.SectionName).Bind(notify);
+            services.AddHttpClient<IEmailProvider, NotifyEmailProvider>(
+                client => client.Timeout = TimeSpan.FromSeconds(notify.TimeoutSeconds));
+            services.AddScoped<IPinResetService, PinResetService>();
+
             // CORS services are required by the inline UseCors policy in
             // StartupConfiguration.UseHttp, which is driven by the AllowOrigins config.
             services.AddCors();

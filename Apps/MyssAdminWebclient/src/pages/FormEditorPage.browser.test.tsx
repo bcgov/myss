@@ -7,6 +7,7 @@ import FormEditorPage from "./FormEditorPage";
 import {
   FormLoadError,
   SpecRejectedError,
+  VERSION_TAKEN,
   getDraft,
   publishForm,
   saveDraft,
@@ -48,6 +49,55 @@ const mockGetRates = vi.mocked(getEstimatorRates);
 // keeps the accordion from rendering as a blank slot in isolation.
 registerBcgovComponents();
 
+const notFound = () => new FormLoadError(404, "Draft fetch failed (404)");
+
+const idTaken = () =>
+  new SpecRejectedError(409, [
+    {
+      field: "newVersion",
+      keyword: VERSION_TAKEN,
+      message: 'A form with the ID "test-intake" already exists.',
+    },
+  ]);
+
+function specKeys(spec: object): unknown[] {
+  const { components } = spec as { components?: { key?: unknown }[] };
+  return (components ?? []).map((c) => c.key);
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
+async function waitForTemplateInBuilder() {
+  await vi.waitFor(() => {
+    expect(
+      document.querySelector('[class~="formio-component-submit"]'),
+    ).not.toBeNull();
+  });
+}
+
+// Deleting a component is a builder edit that opens no settings dialog.
+async function removeInBuilder(key: string) {
+  const selector = `[class~="formio-component-${key}"]`;
+  const remove = await vi.waitFor(() => {
+    const found = document
+      .querySelector(selector)
+      ?.closest(".builder-component")
+      ?.querySelector<HTMLElement>('[ref="removeComponent"]');
+    expect(found, "no remove control on the component").toBeTruthy();
+    return found!;
+  });
+  remove.click();
+  await vi.waitFor(() => {
+    expect(document.querySelector(selector)).toBeNull();
+  });
+}
+
 const draft: FormSpecPayload = {
   formSpecId: "test-form",
   version: 2,
@@ -88,12 +138,28 @@ const draft: FormSpecPayload = {
   } as FormSpecPayload["spec"],
 };
 
-function renderPage(formSpecId = "test-form", search = "") {
-  const queryClient = new QueryClient({
+function newQueryClient() {
+  return new QueryClient({
     // useDraft sets its own retry, which overrides `retry: false` here; zero
     // delay keeps its retries from adding seconds of backoff to the suite.
     defaultOptions: { queries: { retry: false, retryDelay: 0 } },
   });
+}
+
+// A re-read that changes nothing on screen can only be awaited in the cache.
+async function waitForDraftRead(queryClient: QueryClient, formSpecId: string) {
+  await vi.waitFor(() => {
+    expect(
+      queryClient.getQueryState(["admin-draft", formSpecId])?.status,
+    ).toBe("success");
+  });
+}
+
+function renderPage(
+  formSpecId = "test-form",
+  search = "",
+  queryClient = newQueryClient(),
+) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter
@@ -208,6 +274,8 @@ describe("FormEditorPage", () => {
     const [id, input] = mockSaveDraft.mock.calls[0];
     expect(id).toBe("test-intake");
     expect(input.title).toBe("Test Intake");
+    // Create-only: refused rather than written over a form with this ID.
+    expect(input.newVersion).toBe(1);
     const components = (input.spec.components ?? []) as Record<
       string,
       unknown
@@ -240,35 +308,175 @@ describe("FormEditorPage", () => {
 
     const [, input] = mockSaveDraft.mock.calls[0];
     expect(input.title).toBeNull();
+    expect(input.newVersion).toBeUndefined();
   });
 
-  it("warns when a new form's first save lands on an ID that already existed", async () => {
-    const saved: FormSpecPayload = {
-      formSpecId: "test-intake",
-      version: 4,
-      title: "Test Intake",
-      spec: { display: "form", components: [] } as FormSpecPayload["spec"],
-    };
-    mockGetDraft
-      .mockRejectedValueOnce(new FormLoadError(404, "Draft fetch failed (404)"))
-      .mockResolvedValue(saved);
-    mockSaveDraft.mockResolvedValue(saved);
+  it("shows a new form's refused first save as text and keeps the edits", async () => {
+    mockGetDraft.mockRejectedValue(notFound());
+    mockSaveDraft.mockRejectedValue(idTaken());
 
     const screen = await renderPage(
       "test-intake",
       "?new=1&title=Test+Intake",
     );
-
-    await vi.waitFor(() => {
-      expect(
-        document.querySelector('[class~="formio-component-submit"]'),
-      ).not.toBeNull();
-    });
+    await waitForTemplateInBuilder();
+    await removeInBuilder("submit");
     await screen.getByRole("button", { name: "Save draft" }).click();
 
     await expect
-      .element(screen.getByText(/already existed/))
+      .element(screen.getByRole("heading", { name: "There is a problem" }))
+      .toHaveFocus();
+    await expect
+      .element(
+        screen.getByText('A form with the ID "test-intake" already exists.'),
+      )
       .toBeVisible();
+    // Its field is the version number, not a component, so nothing to select.
+    await expect
+      .element(screen.getByRole("button", { name: /already exists/ }))
+      .not.toBeInTheDocument();
+    // The edits stay in the working copy: a second attempt sends them again.
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await vi.waitFor(() => expect(mockSaveDraft).toHaveBeenCalledTimes(2));
+    for (const [, input] of mockSaveDraft.mock.calls) {
+      expect(input.newVersion).toBe(1);
+      expect(specKeys(input.spec)).not.toContain("submit");
+    }
+  });
+
+  it("keeps a new form create-only when a re-read finds the ID taken", async () => {
+    // Returning to the tab re-reads the draft. Finding another admin's form
+    // must not switch the editor to it, or turn the save into an update of it.
+    mockGetDraft.mockRejectedValueOnce(notFound()).mockResolvedValue({
+      ...draft,
+      formSpecId: "test-intake",
+      version: 1,
+      title: "Their Form",
+    });
+    mockSaveDraft.mockRejectedValue(idTaken());
+    const queryClient = newQueryClient();
+
+    const screen = await renderPage(
+      "test-intake",
+      "?new=1&title=Test+Intake",
+      queryClient,
+    );
+    await waitForTemplateInBuilder();
+    window.dispatchEvent(new Event("visibilitychange"));
+    await waitForDraftRead(queryClient, "test-intake");
+
+    await expect
+      .element(screen.getByRole("heading", { name: "Test Intake", level: 1 }))
+      .toBeVisible();
+    expect(
+      document.querySelector('[class~="formio-component-fullName"]'),
+    ).toBeNull();
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await expect.element(screen.getByText(/already exists/)).toBeVisible();
+
+    const [, input] = mockSaveDraft.mock.calls[0];
+    expect(input.newVersion).toBe(1);
+    expect(input.title).toBe("Test Intake");
+    expect(specKeys(input.spec)).toEqual(["submit"]);
+  });
+
+  it("keeps the builder and its edits open while a save re-reads the draft", async () => {
+    const saved: FormSpecPayload = {
+      formSpecId: "test-intake",
+      version: 1,
+      title: "Test Intake",
+      spec: { display: "form", components: [] } as FormSpecPayload["spec"],
+    };
+    const reRead = deferred<FormSpecPayload>();
+    mockGetDraft
+      .mockRejectedValueOnce(notFound())
+      .mockReturnValueOnce(reRead.promise)
+      .mockResolvedValue(saved);
+    mockSaveDraft.mockResolvedValue(saved);
+    const queryClient = newQueryClient();
+
+    const screen = await renderPage(
+      "test-intake",
+      "?new=1&title=Test+Intake",
+      queryClient,
+    );
+    await waitForTemplateInBuilder();
+    await removeInBuilder("submit");
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await vi.waitFor(() => expect(mockGetDraft).toHaveBeenCalledTimes(2));
+
+    // The save's re-read is in flight; the editor must not close for it.
+    await expect
+      .element(screen.getByText("Loading form…"))
+      .not.toBeInTheDocument();
+    await expect
+      .element(screen.getByRole("button", { name: "Save draft" }))
+      .toBeVisible();
+
+    reRead.resolve(saved);
+    await waitForDraftRead(queryClient, "test-intake");
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await vi.waitFor(() => expect(mockSaveDraft).toHaveBeenCalledTimes(2));
+
+    const [, second] = mockSaveDraft.mock.calls[1];
+    expect(second.newVersion).toBeUndefined();
+    expect(specKeys(second.spec)).not.toContain("submit");
+    expect(
+      document.querySelector('[class~="formio-component-submit"]'),
+    ).toBeNull();
+  });
+
+  it("refuses a new form's publish without publishing when the ID is taken", async () => {
+    mockGetDraft.mockRejectedValue(notFound());
+    mockSaveDraft.mockRejectedValue(idTaken());
+
+    const screen = await renderPage(
+      "test-intake",
+      "?new=1&title=Test+Intake",
+    );
+    await waitForTemplateInBuilder();
+    await screen.getByRole("button", { name: "Publish" }).click();
+
+    await expect
+      .element(
+        screen.getByText('A form with the ID "test-intake" already exists.'),
+      )
+      .toBeVisible();
+    expect(mockSaveDraft.mock.calls[0][1].newVersion).toBe(1);
+    expect(mockPublishForm).not.toHaveBeenCalled();
+  });
+
+  it("publishes a new form as version 1 and retries a failed publish as an ordinary save", async () => {
+    const saved: FormSpecPayload = {
+      formSpecId: "test-intake",
+      version: 1,
+      title: "Test Intake",
+      spec: { display: "form", components: [] } as FormSpecPayload["spec"],
+    };
+    mockGetDraft.mockRejectedValueOnce(notFound()).mockResolvedValue(saved);
+    mockSaveDraft.mockResolvedValue(saved);
+    mockPublishForm
+      .mockRejectedValueOnce(new SpecRejectedError(502, []))
+      .mockResolvedValue({ version: 1 });
+
+    const screen = await renderPage(
+      "test-intake",
+      "?new=1&title=Test+Intake",
+    );
+    await waitForTemplateInBuilder();
+    await screen.getByRole("button", { name: "Publish" }).click();
+    await expect
+      .element(screen.getByText(/Could not publish this form \(error 502\)/))
+      .toBeVisible();
+
+    // Version 1 is stored now, so a second create-only save would be refused.
+    await screen.getByRole("button", { name: "Publish" }).click();
+    await expect
+      .element(screen.getByText("Published version 1."))
+      .toBeVisible();
+
+    expect(mockSaveDraft.mock.calls[0][1].newVersion).toBe(1);
+    expect(mockSaveDraft.mock.calls[1][1].newVersion).toBeUndefined();
   });
 
   it("shows a generic error for other load failures", async () => {
@@ -320,6 +528,7 @@ describe("FormEditorPage", () => {
     const [id, input] = mockSaveDraft.mock.calls[0];
     expect(id).toBe("test-form");
     expect(input.title).toBe("Test Form");
+    expect(input.newVersion).toBeUndefined();
     const saved = input.spec.components?.find(
       (c) => (c as { key?: string }).key === "fullName",
     ) as { label?: string } | undefined;
@@ -375,9 +584,11 @@ describe("FormEditorPage", () => {
       .fill("Edited label");
     await screen.getByRole("button", { name: "Publish" }).click();
 
-    // The summary lists the server's reason...
+    // The summary lists the server's reason, as a button to its field...
     await expect.element(screen.getByText("There is a problem")).toBeVisible();
-    await expect.element(screen.getByText("Label is required.")).toBeVisible();
+    await expect
+      .element(screen.getByRole("button", { name: "Label is required." }))
+      .toBeVisible();
     // ...and the edit is still on screen (working copy preserved).
     await expect.element(screen.getByText("Edited label")).toBeVisible();
     expect(mockPublishForm).not.toHaveBeenCalled();
@@ -397,6 +608,38 @@ describe("FormEditorPage", () => {
     await expect
       .element(screen.getByText(/Could not publish this form \(error 502\)/))
       .toBeVisible();
+  });
+
+  it("shows a save refused on a publish retry, not the earlier publish failure", async () => {
+    mockGetDraft.mockResolvedValue(draft);
+    mockSaveDraft
+      .mockResolvedValueOnce({ ...draft, version: 4 })
+      .mockRejectedValueOnce(
+        new SpecRejectedError(422, [
+          {
+            field: "fullName",
+            keyword: "required",
+            message: "Label is required.",
+          },
+        ]),
+      );
+    mockPublishForm.mockRejectedValue(new SpecRejectedError(502, []));
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Publish" }).click();
+    await expect
+      .element(screen.getByText(/Could not publish this form/))
+      .toBeVisible();
+
+    await screen.getByRole("button", { name: "Publish" }).click();
+
+    await expect
+      .element(screen.getByRole("button", { name: "Label is required." }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText(/Could not publish this form/))
+      .not.toBeInTheDocument();
+    expect(mockPublishForm).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -708,6 +951,43 @@ describe("FormEditorPage build mode", () => {
     await expect
       .element(screen.getByText("What does status mean?"))
       .toBeVisible();
+  });
+
+  it("keeps the settings dialog working in a builder opened a second time", async () => {
+    // Each builder needs its own options object: Form.io stores its event
+    // emitter on the one it is given, and the next builder would share it
+    // along with the first builder's listeners.
+    mockGetDraft.mockResolvedValue(draft);
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    await screen.getByRole("button", { name: "Edit labels" }).click();
+    await screen.getByRole("button", { name: "Build form" }).click();
+
+    const edit = await vi.waitFor(() => {
+      const found = document
+        .querySelector('.builder-component [class~="formio-component-fullName"]')
+        ?.closest(".builder-component")
+        ?.querySelector<HTMLElement>('[ref="editComponent"]');
+      expect(found, "no edit control on the component").toBeTruthy();
+      return found!;
+    });
+    edit.click();
+    // Save validates the dialog's own form, so wait until it holds the field.
+    await vi.waitFor(() => {
+      expect(
+        document.querySelector<HTMLInputElement>(
+          '.formio-dialog input[name="data[label]"]',
+        )?.value,
+        "the settings dialog did not open on the field",
+      ).toBe("Full name");
+    });
+    document.querySelector<HTMLElement>('[ref="saveButton"]')!.click();
+
+    await vi.waitFor(() => {
+      expect(document.querySelector('[ref="saveButton"]')).toBeNull();
+    });
+    expect(builderOptions).not.toHaveProperty("events");
   });
 
   it("opens the builder on the edits already made in labels mode", async () => {

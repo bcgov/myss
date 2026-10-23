@@ -188,6 +188,200 @@ namespace Myss.AdminApi.Tests.Services
         }
 
         [Fact]
+        public async Task GetFormVersion_DelegatesToTheAdminProvider()
+        {
+            var stored = new FormSpecModel { FormSpecId = "estimator", Version = 3, Title = "Estimator", Spec = Spec("{}") };
+            _admin.Versions[("estimator", 3)] = stored;
+
+            FormSpecModel? found = await NewService().GetFormVersionAsync("estimator", 3, CancellationToken.None);
+
+            Assert.Same(stored, found);
+            Assert.Equal([("estimator", 3)], _admin.GetVersionCalls);
+        }
+
+        [Fact]
+        public async Task GetFormVersion_MissingVersion_ReturnsNull()
+        {
+            FormSpecModel? found = await NewService().GetFormVersionAsync("estimator", 9, CancellationToken.None);
+
+            Assert.Null(found);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_FreeId_CreatesVersionOneWithoutAnOrdinarySave()
+        {
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "new-form", 1, ValidSpec(), "New form", CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(1, result.Value!.Version);
+            Assert.Equal([("new-form", 1, (string?)"New form")], _admin.CreateDraftVersionCalls);
+            Assert.Empty(_admin.SaveDraftCalls);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_NextAfterThePublishedVersion_IsAccepted()
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: 8, InProgressDraftVersion: null);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", 9, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(9, result.Value!.Version);
+        }
+
+        [Theory]
+        [InlineData(8, "Version 8 of \"estimator\" already exists.")]
+        [InlineData(1, "A form with the ID \"estimator\" already exists.")]
+        public async Task CreateDraftVersion_ExistingVersion_IsAConflict(int version, string message)
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: 8, InProgressDraftVersion: null);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", version, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("newVersion", error.Field);
+            Assert.Equal(FormSpecStructureKeywords.VersionTaken, error.Keyword);
+            Assert.Equal(message, error.Message);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_SkippedVersion_IsRefusedNotAConflict()
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: 8, InProgressDraftVersion: null);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", 10, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.False(result.IsConflict);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("newVersion", error.Field);
+            Assert.Equal(FormSpecStructureKeywords.VersionNotNext, error.Keyword);
+            Assert.Equal("Version 10 of \"estimator\" skips a version; the next version is 9.", error.Message);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Theory]
+        [InlineData(9)]
+        [InlineData(10)]
+        public async Task CreateDraftVersion_UnpublishedDraft_IsAConflictWhateverTheVersion(int version)
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: 9, InProgressDraftVersion: 9);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", version, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(FormSpecStructureKeywords.VersionTaken, error.Keyword);
+            Assert.Equal("Version 9 of \"estimator\" is an unpublished draft.", error.Message);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Theory]
+        [InlineData(1, 1)]   // never published: its only version is a draft
+        [InlineData(4, 4)]   // published 3 and an unpublished draft 4
+        public async Task CreateDraftVersion_NewFormWhoseIdHasADraft_SaysTheFormExists(int latest, int draft)
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: latest, InProgressDraftVersion: draft);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", 1, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            Assert.Equal("A form with the ID \"estimator\" already exists.", Assert.Single(result.Errors).Message);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_VersionBelowOne_Throws()
+        {
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => NewService().CreateDraftVersionAsync(
+                "estimator", 0, ValidSpec(), "Estimator", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_InvalidStructure_IsRefusedBeforeAnyRead()
+        {
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator",
+                1,
+                Spec("""{ "components": [ { "key": "dupe" }, { "key": "dupe" } ] }"""),
+                "Estimator",
+                CancellationToken.None);
+
+            Assert.False(result.IsConflict);
+            Assert.Contains(FormSpecStructureKeywords.ComponentKeyDuplicate, result.Errors.Select(e => e.Keyword));
+            Assert.Empty(_admin.VersionStateCalls);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Theory]
+        [InlineData(0, 1, "A form with the ID \"estimator\" already exists.")]
+        [InlineData(8, 9, "Version 9 of \"estimator\" already exists.")]
+        public async Task CreateDraftVersion_StrapiVersionNotNext_IsAConflict(int latest, int version, string message)
+        {
+            // Another version was stored between the pre-check and the write.
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: latest, InProgressDraftVersion: null);
+            _admin.CreateDraftVersionException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Version must be 10.", "details": { "keywords": ["FORMSPEC.VERSION.NOT_NEXT"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", version, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(FormSpecStructureKeywords.VersionTaken, error.Keyword);
+            Assert.Equal(message, error.Message);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_StrapiVersionNotNextWithAnotherKeyword_IsAConflict()
+        {
+            // The version is the reason the write cannot go ahead; the page re-reads the form
+            // and the other finding is reported again on the next save.
+            _admin.CreateDraftVersionException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Two problems.", "details": { "keywords": ["FORMSPEC.COMPONENT_KEY.DUPLICATE", "FORMSPEC.VERSION.NOT_NEXT"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", 1, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            Assert.Equal(FormSpecStructureKeywords.VersionTaken, Assert.Single(result.Errors).Keyword);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_OtherLifecycleRefusal_IsRefusedNotAConflict()
+        {
+            _admin.CreateDraftVersionException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Duplicate component key.", "details": { "keywords": ["FORMSPEC.COMPONENT_KEY.DUPLICATE"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "new-form", 1, ValidSpec(), "New form", CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.False(result.IsConflict);
+            Assert.Equal("FORMSPEC.COMPONENT_KEY.DUPLICATE", Assert.Single(result.Errors).Keyword);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_InfrastructureFailure_Propagates()
+        {
+            _admin.CreateDraftVersionException = new StrapiWriteException(HttpStatusCode.InternalServerError, "boom");
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().CreateDraftVersionAsync(
+                "new-form", 1, ValidSpec(), "New form", CancellationToken.None));
+        }
+
+        [Fact]
         public async Task SaveDraft_LifecycleRefusal_PreservesStrapiKeywords()
         {
             _admin.SaveDraftException = new StrapiWriteException(
@@ -357,5 +551,6 @@ namespace Myss.AdminApi.Tests.Services
 
         private static JsonElement Spec(string json) => JsonDocument.Parse(json).RootElement.Clone();
 
+        private static JsonElement ValidSpec() => Spec("""{ "components": [ { "key": "firstName" } ] }""");
     }
 }

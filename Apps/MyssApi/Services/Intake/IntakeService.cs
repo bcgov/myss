@@ -27,7 +27,10 @@ namespace Myss.Api.Intake
     public class IntakeService : IIntakeService
     {
         /// <summary>The only form this slice serves.</summary>
-        public const string FormSpecId = "income-assistance-poc";
+        public const string FormSpecId = IntakeFormSpecIds.IncomeAssistance;
+
+        /// <summary>The ID the product team publishes for Application for Assistance.</summary>
+        public const string AfaFormSpecId = IntakeFormSpecIds.ApplicationForAssistance;
 
         private readonly ILogger<IntakeService> _logger;
         private readonly IntakeDbContext _dbContext;
@@ -70,7 +73,18 @@ namespace Myss.Api.Intake
         }
 
         /// <inheritdoc/>
-        public async Task<IntakeResultModel> CreateAsync(CancellationToken cancellationToken)
+        public Task<IntakeResultModel> CreateAsync(CancellationToken cancellationToken)
+        {
+            return CreateForFormAsync(FormSpecId, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<IntakeResultModel> CreateAfaAsync(CancellationToken cancellationToken)
+        {
+            return CreateForFormAsync(AfaFormSpecId, cancellationToken);
+        }
+
+        private async Task<IntakeResultModel> CreateForFormAsync(string formSpecId, CancellationToken cancellationToken)
         {
             string subject = RequireSubject();
             if (!await _userProfileService.HasProfileAsync(subject, cancellationToken))
@@ -78,11 +92,13 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.ProfileRequired();
             }
 
-            FormSpecModel? latest = await _formSpecProvider.GetLatestAsync(FormSpecId, cancellationToken);
+            FormSpecModel? latest = await _formSpecProvider.GetLatestAsync(formSpecId, cancellationToken);
             if (latest is null)
             {
-                _logger.LogError("No published spec for {FormSpecId}; cannot start an application", FormSpecId);
-                return IntakeResultModel.SpecUnavailable();
+                _logger.LogWarning("No published spec for {FormSpecId}; cannot start an application", formSpecId);
+                return formSpecId == AfaFormSpecId
+                    ? IntakeResultModel.SpecNotPublished()
+                    : IntakeResultModel.SpecUnavailable();
             }
 
             DateTimeOffset now = _timeProvider.GetUtcNow();
@@ -90,7 +106,7 @@ namespace Myss.Api.Intake
             {
                 Id = Guid.NewGuid(),
                 OwnerSubject = subject,
-                FormSpecId = FormSpecId,
+                FormSpecId = formSpecId,
                 FormSpecVersion = latest.Version,
                 Answers = JsonDocument.Parse("{}"),
                 Version = 1,
@@ -112,10 +128,23 @@ namespace Myss.Api.Intake
         /// <inheritdoc/>
         public async Task<IReadOnlyList<ApplicationSummaryModel>> ListMineAsync(CancellationToken cancellationToken)
         {
+            return await ListMineForFormAsync(FormSpecId, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<IReadOnlyList<ApplicationSummaryModel>> ListMyAfaAsync(CancellationToken cancellationToken)
+        {
+            return ListMineForFormAsync(AfaFormSpecId, cancellationToken);
+        }
+
+        private async Task<IReadOnlyList<ApplicationSummaryModel>> ListMineForFormAsync(
+            string? formSpecId,
+            CancellationToken cancellationToken)
+        {
             string subject = RequireSubject();
             List<ApplicationAnswers> rows = await _dbContext.Applications
                 .AsNoTracking()
-                .Where(a => a.OwnerSubject == subject)
+                .Where(a => a.OwnerSubject == subject && (formSpecId == null || a.FormSpecId == formSpecId))
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync(cancellationToken);
 
@@ -131,7 +160,21 @@ namespace Myss.Api.Intake
         /// <inheritdoc/>
         public async Task<IntakeResultModel> GetAsync(Guid id, CancellationToken cancellationToken)
         {
-            ApplicationAnswers? row = await FindOwnAsync(id, track: false, cancellationToken);
+            return await GetForFormAsync(id, formSpecId: null, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<IntakeResultModel> GetAfaAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return GetForFormAsync(id, AfaFormSpecId, cancellationToken);
+        }
+
+        private async Task<IntakeResultModel> GetForFormAsync(
+            Guid id,
+            string? formSpecId,
+            CancellationToken cancellationToken)
+        {
+            ApplicationAnswers? row = await FindOwnAsync(id, track: false, cancellationToken, formSpecId);
             if (row is null)
             {
                 return IntakeResultModel.NotFound();
@@ -323,7 +366,11 @@ namespace Myss.Api.Intake
             return user.Subject;
         }
 
-        private Task<ApplicationAnswers?> FindOwnAsync(Guid id, bool track, CancellationToken cancellationToken)
+        private Task<ApplicationAnswers?> FindOwnAsync(
+            Guid id,
+            bool track,
+            CancellationToken cancellationToken,
+            string? formSpecId = null)
         {
             // Owner is part of the lookup, not a check after it: a row that is
             // not the caller's does not exist, so ids cannot be enumerated.
@@ -334,7 +381,9 @@ namespace Myss.Api.Intake
                 query = query.AsNoTracking();
             }
 
-            return query.SingleOrDefaultAsync(a => a.Id == id && a.OwnerSubject == subject, cancellationToken);
+            return query.SingleOrDefaultAsync(
+                a => a.Id == id && a.OwnerSubject == subject && (formSpecId == null || a.FormSpecId == formSpecId),
+                cancellationToken);
         }
 
         private static ApplicationSummaryModel ToSummary(ApplicationAnswers row, ApplicationState state)

@@ -104,6 +104,38 @@ async function throwFor(res: Response): Promise<never> {
 
 const BASE_URL = `${API_URL}/v1/intake/applications`;
 
+/** Product-owned AFA spec ID; do not use the seeded income-assistance POC. */
+export const AFA_FORM_SPEC_ID = "application-for-assistance";
+
+/** Only a published form can be started; authorization/network faults stay errors. */
+export async function isAfaPublished(): Promise<boolean> {
+  const res = await fetch(`${API_URL}/v1/forms/${AFA_FORM_SPEC_ID}/spec`, {
+    headers: authHeaders(),
+  });
+  if (res.status === 404) return false;
+  if (!res.ok) await throwFor(res);
+  return true;
+}
+
+/** Creates an AFA draft pinned to the latest published product-authored spec. */
+export async function createAfaApplication(): Promise<ApplicationPayload> {
+  const res = await fetch(`${BASE_URL}/afa`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) await throwFor(res);
+  return (await res.json()).payload;
+}
+
+/** Only the caller's AFA service requests, newest first. */
+export async function listAfaApplications(): Promise<
+  ApplicationSummaryPayload[]
+> {
+  const res = await fetch(`${BASE_URL}/afa`, { headers: authHeaders() });
+  if (!res.ok) await throwFor(res);
+  return (await res.json()).payload;
+}
+
 /** Creates a new draft pinned to the latest published spec version. */
 export async function createApplication(): Promise<ApplicationPayload> {
   const res = await fetch(BASE_URL, {
@@ -124,6 +156,17 @@ export async function listApplications(): Promise<ApplicationSummaryPayload[]> {
 /** One application with the archived spec it renders under. */
 export async function getApplication(id: string): Promise<ApplicationPayload> {
   const res = await fetch(`${BASE_URL}/${encodeURIComponent(id)}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) await throwFor(res);
+  return (await res.json()).payload;
+}
+
+/** One AFA request, with the API enforcing its form ID as well as ownership. */
+export async function getAfaApplication(
+  id: string,
+): Promise<ApplicationPayload> {
+  const res = await fetch(`${BASE_URL}/afa/${encodeURIComponent(id)}`, {
     headers: authHeaders(),
   });
   if (!res.ok) await throwFor(res);

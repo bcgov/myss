@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createApplication, getAccount, getApplication, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormSpec, getMe, getPlaceholder, listApplications, listAttachments, type Options, saveAccountPin, saveApplicationAnswers, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment } from '../sdk.gen';
-import type { CreateApplicationData, CreateApplicationError, CreateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
+import { createAfaApplication, createApplication, getAccount, getAfaApplication, getApplication, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormSpec, getMe, getPlaceholder, listAfaApplications, listApplications, listAttachments, type Options, requestPinReset, resetPin, saveAccountPin, saveApplicationAnswers, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment } from '../sdk.gen';
+import type { CreateAfaApplicationData, CreateAfaApplicationError, CreateAfaApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetAfaApplicationData, GetAfaApplicationError, GetAfaApplicationResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, ListAfaApplicationsData, ListAfaApplicationsResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, RequestPinResetData, RequestPinResetError, RequestPinResetResponse, ResetPinData, ResetPinError, ResetPinResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -338,6 +338,41 @@ export const createApplicationMutation = (options?: Partial<Options<CreateApplic
     return mutationOptions;
 };
 
+export const listAfaApplicationsQueryKey = (options?: Options<ListAfaApplicationsData>) => createQueryKey('listAfaApplications', options);
+
+/**
+ * Lists the caller's AFA service requests, excluding other applications.
+ */
+export const listAfaApplicationsOptions = (options?: Options<ListAfaApplicationsData>) => queryOptions<ListAfaApplicationsResponse, DefaultError, ListAfaApplicationsResponse, ReturnType<typeof listAfaApplicationsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listAfaApplications({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listAfaApplicationsQueryKey(options)
+});
+
+/**
+ * Starts an AFA draft only when the product-authored form is published.
+ */
+export const createAfaApplicationMutation = (options?: Partial<Options<CreateAfaApplicationData>>): UseMutationOptions<CreateAfaApplicationResponse, CreateAfaApplicationError, Options<CreateAfaApplicationData>> => {
+    const mutationOptions: UseMutationOptions<CreateAfaApplicationResponse, CreateAfaApplicationError, Options<CreateAfaApplicationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await createAfaApplication({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const getApplicationQueryKey = (options: Options<GetApplicationData>) => createQueryKey('getApplication', options);
 
 /**
@@ -354,6 +389,24 @@ export const getApplicationOptions = (options: Options<GetApplicationData>) => q
         return data;
     },
     queryKey: getApplicationQueryKey(options)
+});
+
+export const getAfaApplicationQueryKey = (options: Options<GetAfaApplicationData>) => createQueryKey('getAfaApplication', options);
+
+/**
+ * Returns one of the caller's AFA requests, never another intake form type.
+ */
+export const getAfaApplicationOptions = (options: Options<GetAfaApplicationData>) => queryOptions<GetAfaApplicationResponse, GetAfaApplicationError, GetAfaApplicationResponse, ReturnType<typeof getAfaApplicationQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getAfaApplication({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getAfaApplicationQueryKey(options)
 });
 
 /**
@@ -382,6 +435,46 @@ export const submitApplicationMutation = (options?: Partial<Options<SubmitApplic
     const mutationOptions: UseMutationOptions<SubmitApplicationResponse, SubmitApplicationError, Options<SubmitApplicationData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await submitApplication({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Emails the caller a single-use link to reset their PIN, at the address
+ * they registered with. Basic BCeID only. A new request replaces any
+ * earlier link. One email per cooldown
+ * (`Account:PinReset:RequestCooldownSeconds`); a request inside it
+ * is a 429 with Retry-After.
+ */
+export const requestPinResetMutation = (options?: Partial<Options<RequestPinResetData>>): UseMutationOptions<RequestPinResetResponse, RequestPinResetError, Options<RequestPinResetData>> => {
+    const mutationOptions: UseMutationOptions<RequestPinResetResponse, RequestPinResetError, Options<RequestPinResetData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await requestPinReset({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Sets a new PIN from an emailed link and uses the link up. Anonymous:
+ * the token in the body is the credential. The PIN is never returned or
+ * logged, and is not sent to ICM (RULE-IDA-04).
+ */
+export const resetPinMutation = (options?: Partial<Options<ResetPinData>>): UseMutationOptions<ResetPinResponse, ResetPinError, Options<ResetPinData>> => {
+    const mutationOptions: UseMutationOptions<ResetPinResponse, ResetPinError, Options<ResetPinData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await resetPin({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

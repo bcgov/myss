@@ -18,6 +18,19 @@ export {
   type EditableComponent,
 } from "./specEdit";
 export { findDuplicateKeys, findUnknownConditionalTargets } from "./specRules";
+export { forEachComponent } from "./specWalk";
+export {
+  EXAMPLE_SPEC,
+  checkSpec,
+  formatSpecJson,
+  locateJsonError,
+  locateKey,
+  parseSpecJson,
+  type ParseResult,
+  type SpecCheck,
+  type SpecProblem,
+  type TextPosition,
+} from "./specImport";
 
 // The phone number input, shared with the citizen app's own forms.
 export { default as PhoneInput } from "./PhoneInput";

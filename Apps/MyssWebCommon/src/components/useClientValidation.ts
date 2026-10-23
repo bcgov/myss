@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
-import { SubmissionRejectedError } from "@/api/forms";
-import { toValidationErrors } from "@/lib/formioErrors";
+import { toValidationErrors } from "../api/formioErrors";
+import { SubmissionRejectedError } from "../api/forms";
 
 // A submit Form.io blocked, in the shape a submit the API refused arrives in,
 // so both feed the same accessible error summary (SubmissionErrors). Wire

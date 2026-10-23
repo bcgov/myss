@@ -124,6 +124,15 @@ describe("RegistrationPage", () => {
             .toBeInTheDocument();
     });
 
+    it("names IDIR in the banner for an IDIR sign-in", async () => {
+        session.isAuthenticated = true;
+        session.hasProfile = false;
+        session.user = { sub: "worker", idirUsername: "WWORKER", roles: [] };
+        const screen = await renderRegistration();
+
+        await expect.element(screen.getByText(/You’re signed in with your IDIR\./)).toBeInTheDocument();
+    });
+
     it("asks a BCeID citizen for a PIN and confirms it was created", async () => {
         session.isAuthenticated = true;
         session.hasProfile = false;

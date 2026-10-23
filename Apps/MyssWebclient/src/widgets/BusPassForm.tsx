@@ -11,9 +11,9 @@ import {
   BusPassUnavailableError,
   type BusPassSubmissionPayload,
 } from "@/api/busPass";
-import SubmissionErrors from "@/components/SubmissionErrors";
+import { SubmissionErrors } from "@myss/web-common/components";
 import { useSubmitBusPass } from "@/hooks/useBusPass";
-import { useClientValidation } from "@/hooks/useClientValidation";
+import { useClientValidation } from "@myss/web-common/components";
 import {
   errorMessageFor,
   useErrorMessages,

@@ -5,6 +5,7 @@ import App from "@/App";
 import AdminPage from "@/pages/AdminPage";
 import FormManagementPage from "@/pages/FormManagementPage";
 import FormEditorPage from "@/pages/FormEditorPage";
+import FormFromJsonPage from "@/pages/FormFromJsonPage";
 import SignedOutPage from "@/pages/SignedOutPage";
 import ApplicationsPage from "@/pages/ApplicationsPage";
 import ApplicationReviewPage from "@/pages/ApplicationReviewPage";
@@ -47,6 +48,14 @@ export const router = createBrowserRouter([
                 element: (
                     <RequireIdir>
                         <FormEditorPage />
+                    </RequireIdir>
+                ),
+            },
+            {
+                path: paths.formFromJson,
+                element: (
+                    <RequireIdir>
+                        <FormFromJsonPage />
                     </RequireIdir>
                 ),
             },

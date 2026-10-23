@@ -76,6 +76,33 @@ namespace Myss.AdminApi.Tests.Intake
         }
 
         [Fact]
+        public async Task AnAfaApplication_IsNeverInTheWorkerQueue()
+        {
+            string afa = citizen::Myss.Api.Intake.IntakeService.AfaFormSpecId;
+            _provider.LatestResult = FakeFormSpecProvider.Spec(afa, 3, Spec);
+            _provider.VersionResult = FakeFormSpecProvider.Spec(afa, 3, Spec);
+            using CitizenAndStaffTestHost host = NewHost();
+            using HttpResponseMessage created = await host.Send("alice", HttpMethod.Post, "/v1/intake/applications/afa");
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            Guid id = (await Payload(created)).GetProperty("id").GetGuid();
+            using HttpResponseMessage submitted = await host.Send(
+                "alice", HttpMethod.Post, $"/v1/intake/applications/{id}/submit", JsonContent.Create(new { version = 1, answers = Ada }));
+            Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
+
+            using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, Route);
+            using HttpResponseMessage get = await host.Send("worker", HttpMethod.Get, $"{Route}/{id}");
+            using HttpResponseMessage review = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/review", Version(1));
+            using HttpResponseMessage note = await host.Send(
+                "worker", HttpMethod.Post, $"{Route}/{id}/notes", JsonContent.Create(new { streamVersion = 1, text = "note" }));
+
+            Assert.Empty((await Payload(list)).EnumerateArray());
+            Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, review.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, note.StatusCode);
+            Assert.Equal(1, await host.CountEvents(id));
+        }
+
+        [Fact]
         public async Task TheReferenceNumber_MatchesWhatTheApplicantWasShown()
         {
             using CitizenAndStaffTestHost host = NewHost();

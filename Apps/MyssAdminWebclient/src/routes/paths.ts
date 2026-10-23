@@ -6,6 +6,8 @@ export const paths = {
     formManagement: "/form-management",
     // Editor for one form, opened from the form-management list.
     formEditor: "/form-management/:formSpecId",
+    // Creates a form, or a new version of one, from pasted JSON.
+    formFromJson: "/form-management/:formSpecId/from-json",
     // The application review queue (MYSS-226), and one application opened
     // from it. Ministry workers only (WORKER or ADMIN role).
     applications: "/applications",
@@ -35,6 +37,26 @@ export function newFormPath(formSpecId: string, title: string): string {
         params.set("title", title.trim());
     }
     return `${formEditorPath(formSpecId)}?${params.toString()}`;
+}
+
+/**
+ * URL of the page that saves pasted JSON as a new form or a new version of
+ * one. `confirm` records the save target accepted in the existing-form warning.
+ */
+export function formFromJsonPath(
+    formSpecId: string,
+    title: string,
+    confirm?: string | null,
+): string {
+    const params = new URLSearchParams();
+    if (title.trim()) {
+        params.set("title", title.trim());
+    }
+    if (confirm) {
+        params.set("confirm", confirm);
+    }
+    const query = params.toString();
+    return `${formEditorPath(formSpecId)}/from-json${query ? `?${query}` : ""}`;
 }
 
 /** Concrete review URL for one application, kept beside the `application` pattern. */

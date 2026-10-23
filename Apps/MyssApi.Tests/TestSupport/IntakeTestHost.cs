@@ -8,6 +8,7 @@ namespace Myss.Api.Tests.TestSupport
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
     using Myss.Api.Configuration;
+    using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
     using Myss.Api.Intake;
     using Myss.Api.Providers;
@@ -35,11 +36,13 @@ namespace Myss.Api.Tests.TestSupport
         /// <param name="provider">The fake spec provider every context shares.</param>
         /// <param name="registered">Personas that get a profile row.</param>
         /// <param name="mockAuth">Whether mock auth is on; off makes every call anonymous.</param>
+        /// <param name="email">The email provider, when a test reads what was sent; otherwise a fresh fake.</param>
         public IntakeTestHost(
             WebApplicationFactory<Startup> factory,
             FakeFormSpecProvider provider,
             IReadOnlyList<string> registered,
-            bool mockAuth)
+            bool mockAuth,
+            FakeEmailProvider? email = null)
         {
             string dbName = Guid.NewGuid().ToString();
             ServiceProvider efProvider = new ServiceCollection()
@@ -104,6 +107,12 @@ namespace Myss.Api.Tests.TestSupport
                     // reaches for a content engine that is not running here.
                     services.RemoveAll<IErrorMessageProvider>();
                     services.AddSingleton<IErrorMessageProvider>(new FakeErrorMessageProvider());
+
+                    // Nothing here sends real email, and the reset link needs a base URL.
+                    services.RemoveAll<IEmailProvider>();
+                    services.AddSingleton<IEmailProvider>(email ?? new FakeEmailProvider());
+                    services.RemoveAll<PinResetConfig>();
+                    services.AddSingleton(new PinResetConfig { LinkBaseUrl = new Uri("https://myss.test") });
                 });
             });
             _client = _factory.CreateClient();

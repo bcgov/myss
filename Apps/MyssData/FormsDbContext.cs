@@ -75,6 +75,14 @@ namespace Myss.Data
             profile.Property(p => p.PinHash).HasColumnName("taapcd_aae_passcode").HasMaxLength(256).IsConcurrencyToken();
             profile.Property(p => p.PinFailedAttempts).HasColumnName("pin_failed_attempts").IsConcurrencyToken();
             profile.Property(p => p.PinLockedUntil).HasColumnName("pin_locked_until").IsConcurrencyToken();
+
+            // The PIN reset token (MYSS-36): stored as its hash, so a read of
+            // the table does not hand out working reset links. A concurrency
+            // token like the PIN columns, so two uses of one link cannot both
+            // land. Indexed because the anonymous reset finds the profile by it.
+            profile.Property(p => p.PinResetTokenHash).HasColumnName("pin_reset_token_hash").HasMaxLength(64).IsConcurrencyToken();
+            profile.Property(p => p.PinResetRequestedAt).HasColumnName("pin_reset_requested_at");
+            profile.HasIndex(p => p.PinResetTokenHash).IsUnique();
             profile.HasMany(p => p.Phones)
                 .WithOne()
                 .HasForeignKey(p => p.ProfileId)

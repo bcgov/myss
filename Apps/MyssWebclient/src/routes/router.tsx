@@ -10,12 +10,15 @@ import UnderDevelopmentPage from "@/pages/UnderDevelopmentPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
+import PinResetPage from "@/pages/PinResetPage";
 import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
 import BusPassPage from "@/pages/BusPassPage";
 import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
 import ApplicationPage from "@/pages/ApplicationPage";
+import AfaServiceRequestPage from "@/pages/AfaServiceRequestPage";
+import ServiceRequestsPage from "@/pages/ServiceRequestsPage";
 import RequireAuth from "@/auth/RequireAuth";
 import { paths } from "@/routes/paths";
 
@@ -23,8 +26,9 @@ import { paths } from "@/routes/paths";
 // routes render into its <Outlet />.
 //
 // Route composition (see doc/myss-vs-rebuild-merge-analysis.md §6):
-//   PUBLIC    - landing, eligibility estimator, and the sign-in / callback
-//               pages. Any anonymous user can reach these.
+//   PUBLIC    - landing, eligibility estimator, the sign-in / callback
+//               pages, and the emailed PIN reset link. Any anonymous user
+//               can reach these.
 //   PROTECTED - the Forms / Strapi tech-demo pages, wrapped in <RequireAuth>
 //               so they only render once the user has authenticated.
 export const router = createBrowserRouter([
@@ -48,6 +52,7 @@ export const router = createBrowserRouter([
         path: paths.authCallback,
         element: <AuthCallbackPage fallbackPath={paths.dashboard} />,
       },
+      { path: paths.pinReset, element: <PinResetPage /> },
       { path: paths.simpleLogin, element: <SimpleLoginPage /> },
 
       // ---- Dashboard (MYSS-194): the signed-in citizen's sections, framed
@@ -71,8 +76,9 @@ export const router = createBrowserRouter([
           },
           {
             path: paths.serviceRequests,
-            element: <UnderDevelopmentPage title="Service Requests" />,
+            element: <ServiceRequestsPage />,
           },
+          { path: paths.afaServiceRequest, element: <AfaServiceRequestPage /> },
           { path: paths.accountInfo, element: <AccountInfoPage /> },
         ],
       },

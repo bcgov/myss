@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router";
 import { render } from "vitest-browser-react";
 import { afterEach, expect, test, vi } from "vitest";
 
-import SubmissionErrors from "@/components/SubmissionErrors";
+import { SubmissionErrors } from "@myss/web-common/components";
 import FormSpecWidget from "@/widgets/FormSpecWidget";
 
 const currentSpecV7 = {

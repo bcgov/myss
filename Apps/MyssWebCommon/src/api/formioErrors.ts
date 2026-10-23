@@ -1,4 +1,4 @@
-import type { FormValidationError } from "@/api/forms";
+import type { FormValidationError } from "./forms";
 
 // Form.io's validation errors in the API's error shape, so a submit the
 // browser blocked and a submit the API refused feed the same error summary.

@@ -38,6 +38,12 @@ namespace Myss.FormSpec.Domain
         /// <summary>The submitted version is not exactly the next in sequence.</summary>
         public const string VersionNotNext = "FORMSPEC.VERSION.NOT_NEXT";
 
+        /// <summary>
+        /// A save that names the version it creates was refused: that version already
+        /// exists, or the form has an unpublished draft.
+        /// </summary>
+        public const string VersionTaken = "FORMSPEC.VERSION.TAKEN";
+
         /// <summary>An attempt was made to change a published (immutable) version.</summary>
         public const string PublishedImmutable = "FORMSPEC.PUBLISHED.IMMUTABLE";
 
@@ -51,8 +57,9 @@ namespace Myss.FormSpec.Domain
         /// The authoritative lifecycle vocabulary (the <c>FormSpecRule</c> values in
         /// MyssContent's <c>form-spec-rules.ts</c>). A Strapi 400 is trusted as a
         /// lifecycle refusal only when it carries at least one of these; unknown
-        /// keywords are dropped, and our own <see cref="NothingToPublish"/> /
-        /// <see cref="StrapiRefused"/> are deliberately not part of Strapi's set.
+        /// keywords are dropped, and our own <see cref="VersionTaken"/> /
+        /// <see cref="NothingToPublish"/> / <see cref="StrapiRefused"/> are deliberately
+        /// not part of Strapi's set.
         /// </summary>
         public static readonly IReadOnlySet<string> LifecycleKeywords = new HashSet<string>(System.StringComparer.Ordinal)
         {

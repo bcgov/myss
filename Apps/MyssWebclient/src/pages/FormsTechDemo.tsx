@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import SubmissionErrors from "@/components/SubmissionErrors";
+import { SubmissionErrors } from "@myss/web-common/components";
 import FormSpecWidget from "@/widgets/FormSpecWidget";
 
 const FORM_SPEC_ID = "poc-test-form";

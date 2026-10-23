@@ -144,6 +144,34 @@ namespace Myss.AdminApi.Providers
         }
 
         /// <inheritdoc/>
+        public async Task<FormSpecModel?> GetVersionAsync(string formSpecId, int version, CancellationToken cancellationToken)
+        {
+            // The published entry is the stored contract; the draft entry is read
+            // only for a version that has no published entry.
+            Row? row = await GetFirstRowAsync(VersionQuery(formSpecId, version, "published"), cancellationToken)
+                ?? await GetFirstRowAsync(VersionQuery(formSpecId, version, "draft"), cancellationToken);
+            if (row is not Row r)
+            {
+                return null;
+            }
+
+            EnsureRequestedVersion(formSpecId, version, r.FormSpecId, r.Version);
+            return ToModel(r);
+        }
+
+        /// <inheritdoc/>
+        public async Task<FormSpecVersionState> GetVersionStateAsync(string formSpecId, CancellationToken cancellationToken)
+        {
+            Row? latestDraft = await GetFirstRowAsync(DraftLatestQuery(formSpecId), cancellationToken);
+            Row? latestPublished = await GetFirstRowAsync(PublishedLatestQuery(formSpecId), cancellationToken);
+            int draftVersion = latestDraft?.Version ?? 0;
+            int publishedVersion = latestPublished?.Version ?? 0;
+            return new FormSpecVersionState(
+                LatestVersion: Math.Max(draftVersion, publishedVersion),
+                InProgressDraftVersion: draftVersion > publishedVersion ? draftVersion : null);
+        }
+
+        /// <inheritdoc/>
         public async Task<FormSpecModel> SaveDraftAsync(string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken)
         {
             Row? inProgress = await FindInProgressDraftAsync(formSpecId, cancellationToken);
@@ -168,6 +196,20 @@ namespace Myss.AdminApi.Providers
                 BuildData(formSpecId: formSpecId, version: nextVersion, title: title, spec: spec),
                 cancellationToken);
             return BuildModel(created, fallbackFormSpecId: formSpecId, fallbackVersion: nextVersion);
+        }
+
+        /// <inheritdoc/>
+        public async Task<FormSpecModel> CreateDraftVersionAsync(
+            string formSpecId, int version, JsonElement spec, string? title, CancellationToken cancellationToken)
+        {
+            JsonElement created = await WriteAsync(
+                HttpMethod.Post,
+                $"{FormSpecsPath}?status=draft",
+                BuildData(formSpecId: formSpecId, version: version, title: title, spec: spec),
+                cancellationToken);
+            FormSpecModel model = BuildModel(created, fallbackFormSpecId: formSpecId, fallbackVersion: version);
+            EnsureRequestedVersion(formSpecId, version, model.FormSpecId, model.Version);
+            return model;
         }
 
         /// <inheritdoc/>
@@ -209,6 +251,10 @@ namespace Myss.AdminApi.Providers
             $"{FormSpecsPath}?filters[formSpecId][$eq]={Uri.EscapeDataString(formSpecId)}"
             + "&status=published&sort=version:desc&pagination[limit]=1";
 
+        private static string VersionQuery(string formSpecId, int version, string status) =>
+            $"{FormSpecsPath}?filters[formSpecId][$eq]={Uri.EscapeDataString(formSpecId)}"
+            + $"&filters[version][$eq]={version}&status={status}&pagination[limit]=1";
+
         /// <summary>
         /// Finds the never-published, in-progress draft for a form (its version is
         /// higher than the latest published version), or null when there isn't one.
@@ -238,6 +284,17 @@ namespace Myss.AdminApi.Providers
         {
             Row? latestPublished = await GetFirstRowAsync(PublishedLatestQuery(formSpecId), cancellationToken);
             return (latestPublished?.Version ?? 0) + 1;
+        }
+
+        // A version-specific call that gets back another form or version means the
+        // engine ignored the request; returning it would show or store the wrong one.
+        private static void EnsureRequestedVersion(string formSpecId, int version, string actualFormSpecId, int actualVersion)
+        {
+            if (actualFormSpecId != formSpecId || actualVersion != version)
+            {
+                throw new ContentEngineUnavailableException(
+                    "The content engine returned a different form-spec version than the one requested.");
+            }
         }
 
         private static string BuildData(string? formSpecId, int? version, string? title, JsonElement spec)

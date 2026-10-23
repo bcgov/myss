@@ -18,8 +18,7 @@ import "@/widgets/FormSpecWidget.css";
 import styles from "./ApplicationForm.module.css";
 
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
-import SubmissionErrors from "@/components/SubmissionErrors";
-import { useClientValidation } from "@/hooks/useClientValidation";
+import { SubmissionErrors, useClientValidation } from "@myss/web-common/components";
 import {
   ApplicationRequestError,
   INTAKE_KEYWORDS,
@@ -112,7 +111,11 @@ function SubmittedView({
         </h2>
         {waiting ? (
           <p>
-            Your Income Assistance application has been received
+            Your{" "}
+            {application.formSpecId === "application-for-assistance"
+              ? "Application for Assistance"
+              : "Income Assistance application"}{" "}
+            has been received
             {submittedAt ? `. It was first submitted on ${submittedAt}` : ""}.
             It cannot be changed while it is being reviewed; if we need more
             information, it will be returned to you to update. Keep the request
@@ -120,7 +123,10 @@ function SubmittedView({
           </p>
         ) : (
           <p>
-            Your Income Assistance application
+            Your{" "}
+            {application.formSpecId === "application-for-assistance"
+              ? "Application for Assistance"
+              : "Income Assistance application"}
             {submittedAt ? `, submitted on ${submittedAt},` : ""} cannot be
             changed. Its status is shown below.
           </p>
@@ -154,8 +160,9 @@ function DraftForm({
   spec: FormType;
   onSubmitted: () => void;
 }>) {
-  const save = useSaveAnswers(application.id);
-  const submit = useSubmitApplication(application.id);
+  const afa = application.formSpecId === "application-for-assistance";
+  const save = useSaveAnswers(application.id, afa);
+  const submit = useSubmitApplication(application.id, afa);
   const { mutate: saveAnswers } = save;
   const { mutate: submitApplication } = submit;
 
@@ -356,10 +363,19 @@ function DraftForm({
  */
 export default function ApplicationForm({
   applicationId,
+  expectedFormSpecId,
 }: Readonly<{
   applicationId: string;
+  expectedFormSpecId?: string;
 }>) {
-  const { data: application, error, isPending } = useApplication(applicationId);
+  const {
+    data: application,
+    error,
+    isPending,
+  } = useApplication(
+    applicationId,
+    expectedFormSpecId === "application-for-assistance",
+  );
   // The acknowledgement heading takes focus only when the submit happened in
   // this session; a later visit to a submitted application just renders it.
   const [submittedHere, setSubmittedHere] = useState(false);
@@ -374,6 +390,10 @@ export default function ApplicationForm({
           : `Could not load the application: ${error.message}`}
       </p>
     );
+  }
+
+  if (expectedFormSpecId && application.formSpecId !== expectedFormSpecId) {
+    return <p role="alert">This service request could not be found.</p>;
   }
 
   if (!application.spec) {

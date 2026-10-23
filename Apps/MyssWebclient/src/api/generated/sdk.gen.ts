@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
+import type { CreateAfaApplicationData, CreateAfaApplicationErrors, CreateAfaApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetAfaApplicationData, GetAfaApplicationErrors, GetAfaApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, ListAfaApplicationsData, ListAfaApplicationsResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, RequestPinResetData, RequestPinResetErrors, RequestPinResetResponses, ResetPinData, ResetPinErrors, ResetPinResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -160,9 +160,24 @@ export const listApplications = <ThrowOnError extends boolean = false>(options?:
 export const createApplication = <ThrowOnError extends boolean = false>(options?: Options<CreateApplicationData, ThrowOnError>): RequestResult<CreateApplicationResponses, CreateApplicationErrors, ThrowOnError> => (options?.client ?? client).post<CreateApplicationResponses, CreateApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications', ...options });
 
 /**
+ * Lists the caller's AFA service requests, excluding other applications.
+ */
+export const listAfaApplications = <ThrowOnError extends boolean = false>(options?: Options<ListAfaApplicationsData, ThrowOnError>): RequestResult<ListAfaApplicationsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListAfaApplicationsResponses, unknown, ThrowOnError>({ url: '/v1/intake/applications/afa', ...options });
+
+/**
+ * Starts an AFA draft only when the product-authored form is published.
+ */
+export const createAfaApplication = <ThrowOnError extends boolean = false>(options?: Options<CreateAfaApplicationData, ThrowOnError>): RequestResult<CreateAfaApplicationResponses, CreateAfaApplicationErrors, ThrowOnError> => (options?.client ?? client).post<CreateAfaApplicationResponses, CreateAfaApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications/afa', ...options });
+
+/**
  * Returns one of the caller's applications with the archived spec that renders it.
  */
 export const getApplication = <ThrowOnError extends boolean = false>(options: Options<GetApplicationData, ThrowOnError>): RequestResult<GetApplicationResponses, GetApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetApplicationResponses, GetApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications/{id}', ...options });
+
+/**
+ * Returns one of the caller's AFA requests, never another intake form type.
+ */
+export const getAfaApplication = <ThrowOnError extends boolean = false>(options: Options<GetAfaApplicationData, ThrowOnError>): RequestResult<GetAfaApplicationResponses, GetAfaApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetAfaApplicationResponses, GetAfaApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications/afa/{id}', ...options });
 
 /**
  * Saves the draft's answers, or a returned application's. Either may
@@ -187,5 +202,28 @@ export const submitApplication = <ThrowOnError extends boolean = false>(options:
     headers: {
         'Content-Type': 'application/json',
         ...options.headers
+    }
+});
+
+/**
+ * Emails the caller a single-use link to reset their PIN, at the address
+ * they registered with. Basic BCeID only. A new request replaces any
+ * earlier link. One email per cooldown
+ * (`Account:PinReset:RequestCooldownSeconds`); a request inside it
+ * is a 429 with Retry-After.
+ */
+export const requestPinReset = <ThrowOnError extends boolean = false>(options?: Options<RequestPinResetData, ThrowOnError>): RequestResult<RequestPinResetResponses, RequestPinResetErrors, ThrowOnError> => (options?.client ?? client).post<RequestPinResetResponses, RequestPinResetErrors, ThrowOnError>({ url: '/v1/pin-reset/requests', ...options });
+
+/**
+ * Sets a new PIN from an emailed link and uses the link up. Anonymous:
+ * the token in the body is the credential. The PIN is never returned or
+ * logged, and is not sent to ICM (RULE-IDA-04).
+ */
+export const resetPin = <ThrowOnError extends boolean = false>(options?: Options<ResetPinData, ThrowOnError>): RequestResult<ResetPinResponses, ResetPinErrors, ThrowOnError> => (options?.client ?? client).post<ResetPinResponses, ResetPinErrors, ThrowOnError>({
+    url: '/v1/pin-reset',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
     }
 });
