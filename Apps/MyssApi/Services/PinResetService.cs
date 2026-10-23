@@ -10,10 +10,13 @@ namespace Myss.Api.Services
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging;
     using Myss.Api.Configuration.Models;
-    using Myss.Api.Data;
     using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Common.Auth;
+    using Myss.Data;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Resets a forgotten PIN by email (MYSS-36). The token follows the

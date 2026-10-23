@@ -36,5 +36,6 @@ coverage/
 .DS_Store
 Thumbs.db
 
-# Vitest browser-mode failure screenshots
+# Vitest browser-mode failure screenshots and attachments
 **/__screenshots__/
+**/.vitest-attachments/

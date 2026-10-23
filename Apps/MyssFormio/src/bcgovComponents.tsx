@@ -1,0 +1,889 @@
+// The BC Gov Design System as Form.io's components. Each stock Form.io input
+// type is re-registered under its own name with a wrapper that keeps the stock
+// class's value handling, validation and conditionals and replaces only the
+// rendering (see bcgovField.tsx for the shared base). Every published form
+// spec, every version and every archived submission therefore renders with
+// the design system without a spec, builder or server change.
+//
+// Display and layout types stay Form.io's own: `content`, `columns` and
+// `panel` have no design system equivalent. `bcgovAccordion` and the
+// `bcgovCallout` and `bcgovInlineAlert` containers are the display components
+// added here; `bcgovRadio`
+// stays registered as a second name for the radio so specs published with it
+// keep rendering.
+//
+// A referenced type only works if registered: call `registerBcgovComponents()`
+// once at app start, before any <Form> mounts.
+
+import type { ReactNode } from "react";
+import { Components, Utils } from "@formio/js";
+import { parseDate, type CalendarDate } from "@internationalized/date";
+import {
+  Accordion,
+  Button,
+  DatePicker,
+  Radio,
+  RadioGroup,
+  Select,
+  SvgCheckCircleIcon,
+  SvgExclamationCircleIcon,
+  SvgExclamationIcon,
+  SvgInfoIcon,
+  TextField,
+} from "@bcgov/design-system-react-components";
+
+import { BcgovAddressAutocompleteComponent } from "./addressAutocomplete";
+import "./bcgovComponents.css";
+import CheckboxField from "./CheckboxField";
+import {
+  ReactMount,
+  isRequired,
+  stockComponent,
+  textOf,
+  withBcgovField,
+  type FormioFieldCtor,
+  type FormioFieldInstance,
+} from "./bcgovField";
+import {
+  BcgovEmailComponent,
+  BcgovPhoneNumberComponent,
+  BcgovTextAreaComponent,
+  BcgovTextFieldComponent,
+} from "./bcgovTextField";
+import styles from "./bcgovFields.module.css";
+import {
+  cleanNumberText,
+  formatNumberValue,
+  parseNumberText,
+} from "./numberText";
+import calloutStyles from "./Callout.module.css";
+import { setCanadaPostApiKey } from "./config";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// ---------------------------------------------------------------------------
+// bcgovAccordion: display only, so it extends the base component rather than
+// a field and carries no value.
+
+const BaseComponent = stockComponent("component");
+
+/** The collapsible help. Reads `accordionLabel` + `accordionBody` (HTML). */
+class BcgovAccordionComponent extends BaseComponent {
+  private mount?: ReactMount;
+
+  static schema(...extend: unknown[]): Record<string, unknown> {
+    return (
+      BaseComponent as unknown as {
+        schema(...extend: unknown[]): Record<string, unknown>;
+      }
+    ).schema(
+      {
+        type: "bcgovAccordion",
+        key: "bcgovAccordion",
+        input: false,
+        accordionLabel: "",
+        accordionBody: "",
+      },
+      ...extend,
+    );
+  }
+
+  static get builderInfo() {
+    return {
+      title: "BC Gov Accordion",
+      group: "basic",
+      icon: "list",
+      schema: BcgovAccordionComponent.schema(),
+    };
+  }
+
+  override render(): string {
+    return super.render('<div ref="reactRoot"></div>');
+  }
+
+  override attach(element: HTMLElement): Promise<void> {
+    this.loadRefs(element, { reactRoot: "single" });
+    const host = this.refs.reactRoot;
+    if (host instanceof HTMLElement) {
+      this.mount = new ReactMount(host, this.renderReact());
+    }
+    return super.attach(element);
+  }
+
+  override detach(): void {
+    this.mount?.release();
+    super.detach();
+  }
+
+  private renderReact(): ReactNode {
+    const label = textOf(this.component.accordionLabel);
+    // accordionBody is HTML sourced from the form spec (CMS/Strapi). Sanitize
+    // via Form.io's DOMPurify-backed Utils.sanitize before rendering, so spec
+    // content can never inject scripts/handlers (defence-in-depth XSS guard).
+    const body = Utils.sanitize(
+      textOf(this.component.accordionBody),
+      this.options ?? {},
+    );
+    return (
+      <Accordion label={label}>
+        <div dangerouslySetInnerHTML={{ __html: body }} />
+      </Accordion>
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// bcgovCallout: a container, like Form.io's fieldset, so a designer can drop
+// any components into it (text, questions, buttons). The children are drawn
+// by Form.io itself, which is why this writes the design system callout's
+// markup and classes instead of mounting the React Callout: Form.io cannot
+// render its components inside a React tree. Carries no value of its own.
+
+/** The design system's callout colour schemes. */
+const CALLOUT_VARIANTS = [
+  "lightGrey",
+  "lightBlue",
+  "lightGold",
+  "Blue",
+  "Grey",
+  "Black",
+] as const;
+
+/** Form.io's fieldset class, with the container members this one uses. */
+const FieldsetComponent = stockComponent("fieldset") as unknown as new (
+  ...args: unknown[]
+) => FormioFieldInstance & {
+  nestedKey: string;
+  renderComponents(): string;
+};
+
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+/** The callout box. Reads `calloutTitle`, `headingLevel` and `variant`. */
+class BcgovCalloutComponent extends FieldsetComponent {
+  static schema(...extend: unknown[]): Record<string, unknown> {
+    return (
+      FieldsetComponent as unknown as {
+        schema(...extend: unknown[]): Record<string, unknown>;
+      }
+    ).schema(
+      {
+        type: "bcgovCallout",
+        key: "bcgovCallout",
+        label: "Callout",
+        legend: "",
+        calloutTitle: "",
+        headingLevel: 2,
+        variant: "lightBlue",
+        components: [],
+        input: false,
+        persistent: false,
+        clearOnHide: false,
+      },
+      ...extend,
+    );
+  }
+
+  static get builderInfo() {
+    return {
+      title: "BC Gov Callout",
+      group: "basic",
+      icon: "square",
+      schema: BcgovCalloutComponent.schema(),
+    };
+  }
+
+  override render(): string {
+    const component = this.component;
+    const level = Number(component.headingLevel);
+    const heading = [2, 3, 4, 5, 6].includes(level) ? `h${level}` : "h2";
+    const variant = CALLOUT_VARIANTS.find((v) => v === component.variant);
+    const title = textOf(component.calloutTitle).trim();
+    const titleHtml = title
+      ? `<${heading} class="${calloutStyles.title}">${escapeHtml(title)}</${heading}>`
+      : "";
+    return super.render(
+      `<div class="${calloutStyles.callout}">` +
+        `<div class="bcds-Callout ${variant ?? "lightBlue"}">` +
+        `<div class="${calloutStyles.content}">` +
+        titleHtml +
+        `<div ref="${this.nestedKey}">${this.renderComponents()}</div>` +
+        `</div></div></div>`,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// bcgovInlineAlert: a container like bcgovCallout, drawn as the design
+// system's InlineAlert (an icon, a tinted box with a thin border all round)
+// for information the citizen should notice: eligibility criteria, a note
+// about what happens next. Form.io draws the nested components, so this writes
+// the InlineAlert markup and classes and mounts only the icon with React.
+
+/** The design system's inline alert kinds. */
+const INLINE_ALERT_VARIANTS = ["info", "success", "warning", "danger"] as const;
+
+type InlineAlertVariant = (typeof INLINE_ALERT_VARIANTS)[number];
+
+function inlineAlertVariant(value: unknown): InlineAlertVariant {
+  return INLINE_ALERT_VARIANTS.find((variant) => variant === value) ?? "info";
+}
+
+/** Each kind's icon, as the design system's own InlineAlert picks it. */
+function inlineAlertIcon(variant: InlineAlertVariant, id: string): ReactNode {
+  switch (variant) {
+    case "success":
+      return <SvgCheckCircleIcon id={id} />;
+    case "warning":
+      return <SvgExclamationIcon id={id} />;
+    case "danger":
+      return <SvgExclamationCircleIcon id={id} />;
+    default:
+      return <SvgInfoIcon id={id} />;
+  }
+}
+
+/** The alert box. Reads `alertTitle` (plain text, shown bold) and `variant`. */
+class BcgovInlineAlertComponent extends FieldsetComponent {
+  private iconMount?: ReactMount;
+
+  static schema(...extend: unknown[]): Record<string, unknown> {
+    return (
+      FieldsetComponent as unknown as {
+        schema(...extend: unknown[]): Record<string, unknown>;
+      }
+    ).schema(
+      {
+        type: "bcgovInlineAlert",
+        key: "bcgovInlineAlert",
+        label: "Inline alert",
+        legend: "",
+        alertTitle: "",
+        variant: "info",
+        components: [],
+        input: false,
+        persistent: false,
+        clearOnHide: false,
+      },
+      ...extend,
+    );
+  }
+
+  static get builderInfo() {
+    return {
+      title: "BC Gov Inline Alert",
+      group: "basic",
+      icon: "info-circle",
+      schema: BcgovInlineAlertComponent.schema(),
+    };
+  }
+
+  override render(): string {
+    const variant = inlineAlertVariant(this.component.variant);
+    const title = textOf(this.component.alertTitle).trim();
+    // `.title` as a direct child of the container takes the design system's
+    // bold title style.
+    const titleHtml = title
+      ? `<span class="title">${escapeHtml(title)}</span>`
+      : "";
+    return super.render(
+      `<div class="bcds-Inline-Alert ${variant}">` +
+        `<span class="bcds-Inline-Alert--icon" ref="alertIcon"></span>` +
+        `<div class="bcds-Inline-Alert--container" role="note">` +
+        titleHtml +
+        `<div class="${styles.inlineAlertBody}" ref="${this.nestedKey}">` +
+        this.renderComponents() +
+        `</div></div></div>`,
+    );
+  }
+
+  override attach(element: HTMLElement): Promise<void> {
+    this.loadRefs(element, { alertIcon: "single" });
+    const host = this.refs.alertIcon;
+    if (host instanceof HTMLElement) {
+      // A distinct id per alert: the icons default to a shared one.
+      this.iconMount = new ReactMount(
+        host,
+        inlineAlertIcon(
+          inlineAlertVariant(this.component.variant),
+          `${this.id}-icon`,
+        ),
+      );
+    }
+    return super.attach(element);
+  }
+
+  override detach(): void {
+    this.iconMount?.release();
+    super.detach();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// number and currency
+
+/**
+ * Mixes a number input drawn with the design system TextField into a stock
+ * Form.io number class, so it looks like every other input: no stepper
+ * buttons, a prefix or suffix ("$", "km") shown inside the box. The stored
+ * value is still a number; what the citizen types is kept as text while it
+ * is on its way to one ("12.") and shown formatted again once they leave the
+ * field. `defaultPrefix` supplies the prefix when the spec sets none.
+ */
+function withBcgovNumberInput<TBase extends FormioFieldCtor>(
+  Base: TBase,
+  defaultPrefix: (component: Record<string, unknown>) => string,
+) {
+  return class BcgovNumberInput extends withBcgovField(Base) {
+    /** The text being typed; undefined when the field shows the stored value. */
+    private typed?: string;
+
+    override setValue(
+      value: unknown,
+      flags?: Record<string, unknown>,
+    ): boolean {
+      // A value set from outside (a loaded draft, a cleared conditional field)
+      // replaces whatever was being typed.
+      this.typed = undefined;
+      return super.setValue(value, flags);
+    }
+
+    protected renderReact(): ReactNode {
+      const component = this.component;
+      const props = this.bcgovFieldProps();
+      // A format hint the form put in the placeholder, as the description.
+      props.description ??= textOf(component.placeholder) || undefined;
+      const validate = isRecord(component.validate) ? component.validate : {};
+      // The spec's own limit if it sets one; otherwise none for a whole number
+      // and two (currency) for anything else.
+      let decimalLimit = validate.integer === true ? 0 : 2;
+      if (typeof component.decimalLimit === "number") {
+        decimalLimit = component.decimalLimit;
+      }
+      const prefix =
+        textOf(component.prefix).trim() || defaultPrefix(component);
+      const suffix = textOf(component.suffix).trim();
+      const value =
+        this.typed ??
+        formatNumberValue(
+          this.dataValue,
+          decimalLimit,
+          component.delimiter === true,
+        );
+
+      return (
+        <TextField
+          {...props}
+          type="text"
+          inputMode={decimalLimit > 0 ? "decimal" : "numeric"}
+          value={value}
+          // Read with the label, not aloud on its own: the label names the
+          // amount, and the sign is a visual cue.
+          iconLeft={
+            prefix ? (
+              <span className={styles.numberAffix} aria-hidden="true">
+                {prefix}
+              </span>
+            ) : undefined
+          }
+          iconRight={
+            suffix ? (
+              <span className={styles.numberAffix} aria-hidden="true">
+                {suffix}
+              </span>
+            ) : undefined
+          }
+          onChange={(next: string) => {
+            const cleaned = cleanNumberText(next, decimalLimit);
+            if (cleaned === null) {
+              // Refused: redraw with the text as it was.
+              this.bcgovRerender();
+              return;
+            }
+            this.typed = cleaned;
+            // Form.io reads null as "take the value from the inputs", and there
+            // are none, so a cleared field is sent as '' and normalised to empty.
+            this.bcgovCommit(parseNumberText(cleaned) ?? "");
+          }}
+          onBlur={() => {
+            this.typed = undefined;
+            this.bcgovRerender();
+          }}
+        />
+      );
+    }
+  };
+}
+
+/** Form.io's `number`: the spec's own `prefix` / `suffix`, nothing by default. */
+const BcgovNumberComponent = withBcgovNumberInput(
+  stockComponent("number"),
+  () => "",
+);
+
+/**
+ * The sign for a currency code, as Canadians read it: "$" for CAD (the
+ * default) and USD, "€" for EUR; the code itself when the browser has no
+ * symbol for it.
+ */
+function currencySymbol(component: Record<string, unknown>): string {
+  const code = textOf(component.currency).trim().toUpperCase() || "CAD";
+  try {
+    const parts = new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: code,
+      currencyDisplay: "narrowSymbol",
+    }).formatToParts(0);
+    return parts.find((part) => part.type === "currency")?.value ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** Form.io's own currency class, kept before ours replaces it in the registry. */
+const StockCurrencyComponent = stockComponent("currency");
+
+/**
+ * Form.io's `currency`: a number that holds an amount of money. Form.io's
+ * defaults stay (two decimals, grouping commas); the sign comes from the
+ * field's currency code. Offered in the builder as "Amount".
+ */
+class BcgovCurrencyComponent extends withBcgovNumberInput(
+  StockCurrencyComponent,
+  currencySymbol,
+) {
+  static get builderInfo() {
+    const stock = (
+      StockCurrencyComponent as unknown as {
+        builderInfo: Record<string, unknown>;
+      }
+    ).builderInfo;
+    return { ...stock, title: "Amount", group: "basic" };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// select
+
+interface SelectValue {
+  label?: unknown;
+  value?: unknown;
+}
+
+/**
+ * Form.io's `select` with a fixed list of values, drawn with the design
+ * system Select. A select fed from a URL, a resource, JSON or custom code, or
+ * one that takes several values, keeps Form.io's own rendering: the builder
+ * only offers the fixed-list kind, and the rest appear in its settings dialog.
+ */
+class BcgovSelectComponent extends withBcgovField(stockComponent("select")) {
+  protected override get bcgovStockRendering(): boolean {
+    return super.bcgovStockRendering || !this.bcgovHasFixedValues();
+  }
+
+  private bcgovHasFixedValues(): boolean {
+    const component = this.component;
+    const dataSrc = component.dataSrc ?? "values";
+    return (
+      dataSrc === "values" &&
+      component.multiple !== true &&
+      isRecord(component.data) &&
+      Array.isArray(component.data.values)
+    );
+  }
+
+  private bcgovValues(): SelectValue[] {
+    const data = this.component.data;
+    return isRecord(data) && Array.isArray(data.values)
+      ? data.values.filter(isRecord)
+      : [];
+  }
+
+  override setValue(value: unknown, flags?: Record<string, unknown>): boolean {
+    if (this.bcgovStockRendering) return super.setValue(value, flags);
+    // The stock setValue drives the Choices.js widget, which is not rendered;
+    // only the data path is needed.
+    const changed = this.updateValue(value, flags);
+    if (value === undefined || value === null || value === "") {
+      this.bcgovResetErrors();
+    }
+    this.bcgovRerender();
+    return changed;
+  }
+
+  protected renderReact(): ReactNode {
+    const component = this.component;
+    const props = this.bcgovFieldProps();
+    const items = this.bcgovValues().map((option) => ({
+      id: textOf(option.value),
+      label: textOf(option.label),
+    }));
+    const selected = textOf(this.dataValue);
+
+    return (
+      <Select
+        {...props}
+        placeholder={textOf(component.placeholder) || undefined}
+        items={items}
+        selectedKey={selected === "" ? null : selected}
+        onSelectionChange={(key) => {
+          this.bcgovCommit(key === null ? "" : String(key));
+        }}
+      />
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// checkbox
+
+/** `properties.myssGroupLabel`: a question drawn above the checkbox. */
+function checkboxGroupLabel(
+  component: Record<string, unknown>,
+): string | undefined {
+  const properties = isRecord(component.properties) ? component.properties : {};
+  return textOf(properties.myssGroupLabel).trim() || undefined;
+}
+
+class BcgovCheckboxComponent extends withBcgovField(
+  stockComponent("checkbox"),
+) {
+  protected renderReact(): ReactNode {
+    const props = this.bcgovFieldProps();
+    return (
+      <CheckboxField
+        groupLabel={checkboxGroupLabel(this.component)}
+        // The label is HTML sourced from the form spec (a consent checkbox
+        // links to the terms it names). Sanitised through Form.io's
+        // DOMPurify-backed Utils.sanitize, so spec content can never inject
+        // scripts or handlers, the way the accordion body is.
+        labelHtml={Utils.sanitize(
+          textOf(this.component.label),
+          this.options ?? {},
+        )}
+        checked={this.dataValue === true}
+        isRequired={props.isRequired}
+        isDisabled={props.isDisabled}
+        errorMessage={props.errorMessage}
+        name={props.name}
+        onChange={(next) => {
+          this.bcgovCommit(next);
+        }}
+      />
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// radio (also registered as bcgovRadio for specs published with that name)
+
+/** One `{ label, value }` entry of the component's `values` array. */
+interface RadioOption {
+  label?: unknown;
+  value?: unknown;
+  childrenLabel?: unknown;
+  children?: RadioOption[];
+}
+
+/**
+ * Form.io's `radio`, drawn with the design system RadioGroup. An option may
+ * carry `children`: choosing it reveals a nested group whose choice is the
+ * answer, so a two-level question stays one field.
+ */
+class BcgovRadioComponent extends withBcgovField(stockComponent("radio")) {
+  private selectedParent?: string;
+
+  override setValue(value: unknown, flags?: Record<string, unknown>): boolean {
+    const changed = super.setValue(value, flags);
+    const selectedValue = this.selectedValue();
+    this.selectedParent =
+      selectedValue === null
+        ? undefined
+        : (this.parentValue(selectedValue) ?? undefined);
+    this.bcgovRerender();
+    return changed;
+  }
+
+  private componentOptions(): RadioOption[] {
+    return Array.isArray(this.component.values)
+      ? (this.component.values as RadioOption[])
+      : [];
+  }
+
+  private selectedValue(): string | null {
+    // null, not "": react-aria reads null as "nothing selected". "null" is here
+    // because that is what a cleared field holds under dataType "string".
+    const raw = this.dataValue;
+    if (raw === undefined || raw === null || raw === "" || raw === "null") {
+      return null;
+    }
+    if (
+      typeof raw === "string" ||
+      typeof raw === "number" ||
+      typeof raw === "boolean"
+    ) {
+      return String(raw);
+    }
+    return null;
+  }
+
+  protected renderReact(): ReactNode {
+    const props = this.bcgovFieldProps();
+    const options = this.componentOptions();
+    const value = this.selectedValue();
+    const hasNestedOptions = options.some(
+      (option) => (option.children?.length ?? 0) > 0,
+    );
+    const selectedParent = hasNestedOptions
+      ? (this.selectedParent ?? this.parentValue(value))
+      : value;
+    const required = isRequired(this.component);
+    const labelId = `${this.id}-label`;
+
+    // The label is drawn here rather than through RadioGroup's `label` prop.
+    // BCDS appends "(required)" to that label as bare text whenever
+    // `isRequired` is set, which a page cannot style or hide. Owning it lets
+    // every group report `isRequired` (so assistive technology announces the
+    // field as required) while a page that marks required fields another way
+    // hides the `[data-myss-required]` text visually. Same BCDS class, so it
+    // looks the same. Every other prop comes from the shared field props
+    // (required, disabled, invalid, error, name), as for every other field.
+    const { label, ...groupProps } = props;
+
+    return (
+      <div className="myss-radio-field">
+        {label && (
+          <span id={labelId} className="bcds-react-aria-RadioGroup--label">
+            {label}
+            {required && <span data-myss-required=""> (required)</span>}
+          </span>
+        )}
+        <RadioGroup
+          {...groupProps}
+          aria-labelledby={label ? labelId : undefined}
+          orientation="vertical"
+          value={selectedParent}
+          onChange={(next: string) => {
+            const option = options.find(
+              (candidate) => String(candidate.value) === next,
+            );
+            if (!hasNestedOptions) {
+              this.updateValue(next, { modified: true });
+            } else if (option?.children?.length) {
+              this.updateValue("", { modified: true });
+              this.selectedParent = next;
+            } else {
+              this.selectedParent = next;
+              this.updateValue(next, { modified: true });
+            }
+            this.bcgovRerender();
+          }}
+        >
+          {options.map((option) => {
+            const optionValue = textOf(option.value);
+            const children = option.children ?? [];
+            if (!hasNestedOptions) {
+              return (
+                <Radio key={optionValue} value={optionValue}>
+                  {textOf(option.label)}
+                </Radio>
+              );
+            }
+            const isExpanded =
+              selectedParent === optionValue && children.length > 0;
+
+            return (
+              <div key={optionValue} data-myss-nested-option={optionValue}>
+                <Radio value={optionValue}>{textOf(option.label)}</Radio>
+                {isExpanded && (
+                  <RadioGroup
+                    aria-label={textOf(
+                      option.childrenLabel,
+                      textOf(option.label, "Additional options"),
+                    )}
+                    orientation="vertical"
+                    value={value}
+                    isRequired={required}
+                    isDisabled={props.isDisabled}
+                    onChange={(next: string) => {
+                      this.bcgovCommit(next);
+                    }}
+                  >
+                    {children.map((child) => (
+                      <div
+                        key={String(child.value)}
+                        data-myss-nested-option-child={String(child.value)}
+                      >
+                        <Radio value={String(child.value)}>
+                          {textOf(child.label)}
+                        </Radio>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+              </div>
+            );
+          })}
+        </RadioGroup>
+      </div>
+    );
+  }
+
+  private parentValue(value: string | null): string | null {
+    if (value === null) return null;
+    const parent = this.componentOptions().find((option) =>
+      (option.children ?? []).some((child) => String(child.value) === value),
+    );
+    return parent ? String(parent.value) : value;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// datetime
+
+/** The date portion of a stored value as a calendar date, or null. */
+function calendarDateOf(value: unknown): CalendarDate | null {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(textOf(value));
+  if (!match) return null;
+  try {
+    return parseDate(match[1]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Form.io's `datetime`, drawn with the design system DatePicker. The answer is
+ * stored as the ISO date (`yyyy-MM-dd`), which the API's date parsing accepts
+ * alongside the datetime strings Form.io's own picker used to send.
+ */
+class BcgovDateTimeComponent extends withBcgovField(
+  stockComponent("datetime"),
+) {
+  protected renderReact(): ReactNode {
+    const props = this.bcgovFieldProps();
+    return (
+      <DatePicker
+        {...props}
+        value={calendarDateOf(this.dataValue)}
+        onChange={(next) => {
+          this.bcgovCommit(next ? next.toString() : "");
+        }}
+      />
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// button
+
+const BUTTON_STATE_EVENTS = [
+  "submitButton",
+  "cancelSubmit",
+  "submitDone",
+  "submitError",
+  "change",
+  "error",
+] as const;
+
+/**
+ * Form.io's `button`, drawn with the design system Button. The stock class
+ * still owns the submit flow: the click calls its `onClick`, and the events it
+ * handles to disable and re-enable itself re-render the Button afterwards.
+ */
+class BcgovButtonComponent extends withBcgovField(stockComponent("button")) {
+  override attach(element: HTMLElement): Promise<void> {
+    const attached = super.attach(element);
+    if (!this.bcgovStockRendering) {
+      // Registered after the stock handlers (which super.attach adds), so each
+      // re-render sees the disabled state they just set.
+      for (const event of BUTTON_STATE_EVENTS) {
+        this.on(event, () => this.bcgovRerender(), true);
+      }
+    }
+    return attached;
+  }
+
+  protected renderReact(): ReactNode {
+    const component = this.component;
+    const action = textOf(component.action) || "submit";
+    // The spacing sits on a wrapper: the design system Button replaces its own
+    // classes with any className it is given, which left it unstyled.
+    return (
+      <div className={styles.submitButton}>
+        <Button
+          variant={action === "submit" ? "primary" : "secondary"}
+          type="button"
+          isDisabled={this.disabled || this.options.readOnly === true}
+          onPress={() => this.bcgovClick()}
+        >
+          {textOf(component.label) || this.t("submit")}
+        </Button>
+      </div>
+    );
+  }
+
+  private bcgovClick(): void {
+    // The stock handler expects a DOM event only to stop its propagation.
+    (this as unknown as { onClick(event: unknown): void }).onClick({
+      preventDefault() {},
+      stopPropagation() {},
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+let registered = false;
+
+export interface RegisterBcgovComponentsOptions {
+  /** The AddressComplete key for the address autocomplete; "" disables suggestions. */
+  canadaPostApiKey?: string;
+}
+
+/**
+ * Register the design system renderers for Form.io's stock types and the BC
+ * Gov custom types. Idempotent; call once before any <Form> renders (from
+ * `main.tsx`).
+ */
+export function registerBcgovComponents(
+  options: RegisterBcgovComponentsOptions = {},
+): void {
+  // Set on every call, before the once-only guard, so a host app (or a test)
+  // can supply the key even after another caller registered the components.
+  if (options.canadaPostApiKey !== undefined) {
+    setCanadaPostApiKey(options.canadaPostApiKey);
+  }
+  if (registered) return;
+  const setComponent = (
+    Components as unknown as {
+      setComponent(name: string, comp: FormioFieldCtor | unknown): void;
+    }
+  ).setComponent;
+
+  setComponent("textfield", BcgovTextFieldComponent);
+  setComponent("email", BcgovEmailComponent);
+  setComponent("phoneNumber", BcgovPhoneNumberComponent);
+  setComponent("textarea", BcgovTextAreaComponent);
+  setComponent("number", BcgovNumberComponent);
+  setComponent("currency", BcgovCurrencyComponent);
+  setComponent("select", BcgovSelectComponent);
+  setComponent("checkbox", BcgovCheckboxComponent);
+  setComponent("radio", BcgovRadioComponent);
+  setComponent("bcgovRadio", BcgovRadioComponent);
+  setComponent("datetime", BcgovDateTimeComponent);
+  setComponent("button", BcgovButtonComponent);
+  setComponent("bcgovAccordion", BcgovAccordionComponent);
+  setComponent("bcgovCallout", BcgovCalloutComponent);
+  setComponent("bcgovInlineAlert", BcgovInlineAlertComponent);
+  setComponent("bcgovAddressAutocomplete", BcgovAddressAutocompleteComponent);
+  registered = true;
+}

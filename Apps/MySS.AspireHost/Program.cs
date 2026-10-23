@@ -17,7 +17,8 @@
 // for the docker compose path.
 //
 // Still manual, because they live inside Strapi's admin UI: the first-visit admin user,
-// and the read-only API token MyssApi needs in Strapi:ApiToken (appsettings.local.json).
+// the read-only API token MyssApi needs in Strapi:ApiToken, and the write-scoped token
+// MyssAdminApi needs in Strapi:AdminApiToken (each in its own appsettings.local.json).
 
 using System.Globalization;
 using Aspire.Hosting.JavaScript;
@@ -28,6 +29,7 @@ string repoRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", 
 string apiDirectory = Path.Combine(repoRoot, "Apps", "MyssApi");
 string contentDirectory = Path.Combine(repoRoot, "Apps", "MyssContent");
 string webclientDirectory = Path.Combine(repoRoot, "Apps", "MyssWebclient");
+string adminWebclientDirectory = Path.Combine(repoRoot, "Apps", "MyssAdminWebclient");
 
 // ---------------------------------------------------------------------------
 // Postgres — compose.yaml `postgres`. POSTGRES_DB creates the forms database;
@@ -329,6 +331,40 @@ builder
         "http", endpoint => endpoint.Port = RequireInt("Aspire:Parameters:Webclient:Port"))
     .WithEnvironment("BROWSER", "none")
     .WaitFor(api);
+
+// ---------------------------------------------------------------------------
+// MySSAdminApi — the staff API: the form and rates editors, and the worker
+// review screens. It uses the same database as MySSApi (ADR-0010) but never
+// migrates it, so it waits for the same migration chain. Strapi is written
+// with the write-scoped Strapi:AdminApiToken, and the bus pass PDF calls
+// CDOGS with Cdogs:ClientId/ClientSecret, both from its own
+// appsettings.local.json. Its port is fixed by its launch profile
+// (http://localhost:5010), which the admin webclient's default API_URL expects.
+// ---------------------------------------------------------------------------
+IResourceBuilder<ProjectResource> adminApi = builder
+    .AddProject<Projects.MyssAdminApi>("MySSAdminApi")
+    .WithReference(formsDb)
+    .WithEnvironment("Strapi__BaseUrl", content.GetEndpoint("http"))
+    .WaitFor(postgres)
+    .WaitForCompletion(migrateIntake);
+
+if (!string.IsNullOrWhiteSpace(dashboardOtlp))
+{
+    adminApi.WithEnvironment("OpenTelemetry__Endpoint", dashboardOtlp);
+    adminApi.WithEnvironment("OpenTelemetry__ExportProtocol", "Grpc");
+}
+
+// ---------------------------------------------------------------------------
+// MyssAdminWebClient — the administration SPA, pinned to 5174 beside the
+// citizen webclient's 5173 for the same reason (fixed OIDC redirect URIs).
+// ---------------------------------------------------------------------------
+builder
+    .AddViteApp("MyssAdminWebClient", adminWebclientDirectory)
+    .WithNpm(installArgs: ["--no-audit", "--no-fund", "--prefer-offline"])
+    .WithEndpoint(
+        "http", endpoint => endpoint.Port = RequireInt("Aspire:Parameters:AdminWebclient:Port"))
+    .WithEnvironment("BROWSER", "none")
+    .WaitFor(adminApi);
 
 builder.Build().Run();
 

@@ -1,7 +1,11 @@
 import type { JSON as FormioJson } from "@formio/react/lib/components/Form";
+import {
+  throwApplicationRequestError,
+  type ApplicationStatus,
+} from "@myss/web-common/api";
+import { authHeaders } from "@myss/web-common/auth";
 
 import { API_URL } from "@/constants";
-import { authHeaders } from "@/auth/accessToken";
 import {
   readValidationErrors,
   SubmissionRejectedError,
@@ -18,21 +22,15 @@ import {
 //
 // Design: docs/development_design/income-assistance-application.md.
 
-/**
- * The application's state, folded server-side from its event stream. The
- * applicant edits a DRAFT, and a RETURNED application once a worker asks for
- * more information; every other status is shown to them read-only.
- */
-export type ApplicationStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "UNDER_REVIEW"
-  | "RETURNED"
-  | "RESUBMITTED"
-  | "ESCALATED"
-  | "ACCEPTED"
-  | "DENIED"
-  | "PROMOTION_FAILED";
+// The status and the problem-details refusal are shared with the admin
+// webclient's review calls (@myss/web-common/api); re-exported here for this
+// app's callers. The applicant edits a DRAFT, and a RETURNED application once
+// a worker asks for more information; every other status is shown to them
+// read-only.
+export {
+  ApplicationRequestError,
+  type ApplicationStatus,
+} from "@myss/web-common/api";
 
 /** Whether the applicant may change the answers: a draft, or a returned application. */
 export function isEditableStatus(status: ApplicationStatus): boolean {
@@ -90,61 +88,6 @@ export const INTAKE_KEYWORDS = {
 } as const;
 
 /**
- * A non-422 refusal from the intake API: a ProblemDetails body carrying the
- * stable `keyword`, and on a 409 the `currentVersion` the row is at now so
- * the caller can refetch and retry against it. Also thrown for reads that
- * fail (404 for a missing or someone else's application, 401, 500).
- */
-export class ApplicationRequestError extends Error {
-  readonly status: number;
-  readonly keyword?: string;
-  readonly currentVersion?: number;
-
-  constructor(
-    status: number,
-    keyword?: string,
-    currentVersion?: number,
-    detail?: string,
-  ) {
-    super(detail ?? `Application request failed (${status})`);
-    this.name = "ApplicationRequestError";
-    this.status = status;
-    this.keyword = keyword;
-    this.currentVersion = currentVersion;
-
-    // See SubmissionRejectedError: keep `instanceof` reliable after downlevel.
-    Object.setPrototypeOf(this, ApplicationRequestError.prototype);
-  }
-
-  /** True when the write lost to another tab and the row has moved on. */
-  get isConflict(): boolean {
-    return this.status === 409;
-  }
-}
-
-async function readProblem(res: Response): Promise<{
-  keyword?: string;
-  currentVersion?: number;
-  detail?: string;
-}> {
-  try {
-    const problem = await res.json();
-    return {
-      keyword:
-        typeof problem?.keyword === "string" ? problem.keyword : undefined,
-      currentVersion:
-        typeof problem?.currentVersion === "number"
-          ? problem.currentVersion
-          : undefined,
-      detail: typeof problem?.detail === "string" ? problem.detail : undefined,
-    };
-  } catch {
-    // Not a ProblemDetails body; the status alone will have to do.
-    return {};
-  }
-}
-
-/**
  * Turns a failed response into the typed error the callers branch on: 422 is
  * the forms validation shape (every field error at once), anything else a
  * problem-details refusal.
@@ -156,13 +99,7 @@ async function throwFor(res: Response): Promise<never> {
       await readValidationErrors(res),
     );
   }
-  const problem = await readProblem(res);
-  throw new ApplicationRequestError(
-    res.status,
-    problem.keyword,
-    problem.currentVersion,
-    problem.detail,
-  );
+  return throwApplicationRequestError(res);
 }
 
 const BASE_URL = `${API_URL}/v1/intake/applications`;

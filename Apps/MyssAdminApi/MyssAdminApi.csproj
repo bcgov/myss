@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk.Web">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Version>0.1.0</Version>
+        <RootNamespace>Myss.AdminApi</RootNamespace>
+        <Nullable>enable</Nullable>
+        <LangVersion>14.0</LangVersion>
+        <AnalysisMode>Recommended</AnalysisMode>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+        <UserSecretsId>5b0e7c1a-3f4d-4e8a-9c62-0d5a8f2b7e41</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- The shared data model (MyssData) over Postgres. No EF Design package:
+             this API never migrates; MyssApi owns the migrations. -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Shared with MyssApi: form spec validation, the data model, and the host/auth/content code (MyssCommon) -->
+        <ProjectReference Include="..\MyssFormSpec\MyssFormSpec.csproj" />
+        <ProjectReference Include="..\MyssData\MyssData.csproj" />
+        <ProjectReference Include="..\MyssCommon\MyssCommon.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- ODT templates for the bus pass PDF: embedded for use in API loading -->
+        <EmbeddedResource Include="Templates\*.odt" />
+    </ItemGroup>
+</Project>

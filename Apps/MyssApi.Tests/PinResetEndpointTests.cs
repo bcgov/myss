@@ -8,6 +8,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Domain;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Resetting a forgotten PIN over real HTTP (MYSS-36): asking needs the

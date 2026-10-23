@@ -1,8 +1,9 @@
 namespace Myss.Api.Tests.Services
 {
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Tests for <see cref="ErrorMessageResolver"/>.

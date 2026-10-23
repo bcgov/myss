@@ -1,5 +1,5 @@
 import { API_URL } from "@/constants";
-import { authHeaders } from "@/auth/accessToken";
+import { authHeaders } from "@myss/web-common/auth";
 
 // Calls to the attachments API (/v1/attachments): list the signed-in user's
 // files and upload new ones. Responses come wrapped in the API's payload

@@ -11,6 +11,9 @@ namespace Myss.Api.Controllers
     using Microsoft.Extensions.Logging;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.FormSpec;
+    using Myss.Common.Content;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The public, anonymous Pre-Eligibility Estimator gateway. It serves the

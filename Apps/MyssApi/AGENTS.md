@@ -7,13 +7,14 @@ C# conventions, commands); this file adds what is specific to MyssApi.
 ## Layering
 
 `Controllers → Services (I*Service) → Providers (I*Provider) → Data (EF DbContexts)`.
-Providers are the boundary to anything external (Strapi, ClamAV, S3, CDOGS, BC Gov Notify for email); services
+Providers are the boundary to anything external (Strapi, ClamAV, S3, ICM, BC Gov Notify for email); services
 hold the rules; everything is registered by interface in `Startup.ConfigureServices` so
 tests substitute fakes (`MyssApi.Tests/TestDoubles/`) rather than mocking HTTP.
 
-`Program.cs` is a thin shim over `Configuration/ProgramConfiguration` +
-`Startup`/`Configuration/StartupConfiguration` (the old-style two-class host, not
-minimal APIs). Configuration precedence: `appsettings.json` →
+`Program.cs` is a thin shim over `ProgramConfiguration` +
+`Startup`/`StartupConfiguration` (the old-style two-class host, not minimal APIs).
+Those two, with the auth, Swagger and observability code, live in `Apps/MyssCommon`
+(namespace `Myss.Common`), shared with MyssAdminApi. Configuration precedence: `appsettings.json` →
 `appsettings.{Environment}.json` → `appsettings.local.json` (gitignored) →
 environment variables **prefixed `Myss_`** (`Myss_Strapi__ApiToken`,
 `Myss_ObjectStorage__Bucket`, …).
@@ -22,7 +23,8 @@ Endpoints are versioned: `[Route("v{version:apiVersion}/...")]`, responses wrapp
 `BaseResponseModel<T>`.
 
 **Fail-closed startup is deliberate.** `ObjectStorage` missing → the app refuses to
-start. `Strapi:ApiToken` is not defaulted. Preserve that shape rather than adding
+start. `Strapi:ApiToken` is not defaulted. `AllowOrigins` must list the webclient's
+origins; `*` stops the app. Preserve that shape rather than adding
 permissive fallbacks.
 
 ## Auth
@@ -32,11 +34,14 @@ tokens; the SPA does Auth Code + PKCE. `StartupConfiguration.ConfigureAuthentica
 is the documented swap point to Option 2 (BFF cookie + OIDC) — the lines marked SHARED
 move across verbatim and nothing outside that method changes. Keep it that way.
 
-`Configuration/KeycloakClaims` flattens Keycloak's nested `realm_access`/`resource_access`
-roles so `Configuration/AuthorizationPolicies` (`Client`, `Worker`, `Admin`,
-`WorkerWithIdir`) works identically under either option.
+`KeycloakClaims` (MyssCommon) flattens Keycloak's nested `realm_access`/`resource_access`
+roles so `Configuration/AuthorizationPolicies` (`Client`, `Worker`, `Admin`) works
+identically under either option. The worker endpoints (application review, stored
+submissions, the bus pass PDF) and their `WorkerWithIdir` policy moved to MyssAdminApi;
+both APIs run the same `KeycloakClaims` and `RoleCalculator` from MyssCommon, so a role
+means the same in both.
 
-`Configuration/MockAuthGate` is a three-lock, fail-closed dev sign-in
+`MockAuthGate` (MyssCommon) is a three-lock, fail-closed dev sign-in
 (`AllowMockAuth` + `MockAuth` + a non-production `EnvironmentName`, all explicit).
 A production-named environment with either flag set throws at startup. Enable it via
 `appsettings.local.json` (see `appsettings.local.sample.json`); pick a persona with
@@ -54,7 +59,16 @@ clamd's `StreamMaxLength`.
 
 Four DbContexts, one per schema, all required, applied manually (see the root
 AGENTS.md for the stack-bootstrap commands). Each has its own history table in its
-schema and its own migrations folder. Adding a migration:
+schema and its own migrations folder.
+
+The forms, platform and intake contexts, their entities, the event store and the
+intake fold are defined in `Apps/MyssData`, which MyssAdminApi shares; only
+`AttachmentsDbContext` is defined here. Their migrations stay in this project: this API
+is the only service that changes the schema. EF looks for migrations in the context's
+own assembly by default, so every place this API builds one of those contexts points it
+here through `Configuration/MyssMigrations` (Startup, `MigrationRunner`, the Postgres
+tests); `Configuration/MyssMigrationsTests` fails if one does not. A model change in
+MyssData needs its migration added here, in the same PR. Adding a migration:
 
 ```bash
 cd Apps/MyssApi

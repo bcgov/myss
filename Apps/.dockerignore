@@ -1,0 +1,53 @@
+# Build context for the two webclient images (context ./Apps, Dockerfile
+# MyssWebclient/Dockerfile or MyssAdminWebclient/Dockerfile). Each image COPYs
+# only the npm workspace it needs; this keeps the rest out of the context.
+# The .NET images are built by s2i and MyssContent from its own directory, so
+# neither reads this file.
+
+# Not part of the npm workspace
+MyssContent
+MyssApi
+MyssApi.Tests
+MyssAdminApi
+MyssAdminApi.Tests
+MyssFormSpec
+MyssFormSpec.Tests
+MyssData
+MyssCommon
+MyssCommon.Tests
+IcmApi
+IcmApi.Console
+IcmApi.Host
+IcmApi.Host.Tests
+MySS.AspireHost
+*.sln
+
+# Dependencies (reinstalled cleanly with `npm ci` in the build stage)
+**/node_modules
+
+# Build output and test artifacts (regenerated in the build stage)
+**/dist
+**/coverage
+**/test-results
+**/.vitest-attachments
+**/playwright-report
+**/e2e-report
+**/__screenshots__
+
+# Version control
+.git
+**/.gitignore
+
+# Local environment / secrets (.env.sample is safe to include)
+**/.env
+**/.env.*
+!**/.env.sample
+
+# Logs (incl. openapi-ts-error-*.log)
+**/*.log
+
+# Editor / OS cruft
+**/.vscode
+**/.idea
+**/.DS_Store
+**/Thumbs.db

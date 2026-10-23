@@ -1,5 +1,7 @@
 import type { FormType } from "@formio/react/lib/components/Form";
 
+import type { EligibilityRates } from "@myss/web-common/api";
+
 import { API_URL } from "@/constants";
 
 // Calls to the public Pre-Eligibility Estimator gateway
@@ -43,47 +45,15 @@ export interface EligibilityRequest {
   otherAssetValue: number;
 }
 
-/**
- * One family-size row of monthly income limits by client type A-I. Couple
- * columns hold 0 at family size 1; see @/lib/rateColumns for each letter.
- */
-export interface EligibilityRateRow {
-  familySize: number;
-  a: number;
-  b: number;
-  c: number;
-  d: number;
-  e: number;
-  f: number;
-  g: number;
-  h: number;
-  i: number;
-}
-
-/** An income-limit column letter. */
-export type IncomeColumn = Exclude<keyof EligibilityRateRow, "familySize">;
-
-/** The asset ceilings by category A-D. */
-export interface EligibilityAssetLimits {
-  a: number;
-  b: number;
-  c: number;
-  d: number;
-}
-
-/** An asset-limit column letter. */
-export type AssetColumn = keyof EligibilityAssetLimits;
-
-/**
- * The rate table the browser computes against. Shape mirrors the JSON served by
- * GET /rates (camelCase, single-letter lowercase columns) — see MyssApi
- * EligibilityRatesModel.
- */
-export interface EligibilityRates {
-  effectiveDate: string;
-  incomeRows: EligibilityRateRow[];
-  assetLimits: EligibilityAssetLimits;
-}
+// The rate table's shape is shared with the admin rates editor
+// (@myss/web-common/api); re-exported here for this app's callers.
+export type {
+  AssetColumn,
+  EligibilityAssetLimits,
+  EligibilityRateRow,
+  EligibilityRates,
+  IncomeColumn,
+} from "@myss/web-common/api";
 
 /**
  * The estimate. Mirrors the old server response without the Support/Shelter

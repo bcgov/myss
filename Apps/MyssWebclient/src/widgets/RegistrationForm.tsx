@@ -12,8 +12,7 @@ import {
   type FormValidationError,
 } from "@/api/forms";
 import { ME_QUERY_KEY } from "@/auth/useMe";
-import SubmissionErrors from "@/components/SubmissionErrors";
-import { useClientValidation } from "@/hooks/useClientValidation";
+import { SubmissionErrors, useClientValidation } from "@myss/web-common/components";
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
 import {
   checkNewPin,

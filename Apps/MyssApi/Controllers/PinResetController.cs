@@ -14,6 +14,9 @@ namespace Myss.Api.Controllers
     using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using Myss.Common.Models;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Resetting a forgotten PIN by email (MYSS-36). Asking for the link needs the

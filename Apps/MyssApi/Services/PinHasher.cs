@@ -3,6 +3,7 @@ namespace Myss.Api.Services
     using Microsoft.AspNetCore.Identity;
     using Myss.Api.Data;
     using Myss.Api.Domain;
+    using Myss.Data;
 
     /// <summary>
     /// <see cref="IPinHasher"/> over ASP.NET Core Identity's

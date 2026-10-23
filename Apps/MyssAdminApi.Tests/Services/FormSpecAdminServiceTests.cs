@@ -1,0 +1,556 @@
+namespace Myss.AdminApi.Tests.Services
+{
+    using System;
+    using System.Linq;
+    using System.Net;
+    using System.Text.Json;
+    using Microsoft.Extensions.Logging.Abstractions;
+    using Myss.AdminApi.Models;
+    using Myss.AdminApi.Providers;
+    using Myss.AdminApi.Services;
+    using Myss.AdminApi.Tests.TestDoubles;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
+
+    /// <summary>
+    /// Tests for <see cref="FormSpecAdminService"/>: the validate-then-write policy
+    /// and how a Strapi refusal is surfaced.
+    /// </summary>
+    public class FormSpecAdminServiceTests
+    {
+        private static readonly string[] DuplicateAndUnknownField = ["FORMSPEC.COMPONENT_KEY.DUPLICATE", "FORMSPEC.CONDITIONAL.UNKNOWN_FIELD"];
+
+        private static readonly string[] MissingAndDuplicate = ["FORMSPEC.COMPONENT_KEY.MISSING", "FORMSPEC.COMPONENT_KEY.DUPLICATE"];
+
+        private readonly FakeFormSpecAdminProvider _admin = new();
+
+        [Fact]
+        public async Task SaveDraft_InvalidSpec_ReturnsErrors_AndNeverCallsStrapi()
+        {
+            // A spec with duplicate keys must be refused before anything is written.
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().SaveDraftAsync(
+                "estimator",
+                Spec("""{ "components": [ { "key": "dupe" }, { "key": "dupe" } ] }"""),
+                "Estimator",
+                CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.Contains(FormSpecStructureKeywords.ComponentKeyDuplicate, result.Errors.Select(e => e.Keyword));
+            Assert.Empty(_admin.SaveDraftCalls);
+        }
+
+        [Fact]
+        public async Task SaveDraft_ValidSpec_WritesThroughTheProvider()
+        {
+            _admin.Saved = new FormSpecModel
+            {
+                FormSpecId = "estimator",
+                Version = 4,
+                Title = "Estimator",
+                Spec = Spec("{}"),
+            };
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().SaveDraftAsync(
+                "estimator",
+                Spec("""{ "components": [ { "key": "firstName" } ] }"""),
+                "Estimator",
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(4, result.Value!.Version);
+            Assert.Single(_admin.SaveDraftCalls);
+            Assert.Equal(("estimator", "Estimator"), _admin.SaveDraftCalls[0]);
+        }
+
+        [Fact]
+        public async Task SaveDraft_ApplicationErrorWithoutRecognizedKeyword_Propagates()
+        {
+            // A 400 ApplicationError with no recognized lifecycle keyword is not a trusted
+            // refusal - it must propagate (=> 502), not surface an arbitrary message as 422.
+            _admin.SaveDraftException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Something else" } }""");
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Publish_ValidDraft_PublishesAndReturnsVersion()
+        {
+            _admin.Draft = new FormSpecModel
+            {
+                FormSpecId = "estimator",
+                Version = 4,
+                Title = "Estimator",
+                Spec = Spec("""{ "components": [ { "key": "firstName" } ] }"""),
+            };
+            _admin.PublishedVersion = 4;
+
+            FormSpecWriteResultModel<PublishResultModel> result = await NewService().PublishAsync(
+                "estimator", CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(4, result.Value!.Version);
+            Assert.Equal(["estimator"], _admin.PublishCalls);
+        }
+
+        [Fact]
+        public async Task Publish_DraftFailsStructure_RefusesWithoutPublishing()
+        {
+            _admin.Draft = new FormSpecModel
+            {
+                FormSpecId = "estimator",
+                Version = 4,
+                Title = "Estimator",
+                Spec = Spec("""{ "components": [ { "key": "dupe" }, { "key": "dupe" } ] }"""),
+            };
+
+            FormSpecWriteResultModel<PublishResultModel> result = await NewService().PublishAsync(
+                "estimator", CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.Contains(FormSpecStructureKeywords.ComponentKeyDuplicate, result.Errors.Select(e => e.Keyword));
+            Assert.Empty(_admin.PublishCalls);
+        }
+
+        [Fact]
+        public async Task Publish_NoInProgressDraft_RefusesWithNothingToPublish()
+        {
+            _admin.Draft = null;
+            _admin.PublishException = new NoDraftToPublishException("estimator");
+
+            FormSpecWriteResultModel<PublishResultModel> result = await NewService().PublishAsync(
+                "estimator", CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(FormSpecStructureKeywords.NothingToPublish, error.Keyword);
+        }
+
+        [Fact]
+        public async Task Publish_LifecycleRefusal_ReturnsTranslatedErrors()
+        {
+            _admin.Draft = new FormSpecModel
+            {
+                FormSpecId = "estimator",
+                Version = 4,
+                Spec = Spec("""{ "components": [ { "key": "firstName" } ] }"""),
+            };
+            _admin.PublishException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "A published form cannot be changed.", "details": { "keywords": ["FORMSPEC.PUBLISHED.IMMUTABLE"] } } }""");
+
+            FormSpecWriteResultModel<PublishResultModel> result = await NewService().PublishAsync(
+                "estimator", CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("FORMSPEC.PUBLISHED.IMMUTABLE", error.Keyword);
+            Assert.Contains("published form", error.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task ListForms_DelegatesToTheProvider()
+        {
+            _admin.Forms =
+            [
+                new FormSummaryModel
+                {
+                    FormSpecId = "estimator",
+                    Title = "Estimator",
+                    Versions = [new FormVersionSummaryModel { Version = 1, IsPublished = true }],
+                },
+            ];
+
+            var forms = await NewService().ListFormsAsync(CancellationToken.None);
+
+            Assert.Single(forms);
+            Assert.Equal("estimator", forms[0].FormSpecId);
+        }
+
+        [Fact]
+        public async Task GetDraftOrLatestPublished_DelegatesToTheProvider()
+        {
+            _admin.Draft = new FormSpecModel
+            {
+                FormSpecId = "estimator",
+                Version = 4,
+                Title = "Estimator",
+                Spec = Spec("""{ "components": [] }"""),
+            };
+
+            FormSpecModel? draft = await NewService().GetDraftOrLatestPublishedAsync(
+                "estimator", CancellationToken.None);
+
+            Assert.Same(_admin.Draft, draft);
+            Assert.Equal(["estimator"], _admin.GetDraftCalls);
+        }
+
+        [Fact]
+        public async Task GetFormVersion_DelegatesToTheAdminProvider()
+        {
+            var stored = new FormSpecModel { FormSpecId = "estimator", Version = 3, Title = "Estimator", Spec = Spec("{}") };
+            _admin.Versions[("estimator", 3)] = stored;
+
+            FormSpecModel? found = await NewService().GetFormVersionAsync("estimator", 3, CancellationToken.None);
+
+            Assert.Same(stored, found);
+            Assert.Equal([("estimator", 3)], _admin.GetVersionCalls);
+        }
+
+        [Fact]
+        public async Task GetFormVersion_MissingVersion_ReturnsNull()
+        {
+            FormSpecModel? found = await NewService().GetFormVersionAsync("estimator", 9, CancellationToken.None);
+
+            Assert.Null(found);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_FreeId_CreatesVersionOneWithoutAnOrdinarySave()
+        {
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "new-form", 1, ValidSpec(), "New form", CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(1, result.Value!.Version);
+            Assert.Equal([("new-form", 1, (string?)"New form")], _admin.CreateDraftVersionCalls);
+            Assert.Empty(_admin.SaveDraftCalls);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_NextAfterThePublishedVersion_IsAccepted()
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: 8, InProgressDraftVersion: null);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", 9, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(9, result.Value!.Version);
+        }
+
+        [Theory]
+        [InlineData(8, "Version 8 of \"estimator\" already exists.")]
+        [InlineData(1, "A form with the ID \"estimator\" already exists.")]
+        public async Task CreateDraftVersion_ExistingVersion_IsAConflict(int version, string message)
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: 8, InProgressDraftVersion: null);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", version, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("newVersion", error.Field);
+            Assert.Equal(FormSpecStructureKeywords.VersionTaken, error.Keyword);
+            Assert.Equal(message, error.Message);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_SkippedVersion_IsRefusedNotAConflict()
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: 8, InProgressDraftVersion: null);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", 10, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.False(result.IsConflict);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("newVersion", error.Field);
+            Assert.Equal(FormSpecStructureKeywords.VersionNotNext, error.Keyword);
+            Assert.Equal("Version 10 of \"estimator\" skips a version; the next version is 9.", error.Message);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Theory]
+        [InlineData(9)]
+        [InlineData(10)]
+        public async Task CreateDraftVersion_UnpublishedDraft_IsAConflictWhateverTheVersion(int version)
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: 9, InProgressDraftVersion: 9);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", version, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(FormSpecStructureKeywords.VersionTaken, error.Keyword);
+            Assert.Equal("Version 9 of \"estimator\" is an unpublished draft.", error.Message);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Theory]
+        [InlineData(1, 1)]   // never published: its only version is a draft
+        [InlineData(4, 4)]   // published 3 and an unpublished draft 4
+        public async Task CreateDraftVersion_NewFormWhoseIdHasADraft_SaysTheFormExists(int latest, int draft)
+        {
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: latest, InProgressDraftVersion: draft);
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", 1, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            Assert.Equal("A form with the ID \"estimator\" already exists.", Assert.Single(result.Errors).Message);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_VersionBelowOne_Throws()
+        {
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => NewService().CreateDraftVersionAsync(
+                "estimator", 0, ValidSpec(), "Estimator", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_InvalidStructure_IsRefusedBeforeAnyRead()
+        {
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator",
+                1,
+                Spec("""{ "components": [ { "key": "dupe" }, { "key": "dupe" } ] }"""),
+                "Estimator",
+                CancellationToken.None);
+
+            Assert.False(result.IsConflict);
+            Assert.Contains(FormSpecStructureKeywords.ComponentKeyDuplicate, result.Errors.Select(e => e.Keyword));
+            Assert.Empty(_admin.VersionStateCalls);
+            Assert.Empty(_admin.CreateDraftVersionCalls);
+        }
+
+        [Theory]
+        [InlineData(0, 1, "A form with the ID \"estimator\" already exists.")]
+        [InlineData(8, 9, "Version 9 of \"estimator\" already exists.")]
+        public async Task CreateDraftVersion_StrapiVersionNotNext_IsAConflict(int latest, int version, string message)
+        {
+            // Another version was stored between the pre-check and the write.
+            _admin.VersionState = new FormSpecVersionState(LatestVersion: latest, InProgressDraftVersion: null);
+            _admin.CreateDraftVersionException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Version must be 10.", "details": { "keywords": ["FORMSPEC.VERSION.NOT_NEXT"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", version, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(FormSpecStructureKeywords.VersionTaken, error.Keyword);
+            Assert.Equal(message, error.Message);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_StrapiVersionNotNextWithAnotherKeyword_IsAConflict()
+        {
+            // The version is the reason the write cannot go ahead; the page re-reads the form
+            // and the other finding is reported again on the next save.
+            _admin.CreateDraftVersionException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Two problems.", "details": { "keywords": ["FORMSPEC.COMPONENT_KEY.DUPLICATE", "FORMSPEC.VERSION.NOT_NEXT"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "estimator", 1, ValidSpec(), "Estimator", CancellationToken.None);
+
+            Assert.True(result.IsConflict);
+            Assert.Equal(FormSpecStructureKeywords.VersionTaken, Assert.Single(result.Errors).Keyword);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_OtherLifecycleRefusal_IsRefusedNotAConflict()
+        {
+            _admin.CreateDraftVersionException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Duplicate component key.", "details": { "keywords": ["FORMSPEC.COMPONENT_KEY.DUPLICATE"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().CreateDraftVersionAsync(
+                "new-form", 1, ValidSpec(), "New form", CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.False(result.IsConflict);
+            Assert.Equal("FORMSPEC.COMPONENT_KEY.DUPLICATE", Assert.Single(result.Errors).Keyword);
+        }
+
+        [Fact]
+        public async Task CreateDraftVersion_InfrastructureFailure_Propagates()
+        {
+            _admin.CreateDraftVersionException = new StrapiWriteException(HttpStatusCode.InternalServerError, "boom");
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().CreateDraftVersionAsync(
+                "new-form", 1, ValidSpec(), "New form", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SaveDraft_LifecycleRefusal_PreservesStrapiKeywords()
+        {
+            _admin.SaveDraftException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Duplicate component key.", "details": { "keywords": ["FORMSPEC.COMPONENT_KEY.DUPLICATE"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("FORMSPEC.COMPONENT_KEY.DUPLICATE", error.Keyword);
+            Assert.Contains("Duplicate component key", error.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task SaveDraft_MultipleLifecycleKeywords_BecomeMultipleErrors()
+        {
+            _admin.SaveDraftException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Two problems.", "details": { "keywords": ["FORMSPEC.COMPONENT_KEY.DUPLICATE", "FORMSPEC.CONDITIONAL.UNKNOWN_FIELD"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None);
+
+            Assert.Equal(
+                DuplicateAndUnknownField,
+                result.Errors.Select(e => e.Keyword));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("[]")]
+        [InlineData("null")]
+        [InlineData("\"Forbidden\"")]
+        [InlineData("{ \"error\": \"Forbidden\" }")]
+        [InlineData("{ \"error\": { \"name\": \"ValidationError\" } }")]
+        [InlineData("not valid json {")]
+        public async Task SaveDraft_Unrecognized400_PropagatesAsUpstreamFailure(string body)
+        {
+            // #B: a 400 that is not the lifecycle ApplicationError envelope is an upstream
+            // fault, not a validation refusal - it must propagate (controller => 502), never
+            // become a 422 with an arbitrary message. Also proves the envelope check is
+            // shape-safe (no InvalidOperationException on odd bodies).
+            _admin.SaveDraftException = new StrapiWriteException(HttpStatusCode.BadRequest, body);
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SaveDraft_ApplicationErrorWithMalformedKeywords_Propagates()
+        {
+            // Recognized envelope name but keywords is the wrong shape => no recognized
+            // keyword => treated as an upstream failure, not a 422.
+            _admin.SaveDraftException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Refused.", "details": { "keywords": "not-an-array" } } }""");
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SaveDraft_DuplicateLifecycleKeywords_AreDeduplicated()
+        {
+            // #D: form-spec-rules can emit the same keyword more than once.
+            _admin.SaveDraftException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "Bad.", "details": { "keywords": ["FORMSPEC.COMPONENT_KEY.MISSING", "FORMSPEC.COMPONENT_KEY.MISSING", "FORMSPEC.COMPONENT_KEY.DUPLICATE"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None);
+
+            Assert.Equal(
+                MissingAndDuplicate,
+                result.Errors.Select(e => e.Keyword));
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.Unauthorized)]
+        [InlineData(HttpStatusCode.Forbidden)]
+        [InlineData(HttpStatusCode.InternalServerError)]
+        [InlineData(HttpStatusCode.BadGateway)]
+        public async Task SaveDraft_InfrastructureFailure_Propagates(HttpStatusCode status)
+        {
+            // #1: not a lifecycle refusal, so it must NOT be dressed up as a 422.
+            _admin.SaveDraftException = new StrapiWriteException(status, "upstream boom");
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task Publish_InfrastructureFailure_Propagates()
+        {
+            _admin.Draft = new FormSpecModel { FormSpecId = "estimator", Version = 4, Spec = Spec("""{ "components": [ { "key": "firstName" } ] }""") };
+            _admin.PublishException = new StrapiWriteException(HttpStatusCode.InternalServerError, "boom");
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().PublishAsync("estimator", CancellationToken.None));
+        }
+        [Fact]
+        public async Task SaveDraft_EmptyKeywordsArray_Propagates()
+        {
+            // ApplicationError with an empty keywords array => no recognized keyword => 502.
+            _admin.SaveDraftException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "x", "details": { "keywords": [] } } }""");
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SaveDraft_KeywordsWithoutApplicationErrorName_Propagates()
+        {
+            // Recognized keywords but the envelope is not named ApplicationError => not a
+            // trusted lifecycle refusal.
+            _admin.SaveDraftException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "message": "x", "details": { "keywords": ["FORMSPEC.COMPONENT_KEY.DUPLICATE"] } } }""");
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SaveDraft_UnknownKeywordsOnly_Propagates()
+        {
+            // ApplicationError but every keyword is outside the authoritative vocabulary.
+            _admin.SaveDraftException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "x", "details": { "keywords": ["FOO.BAR", "BAZ.QUX"] } } }""");
+
+            await Assert.ThrowsAsync<StrapiWriteException>(() => NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SaveDraft_MixedKeywords_ForwardsOnlyRecognized()
+        {
+            _admin.SaveDraftException = new StrapiWriteException(
+                HttpStatusCode.BadRequest,
+                """{ "error": { "name": "ApplicationError", "message": "x", "details": { "keywords": ["FORMSPEC.COMPONENT_KEY.DUPLICATE", "FOO.BAR"] } } }""");
+
+            FormSpecWriteResultModel<FormSpecModel> result = await NewService().SaveDraftAsync(
+                "estimator", Spec("""{ "components": [ { "key": "firstName" } ] }"""), "Estimator", CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("FORMSPEC.COMPONENT_KEY.DUPLICATE", error.Keyword);
+        }
+
+        [Fact]
+        public async Task Publish_UnrelatedInvalidOperationException_Propagates()
+        {
+            // The service catches only NoDraftToPublishException; an unrelated
+            // InvalidOperationException (e.g. from parsing) must not be swallowed as no-draft.
+            _admin.Draft = new FormSpecModel { FormSpecId = "estimator", Version = 4, Spec = Spec("""{ "components": [ { "key": "firstName" } ] }""") };
+            _admin.PublishException = new InvalidOperationException("boom");
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => NewService().PublishAsync("estimator", CancellationToken.None));
+        }
+
+        private FormSpecAdminService NewService() => new(
+            NullLogger<FormSpecAdminService>.Instance,
+            _admin);
+
+        private static JsonElement Spec(string json) => JsonDocument.Parse(json).RootElement.Clone();
+
+        private static JsonElement ValidSpec() => Spec("""{ "components": [ { "key": "firstName" } ] }""");
+    }
+}

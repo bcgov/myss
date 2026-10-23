@@ -7,7 +7,7 @@
 // submitted, so a PIN must never be a form field.
 
 import type { FormValidationError } from "@/api/forms";
-import { catalogueMessage } from "@/lib/errorCatalogue";
+import { catalogueMessage } from "@myss/formio/errorCatalogue";
 
 export const PIN_KEYWORDS = {
   invalidFormat: "IDA.PIN.INVALID_FORMAT",

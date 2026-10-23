@@ -13,7 +13,10 @@ namespace Myss.Api.Tests
     using Myss.Api.Configuration;
     using Myss.Api.Data;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data;
+    using Myss.FormSpec.Domain;
     using Xunit;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// <c>GET /v1/auth/me</c> is the SPA's single source of effective roles (ADR-0007): the

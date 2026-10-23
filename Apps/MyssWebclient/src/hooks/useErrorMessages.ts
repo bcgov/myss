@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { getErrorMessages } from "@/api/errorMessages";
-import { setErrorCatalogue } from "@/lib/errorCatalogue";
+import { setErrorCatalogue } from "@myss/formio/errorCatalogue";
 
 // The error message catalogue, read once per session. The fetch is ANONYMOUS
 // (see @/api/errorMessages). Shared content that changes rarely, so it carries

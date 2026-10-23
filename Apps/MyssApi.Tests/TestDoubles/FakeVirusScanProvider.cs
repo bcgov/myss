@@ -1,6 +1,7 @@
 namespace Myss.Api.Tests.TestDoubles
 {
     using Myss.Api.Providers;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// Fake <see cref="IVirusScanProvider"/> that records what it scanned, so
@@ -44,10 +45,10 @@ namespace Myss.Api.Tests.TestDoubles
     /// </summary>
     /// <param name="subject">The subject to report.</param>
     /// <param name="bceidGuid">A Basic BCeID GUID, for a BCeID caller; null for any other sign-in.</param>
-    public sealed class StubCurrentUserAccessor(string subject, string? bceidGuid = null) : Myss.Api.Services.ICurrentUserAccessor
+    public sealed class StubCurrentUserAccessor(string subject, string? bceidGuid = null) : Myss.Common.Auth.ICurrentUserAccessor
     {
         /// <inheritdoc/>
-        public Myss.Api.Models.CurrentUser User { get; } = new()
+        public Myss.Common.Auth.CurrentUser User { get; } = new()
         {
             IsAuthenticated = true,
             Subject = subject,

@@ -8,11 +8,15 @@ namespace Myss.Api.Intake
     using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
-    using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Applicant-side intake over the intake schema and the platform event
@@ -23,10 +27,10 @@ namespace Myss.Api.Intake
     public class IntakeService : IIntakeService
     {
         /// <summary>The only form this slice serves.</summary>
-        public const string FormSpecId = "income-assistance-poc";
+        public const string FormSpecId = IntakeFormSpecIds.IncomeAssistance;
 
         /// <summary>The ID the product team publishes for Application for Assistance.</summary>
-        public const string AfaFormSpecId = "application-for-assistance";
+        public const string AfaFormSpecId = IntakeFormSpecIds.ApplicationForAssistance;
 
         private readonly ILogger<IntakeService> _logger;
         private readonly IntakeDbContext _dbContext;

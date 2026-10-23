@@ -1,8 +1,8 @@
 import { Button, Header, Footer } from "@bcgov/design-system-react-components";
 import { Outlet, useLocation } from "react-router";
+import { AnnouncementBanner } from "@myss/web-common/components";
 
 import "./App.css";
-import AnnouncementBanner from "@/widgets/layout/AnnouncementBanner";
 import { paths } from "@/routes/paths";
 import { isDashboardPath } from "@/routes/dashboardSections";
 import { useApiAuth } from "@/auth/useApiAuth";

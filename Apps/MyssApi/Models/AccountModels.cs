@@ -3,6 +3,8 @@ namespace Myss.Api.Models
     using System;
     using System.Collections.Generic;
     using System.Text.Json.Serialization;
+    using Myss.Data;
+    using Myss.FormSpec;
 
     /// <summary>
     /// What Account Info shows the citizen (MYSS-271): case details, which come
@@ -62,24 +64,6 @@ namespace Myss.Api.Models
         /// <summary>Gets or sets which kind of number it is.</summary>
         [JsonConverter(typeof(JsonStringEnumConverter<AccountPhoneType>))]
         public AccountPhoneType Type { get; set; }
-    }
-
-    /// <summary>
-    /// The kinds of phone number ICM keeps for a contact.
-    /// </summary>
-    public enum AccountPhoneType
-    {
-        /// <summary>A home number.</summary>
-        Home,
-
-        /// <summary>A mobile number.</summary>
-        Cell,
-
-        /// <summary>A work number.</summary>
-        Work,
-
-        /// <summary>A number where a message can be left.</summary>
-        Message,
     }
 
     /// <summary>

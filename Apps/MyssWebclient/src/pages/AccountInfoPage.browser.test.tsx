@@ -5,7 +5,7 @@ import { render } from "vitest-browser-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AccountPayload, PhoneInput } from "@/api/account";
-import { phoneDigits } from "@/lib/phone";
+import { phoneDigits } from "@myss/formio/phone";
 import AccountInfoPage from "./AccountInfoPage";
 
 // Account Info (MYSS-271, PIN management MYSS-258) against a stand-in for the

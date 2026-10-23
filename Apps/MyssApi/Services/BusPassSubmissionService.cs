@@ -7,6 +7,8 @@ namespace Myss.Api.Services
     using Myss.Api.Data;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Data;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// BC Bus Pass submissions: validate and store through the forms module,
@@ -41,8 +43,11 @@ namespace Myss.Api.Services
     /// </remarks>
     public class BusPassSubmissionService : IBusPassSubmissionService
     {
-        /// <summary>The form spec this service accepts submissions for.</summary>
-        public const string FormSpecId = BusPassPdfFieldMap.FormSpecId;
+        /// <summary>
+        /// The form spec this service accepts submissions for. MyssAdminApi's
+        /// BusPassPdfFieldMap renders the staff PDF only for this same form.
+        /// </summary>
+        public const string FormSpecId = "bc-bus-pass";
 
         private const int ErrorMessageMaxLength = 1024;
 

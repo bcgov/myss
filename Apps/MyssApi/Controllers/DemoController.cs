@@ -7,6 +7,7 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Routing;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The DemoController controller.

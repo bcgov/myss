@@ -7,12 +7,13 @@ import {
 } from "@bcgov/design-system-react-components";
 import { useEffect, useRef, useState } from "react";
 
-import PhoneInput from "@/components/PhoneInput";
 import {
   AccountRequestError,
   useUpdatePhones,
   type AccountPayload,
 } from "@/hooks/useAccount";
+import { PhoneInput } from "@myss/formio";
+import { catalogueMessage } from "@myss/formio/errorCatalogue";
 import {
   formatPhone,
   PHONE_FORMAT_MESSAGE,
@@ -20,8 +21,7 @@ import {
   phoneDigits,
   phoneTypeLabel,
   type PhoneType,
-} from "@/lib/phone";
-import { catalogueMessage } from "@/lib/errorCatalogue";
+} from "@myss/formio/phone";
 import styles from "./ContactInformation.module.css";
 import FieldErrorSummary from "./FieldErrorSummary";
 

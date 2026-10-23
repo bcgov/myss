@@ -20,6 +20,7 @@ from the target architecture, the event-sourcing/Temporal split, and any
 | [ADR-0007](0007-citizen-role-derivation.md)              | Citizen CLIENT role derives from the identity provider (RoleCalculator); worker roles stay CSS-assigned               | Proposed — implemented, pending IDIM confirmation |
 | [ADR-0008](0008-intake-module-dependencies.md)           | Intake depends on the forms spec provider and validator and on the registration-profile service; draft lifecycle deviations | Accepted (POC) |
 | [ADR-0009](0009-migrations-as-pipeline-jobs.md)          | EF migrations run in the pipeline as a Job from the app image in migrate mode, before the rollout restart | Accepted |
+| [ADR-0010](0010-staff-api-shares-the-data-model.md)      | The staff API (MyssAdminApi) shares MyssApi's EF model through `Apps/MyssData`; MyssApi alone owns the migrations | Proposed |
 
 ## Adding an ADR
 

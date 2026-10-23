@@ -2,8 +2,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import {
   getFormSpec,
-  getSubmission,
-  listSubmissions,
   submitForm,
   type FormSubmissionInput,
 } from "@/api/forms";
@@ -21,27 +19,12 @@ export type {
   FormValidationError,
   FormSpecPayload,
   FormSubmissionPayload,
-  FormSubmissionSummary,
 } from "@/api/forms";
 
 export function useFormSpec(formSpecId: string) {
   return useQuery({
     queryKey: ["form-spec", formSpecId],
     queryFn: () => getFormSpec(formSpecId),
-  });
-}
-
-export function useSubmissions(formSpecId: string) {
-  return useQuery({
-    queryKey: ["form-submissions", formSpecId],
-    queryFn: () => listSubmissions(formSpecId),
-  });
-}
-
-export function useSubmission(id: string) {
-  return useQuery({
-    queryKey: ["form-submission", id],
-    queryFn: () => getSubmission(id),
   });
 }
 

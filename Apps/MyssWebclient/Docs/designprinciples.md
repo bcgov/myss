@@ -43,7 +43,8 @@ Variants are **props on one component**, not sibling files.
 ## One system across two render worlds
 
 Forms arrive two ways: hand-built React screens, and Form.io-rendered
-specs from Strapi (via the custom components in `widgets/formio/`).
+specs from Strapi (via the custom components in `@myss/formio`,
+`Apps/MyssFormio`).
 The contract: a SIN field looks and behaves identically in both,
 because both draw on the same components and tokens. Therefore:
 

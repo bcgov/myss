@@ -23,6 +23,8 @@
         "@formio/js": "^5.5.0",
         "@formio/react": "^6.2.1",
         "@internationalized/date": "3.12.4",
+        "@myss/formio": "*",
+        "@myss/web-common": "*",
         "@tanstack/react-query": "5.104.2",
         "oidc-client-ts": "3.5.0",
         "react": "19.3.1",
@@ -44,10 +46,12 @@
         "eslint-plugin-react-hooks": "7.1.1",
         "eslint-plugin-react-refresh": "0.5.7",
         "globals": "17.13.0",
+        "playwright": "1.62.1",
         "prettier": "3.9.10",
         "typescript": "5.9.3",
         "typescript-eslint": "8.71.2",
         "vite": "8.3.3",
+        "vitest": "4.1.11",
         "vitest-browser-react": "2.3.0"
     }
 }

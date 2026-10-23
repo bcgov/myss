@@ -13,6 +13,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
     using Xunit;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// A test-only controller exercising the policies over real HTTP. It lives in the test
@@ -49,18 +50,6 @@ namespace Myss.Api.Tests
         [HttpGet("worker")]
         [Microsoft.AspNetCore.Authorization.Authorize(Policy = MyssPolicies.Worker)]
         public string Worker() => this.currentUser.User.Subject;
-
-        /// <summary>Staff endpoint additionally requiring an IDIR identity.</summary>
-        /// <returns>The caller's IDIR username.</returns>
-        [HttpGet("worker-idir")]
-        [Microsoft.AspNetCore.Authorization.Authorize(Policy = MyssPolicies.WorkerWithIdir)]
-        public string WorkerWithIdir() => this.currentUser.User.IdirUsername ?? string.Empty;
-
-        /// <summary>Admin form-editor endpoint requiring an IDIR identity.</summary>
-        /// <returns>The caller's IDIR username.</returns>
-        [HttpGet("admin-idir")]
-        [Microsoft.AspNetCore.Authorization.Authorize(Policy = MyssPolicies.AdminIdir)]
-        public string AdminIdir() => this.currentUser.User.IdirUsername ?? string.Empty;
     }
 
     /// <summary>
@@ -195,61 +184,6 @@ namespace Myss.Api.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
-        [Fact]
-        public async Task WorkerWithoutIdirIsRejectedByTheHardenedPolicy()
-        {
-            HttpClient client = this.CreateMockAuthClient();
-
-            HttpResponseMessage response =
-                await client.SendAsync(Get("/test-only/worker-idir", "workernoidir"));
-
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task WorkerWithIdirPassesTheHardenedPolicyAndClaimIsReadable()
-        {
-            HttpClient client = this.CreateMockAuthClient();
-
-            HttpResponseMessage response =
-                await client.SendAsync(Get("/test-only/worker-idir", "worker"));
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("MWORKER", await response.Content.ReadAsStringAsync());
-        }
-
-        [Fact]
-        public async Task AdminIdirEndpointRejectsACitizenWith403()
-        {
-            // The check that proves the policy does something [Authorize] alone would not:
-            // a signed-in BCeID citizen is refused the admin form editor.
-            HttpClient client = this.CreateMockAuthClient();
-
-            HttpResponseMessage response = await client.SendAsync(Get("/test-only/admin-idir", "alice"));
-
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task AdminIdirEndpointAdmitsAnIdirPersona()
-        {
-            HttpClient client = this.CreateMockAuthClient();
-
-            HttpResponseMessage response = await client.SendAsync(Get("/test-only/admin-idir", "worker"));
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("MWORKER", await response.Content.ReadAsStringAsync());
-        }
-
-        [Fact]
-        public async Task AdminIdirEndpointRejectsAnonymousWith401()
-        {
-            HttpClient client = this.CreateBearerClient();
-
-            HttpResponseMessage response = await client.GetAsync("/test-only/admin-idir");
-
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
         [Fact]
         public async Task UnknownPersonaIsNotSignedIn()
         {

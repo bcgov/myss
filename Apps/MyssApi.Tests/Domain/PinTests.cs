@@ -2,6 +2,7 @@ namespace Myss.Api.Tests.Domain
 {
     using Myss.Api.Domain;
     using Myss.Api.Tests.TestSupport;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Tests for <see cref="Pin"/>, driven by the shared vectors so the

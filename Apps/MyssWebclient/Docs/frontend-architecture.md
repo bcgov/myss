@@ -38,8 +38,8 @@ question to ask is "who else is allowed to import this?"
 ```
 src/
   pages/            routed screens + page-scoped logic and tests
-  widgets/          composed sections (incl. widgets/formio/ — the
-                    Form.io custom-component bridge)
+  widgets/          composed sections (the Form.io custom-component
+                    bridge is the @myss/formio workspace, Apps/MyssFormio)
   components/       shared presentational components (BCDS-first)
   hooks/            shared behaviour hooks (useX naming)
   routes/           paths.ts — every URL in one place
@@ -92,8 +92,8 @@ branches are open, to minimize merge conflicts:
 | Today                                                 | Target                                               |
 | ----------------------------------------------------- | ---------------------------------------------------- |
 | `components/home/*` (AccountPanel, ChequeCalendar, …) | `widgets/home/*`                                     |
-| `components/layout/*` (AnnouncementBanner, …)         | `widgets/layout/*`                                   |
+| `components/layout/*` (AnnouncementBanner, …)         | `widgets/layout/*`; AnnouncementBanner in `@myss/web-common/components` |
 | `components/AttachmentUpload.*`                       | `widgets/`                                           |
-| `formio/`                                             | `widgets/formio/`                                    |
+| `formio/`                                             | `@myss/formio` (`Apps/MyssFormio`, done)             |
 | `data/`                                               | fold into `lib/` or the owning page                  |
 | (new)                                                 | `components/` grows the shared leaves as they appear |

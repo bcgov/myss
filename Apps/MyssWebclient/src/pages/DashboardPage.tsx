@@ -7,7 +7,7 @@ import { applicationPath } from "@/routes/paths";
 import ApplicationsList from "@/widgets/intake/ApplicationsList";
 import styles from "./DashboardPage.module.css";
 
-// The dashboard's Home section. DashboardLayout has already sent workers and
+// The dashboard's Home section. DashboardLayout has already sent
 // unregistered citizens elsewhere, and Sign out lives in the header.
 export default function DashboardPage() {
   const { hasProfile, profileFirstName, user } = useSession();

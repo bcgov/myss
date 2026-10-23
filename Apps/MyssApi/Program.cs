@@ -7,6 +7,7 @@ namespace Myss.Api
     using Microsoft.Extensions.Hosting;
     using Microsoft.Extensions.Logging;
     using Myss.Api.Configuration;
+    using Myss.Common.Hosting;
 
     /// <summary>
     /// The entry point for the project.

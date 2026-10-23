@@ -2,10 +2,9 @@ namespace Myss.Api.Services
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
     using System.Linq;
-        using System.Globalization;
-    using System.Net;
     using System.Reflection;
     using System.Text.Json;
     using System.Threading;
@@ -16,14 +15,17 @@ namespace Myss.Api.Services
     using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Data;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Forms module service backed by the forms schema and the content engine.
     /// </summary>
     public class FormsService : IFormsService
     {
-        private const string BusPassTemplateName = "bus-pass.odt";
-
         /// <summary>
         /// The oldest registration version a submission may claim. v1 predates the
         /// fields a profile needs; see <see cref="SubmitAsync(string, FormSubmissionRequestModel, Func{JsonElement, IReadOnlyList{ValidationErrorModel}}?, CancellationToken)"/>.
@@ -33,9 +35,6 @@ namespace Myss.Api.Services
         private readonly ILogger<FormsService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly IFormSpecProvider _formSpecProvider;
-        private readonly IPdfProvider _pdfProvider;
-        private readonly ITemplateProvider _templateProvider;
-        private readonly IFormSpecAdminProvider _formSpecAdminProvider;
         private readonly ICurrentUserAccessor _currentUserAccessor;
         private readonly IErrorMessageProvider _errorMessageProvider;
         private readonly IPinHasher _pinHasher;
@@ -46,9 +45,6 @@ namespace Myss.Api.Services
         /// <param name="logger">Injected Logger Provider.</param>
         /// <param name="dbContext">Injected forms db context.</param>
         /// <param name="formSpecProvider">Injected form spec provider.</param>
-        /// <param name="pdfProvider">Injected PDF provider.</param>
-        /// <param name="templateProvider">Injected template provider.</param>
-        /// <param name="formSpecAdminProvider">Injected form-spec admin (write) provider.</param>
         /// <param name="currentUserAccessor">Injected current user accessor.</param>
         /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
         /// <param name="pinHasher">Injected PIN hasher, for the PIN set at registration.</param>
@@ -56,9 +52,6 @@ namespace Myss.Api.Services
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
             IFormSpecProvider formSpecProvider,
-            IPdfProvider pdfProvider,
-            ITemplateProvider templateProvider,
-            IFormSpecAdminProvider formSpecAdminProvider,
             ICurrentUserAccessor currentUserAccessor,
             IErrorMessageProvider errorMessageProvider,
             IPinHasher pinHasher)
@@ -66,9 +59,6 @@ namespace Myss.Api.Services
             _logger = logger;
             _dbContext = dbContext;
             _formSpecProvider = formSpecProvider;
-            _pdfProvider = pdfProvider;
-            _templateProvider = templateProvider;
-            _formSpecAdminProvider = formSpecAdminProvider;
             _currentUserAccessor = currentUserAccessor;
             _errorMessageProvider = errorMessageProvider;
             _pinHasher = pinHasher;
@@ -84,308 +74,6 @@ namespace Myss.Api.Services
         public Task<IReadOnlyDictionary<string, string>> GetErrorMessagesAsync(CancellationToken cancellationToken)
         {
             return _errorMessageProvider.GetMessagesAsync(cancellationToken);
-        }
-
-        /// <inheritdoc/>
-        public Task<IReadOnlyList<FormSummaryModel>> ListFormsAsync(CancellationToken cancellationToken)
-        {
-            return _formSpecAdminProvider.ListFormsAsync(cancellationToken);
-        }
-
-        /// <inheritdoc/>
-        public Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken)
-        {
-            return _formSpecAdminProvider.GetDraftOrLatestPublishedAsync(formSpecId, cancellationToken);
-        }
-
-        /// <inheritdoc/>
-        public Task<FormSpecModel?> GetFormVersionAsync(string formSpecId, int version, CancellationToken cancellationToken)
-        {
-            return _formSpecAdminProvider.GetVersionAsync(formSpecId, version, cancellationToken);
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSpecWriteResultModel<FormSpecModel>> SaveDraftAsync(
-            string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken)
-        {
-            // Validate, THEN write. Both write methods run this check before
-            // anything reaches the content engine.
-            IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.ValidateSpecStructure(spec);
-            if (errors.Count > 0)
-            {
-                _logger.LogInformation(
-                    "Rejected draft save for {FormSpecId}: {ErrorCount} structural error(s)",
-                    formSpecId,
-                    errors.Count);
-                return FormSpecWriteResultModel<FormSpecModel>.Refused(errors);
-            }
-
-            try
-            {
-                FormSpecModel saved = await _formSpecAdminProvider.SaveDraftAsync(formSpecId, spec, title, cancellationToken);
-                return FormSpecWriteResultModel<FormSpecModel>.Accepted(saved);
-            }
-            catch (StrapiWriteException ex) when (IsLifecycleRefusal(ex))
-            {
-                // A 400 is the Strapi lifecycle refusing the spec on a business rule
-                // (duplicate key, version sequence, immutability) - a validation outcome.
-                // Any other status (401/403/5xx) is an infrastructure fault and is left to
-                // propagate; the controller maps it to 502, not a 422 "invalid form".
-                return FormSpecWriteResultModel<FormSpecModel>.Refused(TranslateStrapiRefusal(ex));
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSpecWriteResultModel<FormSpecModel>> CreateDraftVersionAsync(
-            string formSpecId, int version, JsonElement spec, string? title, CancellationToken cancellationToken)
-        {
-            ArgumentOutOfRangeException.ThrowIfLessThan(version, 1);
-
-            IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.ValidateSpecStructure(spec);
-            if (errors.Count > 0)
-            {
-                _logger.LogInformation(
-                    "Rejected draft version {Version} of {FormSpecId}: {ErrorCount} structural error(s)",
-                    version,
-                    formSpecId,
-                    errors.Count);
-                return FormSpecWriteResultModel<FormSpecModel>.Refused(errors);
-            }
-
-            FormSpecVersionState state = await _formSpecAdminProvider.GetVersionStateAsync(formSpecId, cancellationToken);
-
-            // Strapi would accept the next version beside an unpublished draft and leave
-            // two drafts, so any unpublished draft refuses the save.
-            if (state.InProgressDraftVersion is int draft)
-            {
-                return VersionTakenResult(
-                    formSpecId,
-                    version,
-                    version == 1
-                        ? AlreadyExistsMessage(formSpecId, version)
-                        : $"Version {draft} of \"{formSpecId}\" is an unpublished draft.");
-            }
-
-            int next = state.LatestVersion + 1;
-            if (version < next)
-            {
-                return VersionTakenResult(formSpecId, version, AlreadyExistsMessage(formSpecId, version));
-            }
-
-            if (version > next)
-            {
-                _logger.LogInformation(
-                    "Refused draft version {Version} of {FormSpecId}: the next version is {Next}",
-                    version,
-                    formSpecId,
-                    next);
-                return FormSpecWriteResultModel<FormSpecModel>.Refused(
-                [
-                    new ValidationErrorModel
-                    {
-                        Field = "newVersion",
-                        Keyword = FormSpecStructureKeywords.VersionNotNext,
-                        Message = $"Version {version} of \"{formSpecId}\" skips a version; the next version is {next}.",
-                    },
-                ]);
-            }
-
-            try
-            {
-                FormSpecModel created = await _formSpecAdminProvider.CreateDraftVersionAsync(
-                    formSpecId, version, spec, title, cancellationToken);
-                return FormSpecWriteResultModel<FormSpecModel>.Accepted(created);
-            }
-            catch (StrapiWriteException ex) when (IsLifecycleRefusal(ex))
-            {
-                IReadOnlyList<ValidationErrorModel> refusal = TranslateStrapiRefusal(ex);
-
-                // Another administrator stored a version between the checks above and this write.
-                return refusal.Any(e => e.Keyword == FormSpecStructureKeywords.VersionNotNext)
-                    ? VersionTakenResult(formSpecId, version, AlreadyExistsMessage(formSpecId, version))
-                    : FormSpecWriteResultModel<FormSpecModel>.Refused(refusal);
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSpecWriteResultModel<PublishResultModel>> PublishAsync(
-            string formSpecId, CancellationToken cancellationToken)
-        {
-            // Fast structural re-check on the draft about to go live; the Strapi
-            // lifecycle stays the authoritative gate for version + immutability.
-            FormSpecModel? draft = await _formSpecAdminProvider.GetDraftOrLatestPublishedAsync(formSpecId, cancellationToken);
-            if (draft is not null)
-            {
-                IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.ValidateSpecStructure(draft.Spec);
-                if (errors.Count > 0)
-                {
-                    return FormSpecWriteResultModel<PublishResultModel>.Refused(errors);
-                }
-            }
-
-            try
-            {
-                int version = await _formSpecAdminProvider.PublishAsync(formSpecId, cancellationToken);
-                return FormSpecWriteResultModel<PublishResultModel>.Accepted(new PublishResultModel { Version = version });
-            }
-            catch (NoDraftToPublishException ex)
-            {
-                // No in-progress draft to publish - an expected outcome, not a fault.
-                return FormSpecWriteResultModel<PublishResultModel>.Refused(
-                [
-                    new ValidationErrorModel
-                    {
-                        Field = "formSpecId",
-                        Keyword = FormSpecStructureKeywords.NothingToPublish,
-                        Message = ex.Message,
-                    },
-                ]);
-            }
-            catch (StrapiWriteException ex) when (IsLifecycleRefusal(ex))
-            {
-                return FormSpecWriteResultModel<PublishResultModel>.Refused(TranslateStrapiRefusal(ex));
-            }
-        }
-
-        /// <summary>
-        /// True only when a Strapi write refusal is the documented lifecycle contract:
-        /// an HTTP 400 whose body is the <c>ApplicationError</c> envelope AND carries at
-        /// least one keyword from the authoritative vocabulary
-        /// (<see cref="FormSpecStructureKeywords.LifecycleKeywords"/>). Any other 400 - a
-        /// generic REST/proxy/plugin error, a name-only or keywords-only body, or one whose
-        /// keywords are all unrecognized - is treated as an upstream failure, not a form
-        /// validation outcome, so its message is never surfaced. Shape-guarded throughout.
-        /// </summary>
-        /// <param name="ex">The refusal from the admin provider.</param>
-        /// <returns>True when this is a trusted lifecycle refusal.</returns>
-        private static bool IsLifecycleRefusal(StrapiWriteException ex)
-        {
-            if (ex.StatusCode != HttpStatusCode.BadRequest || string.IsNullOrWhiteSpace(ex.Body))
-            {
-                return false;
-            }
-
-            try
-            {
-                using JsonDocument doc = JsonDocument.Parse(ex.Body);
-                JsonElement root = doc.RootElement;
-                if (root.ValueKind != JsonValueKind.Object
-                    || !root.TryGetProperty("error", out JsonElement error)
-                    || error.ValueKind != JsonValueKind.Object)
-                {
-                    return false;
-                }
-
-                bool isApplicationError = error.TryGetProperty("name", out JsonElement name)
-                    && name.ValueKind == JsonValueKind.String
-                    && string.Equals(name.GetString(), "ApplicationError", StringComparison.Ordinal);
-
-                return isApplicationError && ExtractRecognizedKeywords(error).Count > 0;
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Pulls the recognized lifecycle keywords out of a Strapi <c>error</c> object:
-        /// only strings in <see cref="FormSpecStructureKeywords.LifecycleKeywords"/>,
-        /// deduplicated in first-seen order. Unknown keywords are dropped; any
-        /// non-conforming shape yields an empty list.
-        /// </summary>
-        /// <param name="error">The Strapi <c>error</c> element.</param>
-        /// <returns>The recognized keywords, deduped, first-seen order.</returns>
-        private static List<string> ExtractRecognizedKeywords(JsonElement error)
-        {
-            List<string> recognized = [];
-            if (error.ValueKind == JsonValueKind.Object
-                && error.TryGetProperty("details", out JsonElement details)
-                && details.ValueKind == JsonValueKind.Object
-                && details.TryGetProperty("keywords", out JsonElement kws)
-                && kws.ValueKind == JsonValueKind.Array)
-            {
-                foreach (JsonElement kw in kws.EnumerateArray())
-                {
-                    if (kw.ValueKind == JsonValueKind.String
-                        && kw.GetString() is { Length: > 0 } value
-                        && FormSpecStructureKeywords.LifecycleKeywords.Contains(value)
-                        && !recognized.Contains(value))
-                    {
-                        recognized.Add(value);
-                    }
-                }
-            }
-
-            return recognized;
-        }
-
-        /// <summary>
-        /// Turns a trusted Strapi lifecycle refusal into validation errors the client can
-        /// show: one error per recognized keyword, deduplicated, carrying Strapi's own
-        /// message. Unknown keywords are dropped. It is called only after
-        /// <see cref="IsLifecycleRefusal"/> has confirmed that at least one recognized
-        /// lifecycle keyword is present.
-        /// </summary>
-        /// <param name="ex">The refusal from the admin provider (already logged by it).</param>
-        /// <returns>One validation error per recognized keyword.</returns>
-        private static IReadOnlyList<ValidationErrorModel> TranslateStrapiRefusal(StrapiWriteException ex)
-        {
-            string? message = null;
-            List<string> keywords = [];
-
-            // No JsonException handling here: the only callers reach this after
-            // IsLifecycleRefusal, which has already parsed this same body as JSON
-            // (and returns false, never this path, for one that is not).
-            if (!string.IsNullOrWhiteSpace(ex.Body))
-            {
-                using JsonDocument doc = JsonDocument.Parse(ex.Body);
-                JsonElement root = doc.RootElement;
-                if (root.ValueKind == JsonValueKind.Object
-                    && root.TryGetProperty("error", out JsonElement error)
-                    && error.ValueKind == JsonValueKind.Object)
-                {
-                    if (error.TryGetProperty("message", out JsonElement msg)
-                        && msg.ValueKind == JsonValueKind.String)
-                    {
-                        message = msg.GetString();
-                    }
-
-                    keywords = ExtractRecognizedKeywords(error);
-                }
-            }
-
-            string safeMessage = string.IsNullOrWhiteSpace(message)
-                ? "The content engine refused the change."
-                : message!;
-
-            return keywords
-                .Select(keyword => new ValidationErrorModel
-                {
-                    Field = "spec",
-                    Keyword = keyword,
-                    Message = safeMessage,
-                })
-                .ToList();
-        }
-
-        private static string AlreadyExistsMessage(string formSpecId, int version) =>
-            version == 1
-                ? $"A form with the ID \"{formSpecId}\" already exists."
-                : $"Version {version} of \"{formSpecId}\" already exists.";
-
-        private FormSpecWriteResultModel<FormSpecModel> VersionTakenResult(string formSpecId, int version, string message)
-        {
-            _logger.LogInformation("Refused draft version {Version} of {FormSpecId}: version taken", version, formSpecId);
-            return FormSpecWriteResultModel<FormSpecModel>.Conflict(
-            [
-                new ValidationErrorModel
-                {
-                    Field = "newVersion",
-                    Keyword = FormSpecStructureKeywords.VersionTaken,
-                    Message = message,
-                },
-            ]);
         }
 
         /// <inheritdoc/>
@@ -786,105 +474,6 @@ namespace Myss.Api.Services
 
             date = default;
             return false;
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSubmissionResponseModel?> GetSubmissionAsync(Guid id, CancellationToken cancellationToken)
-        {
-            FormSubmission? submission = await _dbContext.FormSubmissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-            if (submission is null)
-            {
-                return null;
-            }
-
-            // Fetch the version stamped on the submission, not the latest.
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(
-                submission.FormSpecId, submission.FormSpecVersion, cancellationToken);
-            if (spec is null)
-            {
-                // The content engine no longer has a version that a stored
-                // submission still references.
-                _logger.LogWarning(
-                    "Archived spec {FormSpecId} v{FormSpecVersion} not found for submission {SubmissionId}",
-                    submission.FormSpecId,
-                    submission.FormSpecVersion,
-                    submission.Id);
-            }
-
-            return ToResponse(submission, spec);
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSubmissionResponseModel?> GetBusPassSubmissionForPdfAsync(
-            Guid id,
-            CancellationToken cancellationToken)
-        {
-            FormSubmission? submission = await _dbContext.FormSubmissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-
-            if (submission is null || submission.FormSpecId != BusPassPdfFieldMap.FormSpecId)
-            {
-                return null;
-            }
-
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(
-                submission.FormSpecId,
-                submission.FormSpecVersion,
-                cancellationToken);
-            if (spec is null)
-            {
-                _logger.LogWarning(
-                    "Archived spec {FormSpecId} v{FormSpecVersion} not found for submission {SubmissionId}",
-                    submission.FormSpecId,
-                    submission.FormSpecVersion,
-                    submission.Id);
-            }
-
-            return ToResponse(submission, spec);
-        }
-
-        /// <inheritdoc/>
-        public async Task<byte[]?> GetBusPassSubmissionPdfAsync(Guid id, CancellationToken cancellationToken)
-        {
-            FormSubmissionResponseModel? submission = await GetBusPassSubmissionForPdfAsync(id, cancellationToken);
-            if (submission is null)
-            {
-                return null;
-            }
-
-            byte[] template = await _templateProvider.GetTemplateAsync(BusPassTemplateName, cancellationToken);
-            Dictionary<string, object?> data = BusPassPdfDataBuilder.Build(submission.Answers);
-            byte[] pdf = await _pdfProvider.GenerateFromOdtAsync(template, data, cancellationToken);
-
-            _logger.LogInformation(
-                "Generated bus pass PDF for submission {SubmissionId} ({Bytes} bytes)",
-                id,
-                pdf.Length);
-
-            return pdf;
-        }
-
-        /// <inheritdoc/>
-        public async Task<IReadOnlyList<FormSubmissionSummaryModel>> ListSubmissionsAsync(
-            string formSpecId,
-            CancellationToken cancellationToken
-        )
-        {
-            return await _dbContext
-                .FormSubmissions.AsNoTracking()
-                .Where(s => s.FormSpecId == formSpecId)
-                .OrderByDescending(s => s.SubmittedAt)
-                .Select(s => new FormSubmissionSummaryModel
-                {
-                    Id = s.Id,
-                    FormSpecId = s.FormSpecId,
-                    FormSpecVersion = s.FormSpecVersion,
-                    SubmittedAt = s.SubmittedAt,
-                })
-                .ToListAsync(cancellationToken);
         }
 
         private static FormSubmissionResponseModel ToResponse(FormSubmission submission, FormSpecModel? spec)

@@ -1,8 +1,8 @@
 import { Link } from "react-router";
+import { StatusPill } from "@myss/web-common/components";
 
 import styles from "./ApplicationsList.module.css";
 
-import StatusPill from "@/components/StatusPill";
 import { useApplications } from "@/hooks/useIntake";
 import { applicationPath } from "@/routes/paths";
 

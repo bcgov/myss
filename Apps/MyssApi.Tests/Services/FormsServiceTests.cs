@@ -9,6 +9,10 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// Tests for <see cref="FormsService"/>.
@@ -25,9 +29,6 @@ namespace Myss.Api.Tests.Services
             """;
 
         private readonly FakeFormSpecProvider _provider = new();
-        private readonly IPdfProvider _pdfProvider = new UnexpectedPdfProvider();
-        private readonly FakeFormSpecAdminProvider _adminProvider = new();
-        private readonly ITemplateProvider _templateProvider = new UnexpectedTemplateProvider();
         private readonly FakeErrorMessageProvider _errorMessages = new();
         private readonly PinHasher _pinHasher = new();
 
@@ -82,54 +83,6 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(
                 ErrorMessageDefaults.Messages[ValidationKeywords.SinWrongLength],
                 catalogue[ValidationKeywords.SinWrongLength]);
-        }
-
-        [Fact]
-        public async Task GetSubmission_FetchesArchivedVersion_NeverLatest()
-        {
-            // A submission renders from the spec version stored on it, even
-            // when a newer version exists.
-            using FormsDbContext db = NewDb();
-            Guid id = await SeedSubmission(db, "poc-test-form", version: 1);
-            _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 1);
-            _provider.LatestResult = FakeFormSpecProvider.Spec("poc-test-form", 2);
-            FormsService service = NewService(db);
-
-            FormSubmissionResponseModel? result = await service.GetSubmissionAsync(id, CancellationToken.None);
-
-            Assert.NotNull(result);
-            Assert.Equal([("poc-test-form", 1)], _provider.VersionCalls);
-            Assert.Empty(_provider.LatestCalls);
-            Assert.Equal(1, result.Spec!.Version);
-        }
-
-        [Fact]
-        public async Task GetSubmission_ArchivedVersionGone_ReturnsSubmissionWithoutSpec()
-        {
-            // The submission should still come back when the content engine
-            // no longer has the spec version.
-            using FormsDbContext db = NewDb();
-            Guid id = await SeedSubmission(db, "poc-test-form", version: 1);
-            _provider.VersionResult = null;
-            FormsService service = NewService(db);
-
-            FormSubmissionResponseModel? result = await service.GetSubmissionAsync(id, CancellationToken.None);
-
-            Assert.NotNull(result);
-            Assert.Null(result.Spec);
-            Assert.Equal("Ada", result.Answers.GetProperty("firstName").GetString());
-        }
-
-        [Fact]
-        public async Task GetSubmission_UnknownId_ReturnsNull()
-        {
-            using FormsDbContext db = NewDb();
-            FormsService service = NewService(db);
-
-            FormSubmissionResponseModel? result = await service.GetSubmissionAsync(Guid.NewGuid(), CancellationToken.None);
-
-            Assert.Null(result);
-            Assert.Empty(_provider.VersionCalls);
         }
 
         [Fact]
@@ -198,21 +151,6 @@ namespace Myss.Api.Tests.Services
             Assert.False(result.IsValid);
             Assert.Null(result.Submission);
             Assert.Empty(await db.FormSubmissions.ToListAsync());
-        }
-
-        [Fact]
-        public async Task ListSubmissions_ReturnsNewestFirst_ForTheRequestedFormOnly()
-        {
-            using FormsDbContext db = NewDb();
-            Guid older = await SeedSubmission(db, "poc-test-form", 1, DateTimeOffset.UtcNow.AddHours(-2));
-            Guid newer = await SeedSubmission(db, "poc-test-form", 2, DateTimeOffset.UtcNow.AddHours(-1));
-            await SeedSubmission(db, "other-form", 1, DateTimeOffset.UtcNow);
-            FormsService service = NewService(db);
-
-            IReadOnlyList<FormSubmissionSummaryModel> list =
-                await service.ListSubmissionsAsync("poc-test-form", CancellationToken.None);
-
-            Assert.Equal([newer, older], list.Select(s => s.Id));
         }
 
         /// <summary>A spec with one required field, for submit-path arrangements.</summary>
@@ -770,9 +708,6 @@ namespace Myss.Api.Tests.Services
                 NullLogger<FormsService>.Instance,
                 db,
                 _provider,
-                _pdfProvider,
-                _templateProvider,
-                _adminProvider,
                 currentUserAccessor ?? new StubCurrentUserAccessor("test-subject"),
                 _errorMessages,
                 _pinHasher);
@@ -789,44 +724,6 @@ namespace Myss.Api.Tests.Services
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
             return new InMemoryFormsDbContext(options);
-        }
-
-        private static async Task<Guid> SeedSubmission(
-            FormsDbContext db,
-            string formSpecId,
-            int version,
-            DateTimeOffset? submittedAt = null)
-        {
-            var submission = new FormSubmission
-            {
-                Id = Guid.NewGuid(),
-                FormSpecId = formSpecId,
-                FormSpecVersion = version,
-                Answers = JsonDocument.Parse("""{"firstName":"Ada"}"""),
-                SubmittedAt = submittedAt ?? DateTimeOffset.UtcNow,
-            };
-            db.FormSubmissions.Add(submission);
-            await db.SaveChangesAsync();
-            return submission.Id;
-        }
-
-        private sealed class UnexpectedPdfProvider : IPdfProvider
-        {
-            public Task<byte[]> GenerateFromOdtAsync(
-                byte[] odtTemplate,
-                object data,
-                CancellationToken cancellationToken)
-            {
-                throw new InvalidOperationException("PDF generation is not expected in these tests.");
-            }
-        }
-
-        private sealed class UnexpectedTemplateProvider : ITemplateProvider
-        {
-            public Task<byte[]> GetTemplateAsync(string templateName, CancellationToken cancellationToken)
-            {
-                throw new InvalidOperationException("Template retrieval is not expected in these tests.");
-            }
         }
     }
 }

@@ -1,9 +1,10 @@
 namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// The bus pass validation as a citizen meets it: the spec validator and the

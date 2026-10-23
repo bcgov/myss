@@ -15,7 +15,10 @@ namespace Myss.Api.Tests
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data;
     using Xunit;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// The bus pass submission endpoint over real HTTP, with the middleware
@@ -66,6 +69,9 @@ namespace Myss.Api.Tests
         private readonly WebApplicationFactory<Startup> _factory;
         private readonly FakeFormSpecProvider _specProvider = new();
         private readonly FakeBusPassSubmissionProvider _middleware = new();
+
+        // The forms store of the last client created, for a test to look into.
+        private DbContextOptions<FormsDbContext>? _forms;
 
         /// <summary>Initializes a new instance of the <see cref="BusPassEndpointTests"/> class.</summary>
         /// <param name="factory">The injected in-memory host factory.</param>
@@ -119,10 +125,11 @@ namespace Myss.Api.Tests
             Assert.Equal(BusPassErrorKeywords.IcmUnavailable, problem.GetProperty("keyword").GetString());
             Guid submissionId = problem.GetProperty("submissionId").GetGuid();
 
-            // The submission was kept: staff can read it through the forms module.
-            using HttpResponseMessage stored = await client.SendAsync(
-                Authenticated(HttpMethod.Get, $"/v1/forms/submissions/{submissionId}", persona: "worker"));
-            Assert.Equal(HttpStatusCode.OK, stored.StatusCode);
+            // The submission was kept, for staff to read through MyssAdminApi.
+            using (var db = new InMemoryFormsDbContext(_forms!))
+            {
+                Assert.True(await db.FormSubmissions.AnyAsync(s => s.Id == submissionId));
+            }
         }
 
         [Theory]
@@ -283,47 +290,19 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
-        public async Task ThePdf_IsNotAnonymous()
-        {
-            // The id is unguessable, but the PDF carries a name, SIN, date of
-            // birth and address; an anonymous route keyed by id must not exist.
-            HttpClient client = CreateClient(mockAuth: false);
-
-            using HttpResponseMessage response = await client.GetAsync($"/v1/bus-pass/submissions/{Guid.NewGuid()}/pdf");
-
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task ThePdf_IsForStaffNotCitizens()
-        {
-            HttpClient client = CreateClient();
-
-            using HttpResponseMessage asCitizen = await client.SendAsync(
-                Authenticated(HttpMethod.Get, $"/v1/bus-pass/submissions/{Guid.NewGuid()}/pdf"));
-            Assert.Equal(HttpStatusCode.Forbidden, asCitizen.StatusCode);
-
-            // A worker with an IDIR identity passes the policy; an unknown id is
-            // then simply not found, which proves the gate without rendering.
-            using HttpResponseMessage asWorker = await client.SendAsync(
-                Authenticated(HttpMethod.Get, $"/v1/bus-pass/submissions/{Guid.NewGuid()}/pdf", persona: "worker"));
-            Assert.Equal(HttpStatusCode.NotFound, asWorker.StatusCode);
-        }
-
-        [Fact]
         public async Task TheGenericFormsRoutes_DoNotServeTheBusPassFormAnonymously()
         {
             // The spec must stay public, since the citizen has no account to sign
-            // in with; listing submissions and storing one through the generic
-            // forms route, which skips the bus pass rules and the ICM hand-off,
-            // must not be.
+            // in with; storing one through the generic forms route, which skips the
+            // bus pass rules and the ICM hand-off, must not be. Listing submissions
+            // is not served here at all: it is a staff read in MyssAdminApi.
             HttpClient client = CreateClient(mockAuth: false);
 
             using HttpResponseMessage spec = await client.GetAsync("/v1/forms/bc-bus-pass/spec");
             Assert.Equal(HttpStatusCode.OK, spec.StatusCode);
 
             using HttpResponseMessage list = await client.GetAsync("/v1/forms/bc-bus-pass/submissions");
-            Assert.Equal(HttpStatusCode.Unauthorized, list.StatusCode);
+            Assert.NotEqual(HttpStatusCode.OK, list.StatusCode);
 
             using HttpResponseMessage stored = await client.PostAsJsonAsync(
                 "/v1/forms/bc-bus-pass/submissions",
@@ -419,6 +398,7 @@ namespace Myss.Api.Tests
                         services.RemoveAll<DbContextOptions<FormsDbContext>>();
                         services.RemoveAll<FormsDbContext>();
                         services.AddScoped<FormsDbContext>(_ => new InMemoryFormsDbContext(options));
+                        _forms = options;
 
                         services.RemoveAll<IFormSpecProvider>();
                         services.AddSingleton<IFormSpecProvider>(_specProvider);

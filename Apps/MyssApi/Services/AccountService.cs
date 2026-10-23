@@ -12,6 +12,10 @@ namespace Myss.Api.Services
     using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Data;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// Account Info over the registration profile, which the forms module owns.

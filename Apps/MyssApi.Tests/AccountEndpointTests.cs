@@ -5,12 +5,13 @@ namespace Myss.Api.Tests
     using System.Text.Json;
     using Microsoft.AspNetCore.Mvc.Testing;
     using Myss.Api.Controllers;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
+    using Myss.Data;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Account Info over real HTTP (MYSS-271): auth, the caller-only scope, the

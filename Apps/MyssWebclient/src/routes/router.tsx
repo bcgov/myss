@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import { AuthCallbackPage } from "@myss/web-common/components";
 
 import App from "@/App";
 import HomePage from "@/pages/HomePage";
@@ -10,25 +11,15 @@ import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
 import PinResetPage from "@/pages/PinResetPage";
-import AuthCallbackPage from "@/pages/AuthCallbackPage";
 import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
 import BusPassPage from "@/pages/BusPassPage";
-import SubmissionView from "@/pages/SubmissionView";
 import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
-import AdminPage from "@/pages/AdminPage";
-import FormManagementPage from "@/pages/FormManagementPage";
-import FormEditorPage from "@/pages/FormEditorPage";
-import FormFromJsonPage from "@/pages/FormFromJsonPage";
 import ApplicationPage from "@/pages/ApplicationPage";
 import AfaServiceRequestPage from "@/pages/AfaServiceRequestPage";
 import ServiceRequestsPage from "@/pages/ServiceRequestsPage";
-import WorkerApplicationsPage from "@/pages/WorkerApplicationsPage";
-import WorkerApplicationPage from "@/pages/WorkerApplicationPage";
 import RequireAuth from "@/auth/RequireAuth";
-import RequireIdir from "@/auth/RequireIdir";
-import RequireWorker from "@/auth/RequireWorker";
 import { paths } from "@/routes/paths";
 
 // App is the shared layout (header/footer + app-wide auth concerns). Child
@@ -57,61 +48,12 @@ export const router = createBrowserRouter([
         element: <BusPassPage />,
       },
       { path: paths.signIn, element: <SignInPage /> },
-      { path: paths.authCallback, element: <AuthCallbackPage /> },
+      {
+        path: paths.authCallback,
+        element: <AuthCallbackPage fallbackPath={paths.dashboard} />,
+      },
       { path: paths.pinReset, element: <PinResetPage /> },
       { path: paths.simpleLogin, element: <SimpleLoginPage /> },
-
-      // ---- Administration: direct URL entry for authenticated IDIR users ----
-      {
-        path: paths.admin,
-        element: (
-          <RequireIdir>
-            <AdminPage />
-          </RequireIdir>
-        ),
-      },
-      {
-        path: paths.adminFormManagement,
-        element: (
-          <RequireIdir>
-            <FormManagementPage />
-          </RequireIdir>
-        ),
-      },
-      {
-        path: paths.adminFormEditor,
-        element: (
-          <RequireIdir>
-            <FormEditorPage />
-          </RequireIdir>
-        ),
-      },
-      {
-        path: paths.adminFormFromJson,
-        element: (
-          <RequireIdir>
-            <FormFromJsonPage />
-          </RequireIdir>
-        ),
-      },
-
-      // ---- Worker operations: IDIR sign-in with the WORKER role ----
-      {
-        path: paths.workerApplications,
-        element: (
-          <RequireWorker>
-            <WorkerApplicationsPage />
-          </RequireWorker>
-        ),
-      },
-      {
-        path: paths.workerApplication,
-        element: (
-          <RequireWorker>
-            <WorkerApplicationPage />
-          </RequireWorker>
-        ),
-      },
 
       // ---- Dashboard (MYSS-194): the signed-in citizen's sections, framed
       // by the left-hand menu. A section still under development renders the
@@ -163,14 +105,6 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <FormsTechDemo />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "techdemos/forms/submissions/:id",
-        element: (
-          <RequireAuth>
-            <SubmissionView />
           </RequireAuth>
         ),
       },

@@ -52,10 +52,6 @@ function renderAt(path: string) {
           />
         </Route>
         <Route path={paths.register} element={<p>Registration landing</p>} />
-        <Route
-          path={paths.workerApplications}
-          element={<p>Worker landing</p>}
-        />
       </Routes>
     </MemoryRouter>,
   );
@@ -66,6 +62,31 @@ describe("DashboardLayout", () => {
     session.user = { sub: "user-1", name: "Alice", roles: [] };
     session.isMeLoading = false;
     session.hasProfile = true;
+    vi.mocked(session.logout).mockClear();
+  });
+
+  it("tells an IDIR session this site is for citizens, instead of sending it to registration", async () => {
+    session.user = {
+      sub: "idir-user",
+      name: "Staff",
+      roles: ["WORKER"],
+      idirUsername: "STAFFUSER",
+    };
+    session.hasProfile = false;
+    const screen = await renderAt(paths.dashboard);
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(/My Self Serve Administration/);
+    await expect
+      .element(screen.getByText("Registration landing"))
+      .not.toBeInTheDocument();
+    await expect
+      .element(screen.getByText("Home section"))
+      .not.toBeInTheDocument();
+
+    await screen.getByRole("button", { name: "Sign out" }).click();
+    expect(session.logout).toHaveBeenCalledOnce();
   });
 
   it("shows account checking while the profile lookup is pending", async () => {
@@ -80,25 +101,7 @@ describe("DashboardLayout", () => {
       .not.toBeInTheDocument();
   });
 
-  it("sends a Ministry worker to the worker view instead of registration", async () => {
-    // A worker has no citizen profile; without the role check first they
-    // would be bounced to the registration form.
-    session.user = {
-      sub: "idir-user",
-      name: "Wanda",
-      roles: ["WORKER"],
-      idirUsername: "WWORKER",
-    };
-    session.hasProfile = false;
-    const screen = await renderAt(paths.dashboard);
-
-    await expect
-      .element(screen.getByText("Worker landing"))
-      .toBeInTheDocument();
-  });
-
-  it("waits for the roles before deciding where a signed-in user lands", async () => {
-    session.user = { sub: "idir-user", roles: [], idirUsername: "WWORKER" };
+  it("waits for the account lookup before deciding where a signed-in user lands", async () => {
     session.isMeLoading = true;
     session.hasProfile = undefined;
     const screen = await renderAt(paths.dashboard);

@@ -5,13 +5,20 @@ This file provides guidance to AI coding agents working with code in this reposi
 ## What this is
 
 My Self Serve (MySS) — a rebuild of the BC income/disability assistance self-serve
-portal (bcgov). Three deployable apps under `Apps/`, plus ADRs under
+portal (bcgov). Five deployable apps under `Apps/`, plus ADRs under
 `Docs/Architecture/DecisionRecords/` and a local Docker stack at `compose.yaml`.
 
 | App | Stack | Role |
 | --- | --- | --- |
-| `Apps/MyssApi` | C# / ASP.NET Core .NET 10 | The API. Modular monolith; namespace `Myss.Api` |
-| `Apps/MyssWebclient` | React 19 + Vite + TS | SPA; BC Gov Design System; Form.io renderer |
+| `Apps/MyssApi` | C# / ASP.NET Core .NET 10 | The citizen API. Modular monolith; owns the database migrations; namespace `Myss.Api` |
+| `Apps/MyssWebclient` | React 19 + Vite + TS | Citizen SPA; BC Gov Design System; Form.io renderer |
+| `Apps/MyssAdminApi` | C# / ASP.NET Core .NET 10 | The staff API: form and rates editors, worker application review, bus pass PDF; shares the database, never migrates it; namespace `Myss.AdminApi` |
+| `Apps/MyssAdminWebclient` | React 19 + Vite + TS | The staff SPA (form and rates editors, application review); IDIR sign-in only |
+| `Apps/MyssData` | C# class library | The EF model both APIs use (Forms, Intake, Platform contexts, event store, intake projection); namespace `Myss.Data` (ADR-0010) |
+| `Apps/MyssFormSpec` | C# class library | `FormSpecValidator` and the domain rules it runs, shared by both APIs; namespace `Myss.FormSpec` |
+| `Apps/MyssCommon` | C# class library | What both APIs run the same way: the web host setup (logging, tracing, Swagger, CORS), sign-in and roles (`KeycloakClaims`, `RoleCalculator`, mock sign-in), the Strapi readers, the rate table, bus pass answers; namespace `Myss.Common` |
+| `Apps/MyssFormio` | TS package `@myss/formio` | The BC Gov Form.io components, shared by both webclients (npm workspace rooted at `Apps/`) |
+| `Apps/MyssWebCommon` | TS package `@myss/web-common` | What both webclients run the same way: sign-in (access token, OIDC settings, SiteMinder sign-out, idle timeout, `/auth/me`), runtime settings, the API shapes both APIs share, and a few components |
 | `Apps/MyssContent` | Strapi 5 | Content engine; owns versioned Form.io specs |
 | `Apps/IcmApi` | C# class library + Refit | Typed client for ICM (Siebel); namespace `Icm.Api` |
 | `Apps/IcmApi.Host` | C# / ASP.NET Core .NET 10 | The ICM middleware: hosts IcmApi behind `POST v1/bus-pass/applications` for MyssApi; namespace `Icm.Api.Host` |
@@ -69,8 +76,8 @@ from `Apps/MySS.AspireHost/appsettings.json` plus `Aspire:Parameters:*` user sec
 the `.env` files are for the compose path only. A clean checkout fails fast naming the
 first missing secret; the values come from another developer or the team's central
 secrets store (see README.md's "One command: Aspire"). Still manual either way: the
-Strapi first-visit admin user, and the `Strapi:ApiToken` for MyssApi
-(`appsettings.local.json`).
+Strapi first-visit admin user, the read-only `Strapi:ApiToken` for MyssApi and the
+write-scoped `Strapi:AdminApiToken` for MyssAdminApi (each app's `appsettings.local.json`).
 
 Local stack manually (from repo root):
 
@@ -102,7 +109,10 @@ mode: apply every pending migration of every context, then exit):
 cd Apps/MyssApi && dotnet run -- --migrate
 ```
 
-(Adding a migration: see `Apps/MyssApi/AGENTS.md`. Deployed environments never
+(The Forms, Intake and Platform contexts live in `Apps/MyssData`, shared with
+MyssAdminApi, but their migrations stay in MyssApi — `Configuration/MyssMigrations`
+points them there — and only MyssApi applies them (ADR-0010). Adding a migration: see
+`Apps/MyssApi/AGENTS.md`. Deployed environments never
 run migrations by hand: the pipeline runs `MyssApi --migrate` as a Job from the
 freshly built image before the rollout restart — ADR-0009.)
 
@@ -110,8 +120,11 @@ Run:
 
 ```bash
 cd Apps/MyssApi && dotnet run                 # http://localhost:5000, Swagger at /swagger
+cd Apps/MyssAdminApi && dotnet run            # http://localhost:5010, Swagger at /swagger
 dotnet run --project Apps/IcmApi.Host        # http://localhost:5100, Swagger at /swagger (needs Icm:* user secrets)
+cd Apps && npm install                        # once: the npm workspace (MyssFormio, MyssWebCommon + both webclients)
 cd Apps/MyssWebclient && npm run dev          # http://localhost:5173
+cd Apps/MyssAdminWebclient && npm run dev     # http://localhost:5174
                                               # Strapi admin: http://localhost:1337/admin
 ```
 
@@ -119,7 +132,9 @@ Test:
 
 ```bash
 dotnet test Apps/MyssApi.Tests
-dotnet test Apps/MyssApi.Tests --filter "FullyQualifiedName~FormSpecValidatorTests"
+dotnet test Apps/MyssFormSpec.Tests --filter "FullyQualifiedName~FormSpecValidatorTests"
+dotnet test Apps/MyssCommon.Tests
+dotnet test Apps/MyssAdminApi.Tests
 MYSS_TEST_POSTGRES="Host=localhost;Port=5432;Database=myss;Username=myss;Password=myss-local-dev" \
   dotnet test Apps/MyssApi.Tests          # also runs the [PostgresFact] tests against the compose Postgres
 dotnet test Apps/MyssApi.Tests --filter "DisplayName~rejects"
@@ -131,16 +146,21 @@ npm run test:unit                             # *.unit.test.ts, node env
 npm run test:browser-headless                 # *.browser.test.tsx, needs `npx playwright install chromium`
 npx vitest --config=vitest.config.ts --project=unit src/auth/decodeJwt.unit.test.ts
 npm run lint && npm run format:check
+# The same scripts exist in Apps/MyssAdminWebclient, Apps/MyssFormio and Apps/MyssWebCommon
+# (no dev/format in the two packages),
+# or from Apps/: npm run test:unit --workspace MyssFormio
 
 cd Apps/MyssContent && npm test               # vitest run
 ```
 
-CI (`.github/workflows/tests-dev.yml`, on PRs into `dev`) runs the API, ICM client and
-ICM middleware tests and both webclient suites. `dev` is the main branch.
+CI (`.github/workflows/tests-dev.yml`, on PRs into `dev`) runs the API, form spec,
+shared API library (MyssCommon), admin API, ICM client and ICM middleware tests, and both suites of each npm workspace
+(MyssFormio, MyssWebCommon, MyssWebclient, MyssAdminWebclient). `dev` is the main branch.
 
 After changing an API contract, regenerate the typed client: with the API running,
 `cd Apps/MyssWebclient && npm run generate:schema` (writes `src/api/generated/`, never
-hand-edit it).
+hand-edit it). The admin webclient has no generated client; its calls are hand-written
+against MyssAdminApi.
 
 ## Architecture
 
@@ -171,6 +191,21 @@ config is deliberate** — preserve it. Layering, configuration precedence (`Mys
 prefix), auth (the Option 1 ↔ 2 swap point, MockAuthGate) and the attachments
 pipeline: see `Apps/MyssApi/AGENTS.md`.
 
+### MyssAdminApi
+
+The staff side, split from MyssApi into its own deployable. The form editor
+(`GET v1/forms`, `GET`/`PUT v1/forms/{id}/draft`, `POST v1/forms/{id}/publish`) and the
+estimator rates editor (`GET`/`POST v1/EligibilityRates`) are behind the `AdminIdir`
+policy; the worker endpoints (`v1/intake/review/applications/...`, the stored form
+submissions, the bus pass PDF through CDOGS) behind `WorkerWithIdir`; `GET v1/auth/me`
+gives the staff site the caller's roles. It uses MyssApi's database through
+`Apps/MyssData` but never migrates it (ADR-0010), and it holds the only write-scoped
+Strapi token (`Strapi:AdminApiToken`, also used to read specs); MyssApi keeps the
+read-only one. MyssApi caches the rate table
+for five minutes and the admin API cannot clear that cache, so a saved table reaches
+citizens within that window. Its host setup, auth and Strapi readers are MyssApi's,
+shared through `Apps/MyssCommon`: see `Apps/MyssAdminApi/AGENTS.md`.
+
 ### Forms
 
 Strapi owns Form.io specs as a `form-spec` collection keyed `(formSpecId, version)`;
@@ -181,7 +216,8 @@ revokes public read on form specs and seeds the POC forms on every boot (idempot
 
 `MyssApi` reads specs through `StrapiFormSpecProvider` with a scoped read-only API token.
 On submit, `FormsService` resolves **the version the client claims to have rendered**,
-not the latest, and `FormSpecValidator` re-validates every value server-side —
+not the latest, and `FormSpecValidator` (in `Apps/MyssFormSpec`, shared with
+MyssAdminApi, which checks a spec's structure with it before saving) re-validates every value server-side —
 client-side validation is UX only. It enforces the spec's own rules (`validate.required`,
 `pattern` read as JavaScript reads it, `minLength`/`maxLength`, `min`/`max`), evaluates
 simple conditionals (`conditional.when`/`eq`/`show`, on the field or a container above it,
@@ -196,7 +232,8 @@ field, or the component type. Advanced (JSON logic) conditionals are not evaluat
 field behind one counts as visible. `BusPassRules` keeps only the cross-field rules the
 spec cannot express.
 
-**The browser runs the same rules.** `MyssWebclient/src/widgets/formio/` re-registers
+**The browser runs the same rules.** `Apps/MyssFormio/src/` (`@myss/formio`, used by
+both webclients so the admin editor's preview renders exactly what citizens see) re-registers
 Form.io's stock input types (`textfield`, `email`, `textarea`, `number`, `select`,
 `checkbox`, `radio`, `datetime`, `button`) with wrappers that keep the stock class's value
 handling and validation and draw the BC Gov Design System component instead
@@ -211,7 +248,7 @@ first, in the order the browser shows it: for Form.io's own rules (`required`, `
 lengths, `min`/`max`) `validate.customMessage`, then `validate.patternMessage`, then the
 `errors.<rule>` entry; for the named domain rules the `errors.<rule>` entry, then
 `validate.customMessage`. The API flags authored wording and never replaces it. Otherwise a validator emits a stable
-keyword (`DOMAIN.CONTEXT.NAME`, see `Domain/ValidationKeywords.cs`) with compiled default
+keyword (`DOMAIN.CONTEXT.NAME`, see `MyssFormSpec/Domain/ValidationKeywords.cs`) with compiled default
 text, and before a 422 leaves `ErrorMessageResolver` replaces the text keyword by keyword
 from the `error-message` collection in Strapi (`StrapiErrorMessageProvider`: same read-only
 token, 5-minute cache, compiled fallback in `Data/ErrorMessageDefaults.cs`). The browser
@@ -225,9 +262,11 @@ in the shared file and every mirror, or a reason in the header — the test suit
 
 ### Platform and Intake
 
-`Myss.Api.Platform` is the shared event log of ADR-0001: one `platform.event` table
+The model below lives in `Apps/MyssData` (`Myss.Data.Platform`, `Myss.Data.Intake`),
+used by MyssApi (the citizen side: `IntakeService`) and MyssAdminApi (the worker side:
+`ReviewService`) — ADR-0010. `Myss.Data.Platform` is the shared event log of ADR-0001: one `platform.event` table
 keyed `(stream_id, version)`, reached only through `IEventStore` (append with an
-expected version, load, load-many, and a fold helper). `Myss.Api.Intake` is
+expected version, load, load-many, and a fold helper). `Myss.Data.Intake` is
 Application Intake: `intake.application_answers` holds a draft's working copy under a
 row version, submit appends one `Submitted` event (`Resubmitted` after a return), and
 workers act through `ReviewService` — `PickedUp` assigns the file to the caller, and
@@ -236,7 +275,8 @@ only that worker can then append `NoteAdded`, `MoreInfoRequested`, `Escalated`,
 (`IApplicationPromotionProvider`, a placeholder that succeeds today), recorded as
 `Promoted` or `PromotionFailed`. State is always the fold in `ApplicationProjection`
 — there is no status column. Modules are
-marked by **namespace** (`Myss.Api.Platform`, `Myss.Api.Intake`), with files in
+marked by **namespace** (`Myss.Data.Platform`, `Myss.Data.Intake` for the shared model;
+`Myss.Api.Intake` and `Myss.AdminApi.Intake` for each API's services), with files in
 subfolders of the layer folders. Design: `docs/development_design/income-assistance-application.md`
 in the workspace; the forms and profile dependencies are ADR-0008.
 
@@ -263,18 +303,18 @@ shared user-secret store: see `Apps/IcmApi.Host/AGENTS.md`.
 
 `Shared/validation/validation-vectors.json` is the contract between the C# and
 TypeScript implementations of the same rules (SIN Luhn, email, confirmation match, phone,
-postal code, ISO date). It is **linked**, not copied, into `MyssApi.Tests.csproj` and
-read from disk by `MyssWebclient/src/widgets/formio/validationRules.unit.test.ts`; both
-suites read it, so a divergence is a failing test. The webclient test reads it with
-`node:fs` rather than importing it: the image build runs `tsc -b` over the test files
-from a context that holds only `Apps/MyssWebclient`, and an import of a file outside it
-fails there. Adding a case means both suites must handle it. Every value is synthetic —
+postal code, ISO date). It is **linked**, not copied, into `MyssFormSpec.Tests.csproj`
+(and `MyssApi.Tests.csproj`, for the rules that stayed there) and read from disk by
+`MyssFormio/src/validationRules.unit.test.ts`; both sides read it, so a divergence is a
+failing test. The TypeScript test reads it with `node:fs` rather than importing it: the
+image build runs `tsc -b` over the test files from the `Apps/` context, which does not
+hold `Shared/`, and an import of a file outside it fails there. Adding a case means both suites must handle it. Every value is synthetic —
 never add a real SIN, PHN or personal email. PHN vectors are deliberately absent pending
 verification of the mod-11 spec.
 
 `Shared/validation/error-messages.json` works the same way for error wording: linked
 into `MyssApi.Tests.csproj` and read from disk by the MyssContent seed test and the
-webclient test above, so the compiled fallback, the Strapi seed and the browser's
+`MyssFormio` test above, so the compiled fallback, the Strapi seed and the browser's
 compiled wording cannot drift apart.
 
 ## Conventions
@@ -287,10 +327,14 @@ compiled wording cannot drift apart.
   namespace; XML doc comments on all public members (`GenerateDocumentationFile` is on
   and feeds Swagger). `Apps/.editorconfig` (870 lines) force-enables analyzer rules with
   `EnforceCodeStyleInBuild` — build warnings are the linter. Services use `_camelCase`
-  private fields; the `Configuration/` host classes use `this.`-qualified fields.
+  private fields; the host classes (`MyssCommon/Hosting`, `MyssCommon/Auth`) use
+  `this.`-qualified fields.
 - **Comments explain *why*, and record what was measured.** Several files carry
   observations verified against a running system on a date. Do not delete those; if you
   change the behaviour they describe, update the note.
+- **Admin webclient and the shared packages**: see `Apps/MyssAdminWebclient/AGENTS.md`,
+  `Apps/MyssFormio/AGENTS.md` and `Apps/MyssWebCommon/AGENTS.md`. The four are one npm
+  workspace rooted at `Apps/` with a single `Apps/package-lock.json`; install from `Apps/`.
 - **Webclient**: see `Apps/MyssWebclient/AGENTS.md` — frontend architecture
   (pages/widgets/components hierarchy), token rules, BCDS-first components, test and
   runtime-config conventions — and the full docs under `Apps/MyssWebclient/Docs/`.

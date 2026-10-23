@@ -7,12 +7,12 @@ namespace Myss.Api.Tests
     using Myss.Api.Intake;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
+    using Myss.Data.Intake;
 
     /// <summary>Product-authored AFA forms reuse citizen intake without entering worker review.</summary>
     public class AfaEndpointTests : IClassFixture<WebApplicationFactory<Startup>>
     {
         private const string Route = "/v1/intake/applications";
-        private const string ReviewRoute = "/v1/intake/review/applications";
         private const string Spec = """
         {
           "display": "form",
@@ -56,7 +56,7 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
-        public async Task DraftAndSubmissionAppearOnlyToOwnerAndNeverToWorker()
+        public async Task DraftAndSubmissionAppearOnlyToOwner()
         {
             _provider.LatestResult = FakeFormSpecProvider.Spec(IntakeService.AfaFormSpecId, 3, Spec);
             _provider.VersionResult = FakeFormSpecProvider.Spec(IntakeService.AfaFormSpecId, 3, Spec);
@@ -92,14 +92,6 @@ namespace Myss.Api.Tests
             Assert.Equal("Ada", (await Body(read)).GetProperty("payload").GetProperty("answers").GetProperty("firstName").GetString());
             Assert.Equal((IntakeService.AfaFormSpecId, 3), _provider.VersionCalls[0]);
 
-            using HttpResponseMessage reviewList = await host.Send("worker", HttpMethod.Get, ReviewRoute);
-            Assert.Empty((await Body(reviewList)).GetProperty("payload").EnumerateArray());
-            using HttpResponseMessage reviewGet = await host.Send("worker", HttpMethod.Get, $"{ReviewRoute}/{id}");
-            using HttpResponseMessage reviewAction = await host.Send("worker", HttpMethod.Post, $"{ReviewRoute}/{id}/review", JsonContent.Create(new { streamVersion = 1 }));
-            using HttpResponseMessage reviewNote = await host.Send("worker", HttpMethod.Post, $"{ReviewRoute}/{id}/notes", JsonContent.Create(new { streamVersion = 1, text = "note" }));
-            Assert.Equal(HttpStatusCode.NotFound, reviewGet.StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, reviewAction.StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, reviewNote.StatusCode);
             Assert.Equal(1, await host.CountEvents(id));
             Assert.NotEqual(id, pocId);
         }

@@ -7,8 +7,8 @@ namespace Myss.Api.Tests.Providers
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging.Abstractions;
     using Myss.Api.Data;
-    using Myss.Api.Domain;
     using Myss.Api.Providers;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// Tests for <see cref="StrapiErrorMessageProvider"/>.

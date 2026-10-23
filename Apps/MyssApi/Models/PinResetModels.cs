@@ -2,6 +2,7 @@ namespace Myss.Api.Models
 {
     using System;
     using System.Collections.Generic;
+    using Myss.FormSpec;
 
     /// <summary>
     /// The answer to a PIN reset request (MYSS-36): the email is on its way.

@@ -1,7 +1,7 @@
 import { Button } from "@bcgov/design-system-react-components";
 import { Link, useNavigate } from "react-router";
 
-import StatusPill from "@/components/StatusPill";
+import { StatusPill } from "@myss/web-common/components";
 import {
   useAfaApplications,
   useAfaPublished,
