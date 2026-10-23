@@ -65,6 +65,31 @@ namespace Icm.Api.Services
             ServiceRequestInput input,
             CancellationToken cancellationToken = default);
 
+        /// <summary>Reads the contacts on a service request, with their relationship to it.</summary>
+        /// <param name="serviceRequestKey">The ICM row id of the service request.</param>
+        /// <param name="options">Visibility, or null for the defaults. Service requests need <c>Organization</c>.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Every contact on the request; empty when there are none the caller can see.</returns>
+        Task<System.Collections.Generic.IReadOnlyList<ServiceRequestContact>> GetContactsAsync(
+            string serviceRequestKey,
+            ServiceRequestReadOptions? options = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Links an existing contact to a service request — the matched applicant as the
+        /// primary key player, the way the bus pass workflow files a matched SR. A primary
+        /// link also sets the request's <c>Primary Contact Id</c> and its header's names.
+        /// </summary>
+        /// <param name="serviceRequestKey">The ICM row id of the service request.</param>
+        /// <param name="link">The contact, and the relationship.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The service request's row id, as ICM echoed it.</returns>
+        /// <exception cref="System.ArgumentException">The contact id or the key is blank.</exception>
+        Task<string> LinkContactAsync(
+            string serviceRequestKey,
+            ServiceRequestContactLink link,
+            CancellationToken cancellationToken = default);
+
         /// <summary>Deletes the service request identified by key.</summary>
         /// <param name="serviceRequestKey">The ICM row id of the service request.</param>
         /// <param name="cancellationToken">Cancellation token.</param>

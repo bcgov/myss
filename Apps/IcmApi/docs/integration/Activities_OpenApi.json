@@ -1,0 +1,2567 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "SblDtActivitiesActivities",
+    "description" : "OpenAPI specification for SiebelData - API : data/Activities/Activities",
+    "contact" : {
+      "email" : "sample@sample.com"
+    },
+    "version" : "1.0"
+  },
+  "externalDocs" : {
+    "description" : "OpenAPI",
+    "url" : "https://openapis.org"
+  },
+  "servers" : [ {
+    "url" : "https://sit2-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  }, {
+    "url" : "http://sit2-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  } ],
+  "tags" : [ {
+    "name" : "data/Activities/Activities/"
+  }, {
+    "name" : "data/Activities/Activities/{activities_key}/"
+  } ],
+  "paths" : {
+    "/data/Activities/Activities/" : {
+      "get" : {
+        "tags" : [ "data/Activities/Activities/" ],
+        "operationId" : "data_Activities_Activities__get",
+        "parameters" : [ {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "uniformresponse",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y" ]
+          }
+        }, {
+          "name" : "searchspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sortspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "PageSize",
+          "in" : "query",
+          "schema" : {
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "StartRowNum",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "default" : 0
+          }
+        }, {
+          "name" : "pagination",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y", "N" ]
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "recordcountneeded",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "ExecutionMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "BiDirectional"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_get_all_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_get_all_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/Activities/Activities/" ],
+        "operationId" : "data_Activities_Activities__put",
+        "parameters" : [ {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Activities_Activities_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Activities_Activities_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      },
+      "post" : {
+        "tags" : [ "data/Activities/Activities/" ],
+        "operationId" : "data_Activities_Activities__post",
+        "parameters" : [ {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Activities_Activities_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Activities_Activities_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      }
+    },
+    "/data/Activities/Activities/{activities_key}/" : {
+      "get" : {
+        "tags" : [ "data/Activities/Activities/{activities_key}/" ],
+        "operationId" : "data_Activities_Activities_{activities_key}__get",
+        "parameters" : [ {
+          "name" : "activities_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_get_one_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_get_one_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/Activities/Activities/{activities_key}/" ],
+        "operationId" : "data_Activities_Activities_{activities_key}__put",
+        "parameters" : [ {
+          "name" : "activities_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Activities_Activities_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_Activities_Activities_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      },
+      "delete" : {
+        "tags" : [ "data/Activities/Activities/{activities_key}/" ],
+        "operationId" : "data_Activities_Activities_{activities_key}__delete",
+        "parameters" : [ {
+          "name" : "activities_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_del_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_Activities_Activities_del_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "data_Activities_Activities_" : {
+        "required" : [ "Action By", "Category", "Created", "Created By", "Display", "Owned By Id", "Type", "Updated", "Updated By" ],
+        "type" : "object",
+        "properties" : {
+          "Created" : {
+            "title" : "Created",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By" : {
+            "title" : "Created By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Updated" : {
+            "title" : "Updated",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Updated By" : {
+            "title" : "Updated By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Activity Template Id" : {
+            "title" : "Activity Template Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Account Location" : {
+            "title" : "Account Location",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Account Name" : {
+            "title" : "Account Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Asset Number" : {
+            "title" : "Asset Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Asset Number S_ASSET" : {
+            "title" : "Asset Number S_ASSET",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Action By" : {
+            "title" : "Action By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Action Code" : {
+            "title" : "Action Code",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Activity SR Id" : {
+            "title" : "Activity SR Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Activity UID" : {
+            "title" : "Activity UID",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Alarm" : {
+            "title" : "Alarm",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Appt Alarm Time Min" : {
+            "title" : "Appt Alarm Time Min",
+            "type" : "string",
+            "x-siebel-precision" : "16",
+            "x-maxLength" : "16",
+            "x-siebel-scale" : "0",
+            "x-siebel-validation" : ">= 0",
+            "x-siebel-datatype" : "DTYPE_INTEGER"
+          },
+          "Brand" : {
+            "title" : "Brand",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Id" : {
+            "title" : "Case Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Case Number" : {
+            "title" : "Case Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Owner" : {
+            "title" : "Case Owner",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Restricted" : {
+            "title" : "Case Restricted",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Case Status" : {
+            "title" : "Case Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Type" : {
+            "title" : "Case Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Category" : {
+            "title" : "Category",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Class" : {
+            "title" : "Class",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Contact Last Name" : {
+            "title" : "Contact Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Contact First Name" : {
+            "title" : "Contact First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Contact Middle Name" : {
+            "title" : "Contact Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Contact Given Name" : {
+            "title" : "Contact Given Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Name" : {
+            "title" : "Created By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Updated By Name" : {
+            "title" : "Updated By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Delay" : {
+            "title" : "Delay",
+            "type" : "string",
+            "x-siebel-precision" : "30",
+            "x-maxLength" : "18",
+            "x-siebel-scale" : "7",
+            "x-siebel-datatype" : "DTYPE_NUMBER"
+          },
+          "Description" : {
+            "title" : "Description",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "250",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Display" : {
+            "title" : "Display",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Done" : {
+            "title" : "Done",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">=[Started] and >= [Project Item Parent Actual Start] and <= [Project Item Parent Actual End]",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Done Flag" : {
+            "title" : "Done Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-validation" : "Timestamp() >= [Started]",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Due" : {
+            "title" : "Due",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">=[Created]",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Duration Minutes" : {
+            "title" : "Duration Minutes",
+            "type" : "string",
+            "x-siebel-precision" : "16",
+            "x-maxLength" : "16",
+            "x-siebel-scale" : "0",
+            "x-siebel-validation" : ">=0",
+            "x-siebel-datatype" : "DTYPE_INTEGER"
+          },
+          "ICM Created By Office" : {
+            "title" : "ICM Created By Office",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Memo #" : {
+            "title" : "ICM Memo #",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICM Memo Id" : {
+            "title" : "ICM Memo Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICM Memo Owner" : {
+            "title" : "ICM Memo Owner",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Memo Restricted" : {
+            "title" : "ICM Memo Restricted",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "ICM Memo Type" : {
+            "title" : "ICM Memo Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Service Region" : {
+            "title" : "ICM Service Region",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Sub Type" : {
+            "title" : "ICM Sub Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Type" : {
+            "title" : "ICM Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Incident #" : {
+            "title" : "Incident #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Incident Id" : {
+            "title" : "Incident Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "MeetingLocation" : {
+            "title" : "MeetingLocation",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "1500",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Ministry" : {
+            "title" : "Ministry",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Ministry Id" : {
+            "title" : "Ministry Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Owned By" : {
+            "title" : "Owned By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Owned By Id" : {
+            "title" : "Owned By Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Overdue" : {
+            "title" : "Overdue",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Opportunity" : {
+            "title" : "Opportunity",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Order Number" : {
+            "title" : "Order Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Plan Name" : {
+            "title" : "Plan Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Planned" : {
+            "title" : "Planned",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">= [Project Item Parent Planned Start] and <= [Project Item Parent Planned End]",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Planned Completion" : {
+            "title" : "Planned Completion",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">= [Planned]",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Previous Activity Description" : {
+            "title" : "Previous Activity Description",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "250",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Price List" : {
+            "title" : "Price List",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Primary Contact Id" : {
+            "title" : "Primary Contact Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Primary Owned By" : {
+            "title" : "Primary Owned By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Primary Owner Id" : {
+            "title" : "Primary Owner Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Priority" : {
+            "title" : "Priority",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Property" : {
+            "title" : "Property",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Quote" : {
+            "title" : "Quote",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Rate List" : {
+            "title" : "Rate List",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Repeating" : {
+            "title" : "Repeating",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Repeating Expires" : {
+            "title" : "Repeating Expires",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Repeating Type" : {
+            "title" : "Repeating Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Restricted Flag" : {
+            "title" : "Restricted Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Result Code" : {
+            "title" : "Result Code",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Shared Flag" : {
+            "title" : "Shared Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "SR Number" : {
+            "title" : "SR Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "64",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Owner" : {
+            "title" : "SR Owner",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Restricted Flag" : {
+            "title" : "SR Restricted Flag",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "SR Sub Type" : {
+            "title" : "SR Sub Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Type" : {
+            "title" : "SR Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Sequence" : {
+            "title" : "Sequence",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Service Office" : {
+            "title" : "Service Office",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Show In Contact Profile" : {
+            "title" : "Show In Contact Profile",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Status" : {
+            "title" : "Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Type" : {
+            "title" : "Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          }
+        }
+      },
+      "data_Activities_Activities_get_one_response" : {
+        "type" : "object",
+        "properties" : {
+          "Created" : {
+            "title" : "Created",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By" : {
+            "title" : "Created By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Updated" : {
+            "title" : "Updated",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Updated By" : {
+            "title" : "Updated By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Activity Template Id" : {
+            "title" : "Activity Template Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Account Location" : {
+            "title" : "Account Location",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Account Name" : {
+            "title" : "Account Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Asset Number" : {
+            "title" : "Asset Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Asset Number S_ASSET" : {
+            "title" : "Asset Number S_ASSET",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Action By" : {
+            "title" : "Action By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Action Code" : {
+            "title" : "Action Code",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Activity SR Id" : {
+            "title" : "Activity SR Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Activity UID" : {
+            "title" : "Activity UID",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Alarm" : {
+            "title" : "Alarm",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Appt Alarm Time Min" : {
+            "title" : "Appt Alarm Time Min",
+            "type" : "string",
+            "x-siebel-precision" : "16",
+            "x-maxLength" : "16",
+            "x-siebel-scale" : "0",
+            "x-siebel-validation" : ">= 0",
+            "x-siebel-datatype" : "DTYPE_INTEGER"
+          },
+          "Brand" : {
+            "title" : "Brand",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Id" : {
+            "title" : "Case Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Case Number" : {
+            "title" : "Case Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Owner" : {
+            "title" : "Case Owner",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Restricted" : {
+            "title" : "Case Restricted",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Case Status" : {
+            "title" : "Case Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Type" : {
+            "title" : "Case Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Category" : {
+            "title" : "Category",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Class" : {
+            "title" : "Class",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Contact Last Name" : {
+            "title" : "Contact Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Contact First Name" : {
+            "title" : "Contact First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Contact Middle Name" : {
+            "title" : "Contact Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Contact Given Name" : {
+            "title" : "Contact Given Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Name" : {
+            "title" : "Created By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Updated By Name" : {
+            "title" : "Updated By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Delay" : {
+            "title" : "Delay",
+            "type" : "string",
+            "x-siebel-precision" : "30",
+            "x-maxLength" : "18",
+            "x-siebel-scale" : "7",
+            "x-siebel-datatype" : "DTYPE_NUMBER"
+          },
+          "Description" : {
+            "title" : "Description",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "250",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Display" : {
+            "title" : "Display",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Done" : {
+            "title" : "Done",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">=[Started] and >= [Project Item Parent Actual Start] and <= [Project Item Parent Actual End]",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Done Flag" : {
+            "title" : "Done Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-validation" : "Timestamp() >= [Started]",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Due" : {
+            "title" : "Due",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">=[Created]",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Duration Minutes" : {
+            "title" : "Duration Minutes",
+            "type" : "string",
+            "x-siebel-precision" : "16",
+            "x-maxLength" : "16",
+            "x-siebel-scale" : "0",
+            "x-siebel-validation" : ">=0",
+            "x-siebel-datatype" : "DTYPE_INTEGER"
+          },
+          "ICM Created By Office" : {
+            "title" : "ICM Created By Office",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Memo #" : {
+            "title" : "ICM Memo #",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICM Memo Id" : {
+            "title" : "ICM Memo Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICM Memo Owner" : {
+            "title" : "ICM Memo Owner",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Memo Restricted" : {
+            "title" : "ICM Memo Restricted",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "ICM Memo Type" : {
+            "title" : "ICM Memo Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Service Region" : {
+            "title" : "ICM Service Region",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Sub Type" : {
+            "title" : "ICM Sub Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Type" : {
+            "title" : "ICM Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Incident #" : {
+            "title" : "Incident #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Incident Id" : {
+            "title" : "Incident Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "MeetingLocation" : {
+            "title" : "MeetingLocation",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "1500",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Ministry" : {
+            "title" : "Ministry",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Ministry Id" : {
+            "title" : "Ministry Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Owned By" : {
+            "title" : "Owned By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Owned By Id" : {
+            "title" : "Owned By Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Overdue" : {
+            "title" : "Overdue",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Opportunity" : {
+            "title" : "Opportunity",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Order Number" : {
+            "title" : "Order Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Plan Name" : {
+            "title" : "Plan Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Planned" : {
+            "title" : "Planned",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">= [Project Item Parent Planned Start] and <= [Project Item Parent Planned End]",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Planned Completion" : {
+            "title" : "Planned Completion",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-validation" : ">= [Planned]",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Previous Activity Description" : {
+            "title" : "Previous Activity Description",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "250",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Price List" : {
+            "title" : "Price List",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Primary Contact Id" : {
+            "title" : "Primary Contact Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Primary Owned By" : {
+            "title" : "Primary Owned By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Primary Owner Id" : {
+            "title" : "Primary Owner Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Priority" : {
+            "title" : "Priority",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Property" : {
+            "title" : "Property",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Quote" : {
+            "title" : "Quote",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Rate List" : {
+            "title" : "Rate List",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Repeating" : {
+            "title" : "Repeating",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Repeating Expires" : {
+            "title" : "Repeating Expires",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Repeating Type" : {
+            "title" : "Repeating Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Restricted Flag" : {
+            "title" : "Restricted Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Result Code" : {
+            "title" : "Result Code",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Shared Flag" : {
+            "title" : "Shared Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "SR Number" : {
+            "title" : "SR Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "64",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Owner" : {
+            "title" : "SR Owner",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Restricted Flag" : {
+            "title" : "SR Restricted Flag",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "SR Sub Type" : {
+            "title" : "SR Sub Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Type" : {
+            "title" : "SR Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Sequence" : {
+            "title" : "Sequence",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Service Office" : {
+            "title" : "Service Office",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Show In Contact Profile" : {
+            "title" : "Show In Contact Profile",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Status" : {
+            "title" : "Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Type" : {
+            "title" : "Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_Activities_Activities_put_post_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "Id" : {
+                "type" : "object"
+              },
+              "Created" : {
+                "title" : "Created",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Created By" : {
+                "title" : "Created By",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Updated" : {
+                "title" : "Updated",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Updated By" : {
+                "title" : "Updated By",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Activity Template Id" : {
+                "title" : "Activity Template Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Account Location" : {
+                "title" : "Account Location",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Account Name" : {
+                "title" : "Account Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Asset Number" : {
+                "title" : "Asset Number",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Asset Number S_ASSET" : {
+                "title" : "Asset Number S_ASSET",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Action By" : {
+                "title" : "Action By",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Action Code" : {
+                "title" : "Action Code",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Activity SR Id" : {
+                "title" : "Activity SR Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Activity UID" : {
+                "title" : "Activity UID",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Alarm" : {
+                "title" : "Alarm",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Appt Alarm Time Min" : {
+                "title" : "Appt Alarm Time Min",
+                "type" : "string",
+                "x-siebel-precision" : "16",
+                "x-maxLength" : "16",
+                "x-siebel-scale" : "0",
+                "x-siebel-validation" : ">= 0",
+                "x-siebel-datatype" : "DTYPE_INTEGER"
+              },
+              "Brand" : {
+                "title" : "Brand",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Case Id" : {
+                "title" : "Case Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Case Number" : {
+                "title" : "Case Number",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Case Owner" : {
+                "title" : "Case Owner",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Case Restricted" : {
+                "title" : "Case Restricted",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Case Status" : {
+                "title" : "Case Status",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Case Type" : {
+                "title" : "Case Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Category" : {
+                "title" : "Category",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Class" : {
+                "title" : "Class",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Contact Last Name" : {
+                "title" : "Contact Last Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Contact First Name" : {
+                "title" : "Contact First Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Contact Middle Name" : {
+                "title" : "Contact Middle Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Contact Given Name" : {
+                "title" : "Contact Given Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "255",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Created By Name" : {
+                "title" : "Created By Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Updated By Name" : {
+                "title" : "Updated By Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Delay" : {
+                "title" : "Delay",
+                "type" : "string",
+                "x-siebel-precision" : "30",
+                "x-maxLength" : "18",
+                "x-siebel-scale" : "7",
+                "x-siebel-datatype" : "DTYPE_NUMBER"
+              },
+              "Description" : {
+                "title" : "Description",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "250",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Display" : {
+                "title" : "Display",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Done" : {
+                "title" : "Done",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-validation" : ">=[Started] and >= [Project Item Parent Actual Start] and <= [Project Item Parent Actual End]",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Done Flag" : {
+                "title" : "Done Flag",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-validation" : "Timestamp() >= [Started]",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Due" : {
+                "title" : "Due",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-validation" : ">=[Created]",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Duration Minutes" : {
+                "title" : "Duration Minutes",
+                "type" : "string",
+                "x-siebel-precision" : "16",
+                "x-maxLength" : "16",
+                "x-siebel-scale" : "0",
+                "x-siebel-validation" : ">=0",
+                "x-siebel-datatype" : "DTYPE_INTEGER"
+              },
+              "ICM Created By Office" : {
+                "title" : "ICM Created By Office",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "ICM Memo #" : {
+                "title" : "ICM Memo #",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "ICM Memo Id" : {
+                "title" : "ICM Memo Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "ICM Memo Owner" : {
+                "title" : "ICM Memo Owner",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "ICM Memo Restricted" : {
+                "title" : "ICM Memo Restricted",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "ICM Memo Type" : {
+                "title" : "ICM Memo Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "ICM Service Region" : {
+                "title" : "ICM Service Region",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "ICM Sub Type" : {
+                "title" : "ICM Sub Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "ICM Type" : {
+                "title" : "ICM Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Incident #" : {
+                "title" : "Incident #",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Incident Id" : {
+                "title" : "Incident Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "MeetingLocation" : {
+                "title" : "MeetingLocation",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "1500",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Ministry" : {
+                "title" : "Ministry",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Ministry Id" : {
+                "title" : "Ministry Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Owned By" : {
+                "title" : "Owned By",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Owned By Id" : {
+                "title" : "Owned By Id",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Overdue" : {
+                "title" : "Overdue",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Opportunity" : {
+                "title" : "Opportunity",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Order Number" : {
+                "title" : "Order Number",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Plan Name" : {
+                "title" : "Plan Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Planned" : {
+                "title" : "Planned",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-validation" : ">= [Project Item Parent Planned Start] and <= [Project Item Parent Planned End]",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Planned Completion" : {
+                "title" : "Planned Completion",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-validation" : ">= [Planned]",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Previous Activity Description" : {
+                "title" : "Previous Activity Description",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "250",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Price List" : {
+                "title" : "Price List",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Primary Contact Id" : {
+                "title" : "Primary Contact Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Primary Owned By" : {
+                "title" : "Primary Owned By",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Primary Owner Id" : {
+                "title" : "Primary Owner Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Priority" : {
+                "title" : "Priority",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Property" : {
+                "title" : "Property",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Quote" : {
+                "title" : "Quote",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Rate List" : {
+                "title" : "Rate List",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Repeating" : {
+                "title" : "Repeating",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Repeating Expires" : {
+                "title" : "Repeating Expires",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Repeating Type" : {
+                "title" : "Repeating Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Restricted Flag" : {
+                "title" : "Restricted Flag",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Result Code" : {
+                "title" : "Result Code",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Shared Flag" : {
+                "title" : "Shared Flag",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "SR Number" : {
+                "title" : "SR Number",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "64",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "SR Owner" : {
+                "title" : "SR Owner",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "SR Restricted Flag" : {
+                "title" : "SR Restricted Flag",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "SR Sub Type" : {
+                "title" : "SR Sub Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "SR Type" : {
+                "title" : "SR Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Sequence" : {
+                "title" : "Sequence",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "255",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Service Office" : {
+                "title" : "Service Office",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Show In Contact Profile" : {
+                "title" : "Show In Contact Profile",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Status" : {
+                "title" : "Status",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Type" : {
+                "title" : "Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Link" : {
+                "type" : "object",
+                "properties" : {
+                  "rel" : {
+                    "title" : "rel",
+                    "type" : "string"
+                  },
+                  "href" : {
+                    "title" : "href",
+                    "type" : "string"
+                  },
+                  "name" : {
+                    "title" : "name",
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_Activities_Activities_get_all_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/data_Activities_Activities_get_one_response"
+            }
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_Activities_Activities_del_response" : {
+        "type" : "object"
+      }
+    },
+    "securitySchemes" : {
+      "basicAuth" : {
+        "type" : "http",
+        "scheme" : "basic"
+      },
+      "oAuth2.0" : {
+        "type" : "oauth2",
+        "flows" : {
+          "implicit" : {
+            "authorizationUrl" : "http://openAPI.io/",
+            "scopes" : {
+              "write:" : "modify",
+              "read:" : "read only"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-original-swagger-version" : "3.0"
+}

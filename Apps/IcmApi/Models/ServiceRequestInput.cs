@@ -1,16 +1,21 @@
 namespace Icm.Api.Models
 {
     using System;
+    using System.Collections.Generic;
 
     /// <summary>
     /// The fields of a service request ICM should accept on a create or an update.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Untested.</b> No write has been made against a real ICM. Which fields are
-    /// writable is taken from the OpenAPI document's read-only flags, carried across the
-    /// rename map onto the names ICM actually uses — so it is one inference removed from
-    /// evidence. A rejected field will fail loudly.
+    /// <b>A create is MEASURED</b> (SIT2 2026-09-29: bus pass SRs <c>1-53MU3X7</c> and
+    /// <c>1-53MU3XD</c>) for <see cref="Type"/>, <see cref="SRSubType"/>,
+    /// <see cref="SRSubSubType"/>, <see cref="Status"/>, <see cref="Priority"/>,
+    /// <see cref="CommMethod"/>, <see cref="ServiceOffice"/> and
+    /// <see cref="PrimaryOrganizationId"/> (accepted, but the stored SR reads back with the
+    /// trusted user's default organization). The rest of the writable set is taken from
+    /// the document's read-only flags under the names ICM reads with, and an update has
+    /// not been made live. A rejected field fails loudly.
     /// </para>
     /// <para>
     /// <b>Only the properties that are set are sent.</b> An update carrying one property
@@ -21,6 +26,14 @@ namespace Icm.Api.Models
     /// </remarks>
     public class ServiceRequestInput
     {
+        /// <summary>
+        /// Gets or sets <c>Id</c>, the row id — normally Siebel's to assign and left null.
+        /// Set on a create only as the integration component's user key, the one ICM has
+        /// been seen to use (2026-09-29); what Siebel does with a caller-supplied value is
+        /// the experiment.
+        /// </summary>
+        public string? Id { get; set; }
+
         /// <summary>Gets or sets <c>Are Any Of The Family Members Indigenous</c> (max 255).</summary>
         public string? AreAnyOfTheFamilyMembersIndigenous { get; set; }
 
@@ -119,5 +132,18 @@ namespace Icm.Api.Models
 
         /// <summary>Gets or sets <c>Type Of Caller</c> (max 30; never seen with a value).</summary>
         public string? TypeOfCaller { get; set; }
+
+        /// <summary>
+        /// Gets or sets the prospects — applicant rows — to create together with the
+        /// service request, nested in the same write. Null or empty sends none.
+        /// </summary>
+        /// <remarks>
+        /// The one shape a prospect can be created in: a POST to the child path creates a
+        /// new parent instead, and the standalone path has no usable user key (both
+        /// MEASURED SIT2 2026-09-29). Each row needs its names; its
+        /// <see cref="ProspectInput.ServiceRequestId"/> is left null, the enclosing record
+        /// being the parent.
+        /// </remarks>
+        public IList<ProspectInput>? Prospects { get; set; }
     }
 }

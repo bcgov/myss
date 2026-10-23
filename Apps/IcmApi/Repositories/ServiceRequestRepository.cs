@@ -147,7 +147,7 @@ namespace Icm.Api.Repositories
                 .CreateAsync(
                     bearerToken,
                     _trustedUserName,
-                    ServiceRequestMapper.ToSiebel(input),
+                    ServiceRequestMapper.ToSiebel(input, forCreate: true),
                     null,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -204,6 +204,89 @@ namespace Icm.Api.Repositories
 
             return await ReadWriteResultAsync(response).ConfigureAwait(false);
         }
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// Paged as a case's contacts are: 100 rows at a time until ICM's <c>lastpage</c>
+        /// says so, stopping on an empty page or a <c>404</c>/<c>204</c> past the end,
+        /// giving up after <see cref="MaxContactPages"/>. MEASURED 2026-09-29: one- and
+        /// two-row SRs answer on a single page.
+        /// </remarks>
+        public async Task<IReadOnlyList<ServiceRequestContact>> GetContactsAsync(
+            string bearerToken,
+            string serviceRequestKey,
+            ServiceRequestReadOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(serviceRequestKey);
+
+            List<ServiceRequestContact> people = [];
+            for (int page = 0; page < MaxContactPages; page++)
+            {
+                using IApiResponse<SiebelServiceRequestContactListResponse> response = await _api
+                    .GetContactsAsync(
+                        bearerToken,
+                        _trustedUserName,
+                        serviceRequestKey,
+                        ServiceRequestMapper.ToContactsSiebel(options, startRowNum: people.Count),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound)
+                {
+                    return people;
+                }
+
+                await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
+
+                if (response.Content is not { Items: not null } body)
+                {
+                    throw new IcmResponseException(
+                        "ICM answered the service request's contact read with success but returned no rows.");
+                }
+
+                people.AddRange(ServiceRequestMapper.ToModel(body));
+                if (body.IsLastPage || body.Items.Count == 0)
+                {
+                    return people;
+                }
+            }
+
+            throw new IcmResponseException(
+                $"ICM kept answering the service request's contact read without a last page after {MaxContactPages} pages.");
+        }
+
+        /// <inheritdoc/>
+        public async Task<string> LinkContactAsync(
+            string bearerToken,
+            string serviceRequestKey,
+            ServiceRequestContactLink link,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(serviceRequestKey);
+            SiebelServiceRequestContact row = ServiceRequestMapper.ToSiebel(link);
+
+            using IApiResponse<SiebelWriteResponse> response = await _api
+                .LinkContactAsync(bearerToken, _trustedUserName, serviceRequestKey, row, cancellationToken)
+                .ConfigureAwait(false);
+
+            await response.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
+
+            // ICM answers with the service request and, under it, the link (MEASURED
+            // 2026-09-29: {"items": {"Id": sr, "ICMContact": {"Id": contact, …}}}); the
+            // SR's id is the part worth handing back, and its absence means the answer
+            // was not the one the status promised.
+            return response.Content?.Items?.Id is { Length: > 0 } id
+                ? id
+                : throw new IcmResponseException(
+                    "ICM reported the contact was linked but returned no service request.");
+        }
+
+        /// <summary>
+        /// The most pages a contact read follows before deciding ICM is not going to say
+        /// "last"; no service request has this many contacts.
+        /// </summary>
+        internal const int MaxContactPages = 50;
 
         /// <inheritdoc/>
         public async Task<bool> DeleteAsync(

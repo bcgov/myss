@@ -40,9 +40,11 @@ namespace Icm.Api.Tests.Services
             await service.CreateAsync(new ServiceRequestInput());
             await service.UpdateAsync("1-ABCDE", new ServiceRequestInput());
             await service.UpsertAsync(new ServiceRequestInput());
+            await service.GetContactsAsync("1-ABCDE");
+            await service.LinkContactAsync("1-ABCDE", new ServiceRequestContactLink { ContactId = "1-4118DDQ" });
             await service.DeleteAsync("1-ABCDE");
 
-            Assert.Equal(6, repository.Tokens.Count);
+            Assert.Equal(8, repository.Tokens.Count);
             Assert.All(repository.Tokens, token => Assert.Equal("token-1", token));
         }
 
