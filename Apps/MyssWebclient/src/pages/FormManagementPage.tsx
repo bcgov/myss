@@ -232,33 +232,7 @@ function NewFormPanel({
         selectRef.current?.querySelector("button")?.focus();
     }
 
-    async function submit(event: SubmitEvent<HTMLFormElement>) {
-        event.preventDefault();
-        if (checking) return;
-        if (pickingExisting && !chosen) {
-            refuseChoice("Choose a form.");
-            return;
-        }
-        if (!pickingExisting && !isValidFormId(id)) {
-            refuseId(INVALID_ID);
-            return;
-        }
-        setCheckFailed(false);
-        setChecking(true);
-        const run = ++checkRun.current;
-        let fresh: FormSummary[];
-        try {
-            fresh = await readForms();
-        } catch {
-            if (run === checkRun.current) {
-                setChecking(false);
-                setCheckFailed(true);
-            }
-            return;
-        }
-        if (run !== checkRun.current) return;
-        setChecking(false);
-
+    function openNextStep(fresh: FormSummary[]) {
         const found = fresh.find((form) => form.formSpecId === id);
         if (variant === "template") {
             if (found) {
@@ -286,6 +260,35 @@ function NewFormPanel({
         // The warning returns focus to whatever had it when it opened.
         submitRef.current?.focus();
         setWarning({ formSpecId: id, formName: displayName(found), target });
+    }
+
+    async function submit(event: SubmitEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (checking) return;
+        if (pickingExisting && !chosen) {
+            refuseChoice("Choose a form.");
+            return;
+        }
+        if (!pickingExisting && !isValidFormId(id)) {
+            refuseId(INVALID_ID);
+            return;
+        }
+        setCheckFailed(false);
+        setChecking(true);
+        const run = ++checkRun.current;
+        let fresh: FormSummary[];
+        try {
+            fresh = await readForms();
+        } catch {
+            if (run === checkRun.current) {
+                setChecking(false);
+                setCheckFailed(true);
+            }
+            return;
+        }
+        if (run !== checkRun.current) return;
+        setChecking(false);
+        openNextStep(fresh);
     }
 
     const text = PANEL_TEXT[variant];

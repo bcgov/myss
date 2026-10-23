@@ -247,13 +247,8 @@ function componentProblems(
     });
 
   const type = component.type;
-  if (typeof type !== "string") {
-    add('it has no "type".');
-  } else if (type === "bcgovRadio" && !allowedTypes.has(type)) {
-    add('use "radio" instead of "bcgovRadio". It looks the same to citizens.');
-  } else if (!allowedTypes.has(type)) {
-    add(`the type "${type}" is not allowed.`);
-  }
+  const typeProblem = componentTypeProblem(type, allowedTypes);
+  if (typeProblem) add(typeProblem);
 
   for (const property of SCRIPT_PROPERTIES) {
     if (isSet(component[property]))
@@ -287,34 +282,56 @@ function componentProblems(
   return problems;
 }
 
+function componentTypeProblem(
+  type: unknown,
+  allowedTypes: ReadonlySet<string>,
+): string | undefined {
+  if (typeof type !== "string") return 'it has no "type".';
+  if (type === "bcgovRadio" && !allowedTypes.has(type)) {
+    return 'use "radio" instead of "bcgovRadio". It looks the same to citizens.';
+  }
+  if (!allowedTypes.has(type)) return `the type "${type}" is not allowed.`;
+  return undefined;
+}
+
 /** Only data-only logic: `simple` or `json` triggers and `property` actions. */
 function logicProblem(logic: unknown): string | undefined {
   if (logic === undefined || logic === null) return undefined;
   if (!Array.isArray(logic)) return '"logic" must be a list.';
 
   for (const entry of logic) {
-    const trigger =
-      isRecord(entry) && isRecord(entry.trigger)
-        ? entry.trigger.type
-        : undefined;
-    if (typeof trigger !== "string" || !DATA_ONLY_TRIGGERS.has(trigger)) {
-      return `logic with the trigger ${describe(trigger)} is not allowed. Only "simple" and "json" triggers are.`;
-    }
-    const actions =
-      isRecord(entry) && Array.isArray(entry.actions) ? entry.actions : [];
-    for (const action of actions) {
-      const actionType = isRecord(action) ? action.type : undefined;
-      if (actionType !== "property") {
-        return `the logic action ${describe(actionType)} is not allowed. Only "property" actions are.`;
-      }
-      const target =
-        isRecord(action) && isRecord(action.property)
-          ? action.property.value
-          : undefined;
-      if (typeof target === "string" && SCRIPT_TARGETS.has(target)) {
-        return `a logic action sets "${target}", which runs code.`;
-      }
-    }
+    const problem = logicEntryProblem(entry);
+    if (problem) return problem;
+  }
+  return undefined;
+}
+
+function logicEntryProblem(entry: unknown): string | undefined {
+  const trigger =
+    isRecord(entry) && isRecord(entry.trigger) ? entry.trigger.type : undefined;
+  if (typeof trigger !== "string" || !DATA_ONLY_TRIGGERS.has(trigger)) {
+    return `logic with the trigger ${describe(trigger)} is not allowed. Only "simple" and "json" triggers are.`;
+  }
+  const actions =
+    isRecord(entry) && Array.isArray(entry.actions) ? entry.actions : [];
+  for (const action of actions) {
+    const problem = logicActionProblem(action);
+    if (problem) return problem;
+  }
+  return undefined;
+}
+
+function logicActionProblem(action: unknown): string | undefined {
+  const actionType = isRecord(action) ? action.type : undefined;
+  if (actionType !== "property") {
+    return `the logic action ${describe(actionType)} is not allowed. Only "property" actions are.`;
+  }
+  const target =
+    isRecord(action) && isRecord(action.property)
+      ? action.property.value
+      : undefined;
+  if (typeof target === "string" && SCRIPT_TARGETS.has(target)) {
+    return `a logic action sets "${target}", which runs code.`;
   }
   return undefined;
 }
