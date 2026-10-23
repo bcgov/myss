@@ -20,6 +20,7 @@ import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
 import AdminPage from "@/pages/AdminPage";
 import FormManagementPage from "@/pages/FormManagementPage";
 import FormEditorPage from "@/pages/FormEditorPage";
+import FormFromJsonPage from "@/pages/FormFromJsonPage";
 import ApplicationPage from "@/pages/ApplicationPage";
 import AfaServiceRequestPage from "@/pages/AfaServiceRequestPage";
 import ServiceRequestsPage from "@/pages/ServiceRequestsPage";
@@ -82,6 +83,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireIdir>
             <FormEditorPage />
+          </RequireIdir>
+        ),
+      },
+      {
+        path: paths.adminFormFromJson,
+        element: (
+          <RequireIdir>
+            <FormFromJsonPage />
           </RequireIdir>
         ),
       },

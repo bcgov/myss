@@ -1031,7 +1031,8 @@ export type MyssApiModelsResetPinRequestModel = {
 };
 
 /**
- * The body of a save-draft request: the edited spec and its title.
+ * The body of a save-draft request: the edited spec, its title and, optionally,
+ * the version the save must create.
  */
 export type MyssApiModelsSaveDraftRequestModel = {
     /**
@@ -1042,6 +1043,14 @@ export type MyssApiModelsSaveDraftRequestModel = {
      * Gets or sets the human-readable title, or null to leave it unset.
      */
     title?: string | null;
+    /**
+     * Nullable<Int32>
+     *
+     * Gets or sets the version this save must create as a new draft, or null for
+     * an ordinary save. With a value, the save never updates an existing draft and
+     * is refused when that version is taken.
+     */
+    newVersion?: number | null;
 };
 
 /**
@@ -1671,7 +1680,7 @@ export type GetFormDraftResponse = GetFormDraftResponses[keyof GetFormDraftRespo
 
 export type SaveFormDraftData = {
     /**
-     * The edited spec and title.
+     * The edited spec, its title and, optionally, the version to create.
      */
     body?: MyssApiModelsSaveDraftRequestModel;
     path: {
@@ -1685,6 +1694,14 @@ export type SaveFormDraftData = {
 };
 
 export type SaveFormDraftErrors = {
+    /**
+     * Bad Request
+     */
+    400: MicrosoftAspNetCoreMvcValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
     /**
      * Unprocessable Content
      */
@@ -1705,6 +1722,44 @@ export type SaveFormDraftResponses = {
 };
 
 export type SaveFormDraftResponse = SaveFormDraftResponses[keyof SaveFormDraftResponses];
+
+export type GetFormVersionData = {
+    body?: never;
+    path: {
+        /**
+         * The logical form identifier.
+         */
+        formSpecId: string;
+        /**
+         * The version number.
+         */
+        versionNumber: number;
+    };
+    query?: never;
+    url: '/v1/forms/{formSpecId}/versions/{versionNumber}';
+};
+
+export type GetFormVersionErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Bad Gateway
+     */
+    502: unknown;
+};
+
+export type GetFormVersionError = GetFormVersionErrors[keyof GetFormVersionErrors];
+
+export type GetFormVersionResponses = {
+    /**
+     * OK
+     */
+    200: MyssApiModelsBaseResponseModelMyssApiModelsFormSpecModel;
+};
+
+export type GetFormVersionResponse = GetFormVersionResponses[keyof GetFormVersionResponses];
 
 export type PublishFormData = {
     body?: never;

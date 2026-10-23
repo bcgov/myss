@@ -78,9 +78,14 @@ export function buildOidcConfig(rt: OidcRuntime) {
         ? new WebStorageStateStore({ store: window.sessionStorage })
         : undefined,
     automaticSilentRenew: true, // rotating refresh token, not a hidden iframe
-    // Strip ?code&state from the URL after the callback completes.
+    // Strip ?code&state from the URL after the callback completes. The history
+    // state is kept: React Router stores its position there, which Back needs.
     onSigninCallback: () =>
-      window.history.replaceState({}, document.title, window.location.pathname),
+      window.history.replaceState(
+        window.history.state,
+        document.title,
+        window.location.pathname,
+      ),
   };
 }
 

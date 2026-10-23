@@ -2,6 +2,7 @@ namespace Myss.Api.Tests.Controllers
 {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel.DataAnnotations;
     using System.Net;
     using System.Text.Json;
     using Microsoft.AspNetCore.Authorization;
@@ -68,6 +69,41 @@ namespace Myss.Api.Tests.Controllers
         }
 
         [Fact]
+        public async Task GetVersion_Found_WrapsTheSpecInTheEnvelope()
+        {
+            _service.Version = new FormSpecModel { FormSpecId = "estimator", Version = 3, Spec = Spec("{}") };
+
+            ActionResult<BaseResponseModel<FormSpecModel>> result =
+                await NewController().GetVersion("estimator", 3, CancellationToken.None);
+
+            Assert.NotNull(result.Value);
+            Assert.Equal(3, result.Value!.Payload.Version);
+            Assert.Equal([("estimator", 3)], _service.GetVersionCalls);
+        }
+
+        [Fact]
+        public async Task GetVersion_Missing_Returns404()
+        {
+            _service.Version = null;
+
+            ActionResult<BaseResponseModel<FormSpecModel>> result =
+                await NewController().GetVersion("estimator", 9, CancellationToken.None);
+
+            Assert.IsType<NotFoundResult>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetVersion_ContentEngineUnavailable_Returns502()
+        {
+            _service.GetVersionException = new ContentEngineUnavailableException("down");
+
+            ActionResult<BaseResponseModel<FormSpecModel>> result =
+                await NewController().GetVersion("estimator", 3, CancellationToken.None);
+
+            Assert.Equal(502, Assert.IsAssignableFrom<ObjectResult>(result.Result).StatusCode);
+        }
+
+        [Fact]
         public async Task SaveDraft_Accepted_WrapsTheSavedSpec()
         {
             _service.SaveResult = FormSpecWriteResultModel<FormSpecModel>.Accepted(
@@ -99,6 +135,85 @@ namespace Myss.Api.Tests.Controllers
             var body = Assert.IsType<BaseResponseModel<IReadOnlyList<ValidationErrorModel>>>(unprocessable.Value);
             Assert.Single(body.Payload);
             Assert.Equal("dupe", body.Payload[0].Field);
+        }
+
+        [Fact]
+        public async Task SaveDraft_WithNewVersion_CreatesThatVersion()
+        {
+            _service.CreateResult = FormSpecWriteResultModel<FormSpecModel>.Accepted(
+                new FormSpecModel { FormSpecId = "estimator", Version = 9, Spec = Spec("{}") });
+
+            ActionResult<BaseResponseModel<FormSpecModel>> result = await NewController().SaveDraft(
+                "estimator",
+                new SaveDraftRequestModel { Spec = Spec("{}"), Title = "Estimator", NewVersion = 9 },
+                CancellationToken.None);
+
+            Assert.Equal(9, result.Value!.Payload.Version);
+            Assert.Equal([("estimator", 9)], _service.CreateDraftVersionCalls);
+            Assert.Empty(_service.SaveDraftCalls);
+        }
+
+        [Fact]
+        public async Task SaveDraft_WithoutNewVersion_IsAnOrdinarySave()
+        {
+            _service.SaveResult = FormSpecWriteResultModel<FormSpecModel>.Accepted(
+                new FormSpecModel { FormSpecId = "estimator", Version = 4, Spec = Spec("{}") });
+
+            await NewController().SaveDraft(
+                "estimator",
+                new SaveDraftRequestModel { Spec = Spec("{}"), Title = "Estimator" },
+                CancellationToken.None);
+
+            Assert.Equal(["estimator"], _service.SaveDraftCalls);
+            Assert.Empty(_service.CreateDraftVersionCalls);
+        }
+
+        [Fact]
+        public async Task SaveDraft_Conflict_Returns409WithTheErrorCollection()
+        {
+            _service.CreateResult = FormSpecWriteResultModel<FormSpecModel>.Conflict(
+            [
+                new ValidationErrorModel { Field = "newVersion", Keyword = "FORMSPEC.VERSION.TAKEN", Message = "Version 9 of \"estimator\" already exists." },
+            ]);
+
+            ActionResult<BaseResponseModel<FormSpecModel>> result = await NewController().SaveDraft(
+                "estimator",
+                new SaveDraftRequestModel { Spec = Spec("{}"), Title = "Estimator", NewVersion = 9 },
+                CancellationToken.None);
+
+            var conflict = Assert.IsType<ConflictObjectResult>(result.Result);
+            var body = Assert.IsType<BaseResponseModel<IReadOnlyList<ValidationErrorModel>>>(conflict.Value);
+            Assert.Equal("FORMSPEC.VERSION.TAKEN", Assert.Single(body.Payload).Keyword);
+        }
+
+        [Fact]
+        public async Task SaveDraft_WithNewVersion_ContentEngineFailure_Returns502()
+        {
+            _service.SaveException = new ContentEngineUnavailableException("down");
+
+            ActionResult<BaseResponseModel<FormSpecModel>> result = await NewController().SaveDraft(
+                "estimator",
+                new SaveDraftRequestModel { Spec = Spec("{}"), Title = "t", NewVersion = 9 },
+                CancellationToken.None);
+
+            Assert.Equal(502, Assert.IsAssignableFrom<ObjectResult>(result.Result).StatusCode);
+            Assert.Equal([("estimator", 9)], _service.CreateDraftVersionCalls);
+        }
+
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(-1, false)]
+        [InlineData(1, true)]
+        [InlineData(null, true)]
+        public void SaveDraftRequest_NewVersion_MustBeOneOrMoreWhenGiven(int? newVersion, bool valid)
+        {
+            // [ApiController] answers 400 for a model that fails these annotations.
+            var request = new SaveDraftRequestModel { Spec = Spec("{}"), NewVersion = newVersion };
+
+            bool isValid = Validator.TryValidateObject(
+                request, new ValidationContext(request), validationResults: null, validateAllProperties: true);
+
+            Assert.Equal(valid, isValid);
         }
 
         [Fact]
@@ -218,6 +333,7 @@ namespace Myss.Api.Tests.Controllers
         [Theory]
         [InlineData(nameof(FormsController.ListForms))]
         [InlineData(nameof(FormsController.GetDraft))]
+        [InlineData(nameof(FormsController.GetVersion))]
         [InlineData(nameof(FormsController.SaveDraft))]
         [InlineData(nameof(FormsController.Publish))]
         public void AdminActionsRequireTheAdminIdirPolicy(string actionName)
@@ -242,8 +358,19 @@ namespace Myss.Api.Tests.Controllers
 
             public FormSpecModel? Draft { get; set; }
 
+            public FormSpecModel? Version { get; set; }
+
+            public List<(string FormSpecId, int Version)> GetVersionCalls { get; } = [];
+
             public FormSpecWriteResultModel<FormSpecModel> SaveResult { get; set; } =
                 FormSpecWriteResultModel<FormSpecModel>.Refused([]);
+
+            public FormSpecWriteResultModel<FormSpecModel> CreateResult { get; set; } =
+                FormSpecWriteResultModel<FormSpecModel>.Refused([]);
+
+            public List<string> SaveDraftCalls { get; } = [];
+
+            public List<(string FormSpecId, int Version)> CreateDraftVersionCalls { get; } = [];
 
             public FormSpecWriteResultModel<PublishResultModel> PublishResult { get; set; } =
                 FormSpecWriteResultModel<PublishResultModel>.Refused([]);
@@ -256,15 +383,33 @@ namespace Myss.Api.Tests.Controllers
 
             public Exception? GetDraftException { get; set; }
 
+            public Exception? GetVersionException { get; set; }
+
             public Task<IReadOnlyList<FormSummaryModel>> ListFormsAsync(CancellationToken cancellationToken) =>
                 ListFormsException is not null ? throw ListFormsException : Task.FromResult(Forms);
 
             public Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken) =>
                 GetDraftException is not null ? throw GetDraftException : Task.FromResult(Draft);
 
+            public Task<FormSpecModel?> GetFormVersionAsync(string formSpecId, int version, CancellationToken cancellationToken)
+            {
+                GetVersionCalls.Add((formSpecId, version));
+                return GetVersionException is not null ? throw GetVersionException : Task.FromResult(Version);
+            }
+
             public Task<FormSpecWriteResultModel<FormSpecModel>> SaveDraftAsync(
-                string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken) =>
-                SaveException is not null ? throw SaveException : Task.FromResult(SaveResult);
+                string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken)
+            {
+                SaveDraftCalls.Add(formSpecId);
+                return SaveException is not null ? throw SaveException : Task.FromResult(SaveResult);
+            }
+
+            public Task<FormSpecWriteResultModel<FormSpecModel>> CreateDraftVersionAsync(
+                string formSpecId, int version, JsonElement spec, string? title, CancellationToken cancellationToken)
+            {
+                CreateDraftVersionCalls.Add((formSpecId, version));
+                return SaveException is not null ? throw SaveException : Task.FromResult(CreateResult);
+            }
 
             public Task<FormSpecWriteResultModel<PublishResultModel>> PublishAsync(
                 string formSpecId, CancellationToken cancellationToken) =>

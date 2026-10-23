@@ -99,11 +99,17 @@ namespace Myss.Api.Services
         }
 
         /// <inheritdoc/>
+        public Task<FormSpecModel?> GetFormVersionAsync(string formSpecId, int version, CancellationToken cancellationToken)
+        {
+            return _formSpecAdminProvider.GetVersionAsync(formSpecId, version, cancellationToken);
+        }
+
+        /// <inheritdoc/>
         public async Task<FormSpecWriteResultModel<FormSpecModel>> SaveDraftAsync(
             string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken)
         {
-            // Validate, THEN write. This is the one place a spec can be written,
-            // so the fast structural check cannot be bypassed by another caller.
+            // Validate, THEN write. Both write methods run this check before
+            // anything reaches the content engine.
             IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.ValidateSpecStructure(spec);
             if (errors.Count > 0)
             {
@@ -126,6 +132,78 @@ namespace Myss.Api.Services
                 // Any other status (401/403/5xx) is an infrastructure fault and is left to
                 // propagate; the controller maps it to 502, not a 422 "invalid form".
                 return FormSpecWriteResultModel<FormSpecModel>.Refused(TranslateStrapiRefusal(ex));
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<FormSpecWriteResultModel<FormSpecModel>> CreateDraftVersionAsync(
+            string formSpecId, int version, JsonElement spec, string? title, CancellationToken cancellationToken)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(version, 1);
+
+            IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.ValidateSpecStructure(spec);
+            if (errors.Count > 0)
+            {
+                _logger.LogInformation(
+                    "Rejected draft version {Version} of {FormSpecId}: {ErrorCount} structural error(s)",
+                    version,
+                    formSpecId,
+                    errors.Count);
+                return FormSpecWriteResultModel<FormSpecModel>.Refused(errors);
+            }
+
+            FormSpecVersionState state = await _formSpecAdminProvider.GetVersionStateAsync(formSpecId, cancellationToken);
+
+            // Strapi would accept the next version beside an unpublished draft and leave
+            // two drafts, so any unpublished draft refuses the save.
+            if (state.InProgressDraftVersion is int draft)
+            {
+                return VersionTakenResult(
+                    formSpecId,
+                    version,
+                    version == 1
+                        ? AlreadyExistsMessage(formSpecId, version)
+                        : $"Version {draft} of \"{formSpecId}\" is an unpublished draft.");
+            }
+
+            int next = state.LatestVersion + 1;
+            if (version < next)
+            {
+                return VersionTakenResult(formSpecId, version, AlreadyExistsMessage(formSpecId, version));
+            }
+
+            if (version > next)
+            {
+                _logger.LogInformation(
+                    "Refused draft version {Version} of {FormSpecId}: the next version is {Next}",
+                    version,
+                    formSpecId,
+                    next);
+                return FormSpecWriteResultModel<FormSpecModel>.Refused(
+                [
+                    new ValidationErrorModel
+                    {
+                        Field = "newVersion",
+                        Keyword = FormSpecStructureKeywords.VersionNotNext,
+                        Message = $"Version {version} of \"{formSpecId}\" skips a version; the next version is {next}.",
+                    },
+                ]);
+            }
+
+            try
+            {
+                FormSpecModel created = await _formSpecAdminProvider.CreateDraftVersionAsync(
+                    formSpecId, version, spec, title, cancellationToken);
+                return FormSpecWriteResultModel<FormSpecModel>.Accepted(created);
+            }
+            catch (StrapiWriteException ex) when (IsLifecycleRefusal(ex))
+            {
+                IReadOnlyList<ValidationErrorModel> refusal = TranslateStrapiRefusal(ex);
+
+                // Another administrator stored a version between the checks above and this write.
+                return refusal.Any(e => e.Keyword == FormSpecStructureKeywords.VersionNotNext)
+                    ? VersionTakenResult(formSpecId, version, AlreadyExistsMessage(formSpecId, version))
+                    : FormSpecWriteResultModel<FormSpecModel>.Refused(refusal);
             }
         }
 
@@ -289,6 +367,25 @@ namespace Myss.Api.Services
                     Message = safeMessage,
                 })
                 .ToList();
+        }
+
+        private static string AlreadyExistsMessage(string formSpecId, int version) =>
+            version == 1
+                ? $"A form with the ID \"{formSpecId}\" already exists."
+                : $"Version {version} of \"{formSpecId}\" already exists.";
+
+        private FormSpecWriteResultModel<FormSpecModel> VersionTakenResult(string formSpecId, int version, string message)
+        {
+            _logger.LogInformation("Refused draft version {Version} of {FormSpecId}: version taken", version, formSpecId);
+            return FormSpecWriteResultModel<FormSpecModel>.Conflict(
+            [
+                new ValidationErrorModel
+                {
+                    Field = "newVersion",
+                    Keyword = FormSpecStructureKeywords.VersionTaken,
+                    Message = message,
+                },
+            ]);
         }
 
         /// <inheritdoc/>

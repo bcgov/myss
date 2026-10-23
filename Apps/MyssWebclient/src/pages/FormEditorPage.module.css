@@ -176,35 +176,6 @@
     color: var(--typography-color-secondary, #767676);
 }
 
-.errorSummary {
-    border: 2px solid var(--typography-color-danger, #ce3e39);
-    border-radius: 4px;
-    margin-top: var(--layout-margin-large, 24px);
-    padding: var(--layout-padding-medium, 16px);
-}
-
-.errorTitle {
-    color: var(--typography-color-danger, #ce3e39);
-    font-size: 1.125rem;
-    margin: 0 0 var(--layout-margin-small, 8px);
-}
-
-.errorList {
-    margin: 0;
-    padding-left: 1.25rem;
-}
-
-.errorLink {
-    background: none;
-    border: none;
-    color: var(--surface-color-primary-button-default, #234075);
-    cursor: pointer;
-    font: inherit;
-    padding: 0;
-    text-align: left;
-    text-decoration: underline;
-}
-
 .saveBar {
     align-items: center;
     display: flex;
@@ -240,10 +211,5 @@
 
 .saved {
     color: var(--typography-color-primary, #1a1a1a);
-    font-weight: 600;
-}
-
-.warning {
-    color: var(--typography-color-danger, #ce3e39);
     font-weight: 600;
 }

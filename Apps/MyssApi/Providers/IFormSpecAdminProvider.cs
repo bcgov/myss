@@ -7,7 +7,7 @@ namespace Myss.Api.Providers
     using Myss.Api.Models;
 
     /// <summary>
-    /// Write-side counterpart to <see cref="IFormSpecProvider"/>: the four
+    /// Write-side counterpart to <see cref="IFormSpecProvider"/>: the
     /// operations the brokered admin write path needs, and nothing else.
     /// Kept separate from the read interface on purpose - the citizen read path
     /// keeps using its read-only Strapi token, so adding write support never
@@ -35,6 +35,25 @@ namespace Myss.Api.Providers
         Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken);
 
         /// <summary>
+        /// Gets one version of a form: its published entry, or its draft entry
+        /// when that version has no published entry.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="version">The version number.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The version's spec, or null when the version does not exist.</returns>
+        Task<FormSpecModel?> GetVersionAsync(string formSpecId, int version, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Gets the form's latest version and its in-progress draft (an unpublished
+        /// draft above the latest published version), from one pair of reads.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The version state; a latest version of 0 when the form does not exist.</returns>
+        Task<FormSpecVersionState> GetVersionStateAsync(string formSpecId, CancellationToken cancellationToken);
+
+        /// <summary>
         /// Saves an edited spec as a draft without publishing it. Updates the
         /// in-progress draft when one exists, otherwise creates a new draft at
         /// the next version.
@@ -45,6 +64,22 @@ namespace Myss.Api.Providers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The saved draft, including the version it was stored under.</returns>
         Task<FormSpecModel> SaveDraftAsync(string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Creates the given version as a new draft entry. Unlike <see cref="SaveDraftAsync"/>,
+        /// it always creates and never updates. Strapi refuses the write with a 400 carrying
+        /// <c>FORMSPEC.VERSION.NOT_NEXT</c> when the version is not the highest existing
+        /// version plus one. An existing unpublished draft is not by itself a refusal, so a
+        /// caller that must not create a second draft checks for one first.
+        /// </summary>
+        /// <param name="formSpecId">The logical form identifier.</param>
+        /// <param name="version">The version to create.</param>
+        /// <param name="spec">The Form.io specification JSON.</param>
+        /// <param name="title">The human-readable title, or null to leave it unset.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The created draft.</returns>
+        Task<FormSpecModel> CreateDraftVersionAsync(
+            string formSpecId, int version, JsonElement spec, string? title, CancellationToken cancellationToken);
 
         /// <summary>
         /// Publishes the current in-progress draft as the next live version.

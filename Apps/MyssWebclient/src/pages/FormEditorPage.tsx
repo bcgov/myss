@@ -5,7 +5,6 @@ import {
     Fragment,
     memo,
     useCallback,
-    useEffect,
     useMemo,
     useRef,
     useState,
@@ -17,6 +16,7 @@ import "@formio/js/dist/formio.builder.min.css";
 
 import { FormLoadError, SpecRejectedError } from "@/api/forms";
 import type { FormSpecPayload, FormValidationError } from "@/api/forms";
+import ErrorSummary, { type ErrorSummaryItem } from "@/components/ErrorSummary";
 import { registerBcgovComponents } from "@/widgets/formio/bcgovComponents";
 import { builderOptions } from "@/widgets/formio/builderOptions";
 import { revealAllComponents } from "@/widgets/formio/specPreview";
@@ -31,6 +31,7 @@ import {
     findDuplicateKeys,
     findUnknownConditionalTargets,
 } from "@/widgets/formio/specRules";
+import { forEachComponent } from "@/widgets/formio/specWalk";
 import { useDraft, usePublishForm, useSaveDraft } from "@/hooks/useForms";
 import { adminFormEditorPath, paths } from "@/routes/paths";
 import RatesPanel from "./RatesPanel";
@@ -93,8 +94,7 @@ interface EditorState {
     builderSeed: FormType | null;
     /**
      * Whether the working copy is the local new-form template rather than a
-     * stored draft. Cleared by the first save; while set, a draft arriving from
-     * the server outranks the template (see `nextSeed`).
+     * stored draft. Cleared by the first save; while set, saves are create-only.
      */
     fromTemplate: boolean;
 }
@@ -154,22 +154,16 @@ function seededFromTemplate(
 // working copy is seeded from the loaded draft once per form (keyed on
 // formSpecId). Keying on the form, not the draft object, means a background
 // refetch (e.g. after a save) never re-seeds and discards in-progress edits;
-// only opening a different form does. The loaded draft stays untouched.
+// only opening a different form does. The loaded draft stays untouched. That
+// includes a template whose ID turns out to be taken: its create-only save is
+// refused, rather than the editor switching to the form found under that ID.
 function nextSeed(
     state: EditorState,
     formSpecId: string | undefined,
     draft: FormSpecPayload | undefined,
     creating: boolean,
 ): EditorState | null {
-    if (state.seededFor === formSpecId) {
-        // The form turned out to exist after the template seeded — a stale 404
-        // in the cache, or another admin created the same ID. Show the stored
-        // draft rather than let a save overwrite it with the template.
-        if (state.fromTemplate && draft && !state.dirty) {
-            return seededFromDraft(state, formSpecId, draft.spec);
-        }
-        return null;
-    }
+    if (state.seededFor === formSpecId) return null;
     if (draft) return seededFromDraft(state, formSpecId, draft.spec);
     if (creating) return seededFromTemplate(state, formSpecId);
     if (state.workingSpec !== null) return { ...state, workingSpec: null };
@@ -283,26 +277,27 @@ function rowKey(component: Record<string, unknown>, index: number): string {
     return typeof component.key === "string" ? component.key : `row-${index}`;
 }
 
-// A stored draft's title heads the page; a form still being created takes the
-// one from the URL; failing both, the ID.
+// A form still being created takes the title from the URL; any other form the
+// stored draft's; failing both, the ID.
 function pageTitle(
     draft: FormSpecPayload | undefined,
-    creating: boolean,
+    fromTemplate: boolean,
     newTitle: string | null,
     formSpecId: string | undefined,
 ): string | undefined {
+    if (fromTemplate) return newTitle || formSpecId;
     if (draft?.title?.trim()) return draft.title;
-    return (creating && newTitle) || formSpecId;
+    return formSpecId;
 }
 
-// A stored draft's title wins; only a form still being created takes the one
-// from the URL, so a `title` param cannot rename an existing form.
+// Only a form still being created takes the title from the URL, so a `title`
+// param cannot rename an existing form.
 function saveTitleFor(
     draft: FormSpecPayload | undefined,
-    creating: boolean,
+    fromTemplate: boolean,
     newTitle: string | null,
 ): string | null {
-    return draft?.title ?? (creating ? newTitle : null);
+    return fromTemplate ? newTitle : (draft?.title ?? null);
 }
 
 function loadErrorMessage(error: Error): string {
@@ -312,26 +307,17 @@ function loadErrorMessage(error: Error): string {
     return `Could not load this form: ${error.message}`;
 }
 
-// Whether the editor can show: the draft is loaded, or it is a form being
-// created, whose expected 404 is not a failure.
+// Whether the editor can show: the working copy is seeded, and the draft
+// loaded or the form is being created, whose expected 404 is not a failure.
+// A re-read of a 404 is pending again but must not close the editor, which
+// would rebuild the builder from its seed and drop the edits made in it.
 function editorOpen(
-    isPending: boolean,
     error: Error | null,
     creating: boolean,
     workingSpec: FormType | null,
 ): boolean {
-    if (isPending || !workingSpec) return false;
+    if (!workingSpec) return false;
     return !error || creating;
-}
-
-// A version other than 1 on the first save of a new form means the ID was
-// already taken and the save landed on that form — say so instead of a quiet
-// overwrite.
-function createWarning(creating: boolean, savedVersion: number): string | null {
-    if (creating && savedVersion !== 1) {
-        return `A form with this ID already existed — this save created draft version ${savedVersion} of it.`;
-    }
-    return null;
 }
 
 // The error for the current action: a publish runs save then publish, so it
@@ -347,7 +333,7 @@ function activeActionError(
     return null;
 }
 
-// A 422 carries a field-error list; any other refusal (a 502 from the
+// A 422 or 409 carries a field-error list; any other refusal (a 502 from the
 // content engine, a network drop) carries none, so fall back to a plain
 // message with the status rather than failing silently.
 function refusalErrors(
@@ -392,10 +378,14 @@ const SpecBuilder = memo(function SpecBuilder({
     onReady: (builder: BuilderHandle) => void;
     onChange: () => void;
 }) {
+    // Form.io stores the builder's event emitter on the options object, so a
+    // shared one would hand the next builder this one's listeners, which throw
+    // once it is destroyed. Each builder gets its own copy.
+    const [options] = useState(() => ({ ...builderOptions }));
     return (
         <FormBuilder
             initialForm={seed}
-            options={builderOptions}
+            options={options}
             onBuilderReady={
                 onReady as unknown as React.ComponentProps<
                     typeof FormBuilder
@@ -461,43 +451,25 @@ const PreviewCell = memo(
     (a, b) => JSON.stringify(a.component) === JSON.stringify(b.component),
 );
 
-// The accessible error summary: one list of every reason, focused when it
-// appears so a screen-reader user is told, not left at the button in silence.
-// Each reason that maps to a field links to its settings row.
-function EditorErrorSummary({ errors }: Readonly<{ errors: EditorError[] }>) {
-    const headingRef = useRef<HTMLHeadingElement>(null);
-    const signal = errors.map((e) => e.message).join("|");
-    useEffect(() => {
-        headingRef.current?.focus();
-    }, [signal]);
+function componentKeys(spec: FormType | null): Set<string> {
+    const keys = new Set<string>();
+    forEachComponent(spec, (component) => {
+        if (typeof component.key === "string") keys.add(component.key);
+    });
+    return keys;
+}
 
-    return (
-        <div className={styles.errorSummary} role="alert">
-            <h2 ref={headingRef} tabIndex={-1} className={styles.errorTitle}>
-                There is a problem
-            </h2>
-            <ul className={styles.errorList}>
-                {errors.map((error, index) => {
-                    const field = error.field;
-                    return (
-                        <li key={`${field ?? ""}:${error.message}:${index}`}>
-                            {field ? (
-                                <button
-                                    type="button"
-                                    className={styles.errorLink}
-                                    onClick={() => focusRow(field)}
-                                >
-                                    {error.message}
-                                </button>
-                            ) : (
-                                error.message
-                            )}
-                        </li>
-                    );
-                })}
-            </ul>
-        </div>
-    );
+// A reason links to its settings row only when its field is a component of
+// the working copy; any other field (such as `newVersion`) has no row to show.
+function summaryItems(
+    errors: EditorError[],
+    spec: FormType | null,
+): ErrorSummaryItem[] {
+    const keys = componentKeys(spec);
+    return errors.map(({ message, field }) => ({
+        message,
+        onSelect: field && keys.has(field) ? () => focusRow(field) : undefined,
+    }));
 }
 
 // Loading and failure states; nothing once the form is open. A new form's
@@ -631,7 +603,6 @@ function SaveBar({
     saveDraft,
     publish,
     hasClientErrors,
-    warning,
     onSave,
     onPublish,
 }: Readonly<{
@@ -640,7 +611,6 @@ function SaveBar({
     saveDraft: ReturnType<typeof useSaveDraft>;
     publish: ReturnType<typeof usePublishForm>;
     hasClientErrors: boolean;
-    warning: string | null;
     onSave: () => void;
     onPublish: () => void;
 }>) {
@@ -681,11 +651,6 @@ function SaveBar({
                     Published version {publishedVersion}.
                 </output>
             )}
-            {warning && (
-                <span role="alert" className={styles.warning}>
-                    {warning}
-                </span>
-            )}
         </div>
     );
 }
@@ -696,7 +661,11 @@ interface EditorActionsInput {
     specToSend: () => FormType | null;
     saveTitle: string | null;
     isNew: boolean;
-    creating: boolean;
+    /**
+     * The working copy is the new-form template and nothing is stored yet, so
+     * a save must create version 1 and never update a form someone else made.
+     */
+    createOnly: boolean;
     saveDraft: ReturnType<typeof useSaveDraft>;
     publish: ReturnType<typeof usePublishForm>;
     /** Called once the working copy is stored. */
@@ -711,7 +680,7 @@ function useEditorActions(input: EditorActionsInput) {
         specToSend,
         saveTitle,
         isNew,
-        creating,
+        createOnly,
         saveDraft,
         publish,
         onSaved,
@@ -719,7 +688,6 @@ function useEditorActions(input: EditorActionsInput) {
     const navigate = useNavigate();
     const [clientErrors, setClientErrors] = useState<EditorError[]>([]);
     const [lastAction, setLastAction] = useState<EditorAction | null>(null);
-    const [saveWarning, setSaveWarning] = useState<string | null>(null);
 
     // The spec to send, or null when a rule failed and the reasons are already
     // on screen.
@@ -727,43 +695,46 @@ function useEditorActions(input: EditorActionsInput) {
         const spec = specToSend();
         if (!spec) return null;
         setLastAction(action);
-        setSaveWarning(null);
         const errs = ruleErrors(spec);
         setClientErrors(errs);
         return errs.length ? null : spec;
     }
 
+    // A taken ID is refused with 409, which the summary shows like a 422.
+    function saveInput(spec: FormType) {
+        return createOnly
+            ? { spec, title: saveTitle, newVersion: 1 }
+            : { spec, title: saveTitle };
+    }
+
     // After the first save of a new form, drop the new-form flag from the URL
     // and history, so revisiting this page cannot seed the template over the
     // stored draft.
-    function finishSave(savedVersion: number) {
+    function finishSave() {
         onSaved();
         if (!isNew || !formSpecId) return;
-        setSaveWarning(createWarning(creating, savedVersion));
         void navigate(adminFormEditorPath(formSpecId), { replace: true });
     }
 
     function handleSave() {
         const spec = beginAction("save");
         if (!spec) return;
-        saveDraft.mutate(
-            { spec, title: saveTitle },
-            { onSuccess: (saved) => finishSave(saved.version) },
-        );
+        saveDraft.mutate(saveInput(spec), { onSuccess: finishSave });
     }
 
     async function handlePublish() {
         const spec = beginAction("publish");
         if (!spec) return;
+        // A failed publish's error would otherwise outrank this save's refusal.
+        publish.reset();
         try {
             // Persist the working copy, then publish that draft as the next
-            // version. A 422 from either call surfaces via its mutation error.
-            const saved = await saveDraft.mutateAsync({
-                spec,
-                title: saveTitle,
-            });
+            // version. A refusal from either call surfaces via its mutation
+            // error. The save is recorded before publishing, so a retry after a
+            // failed publish updates that draft rather than creating it again.
+            await saveDraft.mutateAsync(saveInput(spec));
+            finishSave();
             await publish.mutateAsync();
-            finishSave(saved.version);
         } catch {
             // Handled through the error summary; the working copy is untouched.
         }
@@ -771,7 +742,6 @@ function useEditorActions(input: EditorActionsInput) {
 
     return {
         lastAction,
-        saveWarning,
         hasClientErrors: clientErrors.length > 0,
         shownErrors: shownEditorErrors(
             clientErrors,
@@ -812,15 +782,17 @@ export default function FormEditorPage() {
     const actions = useEditorActions({
         formSpecId,
         specToSend: editor.specToSend,
-        saveTitle: saveTitleFor(draft, creating, newTitle),
+        saveTitle: saveTitleFor(draft, editor.fromTemplate, newTitle),
         isNew,
-        creating,
+        // Not `creating`: a re-read that finds another admin's draft of this
+        // ID ends the 404, but the working copy is still the unsaved template.
+        createOnly: editor.fromTemplate,
         saveDraft,
         publish,
         onSaved: editor.markSaved,
     });
 
-    const open = editorOpen(isPending, error, creating, workingSpec);
+    const open = editorOpen(error, creating, workingSpec);
 
     return (
         <div className={homeStyles.page}>
@@ -830,14 +802,18 @@ export default function FormEditorPage() {
 
             <header className={adminStyles.heading}>
                 <p className={adminStyles.eyebrow}>My Self Serve</p>
-                <h1>{pageTitle(draft, creating, newTitle, formSpecId)}</h1>
+                <h1>
+                    {pageTitle(draft, editor.fromTemplate, newTitle, formSpecId)}
+                </h1>
             </header>
 
-            <FormLoadStatus
-                isPending={isPending}
-                error={error}
-                creating={creating}
-            />
+            {!open && (
+                <FormLoadStatus
+                    isPending={isPending}
+                    error={error}
+                    creating={creating}
+                />
+            )}
 
             {open && (
                 <>
@@ -866,9 +842,15 @@ export default function FormEditorPage() {
                         />
                     )}
 
-                    {actions.shownErrors.length > 0 && (
-                        <EditorErrorSummary errors={actions.shownErrors} />
-                    )}
+                    {/* Announced and focused on each new set of reasons, so a
+                        screen-reader user is not left at the button. */}
+                    <ErrorSummary
+                        items={summaryItems(actions.shownErrors, workingSpec)}
+                        focusKey={actions.shownErrors
+                            .map((e) => e.message)
+                            .join("|")}
+                        announce
+                    />
 
                     <SaveBar
                         dirty={editor.dirty}
@@ -876,7 +858,6 @@ export default function FormEditorPage() {
                         saveDraft={saveDraft}
                         publish={publish}
                         hasClientErrors={actions.hasClientErrors}
-                        warning={actions.saveWarning}
                         onSave={actions.handleSave}
                         onPublish={actions.handlePublish}
                     />

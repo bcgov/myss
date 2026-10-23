@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { acceptApplication, addApplicationNote, createApplication, denyApplication, escalateApplication, getAccount, getApplication, getBusPassSubmissionPdf, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormDraft, getFormSpec, getFormSubmission, getMe, getPlaceholder, getReviewApplication, listApplications, listAttachments, listForms, listFormSubmissions, listReviewApplications, type Options, publishForm, releaseApplication, requestMoreApplicationInfo, requestPinReset, resetPin, saveAccountPin, saveApplicationAnswers, saveEligibilityRates, saveFormDraft, startApplicationReview, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment } from '../sdk.gen';
-import type { AcceptApplicationData, AcceptApplicationError, AcceptApplicationResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, DenyApplicationData, DenyApplicationError, DenyApplicationResponse, EscalateApplicationData, EscalateApplicationError, EscalateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfError, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormDraftData, GetFormDraftError, GetFormDraftResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetFormSubmissionData, GetFormSubmissionError, GetFormSubmissionResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetReviewApplicationData, GetReviewApplicationError, GetReviewApplicationResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, ListFormsData, ListFormsResponse, ListFormSubmissionsData, ListFormSubmissionsResponse, ListReviewApplicationsData, ListReviewApplicationsResponse, PublishFormData, PublishFormError, PublishFormResponse, ReleaseApplicationData, ReleaseApplicationError, ReleaseApplicationResponse, RequestMoreApplicationInfoData, RequestMoreApplicationInfoError, RequestMoreApplicationInfoResponse, RequestPinResetData, RequestPinResetError, RequestPinResetResponse, ResetPinData, ResetPinError, ResetPinResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SaveEligibilityRatesData, SaveEligibilityRatesError, SaveEligibilityRatesResponse, SaveFormDraftData, SaveFormDraftError, SaveFormDraftResponse, StartApplicationReviewData, StartApplicationReviewError, StartApplicationReviewResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
+import { acceptApplication, addApplicationNote, createApplication, denyApplication, escalateApplication, getAccount, getApplication, getBusPassSubmissionPdf, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormDraft, getFormSpec, getFormSubmission, getFormVersion, getMe, getPlaceholder, getReviewApplication, listApplications, listAttachments, listForms, listFormSubmissions, listReviewApplications, type Options, publishForm, releaseApplication, requestMoreApplicationInfo, requestPinReset, resetPin, saveAccountPin, saveApplicationAnswers, saveEligibilityRates, saveFormDraft, startApplicationReview, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment } from '../sdk.gen';
+import type { AcceptApplicationData, AcceptApplicationError, AcceptApplicationResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, DenyApplicationData, DenyApplicationError, DenyApplicationResponse, EscalateApplicationData, EscalateApplicationError, EscalateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfError, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormDraftData, GetFormDraftError, GetFormDraftResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetFormSubmissionData, GetFormSubmissionError, GetFormSubmissionResponse, GetFormVersionData, GetFormVersionError, GetFormVersionResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetReviewApplicationData, GetReviewApplicationError, GetReviewApplicationResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, ListFormsData, ListFormsResponse, ListFormSubmissionsData, ListFormSubmissionsResponse, ListReviewApplicationsData, ListReviewApplicationsResponse, PublishFormData, PublishFormError, PublishFormResponse, ReleaseApplicationData, ReleaseApplicationError, ReleaseApplicationResponse, RequestMoreApplicationInfoData, RequestMoreApplicationInfoError, RequestMoreApplicationInfoResponse, RequestPinResetData, RequestPinResetError, RequestPinResetResponse, ResetPinData, ResetPinError, ResetPinResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SaveEligibilityRatesData, SaveEligibilityRatesError, SaveEligibilityRatesResponse, SaveFormDraftData, SaveFormDraftError, SaveFormDraftResponse, StartApplicationReviewData, StartApplicationReviewError, StartApplicationReviewResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -412,7 +412,9 @@ export const getFormDraftOptions = (options: Options<GetFormDraftData>) => query
 });
 
 /**
- * Validates and saves an edited spec as a draft (not published).
+ * Validates and saves an edited spec as a draft (not published). With
+ * `newVersion`, it creates exactly that version and answers 409 when the
+ * version is taken.
  */
 export const saveFormDraftMutation = (options?: Partial<Options<SaveFormDraftData>>): UseMutationOptions<SaveFormDraftResponse, SaveFormDraftError, Options<SaveFormDraftData>> => {
     const mutationOptions: UseMutationOptions<SaveFormDraftResponse, SaveFormDraftError, Options<SaveFormDraftData>> = {
@@ -427,6 +429,24 @@ export const saveFormDraftMutation = (options?: Partial<Options<SaveFormDraftDat
     };
     return mutationOptions;
 };
+
+export const getFormVersionQueryKey = (options: Options<GetFormVersionData>) => createQueryKey('getFormVersion', options);
+
+/**
+ * Returns one version of a form, published or draft (admin form management).
+ */
+export const getFormVersionOptions = (options: Options<GetFormVersionData>) => queryOptions<GetFormVersionResponse, GetFormVersionError, GetFormVersionResponse, ReturnType<typeof getFormVersionQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getFormVersion({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getFormVersionQueryKey(options)
+});
 
 /**
  * Publishes the current draft as the next version.
