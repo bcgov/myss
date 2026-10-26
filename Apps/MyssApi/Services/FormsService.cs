@@ -238,7 +238,9 @@ namespace Myss.Api.Services
             string firstName = answers.GetProperty("firstName").GetString()!;
             string lastName = answers.GetProperty("lastName").GetString()!;
             string dateOfBirth = answers.GetProperty("dateOfBirth").GetString()!;
-            string email = answers.GetProperty("email").GetString()!;
+            // Trimmed as FormSpecValidator checked it, so no stray whitespace is
+            // stored or used as a recipient (MYSS-305).
+            string email = answers.GetProperty("email").GetString()!.Trim();
             string sin = answers.GetProperty("sin").GetString()!;
 
             // Optional at this layer: registration v2 and v3 did not ask for them,

@@ -17,6 +17,15 @@ namespace Myss.FormSpec.Domain
     /// </remarks>
     public sealed partial class EmailAddress
     {
+        /// <summary>
+        /// The longest address accepted: RFC 5321's 254, the most mail can be
+        /// delivered to. Every accepted address therefore fits the 320-character
+        /// <c>email</c> and <c>pending_email</c> columns (MYSS-305), so a long one
+        /// is a field error rather than a failed save. The TypeScript mirror is
+        /// <c>EMAIL_MAX_LENGTH</c> in <c>@myss/formio</c>.
+        /// </summary>
+        public const int MaxLength = 254;
+
         private EmailAddress(string value) => Value = value;
 
         /// <summary>Gets the trimmed address as submitted.</summary>
@@ -70,7 +79,7 @@ namespace Myss.FormSpec.Domain
         /// </summary>
         private static bool IsPlausible(string trimmed)
         {
-            if (Whitespace().IsMatch(trimmed))
+            if (trimmed.Length > MaxLength || Whitespace().IsMatch(trimmed))
             {
                 return false;
             }

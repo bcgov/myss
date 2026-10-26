@@ -82,6 +82,7 @@
         "note": "plus addressing is legitimate and commonly used"
       },
       { "value": "a@b.co" },
+      { "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com", "note": "254 characters, the longest accepted" },
       {
         "value": "  ada@example.com  ",
         "note": "surrounding whitespace is trimmed"
@@ -105,6 +106,7 @@
       { "value": "ada@exa mple.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
       { "value": "ada@.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "the domain's dot needs something before it" },
       { "value": "ada@example.", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "the domain's dot needs something after it" },
+      { "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "255 characters: one over the 254 that mail can be delivered to" },
       { "value": "", "keyword": "IDA.EMAIL.INVALID_FORMAT" }
     ]
   },

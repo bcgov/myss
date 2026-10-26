@@ -107,6 +107,13 @@ const sin: ValidationRule = (value) => {
 };
 
 /**
+ * The longest address mail can be delivered to (RFC 5321's 254). Mirrors
+ * EmailAddress.MaxLength in Myss.FormSpec, and keeps every accepted address
+ * inside the 320-character email columns.
+ */
+export const EMAIL_MAX_LENGTH = 254;
+
+/**
  * The email rule on its own, for an address typed outside a Form.io form
  * (Account Info's email change, MYSS-305). Mirrors Myss.FormSpec's
  * EmailAddress, as the "email" rule below does.
@@ -117,7 +124,7 @@ export function isEmailAddress(value: string): boolean {
   // "!@!.!.!.…" (CodeQL js/polynomial-redos). These steps accept exactly the
   // addresses it did, in linear time.
   const trimmed = value.trim();
-  if (/\s/.test(trimmed)) return false;
+  if (trimmed.length > EMAIL_MAX_LENGTH || /\s/.test(trimmed)) return false;
   const at = trimmed.indexOf("@");
   if (at < 1 || at !== trimmed.lastIndexOf("@")) return false;
   // A dot in the domain with something on both sides: "example.com", not

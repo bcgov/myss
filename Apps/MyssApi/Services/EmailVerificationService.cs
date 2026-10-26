@@ -213,12 +213,22 @@ namespace Myss.Api.Services
             ArgumentNullException.ThrowIfNull(profile);
             ArgumentNullException.ThrowIfNull(email);
 
+            // The form validator accepts surrounding whitespace and checks the
+            // trimmed address, so that is the one stored and emailed.
+            email = email.Trim();
             bool isNew = string.IsNullOrEmpty(profile.Email);
             if (!isNew && SameAddress(email, profile.Email))
             {
-                // Registering again with the address on file: a verified one
-                // stays verified, an unverified one is sent a fresh link.
-                return profile.EmailVerifiedAt is null ? Issue(profile) : null;
+                // Registering again with the address on file (or a new profile
+                // already given it): a verified one stays verified, an unverified
+                // one is stored as typed now and sent a fresh link.
+                if (profile.EmailVerifiedAt is not null)
+                {
+                    return null;
+                }
+
+                profile.Email = email;
+                return Issue(profile);
             }
 
             if (isNew || profile.EmailVerifiedAt is null)

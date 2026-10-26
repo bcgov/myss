@@ -352,6 +352,30 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public void RegistrationStoresTheAddressTrimmed()
+        {
+            MyssUserProfile profile = NewProfile(verifiedAt: null);
+            profile.Email = "  " + Current + " ";
+
+            using var db = new InMemoryFormsDbContext(_options);
+            NewService(db).ApplyRegistrationEmail(profile, "  " + Current + " ");
+
+            Assert.Equal(Current, profile.Email);
+        }
+
+        [Fact]
+        public async Task AnAddressLongerThanMailAllowsIsAFieldError()
+        {
+            await Seed(verified: true);
+
+            EmailVerificationResultModel result = await Change(new string('a', 243) + "@example.com");
+
+            Assert.Equal(EmailVerificationOutcome.Invalid, result.Outcome);
+            Assert.Null((await Profile()).PendingEmail);
+            Assert.Empty(_email.Sent);
+        }
+
+        [Fact]
         public async Task RegisteringAgainWithTheVerifiedAddressSendsNothing()
         {
             await Seed(verified: true);

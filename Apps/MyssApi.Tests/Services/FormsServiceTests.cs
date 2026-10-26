@@ -358,6 +358,21 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task Submit_RegistrationStoresAndEmailsTheTrimmedAddress()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+
+            await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"  ada@example.com  ","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.Equal("ada@example.com", (await db.MyssUserProfiles.SingleAsync()).Email);
+            Assert.Equal("ada@example.com", Assert.Single(_email.Sent).To);
+        }
+
+        [Fact]
         public async Task Submit_ARegistrationStandsWhenTheVerificationEmailCannotBeSent()
         {
             using FormsDbContext db = NewDb();
