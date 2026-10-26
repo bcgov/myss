@@ -103,6 +103,8 @@
         "note": "internal space"
       },
       { "value": "ada@exa mple.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
+      { "value": "ada@.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "the domain's dot needs something before it" },
+      { "value": "ada@example.", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "the domain's dot needs something after it" },
       { "value": "", "keyword": "IDA.EMAIL.INVALID_FORMAT" }
     ]
   },

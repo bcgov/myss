@@ -83,7 +83,6 @@ function passesLuhn(digits: string): boolean {
   return total % 10 === 0;
 }
 
-const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const POSTAL_CODE_PATTERN = /^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/;
 const ISO_DATE_PREFIX = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/;
 
@@ -113,7 +112,17 @@ const sin: ValidationRule = (value) => {
  * EmailAddress, as the "email" rule below does.
  */
 export function isEmailAddress(value: string): boolean {
-  return EMAIL_PATTERN.test(value.trim());
+  // Checked step by step rather than with one regex: the pattern this replaces,
+  // /^[^@\s]+@[^@\s]+\.[^@\s]+$/, backtracks polynomially on input like
+  // "!@!.!.!.…" (CodeQL js/polynomial-redos). These steps accept exactly the
+  // addresses it did, in linear time.
+  const trimmed = value.trim();
+  if (/\s/.test(trimmed)) return false;
+  const at = trimmed.indexOf("@");
+  if (at < 1 || at !== trimmed.lastIndexOf("@")) return false;
+  // A dot in the domain with something on both sides: "example.com", not
+  // ".com" or "example.".
+  return trimmed.slice(at + 2, -1).includes(".");
 }
 
 const email: ValidationRule = (value) =>

@@ -29,7 +29,7 @@ namespace Myss.FormSpec.Domain
         {
             string trimmed = (raw ?? string.Empty).Trim();
 
-            if (trimmed.Length == 0 || !Pattern().IsMatch(trimmed))
+            if (!IsPlausible(trimmed))
             {
                 return DomainValidationResult<EmailAddress>.Fail(
                     ValidationKeywords.EmailInvalidFormat,
@@ -59,7 +59,35 @@ namespace Myss.FormSpec.Domain
                 (confirmation ?? string.Empty).Trim(),
                 StringComparison.OrdinalIgnoreCase);
 
-        [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.CultureInvariant)]
-        private static partial Regex Pattern();
+        /// <summary>
+        /// One <c>@</c> with something before it, no whitespace, and a dot in the
+        /// domain with something on both sides. Checked step by step rather than
+        /// with the single pattern it replaces,
+        /// <c>^[^@\s]+@[^@\s]+\.[^@\s]+$</c>, which backtracks polynomially on
+        /// input like <c>!@!.!.!.…</c> (CodeQL polynomial ReDoS). These steps
+        /// accept exactly the addresses it did, in linear time; the TypeScript
+        /// mirror is <c>isEmailAddress</c> in <c>@myss/formio</c>.
+        /// </summary>
+        private static bool IsPlausible(string trimmed)
+        {
+            if (Whitespace().IsMatch(trimmed))
+            {
+                return false;
+            }
+
+            int at = trimmed.IndexOf('@', StringComparison.Ordinal);
+            if (at < 1 || at != trimmed.LastIndexOf('@'))
+            {
+                return false;
+            }
+
+            // The dot may not be the domain's first or last character.
+            int start = at + 2;
+            int end = trimmed.Length - 1;
+            return start < end && trimmed.IndexOf('.', start, end - start) >= 0;
+        }
+
+        [GeneratedRegex(@"\s", RegexOptions.CultureInvariant)]
+        private static partial Regex Whitespace();
     }
 }
