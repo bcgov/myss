@@ -27,6 +27,7 @@
 
         <!-- Outbound HTTP resilience (retry, circuit breaker, timeouts) for the ICM middleware client -->
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
+        <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="4.8.0" />
     </ItemGroup>
 
     <ItemGroup>
