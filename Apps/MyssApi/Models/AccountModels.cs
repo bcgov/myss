@@ -21,8 +21,24 @@ namespace Myss.Api.Models
         /// <summary>Gets or sets the names of the other people on the case. Empty when there are none.</summary>
         public required IReadOnlyList<string> FamilyMembers { get; set; }
 
-        /// <summary>Gets or sets the email address from registration. Read-only here.</summary>
+        /// <summary>
+        /// Gets or sets the email address in use: from registration, or the last
+        /// change the citizen verified (MYSS-305).
+        /// </summary>
         public required string Email { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether <see cref="Email"/> has been
+        /// proven by its emailed link. False only for an address from
+        /// registration whose link has not been followed yet.
+        /// </summary>
+        public bool EmailVerified { get; set; }
+
+        /// <summary>
+        /// Gets or sets an address the citizen is changing to that is waiting for
+        /// its link, or null. <see cref="Email"/> stays in use until then.
+        /// </summary>
+        public string? PendingEmail { get; set; }
 
         /// <summary>Gets or sets the citizen's phone numbers, in their chosen order.</summary>
         public required IReadOnlyList<AccountPhoneModel> Phones { get; set; }

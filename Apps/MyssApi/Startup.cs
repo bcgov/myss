@@ -255,6 +255,15 @@ namespace Myss.Api
                 client => client.Timeout = TimeSpan.FromSeconds(notify.TimeoutSeconds));
             services.AddScoped<IPinResetService, PinResetService>();
 
+            // Email verification (MYSS-305): the registration address and any
+            // change on Account Info are proven by an emailed link, sent the same
+            // way and pointing at the same webclient URL as the PIN reset's.
+            EmailVerificationConfig emailVerification = new();
+            configuration.GetSection("Account:EmailVerification").Bind(emailVerification);
+            EmailVerificationConfig.Validate(emailVerification);
+            services.AddSingleton(emailVerification);
+            services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+
             // CORS services are required by the inline UseCors policy in
             // StartupConfiguration.UseHttp, which is driven by the AllowOrigins config.
             services.AddCors();

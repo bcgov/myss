@@ -55,8 +55,7 @@ export const DEFAULT_MESSAGES: Readonly<Record<string, string>> = {
   [RULE_KEYWORDS.emailInvalidFormat]:
     "Enter an email address in the format name@example.com.",
   [RULE_KEYWORDS.emailMismatch]: "The two email addresses do not match.",
-  [RULE_KEYWORDS.phoneInvalidFormat]:
-    "Phone number is invalid",
+  [RULE_KEYWORDS.phoneInvalidFormat]: "Phone number is invalid",
   [RULE_KEYWORDS.postalCodeInvalidFormat]:
     "Enter a postal code in the format A1A 1A1.",
   [RULE_KEYWORDS.dateInvalid]: "Enter a valid date.",
@@ -108,8 +107,17 @@ const sin: ValidationRule = (value) => {
   return null;
 };
 
+/**
+ * The email rule on its own, for an address typed outside a Form.io form
+ * (Account Info's email change, MYSS-305). Mirrors Myss.FormSpec's
+ * EmailAddress, as the "email" rule below does.
+ */
+export function isEmailAddress(value: string): boolean {
+  return EMAIL_PATTERN.test(value.trim());
+}
+
 const email: ValidationRule = (value) =>
-  EMAIL_PATTERN.test(value.trim())
+  isEmailAddress(value)
     ? null
     : failure("email", RULE_KEYWORDS.emailInvalidFormat);
 

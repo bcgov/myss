@@ -73,6 +73,9 @@ namespace Myss.Api.Tests.TestSupport
                         LastName = "Tester",
                         DateOfBirth = new DateOnly(1990, 1, 1),
                         Email = $"{persona}@example.com",
+
+                        // As the migration left every profile from before verification (MYSS-305).
+                        EmailVerifiedAt = DateTimeOffset.UtcNow,
                         Sin = "050082833",
                         CreatedAt = DateTimeOffset.UtcNow,
                         UpdatedAt = DateTimeOffset.UtcNow,

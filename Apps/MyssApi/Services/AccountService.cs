@@ -356,6 +356,8 @@ namespace Myss.Api.Services
                 ClientName = $"{profile.FirstName} {profile.LastName}",
                 FamilyMembers = caseDetails.FamilyMembers,
                 Email = profile.Email,
+                EmailVerified = profile.EmailVerifiedAt is not null,
+                PendingEmail = profile.PendingEmail,
                 Phones = profile.Phones
                     .OrderBy(p => p.Position)
                     .Select(p => new AccountPhoneModel { Number = p.Number, Type = p.Type })

@@ -2,9 +2,6 @@ namespace Myss.Api.Services
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
-    using System.Security.Cryptography;
-    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
@@ -136,14 +133,12 @@ namespace Myss.Api.Services
                 return PinResetResultModel.Refused(PinResetOutcome.EmailNotSent);
             }
 
-            // Random bytes from the CSPRNG rather than Guid.NewGuid, whose
-            // randomness source is a platform detail; the token is still a GUID.
-            var token = new Guid(RandomNumberGenerator.GetBytes(16));
+            Guid token = EmailedLinkToken.New();
             Uri link = _config.BuildLink(token);
 
             // Saved before sending, so the link works the moment it arrives. A
             // new request replaces the token, which kills any earlier link.
-            profile.PinResetTokenHash = HashToken(token);
+            profile.PinResetTokenHash = EmailedLinkToken.Hash(token);
             profile.PinResetRequestedAt = now;
             profile.UpdatedAt = now;
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -171,12 +166,11 @@ namespace Myss.Api.Services
 
             // The link is checked before the PIN, so a dead link is reported
             // as such rather than after the citizen fixes their typing.
-            if (!Guid.TryParse(request.Token, out Guid token))
+            if (!EmailedLinkToken.TryHash(request.Token, out string tokenHash))
             {
                 return PinResetResultModel.Refused(PinResetOutcome.LinkInvalid);
             }
 
-            string tokenHash = HashToken(token);
             MyssUserProfile? profile = await _dbContext.MyssUserProfiles
                 .SingleOrDefaultAsync(p => p.PinResetTokenHash == tokenHash, cancellationToken);
             DateTimeOffset now = _timeProvider.GetUtcNow();
@@ -228,22 +222,9 @@ namespace Myss.Api.Services
             return PinResetResultModel.Reset();
         }
 
-        /// <summary>
-        /// SHA-256 of the token's canonical text, lower-case hex. Unsalted on
-        /// purpose: the token is 128 random bits, so there is no small space of
-        /// values to precompute, and the anonymous reset has only the token to
-        /// find the profile by. A salted hash would need the salt from a row it
-        /// has not found yet; this one is the key of the unique index on
-        /// <c>pin_reset_token_hash</c>.
-        /// </summary>
-        /// <param name="token">The token.</param>
-        /// <returns>64 hex characters.</returns>
-        private static string HashToken(Guid token) =>
-            Convert.ToHexStringLower(SHA256.HashData(Encoding.ASCII.GetBytes(token.ToString("D"))));
-
         private EmailMessage ResetEmail(string to, Uri link)
         {
-            string lifetime = Describe(_config.TokenLifetime);
+            string lifetime = EmailedLinkToken.Describe(_config.TokenLifetime);
             string body =
                 "We received a request to reset the PIN for your My Self Serve account.\n\n"
                 + $"[Reset your PIN]({link.AbsoluteUri})\n\n"
@@ -251,19 +232,6 @@ namespace Myss.Api.Services
                 + "If it has expired, sign in to My Self Serve and choose Reset PIN on Account Info to get a new one.\n\n"
                 + "If you did not ask to reset your PIN, you can ignore this email. Your PIN has not changed.";
             return new EmailMessage(to, "Reset your My Self Serve PIN", body);
-        }
-
-        /// <summary>"90 minutes", "1 hour", "24 hours".</summary>
-        private static string Describe(TimeSpan lifetime)
-        {
-            int minutes = (int)lifetime.TotalMinutes;
-            if (minutes >= 60 && minutes % 60 == 0)
-            {
-                int hours = minutes / 60;
-                return hours.ToString(CultureInfo.InvariantCulture) + (hours == 1 ? " hour" : " hours");
-            }
-
-            return minutes.ToString(CultureInfo.InvariantCulture) + (minutes == 1 ? " minute" : " minutes");
         }
 
         private static ValidationErrorModel Error(string field, string keyword, string message)

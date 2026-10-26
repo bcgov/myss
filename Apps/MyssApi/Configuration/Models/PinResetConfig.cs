@@ -79,24 +79,35 @@ namespace Myss.Api.Configuration.Models
         }
 
         /// <summary>
-        /// Builds the link for a token. The token goes in the fragment, which the
-        /// browser never sends to a server, so it stays out of access logs and
-        /// Referer headers.
+        /// Builds the reset link for a token.
         /// </summary>
         /// <param name="token">The reset token.</param>
         /// <returns>The link to email.</returns>
         /// <exception cref="InvalidOperationException">When <see cref="LinkBaseUrl"/> is not set.</exception>
-        public Uri BuildLink(Guid token)
+        public Uri BuildLink(Guid token) => BuildLink(LinkPath, token);
+
+        /// <summary>
+        /// Builds a link to a webclient page for a token. <see cref="LinkBaseUrl"/>
+        /// is the webclient's public URL for every emailed link, the email
+        /// verification one (MYSS-305) included, so a deployment sets it once.
+        /// The token goes in the fragment, which the browser never sends to a
+        /// server, so it stays out of access logs and Referer headers.
+        /// </summary>
+        /// <param name="path">The webclient route, without a leading slash.</param>
+        /// <param name="token">The token.</param>
+        /// <returns>The link to email.</returns>
+        /// <exception cref="InvalidOperationException">When <see cref="LinkBaseUrl"/> is not set.</exception>
+        public Uri BuildLink(string path, Guid token)
         {
             if (LinkBaseUrl is null)
             {
                 throw new InvalidOperationException(
-                    "Account:PinReset:LinkBaseUrl is not set, so a reset link cannot be built. "
+                    "Account:PinReset:LinkBaseUrl is not set, so an emailed link cannot be built. "
                     + "Locally: appsettings.Development.json points at the Vite dev server. "
                     + "Deployed: set Myss_Account__PinReset__LinkBaseUrl to the webclient's public URL.");
             }
 
-            return new Uri($"{LinkBaseUrl.AbsoluteUri.TrimEnd('/')}/{LinkPath}#token={token:D}");
+            return new Uri($"{LinkBaseUrl.AbsoluteUri.TrimEnd('/')}/{path}#token={token:D}");
         }
     }
 }

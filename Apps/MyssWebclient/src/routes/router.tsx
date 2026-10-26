@@ -11,6 +11,7 @@ import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
 import PinResetPage from "@/pages/PinResetPage";
+import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
         element: <AuthCallbackPage fallbackPath={paths.dashboard} />,
       },
       { path: paths.pinReset, element: <PinResetPage /> },
+      { path: paths.verifyEmail, element: <VerifyEmailPage /> },
       { path: paths.simpleLogin, element: <SimpleLoginPage /> },
 
       // ---- Dashboard (MYSS-194): the signed-in citizen's sections, framed

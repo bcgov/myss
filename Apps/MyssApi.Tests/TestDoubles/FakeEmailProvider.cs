@@ -38,7 +38,21 @@ namespace Myss.Api.Tests.TestDoubles
             return match.Groups[1].Value;
         }
 
+        /// <summary>
+        /// The email verification token in the last email's link (MYSS-305).
+        /// </summary>
+        /// <returns>The token.</returns>
+        public string LastVerificationToken()
+        {
+            Match match = VerificationToken().Match(Sent[^1].MarkdownBody);
+            Assert.True(match.Success, "The last email carries no verification link.");
+            return match.Groups[1].Value;
+        }
+
         [GeneratedRegex(@"/pin-reset#token=([0-9a-f-]{36})\)")]
         private static partial Regex ResetToken();
+
+        [GeneratedRegex(@"/verify-email#token=([0-9a-f-]{36})\)")]
+        private static partial Regex VerificationToken();
     }
 }

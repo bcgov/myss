@@ -444,27 +444,5 @@ namespace Myss.Api.Tests.Services
             using var db = new InMemoryFormsDbContext(_options);
             return await db.MyssUserProfiles.AsNoTracking().SingleAsync(p => p.Subject == Subject);
         }
-
-        /// <summary>
-        /// Lets another request write between a request's read of the profile and
-        /// its write: the save is the step in between.
-        /// </summary>
-        private sealed class InterruptibleFormsDbContext(DbContextOptions<FormsDbContext> options)
-            : InMemoryFormsDbContext(options)
-        {
-            public Func<Task>? BeforeNextSave { get; set; }
-
-            public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-            {
-                Func<Task>? interruption = BeforeNextSave;
-                BeforeNextSave = null;
-                if (interruption is not null)
-                {
-                    await interruption();
-                }
-
-                return await base.SaveChangesAsync(cancellationToken);
-            }
-        }
     }
 }

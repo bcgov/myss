@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateAfaApplicationData, CreateAfaApplicationErrors, CreateAfaApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetAfaApplicationData, GetAfaApplicationErrors, GetAfaApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, ListAfaApplicationsData, ListAfaApplicationsResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, RequestPinResetData, RequestPinResetErrors, RequestPinResetResponses, ResetPinData, ResetPinErrors, ResetPinResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
+import type { CancelAccountEmailChangeData, CancelAccountEmailChangeErrors, CancelAccountEmailChangeResponses, ChangeAccountEmailData, ChangeAccountEmailErrors, ChangeAccountEmailResponses, CreateAfaApplicationData, CreateAfaApplicationErrors, CreateAfaApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetAfaApplicationData, GetAfaApplicationErrors, GetAfaApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, ListAfaApplicationsData, ListAfaApplicationsResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, RequestPinResetData, RequestPinResetErrors, RequestPinResetResponses, ResendAccountEmailVerificationData, ResendAccountEmailVerificationErrors, ResendAccountEmailVerificationResponses, ResetPinData, ResetPinErrors, ResetPinResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -122,6 +122,45 @@ export const getEstimatorSpec = <ThrowOnError extends boolean = false>(options?:
  * Returns the rate table the browser computes the estimate against.
  */
 export const getEstimatorRates = <ThrowOnError extends boolean = false>(options?: Options<GetEstimatorRatesData, ThrowOnError>): RequestResult<GetEstimatorRatesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetEstimatorRatesResponses, unknown, ThrowOnError>({ url: '/v1/EligibilityEstimator/rates', ...options });
+
+/**
+ * Changes the caller's email address. The new address waits as pending,
+ * and is emailed a link; the current one stays in use until the link is
+ * followed. Nothing is saved unless the address passes.
+ */
+export const changeAccountEmail = <ThrowOnError extends boolean = false>(options?: Options<ChangeAccountEmailData, ThrowOnError>): RequestResult<ChangeAccountEmailResponses, ChangeAccountEmailErrors, ThrowOnError> => (options?.client ?? client).put<ChangeAccountEmailResponses, ChangeAccountEmailErrors, ThrowOnError>({
+    url: '/v1/account/email',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Emails a new link for the address waiting to be verified. One email
+ * per cooldown (`Account:EmailVerification:RequestCooldownSeconds`).
+ */
+export const resendAccountEmailVerification = <ThrowOnError extends boolean = false>(options?: Options<ResendAccountEmailVerificationData, ThrowOnError>): RequestResult<ResendAccountEmailVerificationResponses, ResendAccountEmailVerificationErrors, ThrowOnError> => (options?.client ?? client).post<ResendAccountEmailVerificationResponses, ResendAccountEmailVerificationErrors, ThrowOnError>({ url: '/v1/account/email/verification-requests', ...options });
+
+/**
+ * Drops a pending email change and its link; the address in use stays.
+ */
+export const cancelAccountEmailChange = <ThrowOnError extends boolean = false>(options?: Options<CancelAccountEmailChangeData, ThrowOnError>): RequestResult<CancelAccountEmailChangeResponses, CancelAccountEmailChangeErrors, ThrowOnError> => (options?.client ?? client).delete<CancelAccountEmailChangeResponses, CancelAccountEmailChangeErrors, ThrowOnError>({ url: '/v1/account/email/pending', ...options });
+
+/**
+ * Follows an emailed verification link: a pending address becomes the
+ * one in use, or the address from registration is marked verified.
+ * Anonymous: the token in the body is the credential.
+ */
+export const verifyEmail = <ThrowOnError extends boolean = false>(options?: Options<VerifyEmailData, ThrowOnError>): RequestResult<VerifyEmailResponses, VerifyEmailErrors, ThrowOnError> => (options?.client ?? client).post<VerifyEmailResponses, VerifyEmailErrors, ThrowOnError>({
+    url: '/v1/email-verification',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
 
 /**
  * Returns the latest published spec for a form (content-engine proxy).

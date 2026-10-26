@@ -337,13 +337,15 @@ namespace Myss.Api.Tests.Services
 
         private BusPassSubmissionService NewService(FormsDbContext db)
         {
+            var caller = new StubCurrentUserAccessor("test-subject");
             var forms = new FormsService(
                 NullLogger<FormsService>.Instance,
                 db,
                 _specProvider,
-                new StubCurrentUserAccessor("test-subject"),
+                caller,
                 new FakeErrorMessageProvider(),
-                new PinHasher());
+                new PinHasher(),
+                TestEmailVerification.NewService(db, caller, new FakeEmailProvider()));
 
             return new BusPassSubmissionService(
                 NullLogger<BusPassSubmissionService>.Instance,
