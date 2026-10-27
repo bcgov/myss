@@ -93,6 +93,7 @@ namespace Myss.Data
                 .HasMaxLength(64)
                 .IsConcurrencyToken();
             profile.Property(p => p.EmailVerificationRequestedAt).HasColumnName("email_verification_requested_at");
+            profile.Property(p => p.IcmContactMatchedAt).HasColumnName("icm_contact_matched_at");
             profile.HasIndex(p => p.EmailVerificationTokenHash).IsUnique();
             profile.HasMany(p => p.Phones)
                 .WithOne()
