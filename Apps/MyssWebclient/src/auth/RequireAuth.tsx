@@ -2,6 +2,7 @@
 // session resolves, the sign-in chooser when signed out, otherwise the page.
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useLocation } from "react-router";
 
 import { useSession } from "./useSession";
 import SignInChooser from "./SignInChooser";
@@ -9,6 +10,7 @@ import { isLogoutInProgress } from "./siteMinderLogout";
 
 export default function RequireAuth({ children }: Readonly<{ children: ReactNode }>) {
     const { isAuthenticated, isLoading } = useSession();
+    const location = useLocation();
     const [signedOutSettled, setSignedOutSettled] = useState(false);
 
     // Reset the grace period during render when the auth library starts
@@ -64,5 +66,6 @@ export default function RequireAuth({ children }: Readonly<{ children: ReactNode
         );
     }
 
-    return <SignInChooser />;
+    // Back to the page that asked, query included, once signed in (MYSS-324).
+    return <SignInChooser returnTo={`${location.pathname}${location.search}`} />;
 }

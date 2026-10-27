@@ -32,6 +32,16 @@ export const paths = {
 
 export type AppPath = (typeof paths)[keyof typeof paths];
 
+/** Marks Account Info reached from a successful PIN reset (MYSS-324). */
+export const PIN_RESET_DONE_PARAM = "pinReset";
+
+/**
+ * Account Info after a successful PIN reset: it then says the PIN was reset.
+ * A marker in the address rather than navigation state, so it survives the
+ * sign-in round trip a new tab needs.
+ */
+export const accountInfoAfterPinReset = `${paths.accountInfo}?${PIN_RESET_DONE_PARAM}=done`;
+
 /** Concrete URL for one application, kept beside the `application` pattern. */
 export function applicationPath(id: string): string {
   return `/applications/${encodeURIComponent(id)}`;
