@@ -9,6 +9,7 @@ namespace Myss.Api
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
     using Microsoft.Extensions.Logging;
+    using Microsoft.FeatureManagement;
     using Myss.Api.Configuration;
     using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
@@ -263,6 +264,9 @@ namespace Myss.Api
             EmailVerificationConfig.Validate(emailVerification);
             services.AddSingleton(emailVerification);
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+
+            // Feature flags (handbook §2.7). A flag that is not set is off.
+            services.AddFeatureManagement(configuration.GetSection(FeatureFlags.SectionName));
 
             // CORS services are required by the inline UseCors policy in
             // StartupConfiguration.UseHttp, which is driven by the AllowOrigins config.

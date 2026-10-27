@@ -8,6 +8,8 @@ namespace Myss.Api.Intake
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.FeatureManagement;
+    using Microsoft.FeatureManagement.Mvc;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.Logging;
     using Myss.Api.Configuration;
@@ -23,6 +25,9 @@ namespace Myss.Api.Intake
     /// application another citizen owns is a 404 here, never a 403, so ids
     /// cannot be enumerated. Workers do not use these routes: the review
     /// surface is MyssAdminApi's <c>ReviewApplicationsController</c>.
+    /// Two feature flags share these routes: the <c>afa</c> routes are
+    /// Service Requests, the plain ones Intake, and the by-id routes both
+    /// kinds use stay open while either flag is on.
     /// </summary>
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/intake/applications")]
@@ -51,6 +56,7 @@ namespace Myss.Api.Intake
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPost]
+        [FeatureGate(FeatureFlags.Intake)]
         [Produces("application/json")]
         [EndpointName("CreateApplication")]
         [ProducesResponseType(typeof(BaseResponseModel<ApplicationModel>), StatusCodes.Status201Created)]
@@ -73,6 +79,7 @@ namespace Myss.Api.Intake
         /// <summary>Starts an AFA draft only when the product-authored form is published.</summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPost("afa")]
+        [FeatureGate(FeatureFlags.ServiceRequests)]
         [Produces("application/json")]
         [EndpointName("CreateAfaApplication")]
         [ProducesResponseType(typeof(BaseResponseModel<ApplicationModel>), StatusCodes.Status201Created)]
@@ -98,6 +105,7 @@ namespace Myss.Api.Intake
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet]
+        [FeatureGate(FeatureFlags.Intake)]
         [Produces("application/json")]
         [EndpointName("ListApplications")]
         [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ApplicationSummaryModel>>), StatusCodes.Status200OK)]
@@ -115,6 +123,7 @@ namespace Myss.Api.Intake
         /// <summary>Lists the caller's AFA service requests, excluding other applications.</summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet("afa")]
+        [FeatureGate(FeatureFlags.ServiceRequests)]
         [Produces("application/json")]
         [EndpointName("ListAfaApplications")]
         [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ApplicationSummaryModel>>), StatusCodes.Status200OK)]
@@ -134,6 +143,7 @@ namespace Myss.Api.Intake
         /// <param name="id">The application identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet("{id:guid}")]
+        [FeatureGate(RequirementType.Any, FeatureFlags.Intake, FeatureFlags.ServiceRequests)]
         [Produces("application/json")]
         [EndpointName("GetApplication")]
         [ProducesResponseType(typeof(BaseResponseModel<ApplicationModel>), StatusCodes.Status200OK)]
@@ -147,6 +157,7 @@ namespace Myss.Api.Intake
         /// <param name="id">The AFA request identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet("afa/{id:guid}")]
+        [FeatureGate(FeatureFlags.ServiceRequests)]
         [Produces("application/json")]
         [EndpointName("GetAfaApplication")]
         [ProducesResponseType(typeof(BaseResponseModel<ApplicationModel>), StatusCodes.Status200OK)]
@@ -164,6 +175,7 @@ namespace Myss.Api.Intake
         /// <param name="request">The row version last seen and the answers.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPut("{id:guid}/answers")]
+        [FeatureGate(RequirementType.Any, FeatureFlags.Intake, FeatureFlags.ServiceRequests)]
         [Produces("application/json")]
         [EndpointName("SaveApplicationAnswers")]
         [ProducesResponseType(typeof(BaseResponseModel<ApplicationModel>), StatusCodes.Status200OK)]
@@ -187,6 +199,7 @@ namespace Myss.Api.Intake
         /// <param name="request">The row version last seen and the answers.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPost("{id:guid}/submit")]
+        [FeatureGate(RequirementType.Any, FeatureFlags.Intake, FeatureFlags.ServiceRequests)]
         [Produces("application/json")]
         [EndpointName("SubmitApplication")]
         [ProducesResponseType(typeof(BaseResponseModel<ApplicationModel>), StatusCodes.Status200OK)]

@@ -21,6 +21,14 @@ export interface Session {
   hasProfile?: boolean;
   profileFirstName?: string | null;
   login: (idp: IdpName, returnTo?: string) => void;
+  /**
+   * Signs in without asking, when the identity provider still has a session
+   * from earlier in this browser (Keycloak `prompt=none`), then goes to
+   * `returnTo`. When it has none, the callback goes to `returnTo` signed out,
+   * and that page's guard offers the usual chooser. For a page opened in a new
+   * tab, which does not share this tab's session (MYSS-324).
+   */
+  loginSilently: (returnTo: string) => void;
   logout: () => void;
 }
 
@@ -52,6 +60,8 @@ export function buildSession(
         extraQueryParams: { kc_idp_hint: IDP_ALIAS[idp] },
         ...(returnTo ? { state: { returnTo } } : {}),
       }),
+    loginSilently: (returnTo) =>
+      auth.signinRedirect({ prompt: "none", state: { returnTo } }),
     logout,
   };
 }

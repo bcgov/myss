@@ -173,6 +173,29 @@ so the CI analyses are the single source of results.
 next `up` re-runs the init script and the Strapi seed; re-apply the EF
 migrations afterwards.
 
+# Releases
+
+Versions are `<major>.<sprint>.<patch>`. `version.json` holds major and
+sprint; patch is counted from git, so nobody edits it.
+
+1. **Sprint start:** a PR bumps `sprint` in `version.json` (and `major` when
+   needed). That merge builds `<major>.<sprint>.0`; each later merge adds
+   one to the patch.
+2. **Every merge to `dev`:** the Tekton builds tag all six images with that
+   version (for example `1.15.6`) and deploy them to dev.
+   `.github/scripts/release-version.sh current` prints the version of your
+   checkout.
+3. **Test:** a repository admin runs the **Deploy release** workflow
+   (Actions tab) with the version and `test`. One approval. It promotes the
+   images, then creates git tag `v1.15.6` and a pre-release with notes.
+4. **Prod:** the same workflow with `prod`. It accepts only the version that
+   is in test, needs two approvers other than the requester, and marks the
+   release as the latest.
+
+A hotfix is a normal PR to `dev`; promote the version it builds. Setup
+(environments, reviewers, the deployer token) is described at the top of
+`.github/workflows/deploy.yml`.
+
 # Previous work
 
 ## Reference Prototypes

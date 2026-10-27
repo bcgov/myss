@@ -1,9 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
+
+const feature = vi.hoisted(() => ({ on: true as boolean | undefined }));
+
+vi.mock("@/hooks/useFeatures", () => ({
+    useFeature: () => feature.on,
+}));
 
 import BusPassCallout from "./BusPassCallout";
 
 describe("BusPassCallout", () => {
+    beforeEach(() => {
+        feature.on = true;
+    });
+
     it("renders the bus pass callout content", async () => {
         const screen = await render(<BusPassCallout />);
 
@@ -25,5 +35,15 @@ describe("BusPassCallout", () => {
             "href",
             "/buspass",
         );
+    });
+
+    it("is hidden while the BusPass flag is off or loading", async () => {
+        for (const value of [false, undefined]) {
+            feature.on = value;
+            const screen = await render(<BusPassCallout />);
+
+            expect(screen.container.querySelector("section")).toBeNull();
+            await screen.unmount();
+        }
     });
 });

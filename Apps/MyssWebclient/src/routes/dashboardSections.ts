@@ -1,5 +1,6 @@
 import { matchPath } from "react-router";
 
+import type { FeatureName } from "@/api/features";
 import { paths } from "@/routes/paths";
 
 // The signed-in dashboard's sections, in menu order (MYSS-194). One list
@@ -17,14 +18,36 @@ export interface DashboardSection {
   path: string;
   label: string;
   icon: DashboardIcon;
+  /** The feature flag that hides this section when off. Home has none. */
+  feature?: FeatureName;
 }
 
 export const dashboardSections: readonly DashboardSection[] = [
   { path: paths.dashboard, label: "Home", icon: "home" },
-  { path: paths.notifications, label: "Notifications", icon: "bell" },
-  { path: paths.messages, label: "Messages", icon: "mail" },
-  { path: paths.serviceRequests, label: "Service Requests", icon: "document" },
-  { path: paths.accountInfo, label: "Account Info", icon: "person" },
+  {
+    path: paths.notifications,
+    label: "Notifications",
+    icon: "bell",
+    feature: "Notifications",
+  },
+  {
+    path: paths.messages,
+    label: "Messages",
+    icon: "mail",
+    feature: "Messages",
+  },
+  {
+    path: paths.serviceRequests,
+    label: "Service Requests",
+    icon: "document",
+    feature: "ServiceRequests",
+  },
+  {
+    path: paths.accountInfo,
+    label: "Account Info",
+    icon: "person",
+    feature: "AccountInfo",
+  },
 ];
 
 /** True when `pathname` is one of the dashboard sections (trailing slash allowed). */

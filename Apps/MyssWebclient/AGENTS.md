@@ -25,6 +25,12 @@ what is specific to the webclient. Full docs:
    `div`-with-`onClick`, no dropped ARIA, no contrast-breaking
    overrides, focus styles stay token-driven. Drive tests by accessible
    role, not DOM name (Form.io randomizes names).
+6. **Feature flags have two lists:** `FEATURE_NAMES` in
+   `src/api/features.ts` mirrors `FeatureFlags.All` in
+   `MyssApi/Configuration/FeatureFlags.cs`; add or remove a flag in both
+   in the same change. Gate a route with `<FeatureRoute feature="X">`,
+   anything else with `useFeature("X")`, and a dashboard section with
+   its `feature` field in `routes/dashboardSections.ts`.
 
 ## Layout of `src/`
 

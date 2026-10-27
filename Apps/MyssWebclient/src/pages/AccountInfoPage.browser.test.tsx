@@ -41,6 +41,11 @@ interface Stub {
   resetRequest?: Answer;
   /** A canned answer for the next email call (MYSS-305); consumed once. */
   nextEmail?: Answer;
+  /**
+   * The feature flags `GET /v1/features` answers with. Unset, the call fails,
+   * and a flag that cannot be read counts as on.
+   */
+  features?: Record<string, boolean>;
 }
 
 function json(status: number, body: unknown) {
@@ -63,6 +68,9 @@ function stubApi(stub: Stub) {
         body: { payload: { expiresAt: "2026-10-20T23:45:00Z" } },
       };
       return json(answer.status, answer.body);
+    }
+    if (url.endsWith("/v1/features") && stub.features) {
+      return json(200, { payload: stub.features });
     }
     // The email change, resend and cancel (MYSS-305), behaving as the API
     // does: a verified address waits as pending, an unverified one is replaced.
@@ -124,13 +132,13 @@ function stubApi(stub: Stub) {
   return writes;
 }
 
-function renderPage() {
+function renderPage(at = "/account") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[at]}>
         <AccountInfoPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -814,6 +822,22 @@ describe("Email address", () => {
       );
   });
 
+  it("shows the address read-only while EmailVerification is off", async () => {
+    stubApi({
+      account: account({ emailVerified: false }),
+      features: { EmailVerification: false, PinReset: true, AccountInfo: true },
+    });
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByRole("textbox", { name: "Email Address" }))
+      .toHaveValue("alex@example.com");
+    expect(
+      screen.getByRole("button", { name: "Edit Email Address" }).query(),
+    ).toBeNull();
+    expect(screen.getByText("Email address not verified").query()).toBeNull();
+  });
+
   it("shows an unverified address from registration with Resend but no Cancel", async () => {
     stubApi({ account: account({ emailVerified: false }) });
     const screen = await renderPage();
@@ -827,5 +851,26 @@ describe("Email address", () => {
     expect(
       screen.getByRole("button", { name: "Cancel change" }).query(),
     ).toBeNull();
+  });
+});
+
+describe("After a PIN reset", () => {
+  it("says the PIN was reset when reached from the reset", async () => {
+    stubApi({ account: account() });
+    const screen = await renderPage("/account?pinReset=done");
+
+    await expect
+      .element(screen.getByText("Your PIN has been reset."))
+      .toBeVisible();
+  });
+
+  it("says nothing of it otherwise", async () => {
+    stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByRole("heading", { name: "Contact Information" }))
+      .toBeVisible();
+    expect(screen.getByText("Your PIN has been reset.").query()).toBeNull();
   });
 });

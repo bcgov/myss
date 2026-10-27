@@ -15,12 +15,26 @@ const session = vi.hoisted(
       hasProfile: true,
       profileFirstName: null,
       login: vi.fn(),
+      loginSilently: vi.fn(),
       logout: vi.fn(),
     }) as Session,
 );
 
 vi.mock("@/auth/useSession", () => ({
   useSession: () => session,
+}));
+
+const features = vi.hoisted(() => ({
+  data: {
+    Notifications: true,
+    Messages: true,
+    ServiceRequests: true,
+    AccountInfo: true,
+  } as Record<string, boolean>,
+}));
+
+vi.mock("@/hooks/useFeatures", () => ({
+  useFeatures: () => ({ data: features.data, isError: false }),
 }));
 
 import DashboardLayout from "./DashboardLayout";
@@ -63,6 +77,19 @@ describe("DashboardLayout", () => {
     session.isMeLoading = false;
     session.hasProfile = true;
     vi.mocked(session.logout).mockClear();
+    for (const name of Object.keys(features.data)) features.data[name] = true;
+  });
+
+  it("leaves a section whose feature flag is off out of the menu", async () => {
+    features.data.Messages = false;
+    const screen = await renderAt(paths.dashboard);
+
+    await expect
+      .element(screen.getByRole("link", { name: "Notifications" }))
+      .toBeInTheDocument();
+    await expect
+      .element(screen.getByRole("link", { name: "Messages" }))
+      .not.toBeInTheDocument();
   });
 
   it("tells an IDIR session this site is for citizens, instead of sending it to registration", async () => {

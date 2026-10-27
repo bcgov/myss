@@ -1,6 +1,7 @@
 import { Link } from "@bcgov/design-system-react-components";
 
 import Callout from "@/components/Callout";
+import { useFeature } from "@/hooks/useFeatures";
 import { paths } from "@/routes/paths";
 import styles from "./BusPassCallout.module.css";
 
@@ -8,6 +9,7 @@ const busPassProgramUrl =
     "https://www2.gov.bc.ca/gov/content/family-social-supports/income-assistance/on-assistance/bus-pass";
 
 export default function BusPassCallout() {
+    if (!useFeature("BusPass")) return null;
     return (
         <section className={styles.band} aria-label="BC Bus Pass">
             <div className={styles.column}>

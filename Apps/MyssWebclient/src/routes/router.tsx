@@ -22,6 +22,7 @@ import AfaServiceRequestPage from "@/pages/AfaServiceRequestPage";
 import ServiceRequestsPage from "@/pages/ServiceRequestsPage";
 import RequireAuth from "@/auth/RequireAuth";
 import { paths } from "@/routes/paths";
+import FeatureRoute from "@/routes/FeatureRoute";
 
 // App is the shared layout (header/footer + app-wide auth concerns). Child
 // routes render into its <Outlet />.
@@ -42,19 +43,41 @@ export const router = createBrowserRouter([
       { path: paths.register, element: <RegistrationPage /> },
       {
         path: paths.eligibilityEstimator,
-        element: <EligibilityEstimatorPage />,
+        element: (
+          <FeatureRoute feature="EligibilityEstimator">
+            <EligibilityEstimatorPage />
+          </FeatureRoute>
+        ),
       },
       {
         path: paths.busPass,
-        element: <BusPassPage />,
+        element: (
+          <FeatureRoute feature="BusPass">
+            <BusPassPage />
+          </FeatureRoute>
+        ),
       },
       { path: paths.signIn, element: <SignInPage /> },
       {
         path: paths.authCallback,
         element: <AuthCallbackPage fallbackPath={paths.dashboard} />,
       },
-      { path: paths.pinReset, element: <PinResetPage /> },
-      { path: paths.verifyEmail, element: <VerifyEmailPage /> },
+      {
+        path: paths.pinReset,
+        element: (
+          <FeatureRoute feature="PinReset">
+            <PinResetPage />
+          </FeatureRoute>
+        ),
+      },
+      {
+        path: paths.verifyEmail,
+        element: (
+          <FeatureRoute feature="EmailVerification">
+            <VerifyEmailPage />
+          </FeatureRoute>
+        ),
+      },
       { path: paths.simpleLogin, element: <SimpleLoginPage /> },
 
       // ---- Dashboard (MYSS-194): the signed-in citizen's sections, framed
@@ -70,18 +93,44 @@ export const router = createBrowserRouter([
           { path: paths.dashboard, element: <DashboardPage /> },
           {
             path: paths.notifications,
-            element: <UnderDevelopmentPage title="Notifications" />,
+            element: (
+              <FeatureRoute feature="Notifications">
+                <UnderDevelopmentPage title="Notifications" />
+              </FeatureRoute>
+            ),
           },
           {
             path: paths.messages,
-            element: <UnderDevelopmentPage title="Messages" />,
+            element: (
+              <FeatureRoute feature="Messages">
+                <UnderDevelopmentPage title="Messages" />
+              </FeatureRoute>
+            ),
           },
           {
             path: paths.serviceRequests,
-            element: <ServiceRequestsPage />,
+            element: (
+              <FeatureRoute feature="ServiceRequests">
+                <ServiceRequestsPage />
+              </FeatureRoute>
+            ),
           },
-          { path: paths.afaServiceRequest, element: <AfaServiceRequestPage /> },
-          { path: paths.accountInfo, element: <AccountInfoPage /> },
+          {
+            path: paths.afaServiceRequest,
+            element: (
+              <FeatureRoute feature="ServiceRequests">
+                <AfaServiceRequestPage />
+              </FeatureRoute>
+            ),
+          },
+          {
+            path: paths.accountInfo,
+            element: (
+              <FeatureRoute feature="AccountInfo">
+                <AccountInfoPage />
+              </FeatureRoute>
+            ),
+          },
         ],
       },
 
@@ -90,7 +139,9 @@ export const router = createBrowserRouter([
         path: paths.application,
         element: (
           <RequireAuth>
-            <ApplicationPage />
+            <FeatureRoute feature="Intake">
+              <ApplicationPage />
+            </FeatureRoute>
           </RequireAuth>
         ),
       },
@@ -98,7 +149,9 @@ export const router = createBrowserRouter([
         path: "techdemos",
         element: (
           <RequireAuth>
-            <TechDemos />
+            <FeatureRoute feature="TechDemos">
+              <TechDemos />
+            </FeatureRoute>
           </RequireAuth>
         ),
       },
@@ -106,7 +159,9 @@ export const router = createBrowserRouter([
         path: "techdemos/forms",
         element: (
           <RequireAuth>
-            <FormsTechDemo />
+            <FeatureRoute feature="TechDemos">
+              <FormsTechDemo />
+            </FeatureRoute>
           </RequireAuth>
         ),
       },
@@ -114,7 +169,9 @@ export const router = createBrowserRouter([
         path: "techdemos/attachments",
         element: (
           <RequireAuth>
-            <AttachmentsTechDemo />
+            <FeatureRoute feature="TechDemos">
+              <AttachmentsTechDemo />
+            </FeatureRoute>
           </RequireAuth>
         ),
       },
