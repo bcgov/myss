@@ -111,6 +111,14 @@ namespace Myss.Data
         /// </summary>
         public DateTimeOffset? EmailVerificationRequestedAt { get; set; }
 
+        /// <summary>
+        /// Gets or sets when the ICM contact match at registration found the
+        /// citizen among ICM's contacts. Null when it found no match, and for
+        /// profiles registered before the match existed. For the MVP the match
+        /// is hardcoded to succeed.
+        /// </summary>
+        public DateTimeOffset? IcmContactMatchedAt { get; set; }
+
         /// <summary>Gets or sets the citizen's phone numbers, in their chosen order.</summary>
         public List<MyssUserPhone> Phones { get; set; } = [];
 

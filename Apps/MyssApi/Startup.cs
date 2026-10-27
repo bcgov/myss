@@ -89,6 +89,7 @@ namespace Myss.Api
             // ICM and MIS PORTALSERVICES are connected; swap the provider then.
             services.AddScoped<IAccountService, AccountService>();
             services.AddSingleton<ICaseAccountProvider, PlaceholderCaseAccountProvider>();
+            services.AddSingleton<IContactMatchProvider, HardcodedContactMatchProvider>();
 
             // The PIN (MYSS-258): set at registration, changed on Account Info.
             // Only its salted hash is stored. The lockout is bound below.
