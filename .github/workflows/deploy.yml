@@ -1,0 +1,243 @@
+name: Deploy release
+
+# Promote a release version to test or prod. Every merge to dev builds all six
+# images tagged <major>.<sprint>.<patch> (see version.json and
+# .github/scripts/release-version.sh); this workflow starts the tenant repo's
+# p-promote-all pipeline to move one of those versions into an environment.
+#
+# Who can deploy: repository admins only, checked in `authorize` and again in
+# `deploy` (a re-run of failed jobs skips `authorize`), for both the person
+# who started the run and the person who re-ran it.
+# Approvals (repository Settings > Environments, all with "Prevent self-review"
+# and "Deployment branches" set to dev only, administrators not allowed to
+# bypass). The branch rule matters: a manual run uses the workflow file from
+# the branch it is started on, so without it anyone with write access could
+# run a copy of this file with the checks removed.
+#   test           1 required reviewer
+#   prod-approval  first prod approval
+#   prod           second prod approval; `deploy` also checks the run has two
+#                  different approvers, since one person can be a reviewer
+#                  on both environments
+# Configuration:
+#   OPENSHIFT_SERVER  repository variable, the cluster API URL
+#   OPENSHIFT_TOKEN   secret on the test and prod environments, the token of
+#                     the github-deployer ServiceAccount in e07f31-tools
+#
+# Test deploys create the git tag v<version> and a pre-release with generated
+# notes; prod accepts only the version currently in test and marks that
+# release as the latest.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, e.g. 1.15.6 (from the dev build's image tag)"
+        required: true
+        type: string
+      environment:
+        description: Environment to deploy to
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  VERSION: ${{ inputs.version }}
+  TARGET: ${{ inputs.environment }}
+  APPS: myss-api myss-webclient myss-content icm-api myss-admin-api myss-admin-webclient
+
+jobs:
+  authorize:
+    name: Check request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      commit: ${{ steps.resolve.outputs.commit }}
+    steps:
+      - name: Require repository admin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for user in $(printf '%s\n' "${{ github.actor }}" "${{ github.triggering_actor }}" | sort -u); do
+            role=$(gh api "repos/${{ github.repository }}/collaborators/$user/permission" --jq .permission)
+            if [ "$role" != "admin" ]; then
+              echo "::error::$user has '$role' access; deploying to $TARGET needs admin."
+              exit 1
+            fi
+          done
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve the version to its commit on dev
+        id: resolve
+        run: |
+          commit=$(.github/scripts/release-version.sh commit "$VERSION" origin/dev)
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "$VERSION was built from $(git log -1 --format='%h %s' "$commit")"
+
+      - name: Require a test release before prod
+        if: inputs.environment == 'prod'
+        run: |
+          git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || {
+            echo "::error::v$VERSION has not been deployed to test (no git tag)."
+            exit 1
+          }
+
+  # The first of the two prod approvals. Skipped for test.
+  prod-approval:
+    name: First prod approval
+    needs: authorize
+    if: inputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: prod-approval
+    steps:
+      - run: echo "First approval for $VERSION to prod recorded."
+
+  deploy:
+    name: Deploy ${{ inputs.version }} to ${{ inputs.environment }}
+    needs: [authorize, prod-approval]
+    if: >-
+      always() && needs.authorize.result == 'success' &&
+      (needs.prod-approval.result == 'success' ||
+       (inputs.environment == 'test' && needs.prod-approval.result == 'skipped'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: write # tag and release
+      actions: read # read this run's approvals
+    env:
+      COMMIT: ${{ needs.authorize.outputs.commit }}
+    steps:
+      - name: Require repository admin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for user in $(printf '%s\n' "${{ github.actor }}" "${{ github.triggering_actor }}" | sort -u); do
+            role=$(gh api "repos/${{ github.repository }}/collaborators/$user/permission" --jq .permission)
+            if [ "$role" != "admin" ]; then
+              echo "::error::$user has '$role' access; deploying to $TARGET needs admin."
+              exit 1
+            fi
+          done
+
+      - name: Require two different prod approvers
+        if: inputs.environment == 'prod'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          approvers=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/approvals" \
+            --jq '[.[] | select(.state == "approved") | .user.login] | unique | map(select(. != "${{ github.actor }}" and . != "${{ github.triggering_actor }}")) | .[]')
+          echo "Approved by: $(echo $approvers)"
+          if [ "$(echo "$approvers" | grep -c .)" -lt 2 ]; then
+            echo "::error::Prod needs two approvers other than the requester."
+            exit 1
+          fi
+
+      - name: Install oc
+        run: |
+          curl -fsSL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4.18/openshift-client-linux.tar.gz \
+            | sudo tar -xz -C /usr/local/bin oc
+          oc version --client
+
+      - name: Log in to OpenShift
+        env:
+          OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
+        run: |
+          oc login --server="${{ vars.OPENSHIFT_SERVER }}" --token="$OPENSHIFT_TOKEN" >/dev/null
+          # Not `oc project`: that reads the Project, which the deployer's
+          # Role does not grant. This only sets the kubeconfig default.
+          oc config set-context --current --namespace=e07f31-tools >/dev/null
+
+      - name: Check every image was built for this version
+        run: |
+          missing=0
+          for app in $APPS; do
+            oc get istag "$app:$VERSION" >/dev/null 2>&1 || { echo "::error::$app:$VERSION not found"; missing=1; }
+          done
+          exit $missing
+
+      - name: Require prod to match test
+        if: inputs.environment == 'prod'
+        run: |
+          differ=0
+          for app in $APPS; do
+            want=$(oc get istag "$app:$VERSION" -o jsonpath='{.image.metadata.name}')
+            have=$(oc get istag "$app:test" -o jsonpath='{.image.metadata.name}' 2>/dev/null || true)
+            [ "$want" = "$have" ] || { echo "::error::$app in test is not $VERSION"; differ=1; }
+          done
+          exit $differ
+
+      - name: Run p-promote-all
+        run: |
+          run=$(oc create -o name -f - <<EOF
+          apiVersion: tekton.dev/v1beta1
+          kind: PipelineRun
+          metadata:
+            generateName: promote-all-$TARGET-
+            labels:
+              myss.gov.bc.ca/release: "$VERSION"
+            annotations:
+              myss.gov.bc.ca/requested-by: "${{ github.actor }}"
+              myss.gov.bc.ca/workflow-run: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          spec:
+            pipelineRef:
+              name: p-promote-all
+            serviceAccountName: pipeline
+            params:
+              - name: imageTagSource
+                value: "$VERSION"
+              - name: imageTagTarget
+                value: "$TARGET"
+          EOF
+          )
+          echo "Started $run"
+          while :; do
+            status=$(oc get "$run" -o jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}')
+            case "$status" in
+              True) echo "$run succeeded"; break ;;
+              False)
+                oc get "$run" -o jsonpath='{.status.conditions[0].message}{"\n"}'
+                oc get taskruns -l "tekton.dev/pipelineRun=${run#*/}" \
+                  -o custom-columns=TASK:.metadata.labels.tekton\\.dev/pipelineTask,STATUS:.status.conditions[0].reason,MESSAGE:.status.conditions[0].message
+                exit 1 ;;
+            esac
+            sleep 15
+          done
+
+      - name: Tag and pre-release (test)
+        if: inputs.environment == 'test'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v$VERSION" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists (redeploy)."
+          else
+            gh release create "v$VERSION" --repo "${{ github.repository }}" --target "$COMMIT" \
+              --title "v$VERSION" --prerelease --generate-notes
+          fi
+
+      - name: Mark the release as latest (prod)
+        if: inputs.environment == 'prod'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "v$VERSION" --repo "${{ github.repository }}" --prerelease=false --latest
+
+      - name: Summary
+        run: |
+          {
+            echo "### $VERSION deployed to $TARGET"
+            echo "- Commit: \`$COMMIT\`"
+            echo "- Requested by: ${{ github.actor }}"
+          } >> "$GITHUB_STEP_SUMMARY"
