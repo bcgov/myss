@@ -9,7 +9,8 @@ import {
   useResetPin,
 } from "@/hooks/useAccount";
 import { checkNewPin } from "@/lib/pin";
-import { paths } from "@/routes/paths";
+import { accountInfoAfterPinReset, paths } from "@/routes/paths";
+import { useSession } from "@/auth/useSession";
 import FieldErrorSummary from "@/widgets/account/FieldErrorSummary";
 import styles from "./PinResetPage.module.css";
 
@@ -17,7 +18,10 @@ import styles from "./PinResetPage.module.css";
 // the link is the credential, and the citizen signs in afterwards with the new
 // PIN. The token arrives in the URL fragment (#token=…), which the browser
 // never sends to a server, so it stays out of access logs and Referer headers.
-// On success the citizen is sent to sign in, with a confirmation there.
+// On success the citizen goes back to Account Info, signed in (MYSS-324). The
+// link usually opens in a new tab, which does not share the signed-in tab's
+// session (it lives in sessionStorage), so that tab signs in silently first:
+// the identity provider still has the session the citizen asked from.
 
 type FieldErrors = Record<string, string>;
 
@@ -25,9 +29,6 @@ const FIELD_NAMES: Readonly<Record<string, string>> = {
   newPin: "New PIN",
   confirmPin: "Confirm New PIN",
 };
-
-/** What the sign-in page shows after a reset. */
-export const PIN_RESET_NOTICE = "Your PIN has been reset. Sign in to continue.";
 
 function fieldName(field: string): string {
   return FIELD_NAMES[field] ?? "PIN";
@@ -40,6 +41,7 @@ function tokenFrom(hash: string): string | null {
 export default function PinResetPage() {
   const { hash } = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated, loginSilently } = useSession();
   const reset = useResetPin();
   const token = tokenFrom(hash);
   const [newPin, setNewPin] = useState("");
@@ -85,10 +87,11 @@ export default function PinResetPage() {
       { token, newPin, confirmPin },
       {
         onSuccess: () => {
-          void navigate(paths.signIn, {
-            replace: true,
-            state: { notice: PIN_RESET_NOTICE },
-          });
+          if (isAuthenticated) {
+            void navigate(accountInfoAfterPinReset, { replace: true });
+          } else {
+            loginSilently(accountInfoAfterPinReset);
+          }
         },
         onError: (error) => {
           if (error instanceof AccountRequestError && error.errors.length > 0) {

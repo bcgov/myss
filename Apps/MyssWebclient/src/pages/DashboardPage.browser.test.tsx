@@ -17,6 +17,7 @@ const session = vi.hoisted(
       hasProfile: true,
       profileFirstName: null,
       login: vi.fn(),
+      loginSilently: vi.fn(),
       logout: vi.fn(),
     }) as Session,
 );

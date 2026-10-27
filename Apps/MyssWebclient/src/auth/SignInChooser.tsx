@@ -8,7 +8,12 @@ import { Button } from "@bcgov/design-system-react-components";
 import { useSession } from "./useSession";
 import styles from "./SignInChooser.module.css";
 
-export default function SignInChooser() {
+export default function SignInChooser({
+    returnTo,
+}: Readonly<{
+    /** Where to land after signing in; the app's default page when absent. */
+    returnTo?: string;
+}>) {
     const { login } = useSession();
     return (
         <div className={styles.chooser}>
@@ -16,14 +21,14 @@ export default function SignInChooser() {
             <Button
                 variant="primary"
                 size="large"
-                onPress={() => login("bcServicesCard")}
+                onPress={() => login("bcServicesCard", returnTo)}
             >
                 BC Services Card
             </Button>
             <Button
                 variant="secondary"
                 size="large"
-                onPress={() => login("bceid")}
+                onPress={() => login("bceid", returnTo)}
             >
                 Basic BCeID
             </Button>

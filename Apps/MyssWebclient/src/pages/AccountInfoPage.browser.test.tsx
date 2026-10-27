@@ -97,13 +97,13 @@ function stubApi(stub: Stub) {
   return writes;
 }
 
-function renderPage() {
+function renderPage(at = "/account") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[at]}>
         <AccountInfoPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -657,5 +657,26 @@ describe("PIN management", () => {
       .toHaveTextContent(
         "We could not send the email. Try again in a few minutes.",
       );
+  });
+});
+
+describe("After a PIN reset", () => {
+  it("says the PIN was reset when reached from the reset", async () => {
+    stubApi({ account: account() });
+    const screen = await renderPage("/account?pinReset=done");
+
+    await expect
+      .element(screen.getByText("Your PIN has been reset."))
+      .toBeVisible();
+  });
+
+  it("says nothing of it otherwise", async () => {
+    stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByRole("heading", { name: "Contact Information" }))
+      .toBeVisible();
+    expect(screen.getByText("Your PIN has been reset.").query()).toBeNull();
   });
 });
