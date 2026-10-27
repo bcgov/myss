@@ -10,6 +10,7 @@ import {
   useSavePin,
   type AccountPayload,
 } from "@/hooks/useAccount";
+import { useFeature } from "@/hooks/useFeatures";
 import { checkNewPin, checkPin, pinMessage } from "@/lib/pin";
 import sectionStyles from "./AccountSections.module.css";
 import FieldErrorSummary from "./FieldErrorSummary";
@@ -66,6 +67,7 @@ export default function PinManagement({
 }: Readonly<{ account: AccountPayload }>) {
   const save = useSavePin();
   const requestReset = useRequestPinReset();
+  const pinReset = useFeature("PinReset");
   const [isOpen, setIsOpen] = useState(false);
   const [currentPin, setCurrentPin] = useState("");
   const [newPin, setNewPin] = useState("");
@@ -306,15 +308,17 @@ export default function PinManagement({
                 description={`We could not send the email. ${requestReset.error.message}`}
               />
             ))}
-          <div>
-            <Button
-              variant="secondary"
-              onPress={() => requestReset.mutate()}
-              isDisabled={requestReset.isPending}
-            >
-              Reset PIN
-            </Button>
-          </div>
+          {pinReset && (
+            <div>
+              <Button
+                variant="secondary"
+                onPress={() => requestReset.mutate()}
+                isDisabled={requestReset.isPending}
+              >
+                Reset PIN
+              </Button>
+            </div>
+          )}
         </>
       )}
     </section>

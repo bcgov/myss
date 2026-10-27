@@ -9,6 +9,7 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.FeatureManagement.Mvc;
     using Microsoft.AspNetCore.Routing;
     using Myss.Api.Configuration;
     using Myss.Api.Domain;
@@ -26,6 +27,7 @@ namespace Myss.Api.Controllers
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/pin-reset")]
     [ApiController]
+    [FeatureGate(FeatureFlags.PinReset)]
     public class PinResetController : ControllerBase
     {
         /// <summary>The emailed link is unknown, already used, or expired.</summary>

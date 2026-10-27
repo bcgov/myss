@@ -5,6 +5,7 @@ import {
   dashboardSections,
   type DashboardIcon,
 } from "@/routes/dashboardSections";
+import { useFeatures } from "@/hooks/useFeatures";
 import styles from "./DashboardNav.module.css";
 
 // The dashboard's left-hand menu (MYSS-194). NavLink marks the current
@@ -37,10 +38,17 @@ function NavIcon({ icon }: { icon: DashboardIcon }): ReactNode {
 }
 
 export default function DashboardNav() {
+  // A section shows once its flag reads on, or when the flags cannot be
+  // read (see useFeature).
+  const { data: features, isError } = useFeatures();
+  const sections = dashboardSections.filter(
+    (section) =>
+      !section.feature || isError || features?.[section.feature] === true,
+  );
   return (
     <nav aria-label="My Self Serve" className={styles.nav}>
       <ul className={styles.list}>
-        {dashboardSections.map((section) => (
+        {sections.map((section) => (
           <li key={section.path}>
             {/* `end`: Home is /dashboard and must not stay selected on deeper paths. */}
             <NavLink to={section.path} end className={styles.link}>

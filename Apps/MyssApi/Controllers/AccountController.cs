@@ -9,6 +9,7 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.FeatureManagement.Mvc;
     using Microsoft.AspNetCore.Routing;
     using Myss.Api.Configuration;
     using Myss.Api.Models;
@@ -25,6 +26,7 @@ namespace Myss.Api.Controllers
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/account")]
     [ApiController]
+    [FeatureGate(FeatureFlags.AccountInfo)]
     [Authorize(Policy = MyssPolicies.Client)]
     public class AccountController : ControllerBase
     {

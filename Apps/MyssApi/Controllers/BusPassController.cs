@@ -10,6 +10,7 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.FeatureManagement.Mvc;
     using Microsoft.AspNetCore.RateLimiting;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.Logging;
@@ -35,6 +36,7 @@ namespace Myss.Api.Controllers
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/bus-pass")]
     [ApiController]
+    [FeatureGate(FeatureFlags.BusPass)]
     public class BusPassController : Controller
     {
         private readonly IBusPassSubmissionService _submissionService;

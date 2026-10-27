@@ -55,6 +55,22 @@ row instead of an orphaned object; a flagged file keeps its row as an audit reco
 its content never reaches the store. `Attachments:MaxSizeBytes` must stay at or below
 clamd's `StreamMaxLength`.
 
+## Feature flags
+
+Citizen features are switched on per environment under `FeatureManagement`
+(`Configuration/FeatureFlags.cs`). **A flag that is not set is off**, so a new feature
+stays hidden until an environment turns it on with `Myss_FeatureManagement__<Flag>=true`
+(locally, in `appsettings.local.json`). Endpoints are gated with `[FeatureGate]`: when
+off the action never runs, usually a 404 (sign-in and rate limiting still run first, so
+it can be a 401 or 429). `GET /v1/features` tells the webclient which are on. The test
+suite switches every flag on (`TestSupport/AllFeaturesOn.cs`).
+
+**Adding or removing a flag touches both lists, in the same change:**
+`FeatureFlags.All` (plus its constant) here, and
+`FEATURE_NAMES` in `MyssWebclient/src/api/features.ts`. Nothing checks that they match:
+a flag missing from the webclient list is ignored by the browser, and one missing here
+is never served. The admin apps have no feature flags.
+
 ## EF migrations
 
 Four DbContexts, one per schema, all required, applied manually (see the root
