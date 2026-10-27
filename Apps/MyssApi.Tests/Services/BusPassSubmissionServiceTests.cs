@@ -8,6 +8,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Api.Tests.TestSupport;
     using Myss.Data;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
@@ -345,7 +346,8 @@ namespace Myss.Api.Tests.Services
                 caller,
                 new FakeErrorMessageProvider(),
                 new PinHasher(),
-                TestEmailVerification.NewService(db, caller, new FakeEmailProvider()));
+                TestEmailVerification.NewService(db, caller, new FakeEmailProvider()),
+                TestFeatures.AllOn());
 
             return new BusPassSubmissionService(
                 NullLogger<BusPassSubmissionService>.Instance,

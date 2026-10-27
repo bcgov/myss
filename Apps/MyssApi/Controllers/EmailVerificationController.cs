@@ -10,6 +10,7 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Routing;
+    using Microsoft.FeatureManagement.Mvc;
     using Myss.Api.Configuration;
     using Myss.Api.Models;
     using Myss.Api.Services;
@@ -25,6 +26,7 @@ namespace Myss.Api.Controllers
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}")]
     [ApiController]
+    [FeatureGate(FeatureFlags.EmailVerification)]
     public class EmailVerificationController : ControllerBase
     {
         /// <summary>A verification link was sent too recently to send another.</summary>

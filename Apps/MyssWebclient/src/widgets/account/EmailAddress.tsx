@@ -18,6 +18,7 @@ import {
   RULE_DEFAULT_MESSAGES,
   RULE_KEYWORDS,
 } from "@myss/formio";
+import { useFeature } from "@/hooks/useFeatures";
 import { catalogueMessage } from "@myss/formio/errorCatalogue";
 import styles from "./EmailAddress.module.css";
 
@@ -26,6 +27,8 @@ import styles from "./EmailAddress.module.css";
 // address in use stays until the link is followed. An address from
 // registration is in use but unverified until its own link is followed. Both
 // waiting states offer Resend link; a pending change can also be cancelled.
+// All of it is behind the EmailVerification flag: off, the address is shown
+// read-only, as it was before the feature.
 
 const FORMAT_MESSAGE =
   catalogueMessage(RULE_KEYWORDS.emailInvalidFormat) ??
@@ -70,6 +73,7 @@ export default function EmailAddress({
     }
   }, [isEditing]);
 
+  const enabled = useFeature("EmailVerification") === true;
   const pending = account.pendingEmail ?? null;
   const unverified = !account.emailVerified && pending === null;
 
@@ -123,6 +127,14 @@ export default function EmailAddress({
     ? refusal(cancel.error, "Your change was not cancelled.")
     : null;
   const waitingAction = resend.isPending || cancel.isPending;
+
+  if (!enabled) {
+    return (
+      <div className={styles.email}>
+        <TextField label="Email Address" value={account.email} isReadOnly />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.email}>

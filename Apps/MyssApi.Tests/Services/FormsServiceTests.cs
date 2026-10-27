@@ -2,6 +2,8 @@ namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
     using Microsoft.EntityFrameworkCore;
+    using Microsoft.FeatureManagement;
+    using Myss.Api.Configuration;
     using Microsoft.Extensions.Logging.Abstractions;
     using Myss.Api.Data;
     using Myss.Api.Domain;
@@ -9,6 +11,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Api.Tests.TestSupport;
     using Myss.Data;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
@@ -32,6 +35,7 @@ namespace Myss.Api.Tests.Services
         private readonly FakeErrorMessageProvider _errorMessages = new();
         private readonly PinHasher _pinHasher = new();
         private readonly FakeEmailProvider _email = new();
+        private IFeatureManager _features = TestFeatures.AllOn();
 
         [Fact]
         public async Task Submit_RefusedAnswers_AreWordedFromTheCatalogue_KeywordByKeyword()
@@ -355,6 +359,24 @@ namespace Myss.Api.Tests.Services
             Assert.Equal("ada@example.com", profile.Email);
             Assert.Equal("augusta@example.com", profile.PendingEmail);
             Assert.Equal("augusta@example.com", _email.Sent[^1].To);
+        }
+
+        [Fact]
+        public async Task Submit_WithEmailVerificationOffRegistrationStoresTheAddressAndSendsNothing()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOnExcept(FeatureFlags.EmailVerification);
+
+            await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":" ada@example.com ","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync();
+            Assert.Equal("ada@example.com", profile.Email);
+            Assert.Null(profile.EmailVerificationTokenHash);
+            Assert.Empty(_email.Sent);
         }
 
         [Fact]
@@ -785,7 +807,8 @@ namespace Myss.Api.Tests.Services
                 caller,
                 _errorMessages,
                 _pinHasher,
-                TestEmailVerification.NewService(db, caller, _email));
+                TestEmailVerification.NewService(db, caller, _email),
+                _features);
         }
 
             private sealed class AnonymousCurrentUserAccessor : ICurrentUserAccessor

@@ -21,6 +21,12 @@ namespace Myss.Api.Configuration
         /// <summary>Resetting a forgotten PIN by emailed link.</summary>
         public const string PinReset = "PinReset";
 
+        /// <summary>
+        /// Changing the email address on Account Info and proving it, and the
+        /// registration address, by emailed link (MYSS-305).
+        /// </summary>
+        public const string EmailVerification = "EmailVerification";
+
         /// <summary>The public Pre-Eligibility Estimator.</summary>
         public const string EligibilityEstimator = "EligibilityEstimator";
 
@@ -52,6 +58,7 @@ namespace Myss.Api.Configuration
         public static readonly IReadOnlyList<string> All =
         [
             PinReset,
+            EmailVerification,
             EligibilityEstimator,
             BusPass,
             Notifications,
