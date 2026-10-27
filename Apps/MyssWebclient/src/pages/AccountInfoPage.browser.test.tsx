@@ -19,6 +19,8 @@ function account(overrides: Partial<AccountPayload> = {}): AccountPayload {
     clientName: "Alex Deer",
     familyMembers: ["FAMILY_MEMBERS_PLACEHOLDER"],
     email: "alex@example.com",
+    emailVerified: true,
+    pendingEmail: null,
     phones: [{ number: "2505550123", type: "Home" }],
     mailingAddressLines: ["MAILING_ADDRESS_PLACEHOLDER"],
     monthlyReportReminder: false,
@@ -37,6 +39,13 @@ interface Stub {
   read?: Answer;
   /** The answer to a PIN reset request (MYSS-36); a sent email by default. */
   resetRequest?: Answer;
+  /** A canned answer for the next email call (MYSS-305); consumed once. */
+  nextEmail?: Answer;
+  /**
+   * The feature flags `GET /v1/features` answers with. Unset, the call fails,
+   * and a flag that cannot be read counts as on.
+   */
+  features?: Record<string, boolean>;
 }
 
 function json(status: number, body: unknown) {
@@ -59,6 +68,32 @@ function stubApi(stub: Stub) {
         body: { payload: { expiresAt: "2026-10-20T23:45:00Z" } },
       };
       return json(answer.status, answer.body);
+    }
+    if (url.endsWith("/v1/features") && stub.features) {
+      return json(200, { payload: stub.features });
+    }
+    // The email change, resend and cancel (MYSS-305), behaving as the API
+    // does: a verified address waits as pending, an unverified one is replaced.
+    const emailRoute =
+      /\/v1\/account\/(email(?:\/verification-requests|\/pending)?)$/.exec(
+        url,
+      )?.[1];
+    if (emailRoute) {
+      const body = init?.body ? JSON.parse(String(init.body)) : null;
+      writes.push({ route: `${method} ${emailRoute}`, body });
+      if (stub.nextEmail) {
+        const answer = stub.nextEmail;
+        stub.nextEmail = undefined;
+        return json(answer.status, answer.body);
+      }
+      if (emailRoute === "email") {
+        stub.account = stub.account.emailVerified
+          ? { ...stub.account, pendingEmail: body.email }
+          : { ...stub.account, email: body.email };
+      } else if (emailRoute === "email/pending") {
+        stub.account = { ...stub.account, pendingEmail: null };
+      }
+      return json(200, { payload: stub.account });
     }
     if (url.endsWith("/v1/account") && method === "GET") {
       return stub.read
@@ -657,6 +692,165 @@ describe("PIN management", () => {
       .toHaveTextContent(
         "We could not send the email. Try again in a few minutes.",
       );
+  });
+});
+
+describe("Email address", () => {
+  it("changes the address to pending and says the current one stays in use", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "alex.new@example.com",
+    );
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByText("Verification pending"))
+      .toBeVisible();
+    await expect
+      .element(
+        screen.getByText(
+          "We sent a link to alex.new@example.com. Until you follow it, we will keep using alex@example.com.",
+        ),
+      )
+      .toBeVisible();
+    expect(writes).toEqual([
+      { route: "PUT email", body: { email: "alex.new@example.com" } },
+    ]);
+    await expect
+      .element(screen.getByRole("button", { name: "Edit Email Address" }))
+      .toHaveFocus();
+  });
+
+  it("refuses an invalid address before sending it", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "not-an-address",
+    );
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(
+        screen.getByText(
+          "Enter an email address in the format name@example.com.",
+        ),
+      )
+      .toBeVisible();
+    expect(writes).toEqual([]);
+  });
+
+  it("shows the API's field error", async () => {
+    stubApi({
+      account: account(),
+      nextEmail: {
+        status: 422,
+        body: {
+          payload: [
+            {
+              field: "email",
+              keyword: "IDA.EMAIL.INVALID_FORMAT",
+              message: "That address cannot be used.",
+            },
+          ],
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "alex.new@example.com",
+    );
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByText("That address cannot be used."))
+      .toBeVisible();
+  });
+
+  it("resends the link and cancels a pending change", async () => {
+    const writes = stubApi({
+      account: account({ pendingEmail: "alex.new@example.com" }),
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Resend link" }).click();
+    await expect
+      .element(
+        screen.getByText("We sent a new link. Earlier links no longer work."),
+      )
+      .toBeVisible();
+
+    await screen.getByRole("button", { name: "Cancel change" }).click();
+    await expect
+      .element(screen.getByText("Verification pending"))
+      .not.toBeInTheDocument();
+    expect(writes).toEqual([
+      { route: "POST email/verification-requests", body: null },
+      { route: "DELETE email/pending", body: null },
+    ]);
+  });
+
+  it("says when a link went out too recently to send another", async () => {
+    stubApi({
+      account: account({ pendingEmail: "alex.new@example.com" }),
+      nextEmail: {
+        status: 429,
+        body: {
+          detail:
+            "We just sent you a verification email. Check your inbox, or try again in 45 seconds.",
+          keyword: "ACCOUNT.EMAIL.TOO_SOON",
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Resend link" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(
+        "We just sent you a verification email. Check your inbox, or try again in 45 seconds.",
+      );
+  });
+
+  it("shows the address read-only while EmailVerification is off", async () => {
+    stubApi({
+      account: account({ emailVerified: false }),
+      features: { EmailVerification: false, PinReset: true, AccountInfo: true },
+    });
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByRole("textbox", { name: "Email Address" }))
+      .toHaveValue("alex@example.com");
+    expect(
+      screen.getByRole("button", { name: "Edit Email Address" }).query(),
+    ).toBeNull();
+    expect(screen.getByText("Email address not verified").query()).toBeNull();
+  });
+
+  it("shows an unverified address from registration with Resend but no Cancel", async () => {
+    stubApi({ account: account({ emailVerified: false }) });
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByText("Email address not verified"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("button", { name: "Resend link" }))
+      .toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Cancel change" }).query(),
+    ).toBeNull();
   });
 });
 

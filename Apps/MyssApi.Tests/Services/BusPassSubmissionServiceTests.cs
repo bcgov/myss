@@ -8,6 +8,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Api.Tests.TestSupport;
     using Myss.Data;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
@@ -337,13 +338,16 @@ namespace Myss.Api.Tests.Services
 
         private BusPassSubmissionService NewService(FormsDbContext db)
         {
+            var caller = new StubCurrentUserAccessor("test-subject");
             var forms = new FormsService(
                 NullLogger<FormsService>.Instance,
                 db,
                 _specProvider,
-                new StubCurrentUserAccessor("test-subject"),
+                caller,
                 new FakeErrorMessageProvider(),
-                new PinHasher());
+                new PinHasher(),
+                TestEmailVerification.NewService(db, caller, new FakeEmailProvider()),
+                TestFeatures.AllOn());
 
             return new BusPassSubmissionService(
                 NullLogger<BusPassSubmissionService>.Instance,

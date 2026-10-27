@@ -2,6 +2,8 @@ namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
     using Microsoft.EntityFrameworkCore;
+    using Microsoft.FeatureManagement;
+    using Myss.Api.Configuration;
     using Microsoft.Extensions.Logging.Abstractions;
     using Myss.Api.Data;
     using Myss.Api.Domain;
@@ -9,6 +11,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Api.Tests.TestSupport;
     using Myss.Data;
     using Myss.FormSpec;
     using Myss.FormSpec.Domain;
@@ -31,6 +34,8 @@ namespace Myss.Api.Tests.Services
         private readonly FakeFormSpecProvider _provider = new();
         private readonly FakeErrorMessageProvider _errorMessages = new();
         private readonly PinHasher _pinHasher = new();
+        private readonly FakeEmailProvider _email = new();
+        private IFeatureManager _features = TestFeatures.AllOn();
 
         [Fact]
         public async Task Submit_RefusedAnswers_AreWordedFromTheCatalogue_KeywordByKeyword()
@@ -313,6 +318,96 @@ namespace Myss.Api.Tests.Services
             Assert.Equal("augusta@example.com", profile.Email);
             Assert.Equal(new DateOnly(1815, 12, 10), profile.DateOfBirth);
             Assert.Equal(2, await db.FormSubmissions.CountAsync());
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationEmailsALinkToProveTheAddress()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+
+            await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Null(profile.EmailVerifiedAt);
+            Assert.NotNull(profile.EmailVerificationTokenHash);
+            Assert.Equal("ada@example.com", Assert.Single(_email.Sent).To);
+        }
+
+        [Fact]
+        public async Task Submit_RegisteringAgainWithANewAddressKeepsTheVerifiedOneUntilProven()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+            await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+            (await db.MyssUserProfiles.SingleAsync()).EmailVerifiedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+
+            await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"augusta@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync();
+            Assert.Equal("ada@example.com", profile.Email);
+            Assert.Equal("augusta@example.com", profile.PendingEmail);
+            Assert.Equal("augusta@example.com", _email.Sent[^1].To);
+        }
+
+        [Fact]
+        public async Task Submit_WithEmailVerificationOffRegistrationStoresTheAddressAndSendsNothing()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOnExcept(FeatureFlags.EmailVerification);
+
+            await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":" ada@example.com ","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync();
+            Assert.Equal("ada@example.com", profile.Email);
+            Assert.Null(profile.EmailVerificationTokenHash);
+            Assert.Empty(_email.Sent);
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationStoresAndEmailsTheTrimmedAddress()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+
+            await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"  ada@example.com  ","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.Equal("ada@example.com", (await db.MyssUserProfiles.SingleAsync()).Email);
+            Assert.Equal("ada@example.com", Assert.Single(_email.Sent).To);
+        }
+
+        [Fact]
+        public async Task Submit_ARegistrationStandsWhenTheVerificationEmailCannotBeSent()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _email.Unavailable = true;
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Single(await db.MyssUserProfiles.ToListAsync());
         }
 
         private const string RegistrationSpecV4 = """
@@ -704,13 +799,16 @@ namespace Myss.Api.Tests.Services
             FormsDbContext db,
             ICurrentUserAccessor? currentUserAccessor = null)
         {
+            ICurrentUserAccessor caller = currentUserAccessor ?? new StubCurrentUserAccessor("test-subject");
             return new FormsService(
                 NullLogger<FormsService>.Instance,
                 db,
                 _provider,
-                currentUserAccessor ?? new StubCurrentUserAccessor("test-subject"),
+                caller,
                 _errorMessages,
-                _pinHasher);
+                _pinHasher,
+                TestEmailVerification.NewService(db, caller, _email),
+                _features);
         }
 
             private sealed class AnonymousCurrentUserAccessor : ICurrentUserAccessor

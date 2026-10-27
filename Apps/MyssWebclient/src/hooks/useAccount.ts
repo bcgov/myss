@@ -2,24 +2,30 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   AccountRequestError,
+  cancelEmailChange,
+  changeEmail,
   getAccount,
   requestPinReset,
+  resendEmailVerification,
   resetPin,
   savePin,
   updateNotificationPreferences,
   updatePhones,
+  verifyEmail,
   type AccountPayload,
   type PhoneInput,
   type PinInput,
   type ResetPinInput,
 } from "@/api/account";
 
-// React-query hooks for the citizen's Account Info (MYSS-271), PIN (MYSS-258)
-// and PIN reset by email (MYSS-36). Raw fetches for now (see api/account.ts),
+// React-query hooks for the citizen's Account Info (MYSS-271), PIN (MYSS-258),
+// PIN reset by email (MYSS-36) and email change and verification (MYSS-305). Raw fetches for now (see api/account.ts),
 // so every signed-in call carries authHeaders() itself.
 
 export {
   AccountRequestError,
+  EMAIL_LINK_INVALID_KEYWORD,
+  EMAIL_TOO_SOON_KEYWORD,
   PIN_LOCKED_KEYWORD,
   PIN_RESET_LINK_INVALID_KEYWORD,
   PIN_RESET_TOO_SOON_KEYWORD,
@@ -97,4 +103,24 @@ export function useRequestPinReset() {
 /** Sets a new PIN from the emailed link. Anonymous; nothing to cache. */
 export function useResetPin() {
   return useMutation({ mutationFn: (input: ResetPinInput) => resetPin(input) });
+}
+
+/** Changes the caller's email address; the new one waits for its link. */
+export function useChangeEmail() {
+  return useAccountWrite((email: string) => changeEmail(email));
+}
+
+/** Emails a new link for the address waiting to be verified. */
+export function useResendEmailVerification() {
+  return useAccountWrite<void>(() => resendEmailVerification());
+}
+
+/** Drops a pending email change. */
+export function useCancelEmailChange() {
+  return useAccountWrite<void>(() => cancelEmailChange());
+}
+
+/** Follows an emailed verification link. Anonymous; nothing to cache. */
+export function useVerifyEmail() {
+  return useMutation({ mutationFn: (token: string) => verifyEmail(token) });
 }

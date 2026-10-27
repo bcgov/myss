@@ -19,6 +19,9 @@ export const paths = {
   // token is the credential. MyssApi builds the link from this path
   // (PinResetConfig.LinkPath), so change both together.
   pinReset: "/pin-reset",
+  // Where the emailed email-verification link lands (MYSS-305). Public, like
+  // pinReset; MyssApi builds the link from EmailVerificationConfig.LinkPath.
+  verifyEmail: "/verify-email",
   // Minimal standalone login harness. Deliberately independent of the home
   // page so home can keep changing without disturbing a known-good way to
   // exercise the auth flow end to end.

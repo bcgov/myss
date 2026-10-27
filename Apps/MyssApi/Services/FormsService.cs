@@ -11,6 +11,8 @@ namespace Myss.Api.Services
     using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging;
+    using Microsoft.FeatureManagement;
+    using Myss.Api.Configuration;
     using Myss.Api.Data;
     using Myss.Api.Domain;
     using Myss.Api.Models;
@@ -38,6 +40,8 @@ namespace Myss.Api.Services
         private readonly ICurrentUserAccessor _currentUserAccessor;
         private readonly IErrorMessageProvider _errorMessageProvider;
         private readonly IPinHasher _pinHasher;
+        private readonly IEmailVerificationService _emailVerification;
+        private readonly IFeatureManager _features;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -48,13 +52,17 @@ namespace Myss.Api.Services
         /// <param name="currentUserAccessor">Injected current user accessor.</param>
         /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
         /// <param name="pinHasher">Injected PIN hasher, for the PIN set at registration.</param>
+        /// <param name="emailVerification">Proves the email address given at registration (MYSS-305).</param>
+        /// <param name="features">The feature flags; registration proves its address only with EmailVerification on.</param>
         public FormsService(
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
             IFormSpecProvider formSpecProvider,
             ICurrentUserAccessor currentUserAccessor,
             IErrorMessageProvider errorMessageProvider,
-            IPinHasher pinHasher)
+            IPinHasher pinHasher,
+            IEmailVerificationService emailVerification,
+            IFeatureManager features)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -62,6 +70,8 @@ namespace Myss.Api.Services
             _currentUserAccessor = currentUserAccessor;
             _errorMessageProvider = errorMessageProvider;
             _pinHasher = pinHasher;
+            _emailVerification = emailVerification;
+            _features = features;
         }
 
         /// <inheritdoc/>
@@ -193,11 +203,25 @@ namespace Myss.Api.Services
             };
 
             _dbContext.FormSubmissions.Add(submission);
+            (MyssUserProfile Profile, Guid Token)? verification = null;
             if (IsRegistration(formSpecId))
             {
-                AddOrUpdateProfile(request.Answers, registrationPin is null ? null : _pinHasher.Hash(registrationPin));
+                bool verifyEmail = await _features.IsEnabledAsync(FeatureFlags.EmailVerification);
+                verification = AddOrUpdateProfile(
+                    request.Answers,
+                    registrationPin is null ? null : _pinHasher.Hash(registrationPin),
+                    verifyEmail);
             }
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            // The address from the form is proven by an emailed link (MYSS-305),
+            // sent once the profile, and the link's token, are saved. A failed
+            // send is logged and does not undo the registration: the citizen can
+            // resend from Account Info.
+            if (verification is { } sendLink)
+            {
+                await _emailVerification.SendIssuedLinkAsync(sendLink.Profile, sendLink.Token, cancellationToken);
+            }
 
             // Don't log the answers; they may contain PII.
             _logger.LogInformation(
@@ -212,7 +236,8 @@ namespace Myss.Api.Services
         private static bool IsRegistration(string formSpecId) =>
             string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase);
 
-        private void AddOrUpdateProfile(JsonElement answers, string? pinHash)
+        /// <returns>The profile and the token of a verification link to send once it is saved, or null.</returns>
+        private (MyssUserProfile Profile, Guid Token)? AddOrUpdateProfile(JsonElement answers, string? pinHash, bool verifyEmail)
         {
             CurrentUser currentUser = _currentUserAccessor.User;
             if (!currentUser.IsAuthenticated || string.IsNullOrWhiteSpace(currentUser.Subject))
@@ -223,7 +248,9 @@ namespace Myss.Api.Services
             string firstName = answers.GetProperty("firstName").GetString()!;
             string lastName = answers.GetProperty("lastName").GetString()!;
             string dateOfBirth = answers.GetProperty("dateOfBirth").GetString()!;
-            string email = answers.GetProperty("email").GetString()!;
+            // Trimmed as FormSpecValidator checked it, so no stray whitespace is
+            // stored or used as a recipient (MYSS-305).
+            string email = answers.GetProperty("email").GetString()!.Trim();
             string sin = answers.GetProperty("sin").GetString()!;
 
             // Optional at this layer: registration v2 and v3 did not ask for them,
@@ -260,13 +287,12 @@ namespace Myss.Api.Services
                 };
                 _dbContext.MyssUserProfiles.Add(profile);
                 AddRegistrationPhone(profile, phone);
-                return;
+                return WithVerification(profile, email, verifyEmail);
             }
 
             profile.FirstName = firstName;
             profile.LastName = lastName;
             profile.DateOfBirth = parsedDate;
-            profile.Email = email;
             profile.Sin = sin;
             // v2 and v3 are still published and do not ask for these, so an absent
             // answer means "not on this form", not "cleared": keep what v4 stored.
@@ -291,6 +317,26 @@ namespace Myss.Api.Services
             }
 
             profile.UpdatedAt = DateTimeOffset.UtcNow;
+
+            // Not assigned directly: a verified address stays in use until a
+            // different one from the form is proven, as on Account Info.
+            return WithVerification(profile, email, verifyEmail);
+        }
+
+        /// <summary>
+        /// With EmailVerification on, the address goes through verification
+        /// (MYSS-305). Off, it is stored as given, as before the feature: it
+        /// stays unverified, and is offered a link once the flag is turned on.
+        /// </summary>
+        private (MyssUserProfile Profile, Guid Token)? WithVerification(MyssUserProfile profile, string email, bool verifyEmail)
+        {
+            if (!verifyEmail)
+            {
+                profile.Email = email;
+                return null;
+            }
+
+            return _emailVerification.ApplyRegistrationEmail(profile, email) is { } token ? (profile, token) : null;
         }
 
         /// <summary>

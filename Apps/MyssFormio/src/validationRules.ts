@@ -55,8 +55,7 @@ export const DEFAULT_MESSAGES: Readonly<Record<string, string>> = {
   [RULE_KEYWORDS.emailInvalidFormat]:
     "Enter an email address in the format name@example.com.",
   [RULE_KEYWORDS.emailMismatch]: "The two email addresses do not match.",
-  [RULE_KEYWORDS.phoneInvalidFormat]:
-    "Phone number is invalid",
+  [RULE_KEYWORDS.phoneInvalidFormat]: "Phone number is invalid",
   [RULE_KEYWORDS.postalCodeInvalidFormat]:
     "Enter a postal code in the format A1A 1A1.",
   [RULE_KEYWORDS.dateInvalid]: "Enter a valid date.",
@@ -84,7 +83,6 @@ function passesLuhn(digits: string): boolean {
   return total % 10 === 0;
 }
 
-const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const POSTAL_CODE_PATTERN = /^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/;
 const ISO_DATE_PREFIX = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/;
 
@@ -108,8 +106,34 @@ const sin: ValidationRule = (value) => {
   return null;
 };
 
+/**
+ * The longest address mail can be delivered to (RFC 5321's 254). Mirrors
+ * EmailAddress.MaxLength in Myss.FormSpec, and keeps every accepted address
+ * inside the 320-character email columns.
+ */
+export const EMAIL_MAX_LENGTH = 254;
+
+/**
+ * The email rule on its own, for an address typed outside a Form.io form
+ * (Account Info's email change, MYSS-305). Mirrors Myss.FormSpec's
+ * EmailAddress, as the "email" rule below does.
+ */
+export function isEmailAddress(value: string): boolean {
+  // Checked step by step rather than with one regex: the pattern this replaces,
+  // /^[^@\s]+@[^@\s]+\.[^@\s]+$/, backtracks polynomially on input like
+  // "!@!.!.!.…" (CodeQL js/polynomial-redos). These steps accept exactly the
+  // addresses it did, in linear time.
+  const trimmed = value.trim();
+  if (trimmed.length > EMAIL_MAX_LENGTH || /\s/.test(trimmed)) return false;
+  const at = trimmed.indexOf("@");
+  if (at < 1 || at !== trimmed.lastIndexOf("@")) return false;
+  // A dot in the domain with something on both sides: "example.com", not
+  // ".com" or "example.".
+  return trimmed.slice(at + 2, -1).includes(".");
+}
+
 const email: ValidationRule = (value) =>
-  EMAIL_PATTERN.test(value.trim())
+  isEmailAddress(value)
     ? null
     : failure("email", RULE_KEYWORDS.emailInvalidFormat);
 

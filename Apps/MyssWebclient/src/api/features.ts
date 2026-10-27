@@ -8,6 +8,7 @@ import { API_URL } from "@/constants";
 /** Mirrors `FeatureFlags.All` in MyssApi; change both together. */
 export const FEATURE_NAMES = [
   "PinReset",
+  "EmailVerification",
   "EligibilityEstimator",
   "BusPass",
   "Notifications",

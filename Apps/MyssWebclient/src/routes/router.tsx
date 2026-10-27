@@ -11,6 +11,7 @@ import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
 import PinResetPage from "@/pages/PinResetPage";
+import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
@@ -66,6 +67,14 @@ export const router = createBrowserRouter([
         element: (
           <FeatureRoute feature="PinReset">
             <PinResetPage />
+          </FeatureRoute>
+        ),
+      },
+      {
+        path: paths.verifyEmail,
+        element: (
+          <FeatureRoute feature="EmailVerification">
+            <VerifyEmailPage />
           </FeatureRoute>
         ),
       },

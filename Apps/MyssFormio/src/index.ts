@@ -32,6 +32,13 @@ export {
   type TextPosition,
 } from "./specImport";
 
+// The email rule and its wording, for an address typed outside a form.
+export {
+  DEFAULT_MESSAGES as RULE_DEFAULT_MESSAGES,
+  RULE_KEYWORDS,
+  isEmailAddress,
+} from "./validationRules";
+
 // The phone number input, shared with the citizen app's own forms.
 export { default as PhoneInput } from "./PhoneInput";
 

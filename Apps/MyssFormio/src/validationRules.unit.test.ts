@@ -8,6 +8,7 @@ import {
   checkMatches,
   checkRule,
   DEFAULT_MESSAGES,
+  isEmailAddress,
   RULE_KEYWORDS,
   ruleMessage,
   VALIDATION_RULES,
@@ -34,10 +35,7 @@ interface ConfirmationVector {
 // fails there. The MyssContent seed test reads its
 // shared file the same way.
 function readShared<T>(file: string): T {
-  const url = new URL(
-    `../../../Shared/validation/${file}`,
-    import.meta.url,
-  );
+  const url = new URL(`../../../Shared/validation/${file}`, import.meta.url);
   return JSON.parse(readFileSync(fileURLToPath(url), "utf8")) as T;
 }
 
@@ -84,6 +82,18 @@ describeRule("email");
 describeRule("phone");
 describeRule("postalCode");
 describeRule("date");
+
+describe("isEmailAddress", () => {
+  it("answers at once on input that made the old pattern backtrack", () => {
+    // "!@!." then many "!." and a character that fails: quadratic for
+    // /^[^@\s]+@[^@\s]+\.[^@\s]+$/ (CodeQL js/polynomial-redos), linear now.
+    const input = `!@!.${"!.".repeat(50_000)}@`;
+    const started = performance.now();
+
+    expect(isEmailAddress(input)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+});
 
 describe("email confirmation", () => {
   const matching = vectors.emailConfirmation

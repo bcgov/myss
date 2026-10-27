@@ -106,6 +106,20 @@ namespace Myss.Api.Tests
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
+        [Fact(DisplayName = "the email verification link answers 404 when EmailVerification is off")]
+        public async Task EmailVerificationOffIsNotFound()
+        {
+            HttpClient client = this.CreateClient(new() { [FeatureFlags.EmailVerification] = "false" });
+
+            using var body = new StringContent(
+                """{"token":"0d7ad1a4-38d1-4a6e-9a0e-0f7c5bd3b2e1"}""",
+                System.Text.Encoding.UTF8,
+                "application/json");
+            HttpResponseMessage response = await client.PostAsync(new Uri("/v1/email-verification", UriKind.Relative), body);
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
         [Fact(DisplayName = "a flag that is not set is off")]
         public async Task UnsetFlagIsOff()
         {

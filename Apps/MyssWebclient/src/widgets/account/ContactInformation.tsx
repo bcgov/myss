@@ -23,12 +23,13 @@ import {
   type PhoneType,
 } from "@myss/formio/phone";
 import styles from "./ContactInformation.module.css";
+import EmailAddress from "./EmailAddress";
 import FieldErrorSummary from "./FieldErrorSummary";
 
 // Contact Information on Account Info (MYSS-271). Read-only until the citizen
 // chooses Edit; then the phone numbers can be changed, added and removed.
-// Email is shown but not editable (a separate story), and the mailing address
-// comes from MIS, so it is read-only too.
+// The email address has its own flow, with verification (EmailAddress,
+// MYSS-305), and the mailing address comes from MIS, so it is read-only.
 
 interface PhoneRow {
   /** Stable React key; rows can be removed from the middle. */
@@ -167,7 +168,8 @@ export default function ContactInformation({
                 error.errors.map((fieldError) => [
                   fieldError.field,
                   fieldError.keyword === "IDA.PHONE.INVALID_FORMAT"
-                    ? catalogueMessage(fieldError.keyword) ?? fieldError.message
+                    ? (catalogueMessage(fieldError.keyword) ??
+                      fieldError.message)
                     : fieldError.message,
                 ]),
               ),
@@ -198,7 +200,7 @@ export default function ContactInformation({
         </output>
       )}
 
-      <TextField label="Email Address" value={account.email} isReadOnly />
+      <EmailAddress account={account} />
 
       {isEditing ? (
         <form

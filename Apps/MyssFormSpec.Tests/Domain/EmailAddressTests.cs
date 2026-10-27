@@ -20,6 +20,20 @@ namespace Myss.FormSpec.Tests.Domain
         public static IEnumerable<object[]> Mismatching =>
             ValidationVectors.Confirmations("mismatching").Select(v => new object[] { v.Value, v.Confirmation });
 
+        [Fact]
+        public void TryCreate_AnswersAtOnceOnInputThatMadeTheOldPatternBacktrack()
+        {
+            // "!@!." then many "!." and a character that fails: quadratic for
+            // ^[^@\s]+@[^@\s]+\.[^@\s]+$ (CodeQL polynomial ReDoS), linear now.
+            string input = "!@!." + string.Concat(Enumerable.Repeat("!.", 50_000)) + "@";
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+
+            DomainValidationResult<EmailAddress> result = EmailAddress.TryCreate(input);
+
+            Assert.False(result.IsValid);
+            Assert.True(watch.ElapsedMilliseconds < 500, $"Took {watch.ElapsedMilliseconds} ms");
+        }
+
         [Theory]
         [MemberData(nameof(ValidVectors))]
         public void TryCreate_AcceptsEveryValidVector(string value, string _)

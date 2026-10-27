@@ -83,6 +83,17 @@ namespace Myss.Data
             profile.Property(p => p.PinResetTokenHash).HasColumnName("pin_reset_token_hash").HasMaxLength(64).IsConcurrencyToken();
             profile.Property(p => p.PinResetRequestedAt).HasColumnName("pin_reset_requested_at");
             profile.HasIndex(p => p.PinResetTokenHash).IsUnique();
+
+            // Email verification (MYSS-305), on the same pattern: the token as
+            // its hash, a concurrency token, indexed for the anonymous lookup.
+            profile.Property(p => p.EmailVerifiedAt).HasColumnName("email_verified_at");
+            profile.Property(p => p.PendingEmail).HasColumnName("pending_email").HasMaxLength(320);
+            profile.Property(p => p.EmailVerificationTokenHash)
+                .HasColumnName("email_verification_token_hash")
+                .HasMaxLength(64)
+                .IsConcurrencyToken();
+            profile.Property(p => p.EmailVerificationRequestedAt).HasColumnName("email_verification_requested_at");
+            profile.HasIndex(p => p.EmailVerificationTokenHash).IsUnique();
             profile.HasMany(p => p.Phones)
                 .WithOne()
                 .HasForeignKey(p => p.ProfileId)
