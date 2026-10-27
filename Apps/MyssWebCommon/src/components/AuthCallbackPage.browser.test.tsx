@@ -84,8 +84,14 @@ describe("AuthCallbackPage", () => {
   // error, and the page that asked offers the chooser itself.
   it("returns to the page that asked when sign-in was refused", async () => {
     auth.isLoading = false;
+    // The shape react-oidc-context reports: its own wrapper, with the
+    // oidc-client-ts ErrorResponse (and the request's state) inside.
     auth.error = Object.assign(new Error("login_required"), {
-      state: { returnTo: "/started-here" },
+      source: "signinCallback",
+      innerError: Object.assign(new Error("login_required"), {
+        error: "login_required",
+        state: { returnTo: "/started-here" },
+      }),
     });
 
     const screen = await renderCallback();
