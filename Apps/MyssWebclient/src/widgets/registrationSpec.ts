@@ -334,6 +334,20 @@ function displayValue(component: Component, value: unknown): string {
 }
 
 /**
+ * A label as plain text: tags removed, then any `<` or `>` left over, so a
+ * nested fragment such as `<scr<script>ipt>` cannot come back together as a
+ * tag (CodeQL js/incomplete-multi-character-sanitization). React renders the
+ * result as text and escapes it anyway; this keeps the function honest on its
+ * own.
+ */
+export function plainText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/[<>]/g, "")
+    .trim();
+}
+
+/**
  * The Step 3 review table: each answered input of the spec, in form order,
  * labelled as the form labels it and shown as the citizen would read it
  * (option labels, long dates, formatted phone and SIN). The consent is left
@@ -357,9 +371,7 @@ export function reviewRows(
     const value = displayValue(component, answers[key]);
     if (value === "") return;
     const label =
-      typeof component.label === "string"
-        ? component.label.replace(/<[^>]*>/g, "").trim()
-        : key;
+      typeof component.label === "string" ? plainText(component.label) : key;
     rows.push({ key, label, value });
   });
   return rows;

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatPhone,
   namesFrom,
+  plainText,
   prepareRegistrationSpec,
   reviewRows,
   splitRegistrationSpec,
@@ -383,5 +384,16 @@ describe("reviewRows", () => {
       { d: "1990-01-01" },
     );
     expect(row.value).toBe("January 1, 1990");
+  });
+});
+
+describe("plainText", () => {
+  it("drops tags", () => {
+    expect(plainText("<strong>Date</strong> of birth")).toBe("Date of birth");
+  });
+
+  it("cannot put a tag back together from nested fragments", () => {
+    const text = plainText("<scr<script>ipt>alert(1)</scr</script>ipt>");
+    expect(text).not.toMatch(/[<>]/);
   });
 });
