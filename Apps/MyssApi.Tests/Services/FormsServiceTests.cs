@@ -36,7 +36,9 @@ namespace Myss.Api.Tests.Services
         private readonly PinHasher _pinHasher = new();
         private readonly FakeEmailProvider _email = new();
         private readonly FakeContactMatchProvider _contactMatch = new();
-        private IFeatureManager _features = TestFeatures.AllOn();
+        // Off by default: these tests are about the form, not Step 2's email proof (MYSS-295),
+        // which the tests that need it switch on.
+        private IFeatureManager _features = TestFeatures.AllOnExcept(FeatureFlags.EmailVerification);
 
         [Fact]
         public async Task Submit_RefusedAnswers_AreWordedFromTheCatalogue_KeywordByKeyword()
@@ -401,44 +403,175 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public async Task Submit_RegistrationEmailsALinkToProveTheAddress()
+        public async Task Submit_WithEmailVerificationOn_AnAddressNotProvenInStep2IsRefused()
         {
             using FormsDbContext db = NewDb();
             _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOn();
 
-            await NewService(db).SubmitAsync(
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
                 "registration",
                 Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
                 CancellationToken.None);
 
-            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
-            Assert.Null(profile.EmailVerifiedAt);
-            Assert.NotNull(profile.EmailVerificationTokenHash);
-            Assert.Equal("ada@example.com", Assert.Single(_email.Sent).To);
+            Assert.False(result.IsValid);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("email", error.Field);
+            Assert.Equal(ValidationKeywords.RegistrationEmailNotVerified, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
         }
 
         [Fact]
-        public async Task Submit_RegisteringAgainWithANewAddressKeepsTheVerifiedOneUntilProven()
+        public async Task Submit_WithEmailVerificationOn_AProvenAddressRegistersVerified_AndSendsNothing()
         {
             using FormsDbContext db = NewDb();
             _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
-            FormsService service = NewService(db);
-            await service.SubmitAsync(
-                "registration",
-                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
-                CancellationToken.None);
-            (await db.MyssUserProfiles.SingleAsync()).EmailVerifiedAt = DateTimeOffset.UtcNow;
+            _features = TestFeatures.AllOn();
+            // Recent: a proof only counts within the registration session.
+            DateTimeOffset provenAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            db.RegistrationEmailVerifications.Add(new RegistrationEmailVerification
+            {
+                Subject = "test-subject",
+                Email = "ada@example.com",
+                RequestedAt = provenAt.AddMinutes(-5),
+                VerifiedAt = provenAt,
+            });
             await db.SaveChangesAsync();
 
-            await service.SubmitAsync(
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":" ADA@example.com ","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync();
+            Assert.Equal("ADA@example.com", profile.Email);
+            Assert.Equal(provenAt, profile.EmailVerifiedAt);
+            Assert.Null(profile.EmailVerificationTokenHash);
+            Assert.Empty(await db.RegistrationEmailVerifications.ToListAsync());
+            Assert.Empty(_email.Sent);
+        }
+
+        // Copilot review, MYSS-295: an account holder must not be able to swap
+        // their email through registration, skipping Account Info's pending
+        // change and the notice to the old address.
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AnAccountHolderCannotChangeTheirEmailThroughRegistration()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOn();
+            db.MyssUserProfiles.Add(new MyssUserProfile
+            {
+                Id = Guid.NewGuid(),
+                Subject = "test-subject",
+                FirstName = "Ada",
+                LastName = "Lovelace",
+                DateOfBirth = new DateOnly(1815, 12, 10),
+                Email = "ada@example.com",
+                Sin = "050082833",
+                EmailVerifiedAt = DateTimeOffset.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+
+            // However it got there: a row proving another address.
+            db.RegistrationEmailVerifications.Add(new RegistrationEmailVerification
+            {
+                Subject = "test-subject",
+                Email = "attacker@example.com",
+                RequestedAt = DateTimeOffset.UtcNow,
+                VerifiedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"attacker@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.Equal(ValidationKeywords.RegistrationEmailNotVerified, Assert.Single(result.Errors).Keyword);
+            Assert.Equal("ada@example.com", (await db.MyssUserProfiles.SingleAsync()).Email);
+        }
+
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AnAccountHolderMayRegisterAgainWithTheirOwnAddress()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            db.MyssUserProfiles.Add(new MyssUserProfile
+            {
+                Id = Guid.NewGuid(),
+                Subject = "test-subject",
+                FirstName = "Ada",
+                LastName = "Lovelace",
+                DateOfBirth = new DateOnly(1815, 12, 10),
+                Email = "ada@example.com",
+                Sin = "050082833",
+                EmailVerifiedAt = DateTimeOffset.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+            _features = TestFeatures.AllOn();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Augusta","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync();
+            Assert.Equal("Augusta", profile.FirstName);
+            Assert.Equal("ada@example.com", profile.Email);
+            Assert.NotNull(profile.EmailVerifiedAt);
+        }
+
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AnAddressOtherThanTheProvenOneIsRefused()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOn();
+            db.RegistrationEmailVerifications.Add(new RegistrationEmailVerification
+            {
+                Subject = "test-subject",
+                Email = "ada@example.com",
+                RequestedAt = DateTimeOffset.UtcNow,
+                VerifiedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
                 "registration",
                 Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"augusta@example.com","sin":"050082833"}"""),
                 CancellationToken.None);
 
-            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync();
-            Assert.Equal("ada@example.com", profile.Email);
-            Assert.Equal("augusta@example.com", profile.PendingEmail);
-            Assert.Equal("augusta@example.com", _email.Sent[^1].To);
+            Assert.Equal(ValidationKeywords.RegistrationEmailNotVerified, Assert.Single(result.Errors).Keyword);
+        }
+
+        // Copilot review, MYSS-295: the flag switched off mid-registration must
+        // not leave the registration's email proof behind.
+        [Fact]
+        public async Task Submit_WithEmailVerificationOff_ARegistrationStillDropsItsEmailProof()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            db.RegistrationEmailVerifications.Add(new RegistrationEmailVerification
+            {
+                Subject = "test-subject",
+                Email = "ada@example.com",
+                RequestedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Empty(await db.RegistrationEmailVerifications.ToListAsync());
         }
 
         [Fact]
@@ -459,36 +592,6 @@ namespace Myss.Api.Tests.Services
             Assert.Empty(_email.Sent);
         }
 
-        [Fact]
-        public async Task Submit_RegistrationStoresAndEmailsTheTrimmedAddress()
-        {
-            using FormsDbContext db = NewDb();
-            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
-
-            await NewService(db).SubmitAsync(
-                "registration",
-                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"  ada@example.com  ","sin":"050082833"}"""),
-                CancellationToken.None);
-
-            Assert.Equal("ada@example.com", (await db.MyssUserProfiles.SingleAsync()).Email);
-            Assert.Equal("ada@example.com", Assert.Single(_email.Sent).To);
-        }
-
-        [Fact]
-        public async Task Submit_ARegistrationStandsWhenTheVerificationEmailCannotBeSent()
-        {
-            using FormsDbContext db = NewDb();
-            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
-            _email.Unavailable = true;
-
-            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
-                "registration",
-                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
-                CancellationToken.None);
-
-            Assert.True(result.IsValid);
-            Assert.Single(await db.MyssUserProfiles.ToListAsync());
-        }
 
         private const string RegistrationSpecV4 = """
         {

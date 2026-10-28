@@ -277,6 +277,41 @@ namespace Myss.Api.Migrations
                     b.ToTable("myss_user_profiles", "forms");
                 });
 
+            modelBuilder.Entity("Myss.Data.RegistrationEmailVerification", b =>
+                {
+                    b.Property<string>("Subject")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.HasKey("Subject");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("registration_email_verifications", "forms");
+                });
+
             modelBuilder.Entity("Myss.Data.BusPassDispatchEvent", b =>
                 {
                     b.HasOne("Myss.Data.FormSubmission", null)

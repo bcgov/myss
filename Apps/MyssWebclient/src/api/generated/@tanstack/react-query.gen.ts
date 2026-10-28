@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { cancelAccountEmailChange, changeAccountEmail, createAfaApplication, createApplication, getAccount, getAfaApplication, getApplication, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormSpec, getMe, getPlaceholder, listAfaApplications, listApplications, listAttachments, type Options, requestPinReset, resendAccountEmailVerification, resetPin, saveAccountPin, saveApplicationAnswers, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment, verifyEmail } from '../sdk.gen';
-import type { CancelAccountEmailChangeData, CancelAccountEmailChangeError, CancelAccountEmailChangeResponse, ChangeAccountEmailData, ChangeAccountEmailError, ChangeAccountEmailResponse, CreateAfaApplicationData, CreateAfaApplicationError, CreateAfaApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetAfaApplicationData, GetAfaApplicationError, GetAfaApplicationResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, ListAfaApplicationsData, ListAfaApplicationsResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, RequestPinResetData, RequestPinResetError, RequestPinResetResponse, ResendAccountEmailVerificationData, ResendAccountEmailVerificationError, ResendAccountEmailVerificationResponse, ResetPinData, ResetPinError, ResetPinResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
+import { cancelAccountEmailChange, changeAccountEmail, createAfaApplication, createApplication, getAccount, getAfaApplication, getApplication, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFeatures, getFormSpec, getMe, getPlaceholder, getRegistrationEmailVerification, listAfaApplications, listApplications, listAttachments, type Options, requestPinReset, requestRegistrationEmailVerification, resendAccountEmailVerification, resetPin, saveAccountPin, saveApplicationAnswers, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment, verifyEmail } from '../sdk.gen';
+import type { CancelAccountEmailChangeData, CancelAccountEmailChangeError, CancelAccountEmailChangeResponse, ChangeAccountEmailData, ChangeAccountEmailError, ChangeAccountEmailResponse, CreateAfaApplicationData, CreateAfaApplicationError, CreateAfaApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetAfaApplicationData, GetAfaApplicationError, GetAfaApplicationResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFeaturesData, GetFeaturesResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetRegistrationEmailVerificationData, GetRegistrationEmailVerificationResponse, ListAfaApplicationsData, ListAfaApplicationsResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, RequestPinResetData, RequestPinResetError, RequestPinResetResponse, RequestRegistrationEmailVerificationData, RequestRegistrationEmailVerificationError, RequestRegistrationEmailVerificationResponse, ResendAccountEmailVerificationData, ResendAccountEmailVerificationError, ResendAccountEmailVerificationResponse, ResetPinData, ResetPinError, ResetPinResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -301,6 +301,45 @@ export const cancelAccountEmailChangeMutation = (options?: Partial<Options<Cance
 };
 
 /**
+ * Registration's Step 2 (MYSS-295): emails a link to prove the address
+ * from Step 1, before the profile exists. Any signed-in caller, as the
+ * registration submit is. An address already proven in this
+ * registration is not sent another link.
+ */
+export const requestRegistrationEmailVerificationMutation = (options?: Partial<Options<RequestRegistrationEmailVerificationData>>): UseMutationOptions<RequestRegistrationEmailVerificationResponse, RequestRegistrationEmailVerificationError, Options<RequestRegistrationEmailVerificationData>> => {
+    const mutationOptions: UseMutationOptions<RequestRegistrationEmailVerificationResponse, RequestRegistrationEmailVerificationError, Options<RequestRegistrationEmailVerificationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await requestRegistrationEmailVerification({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getRegistrationEmailVerificationQueryKey = (options?: Options<GetRegistrationEmailVerificationData>) => createQueryKey('getRegistrationEmailVerification', options);
+
+/**
+ * The address the caller's registration is proving, and whether its
+ * link has been followed: what Step 2's Continue checks (MYSS-295).
+ */
+export const getRegistrationEmailVerificationOptions = (options?: Options<GetRegistrationEmailVerificationData>) => queryOptions<GetRegistrationEmailVerificationResponse, DefaultError, GetRegistrationEmailVerificationResponse, ReturnType<typeof getRegistrationEmailVerificationQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getRegistrationEmailVerification({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getRegistrationEmailVerificationQueryKey(options)
+});
+
+/**
  * Follows an emailed verification link: a pending address becomes the
  * one in use, or the address from registration is marked verified.
  * Anonymous: the token in the body is the credential.
@@ -318,6 +357,24 @@ export const verifyEmailMutation = (options?: Partial<Options<VerifyEmailData>>)
     };
     return mutationOptions;
 };
+
+export const getFeaturesQueryKey = (options?: Options<GetFeaturesData>) => createQueryKey('getFeatures', options);
+
+/**
+ * Returns every feature flag and whether it is on.
+ */
+export const getFeaturesOptions = (options?: Options<GetFeaturesData>) => queryOptions<GetFeaturesResponse, DefaultError, GetFeaturesResponse, ReturnType<typeof getFeaturesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getFeatures({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getFeaturesQueryKey(options)
+});
 
 export const getFormSpecQueryKey = (options: Options<GetFormSpecData>) => createQueryKey('getFormSpec', options);
 

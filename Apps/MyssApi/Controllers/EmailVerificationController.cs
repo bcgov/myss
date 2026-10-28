@@ -38,6 +38,9 @@ namespace Myss.Api.Controllers
         /// <summary>A resend was asked for with no address waiting to be verified.</summary>
         public const string NothingToVerifyKeyword = "ACCOUNT.EMAIL.NOTHING_TO_VERIFY";
 
+        /// <summary>Registration's email step was asked for by someone who already has an account.</summary>
+        public const string ProfileExistsKeyword = "ACCOUNT.EMAIL.PROFILE_EXISTS";
+
         /// <summary>The emailed link is unknown, already used, replaced, or expired.</summary>
         public const string LinkInvalidKeyword = "ACCOUNT.EMAIL.LINK_INVALID";
 
@@ -125,6 +128,58 @@ namespace Myss.Api.Controllers
         }
 
         /// <summary>
+        /// Registration's Step 2 (MYSS-295): emails a link to prove the address
+        /// from Step 1, before the profile exists. Citizens only (the Client
+        /// policy, which a citizen sign-in has before registering): a worker or
+        /// admin sign-in cannot send these emails. An address already proven in
+        /// this registration is not sent another link.
+        /// </summary>
+        /// <param name="request">The address from Step 1.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpPost("registration/email-verification-requests")]
+        [Authorize(Policy = MyssPolicies.Client)]
+        [Produces("application/json")]
+        [EndpointName("RequestRegistrationEmailVerification")]
+        [ProducesResponseType(typeof(BaseResponseModel<RegistrationEmailModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ValidationErrorModel>>), StatusCodes.Status422UnprocessableEntity)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+        public async Task<ActionResult<BaseResponseModel<RegistrationEmailModel>>> RequestRegistrationEmail(
+            [FromBody] ChangeEmailRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            EmailVerificationResultModel result =
+                await _emailVerificationService.RequestRegistrationEmailAsync(request, cancellationToken);
+            if (result.Outcome != EmailVerificationOutcome.Ok)
+            {
+                return Refusal(result);
+            }
+
+            return await RegistrationEmail(cancellationToken);
+        }
+
+        /// <summary>
+        /// The address the caller's registration is proving, and whether its
+        /// link has been followed: what Step 2's Continue checks (MYSS-295).
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpGet("registration/email-verification")]
+        [Authorize(Policy = MyssPolicies.Client)]
+        [Produces("application/json")]
+        [EndpointName("GetRegistrationEmailVerification")]
+        [ProducesResponseType(typeof(BaseResponseModel<RegistrationEmailModel>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<BaseResponseModel<RegistrationEmailModel>>> RegistrationEmail(
+            CancellationToken cancellationToken)
+        {
+            return new BaseResponseModel<RegistrationEmailModel>
+            {
+                Payload = await _emailVerificationService.GetRegistrationEmailAsync(cancellationToken),
+                DatetimeRequested = DateTime.Now,
+            };
+        }
+
+        /// <summary>
         /// Follows an emailed verification link: a pending address becomes the
         /// one in use, or the address from registration is marked verified.
         /// Anonymous: the token in the body is the credential.
@@ -204,6 +259,14 @@ namespace Myss.Api.Controllers
                             title: "There is no email address to verify.",
                             detail: "Your email address is already verified."),
                         NothingToVerifyKeyword);
+
+                case EmailVerificationOutcome.ProfileExists:
+                    return Keyed(
+                        Problem(
+                            statusCode: StatusCodes.Status409Conflict,
+                            title: "You already have an account.",
+                            detail: "Change your email address on Account Info."),
+                        ProfileExistsKeyword);
 
                 case EmailVerificationOutcome.LinkInvalid:
                     return Keyed(

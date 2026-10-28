@@ -1,0 +1,20 @@
+/* Step 2 in the form's column, its actions above the same rule as Step 1's. */
+.step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+    max-width: 52rem;
+}
+
+.step h2 {
+    margin: 0;
+}
+
+.actions {
+    border-top: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+    padding-top: var(--layout-padding-medium);
+}

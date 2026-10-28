@@ -134,6 +134,41 @@ namespace Myss.Api.Tests
             Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("payload").GetProperty("pendingEmail").ValueKind);
         }
 
+        // Copilot review, MYSS-295: registration is a citizen flow; a worker
+        // or admin sign-in must not be able to send these emails.
+        [Fact]
+        public async Task AWorkerCannotAskForARegistrationLink()
+        {
+            var email = new FakeEmailProvider();
+            using IntakeTestHost host = NewHost(registered: [], email: email);
+
+            using HttpResponseMessage response = await host.Send(
+                "worker",
+                HttpMethod.Post,
+                "/v1/registration/email-verification-requests",
+                Body("someone@example.com"));
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.Empty(email.Sent);
+        }
+
+        [Fact]
+        public async Task AnAccountHolderAskingForARegistrationLinkIs409()
+        {
+            var email = new FakeEmailProvider();
+            using IntakeTestHost host = NewHost(registered: ["alice"], email: email);
+
+            using HttpResponseMessage response = await host.Send(
+                "alice",
+                HttpMethod.Post,
+                "/v1/registration/email-verification-requests",
+                Body("someone@example.com"));
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal(EmailVerificationController.ProfileExistsKeyword, await Keyword(response));
+            Assert.Empty(email.Sent);
+        }
+
         [Fact]
         public async Task AnEmailThatCannotBeSentIs503()
         {
