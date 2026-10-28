@@ -12,7 +12,7 @@ import { ME_QUERY_KEY } from "@/auth/useMe";
 import {
   AccountRequestError,
   EMAIL_TOO_SOON_KEYWORD,
-  REGISTRATION_EMAIL_QUERY_KEY,
+  registrationEmailQueryKey,
   useRequestRegistrationEmail,
   type RegistrationEmail,
 } from "@/hooks/useAccount";
@@ -80,6 +80,8 @@ interface RegistrationFormProps {
   requirePin?: boolean;
   /** How the citizen signed in, for the first line of the steps. */
   signedInWith?: string;
+  /** The signed-in subject, which scopes the cached Step 2 status. */
+  subject?: string;
   /** Called once the API has accepted the registration. */
   onRegistered: () => void;
   onCancel: () => void;
@@ -99,13 +101,14 @@ export default function RegistrationForm({
   identity,
   requirePin = false,
   signedInWith = "BCeID",
+  subject = "",
   onRegistered,
   onCancel,
 }: RegistrationFormProps) {
   const queryClient = useQueryClient();
   const { data: spec, error, isPending } = useFormSpec(FORM_SPEC_ID);
   const submit = useSubmitForm(FORM_SPEC_ID);
-  const requestEmail = useRequestRegistrationEmail();
+  const requestEmail = useRequestRegistrationEmail(subject);
   // undefined while the flags load: Continue waits for them, so Step 1 never
   // asks for a link the API has switched off (and answers 404 for). A flag
   // that cannot be read counts as on, as useFeature says.
@@ -224,9 +227,21 @@ export default function RegistrationForm({
     formRef.current = instance;
   }, []);
 
+  // Complete registration waits for the consent form: pressed before it is
+  // ready, the consent could not be asked for, and must not be skipped.
+  const [consentReady, setConsentReady] = useState(false);
   const handleConsentReady = useCallback((instance: Webform) => {
     consentFormRef.current = instance;
+    setConsentReady(true);
   }, []);
+
+  // The consent form goes when Step 3 does; so does the hold on it.
+  useEffect(() => {
+    if (step !== "review") {
+      consentFormRef.current = null;
+      setConsentReady(false);
+    }
+  }, [step]);
 
   /** Step 1's Continue: Form.io checks the answers, then onInfoSubmit runs. */
   const handleContinue = useCallback(() => {
@@ -251,7 +266,7 @@ export default function RegistrationForm({
 
       const address = typeof data.email === "string" ? data.email.trim() : "";
       const known = queryClient.getQueryData<RegistrationEmail>(
-        REGISTRATION_EMAIL_QUERY_KEY,
+        registrationEmailQueryKey(subject),
       );
       requestEmail.mutate(address, {
         // Already proven in this registration (AC6): straight to the review.
@@ -291,7 +306,7 @@ export default function RegistrationForm({
         },
       });
     },
-    [clientValidation, goTo, queryClient, requestEmail],
+    [clientValidation, goTo, queryClient, requestEmail, subject],
   );
 
   /** Step 3's Complete registration: the PIN and the consent, then the API. */
@@ -308,6 +323,10 @@ export default function RegistrationForm({
       setPinErrors(byField(found));
     }
     const consentForm = consentFormRef.current;
+    if (parts?.consent && !consentForm) {
+      // Not ready yet (the button waits for it too): never send without it.
+      return;
+    }
     if (consentForm) {
       // Rejects while the consent is unchecked; the message is on it already.
       void consentForm.submit().catch(() => undefined);
@@ -558,6 +577,7 @@ export default function RegistrationForm({
       {step === "verify" && (
         <VerifyEmailStep
           email={typeof answers.email === "string" ? answers.email.trim() : ""}
+          subject={subject}
           onBack={() => goTo("info")}
           onVerified={() => goTo("review")}
         />
@@ -608,7 +628,7 @@ export default function RegistrationForm({
             <Button
               variant="primary"
               onPress={handleComplete}
-              isDisabled={submit.isPending}
+              isDisabled={submit.isPending || (Boolean(parts?.consent) && !consentReady)}
             >
               Complete registration
             </Button>

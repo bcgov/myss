@@ -131,13 +131,22 @@ export function useVerifyEmail() {
 export const REGISTRATION_EMAIL_QUERY_KEY = ["registration-email"] as const;
 
 /**
+ * The Step 2 status cache key, scoped by the signed-in subject as meQueryKey
+ * is, so one sign-in never reads another's address or verification state from
+ * the app-wide cache.
+ */
+export function registrationEmailQueryKey(subject: string) {
+  return [...REGISTRATION_EMAIL_QUERY_KEY, subject] as const;
+}
+
+/**
  * Registration's Step 2 status (MYSS-295). Read again when the citizen comes
  * back to the tab, so it shows the address as verified once they have
  * followed the link elsewhere; Continue still checks it afresh.
  */
-export function useRegistrationEmail(enabled: boolean) {
+export function useRegistrationEmail(subject: string, enabled: boolean) {
   return useQuery({
-    queryKey: REGISTRATION_EMAIL_QUERY_KEY,
+    queryKey: registrationEmailQueryKey(subject),
     queryFn: getRegistrationEmail,
     enabled,
     refetchOnWindowFocus: true,
@@ -146,12 +155,12 @@ export function useRegistrationEmail(enabled: boolean) {
 }
 
 /** Emails the registration link; the status it answers with goes in the cache. */
-export function useRequestRegistrationEmail() {
+export function useRequestRegistrationEmail(subject: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (email: string) => requestRegistrationEmail(email),
     onSuccess: (status) => {
-      queryClient.setQueryData(REGISTRATION_EMAIL_QUERY_KEY, status);
+      queryClient.setQueryData(registrationEmailQueryKey(subject), status);
     },
   });
 }

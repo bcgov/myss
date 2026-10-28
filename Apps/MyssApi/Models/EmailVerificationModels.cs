@@ -58,6 +58,12 @@ namespace Myss.Api.Models
         /// <summary>A resend was asked for with no address waiting to be verified.</summary>
         NothingToVerify,
 
+        /// <summary>
+        /// Registration's email step was asked for by a caller who already has an
+        /// account: their address changes on Account Info, with its safeguards.
+        /// </summary>
+        ProfileExists,
+
         /// <summary>The link is unknown, already used, replaced, or expired.</summary>
         LinkInvalid,
     }

@@ -38,6 +38,9 @@ namespace Myss.Api.Controllers
         /// <summary>A resend was asked for with no address waiting to be verified.</summary>
         public const string NothingToVerifyKeyword = "ACCOUNT.EMAIL.NOTHING_TO_VERIFY";
 
+        /// <summary>Registration's email step was asked for by someone who already has an account.</summary>
+        public const string ProfileExistsKeyword = "ACCOUNT.EMAIL.PROFILE_EXISTS";
+
         /// <summary>The emailed link is unknown, already used, replaced, or expired.</summary>
         public const string LinkInvalidKeyword = "ACCOUNT.EMAIL.LINK_INVALID";
 
@@ -126,17 +129,19 @@ namespace Myss.Api.Controllers
 
         /// <summary>
         /// Registration's Step 2 (MYSS-295): emails a link to prove the address
-        /// from Step 1, before the profile exists. Any signed-in caller, as the
-        /// registration submit is. An address already proven in this
-        /// registration is not sent another link.
+        /// from Step 1, before the profile exists. Citizens only (the Client
+        /// policy, which a citizen sign-in has before registering): a worker or
+        /// admin sign-in cannot send these emails. An address already proven in
+        /// this registration is not sent another link.
         /// </summary>
         /// <param name="request">The address from Step 1.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpPost("registration/email-verification-requests")]
-        [Authorize]
+        [Authorize(Policy = MyssPolicies.Client)]
         [Produces("application/json")]
         [EndpointName("RequestRegistrationEmailVerification")]
         [ProducesResponseType(typeof(BaseResponseModel<RegistrationEmailModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
         [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ValidationErrorModel>>), StatusCodes.Status422UnprocessableEntity)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
@@ -160,7 +165,7 @@ namespace Myss.Api.Controllers
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         [HttpGet("registration/email-verification")]
-        [Authorize]
+        [Authorize(Policy = MyssPolicies.Client)]
         [Produces("application/json")]
         [EndpointName("GetRegistrationEmailVerification")]
         [ProducesResponseType(typeof(BaseResponseModel<RegistrationEmailModel>), StatusCodes.Status200OK)]
@@ -254,6 +259,14 @@ namespace Myss.Api.Controllers
                             title: "There is no email address to verify.",
                             detail: "Your email address is already verified."),
                         NothingToVerifyKeyword);
+
+                case EmailVerificationOutcome.ProfileExists:
+                    return Keyed(
+                        Problem(
+                            statusCode: StatusCodes.Status409Conflict,
+                            title: "You already have an account.",
+                            detail: "Change your email address on Account Info."),
+                        ProfileExistsKeyword);
 
                 case EmailVerificationOutcome.LinkInvalid:
                     return Keyed(

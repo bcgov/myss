@@ -243,6 +243,11 @@ namespace Myss.Api.Services
                     registrationPin is null ? null : _pinHasher.Hash(registrationPin),
                     verifyEmail ? emailVerifiedAt : null,
                     cancellationToken);
+
+                // The registration's email proof has done its job, or, with the
+                // flag switched off mid-registration, never will: it goes with
+                // this save either way (MYSS-295).
+                await _emailVerification.ForgetRegistrationEmailAsync(cancellationToken);
             }
             await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -360,7 +365,13 @@ namespace Myss.Api.Services
 
             profile.UpdatedAt = DateTimeOffset.UtcNow;
 
-            ApplyEmail(profile, email, emailVerifiedAt);
+            // With EmailVerification on, an existing account's address is only
+            // ever its own verified one here (checked before saving), so there
+            // is nothing to change; Account Info changes it. Off, as before.
+            if (emailVerifiedAt is null)
+            {
+                ApplyEmail(profile, email, emailVerifiedAt: null);
+            }
         }
 
         /// <summary>

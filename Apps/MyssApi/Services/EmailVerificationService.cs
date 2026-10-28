@@ -1,7 +1,9 @@
 namespace Myss.Api.Services
 {
     using System;
+    using System.Collections.Generic;
     using System.Globalization;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
@@ -230,12 +232,24 @@ namespace Myss.Api.Services
 
             string email = address.Value!.Value;
             string subject = OwnSubject();
+
+            // Registration's address proof is only for someone without an
+            // account. An account holder's address changes on Account Info,
+            // where the old address stays in use until the new one is proven and
+            // is told when it goes; letting this path prove an address for them
+            // would let a resubmitted registration skip all of that.
+            if (await _dbContext.MyssUserProfiles.AnyAsync(p => p.Subject == subject, cancellationToken))
+            {
+                return EmailVerificationResultModel.Refused(EmailVerificationOutcome.ProfileExists);
+            }
+
             RegistrationEmailVerification? row = await _dbContext.RegistrationEmailVerifications
                 .SingleOrDefaultAsync(r => r.Subject == subject, cancellationToken);
             DateTimeOffset now = _timeProvider.GetUtcNow();
 
-            // Already proven in this registration (AC6): nothing to send.
-            if (row is { VerifiedAt: not null } && SameAddress(email, row.Email))
+            // Already proven in this registration (AC6): nothing to send. Only
+            // within the registration session; an older proof is proven afresh.
+            if (IsFreshProof(row, now) && SameAddress(email, row!.Email))
             {
                 return EmailVerificationResultModel.Done;
             }
@@ -295,10 +309,21 @@ namespace Myss.Api.Services
         public async Task<RegistrationEmailModel> GetRegistrationEmailAsync(CancellationToken cancellationToken)
         {
             string subject = OwnSubject();
+
+            // Nothing for an account holder: registration's proof is not theirs to use.
+            if (await _dbContext.MyssUserProfiles.AnyAsync(p => p.Subject == subject, cancellationToken))
+            {
+                return new RegistrationEmailModel { Email = null, Verified = false };
+            }
+
             RegistrationEmailVerification? row = await _dbContext.RegistrationEmailVerifications
                 .AsNoTracking()
                 .SingleOrDefaultAsync(r => r.Subject == subject, cancellationToken);
-            return new RegistrationEmailModel { Email = row?.Email, Verified = row?.VerifiedAt is not null };
+            return new RegistrationEmailModel
+            {
+                Email = row?.Email,
+                Verified = IsFreshProof(row, _timeProvider.GetUtcNow()),
+            };
         }
 
         /// <inheritdoc/>
@@ -306,10 +331,75 @@ namespace Myss.Api.Services
         {
             ArgumentNullException.ThrowIfNull(email);
             string subject = OwnSubject();
+
+            // An account holder registering again can only keep the verified
+            // address the account already has; a different one is changed on
+            // Account Info, never through registration.
+            MyssUserProfile? profile = await _dbContext.MyssUserProfiles
+                .AsNoTracking()
+                .SingleOrDefaultAsync(p => p.Subject == subject, cancellationToken);
+            if (profile is not null)
+            {
+                return profile.EmailVerifiedAt is { } profileVerifiedAt && SameAddress(email, profile.Email)
+                    ? profileVerifiedAt
+                    : null;
+            }
+
             RegistrationEmailVerification? row = await _dbContext.RegistrationEmailVerifications
                 .SingleOrDefaultAsync(r => r.Subject == subject, cancellationToken);
-            return row is { VerifiedAt: { } verifiedAt } && SameAddress(email, row.Email) ? verifiedAt : null;
+            return IsFreshProof(row, _timeProvider.GetUtcNow()) && SameAddress(email, row!.Email)
+                ? row.VerifiedAt
+                : null;
         }
+
+        /// <inheritdoc/>
+        public async Task ForgetRegistrationEmailAsync(CancellationToken cancellationToken)
+        {
+            string subject = OwnSubject();
+            RegistrationEmailVerification? row = await _dbContext.RegistrationEmailVerifications
+                .FindAsync([subject], cancellationToken);
+            if (row is not null)
+            {
+                _dbContext.RegistrationEmailVerifications.Remove(row);
+            }
+        }
+
+        /// <summary>
+        /// Deletes the registration proofs no registration can use any more:
+        /// every row whose link, or whose proof, is older than the link's
+        /// lifetime (the registration session, AC6). The retention for this
+        /// table (MYSS-295, PII inventory): a completed registration deletes its
+        /// row at once, an abandoned one is gone within a lifetime and the
+        /// purge interval.
+        /// </summary>
+        /// <param name="dbContext">The forms context.</param>
+        /// <param name="now">The current time.</param>
+        /// <param name="lifetime">The link's lifetime.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>How many rows were deleted.</returns>
+        public static async Task<int> PurgeStaleRegistrationEmailsAsync(
+            FormsDbContext dbContext,
+            DateTimeOffset now,
+            TimeSpan lifetime,
+            CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(dbContext);
+            DateTimeOffset cutoff = now - lifetime;
+            List<RegistrationEmailVerification> stale = await dbContext.RegistrationEmailVerifications
+                .Where(r => (r.VerifiedAt ?? r.RequestedAt) <= cutoff)
+                .ToListAsync(cancellationToken);
+            dbContext.RegistrationEmailVerifications.RemoveRange(stale);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return stale.Count;
+        }
+
+        /// <summary>
+        /// A registration proof still within the registration session: verified,
+        /// and less than a link's lifetime ago. An older one says nothing about
+        /// the citizen registering now.
+        /// </summary>
+        private bool IsFreshProof(RegistrationEmailVerification? row, DateTimeOffset now) =>
+            row is { VerifiedAt: { } verifiedAt } && now < verifiedAt + _config.TokenLifetime;
 
         /// <inheritdoc/>
         public void ApplyVerifiedRegistrationEmail(MyssUserProfile profile, string email, DateTimeOffset verifiedAt)
@@ -324,12 +414,6 @@ namespace Myss.Api.Services
             profile.PendingEmail = null;
             profile.EmailVerificationTokenHash = null;
             profile.EmailVerificationRequestedAt = null;
-
-            // Its job is done; removed in the caller's save, with the profile.
-            if (_dbContext.RegistrationEmailVerifications.Find(profile.Subject) is { } row)
-            {
-                _dbContext.RegistrationEmailVerifications.Remove(row);
-            }
         }
 
         /// <summary>

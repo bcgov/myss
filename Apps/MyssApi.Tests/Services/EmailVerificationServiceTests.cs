@@ -336,6 +336,92 @@ namespace Myss.Api.Tests.Services
             Assert.Empty(_email.Sent);
         }
 
+        // Copilot review, MYSS-295: a proof is for the registration session it
+        // was made in (AC6), not for ever.
+        [Fact]
+        public async Task AProofOlderThanTheSessionCountsForNothing_AndANewLinkIsSent()
+        {
+            await RequestRegistration(Current);
+            await Verify(_email.LastVerificationToken());
+            _clock.Advance(TimeSpan.FromMinutes(60));
+
+            Assert.False((await RegistrationStatus()).Verified);
+            using (var db = new InMemoryFormsDbContext(_options))
+            {
+                Assert.Null(await NewService(db).RegistrationEmailVerifiedAtAsync(Current, CancellationToken.None));
+            }
+
+            EmailVerificationResultModel result = await RequestRegistration(Current);
+
+            Assert.Equal(EmailVerificationOutcome.Ok, result.Outcome);
+            Assert.Equal(2, _email.Sent.Count);
+        }
+
+        [Fact]
+        public async Task ThePurgeDeletesProofsOlderThanTheSession_AndKeepsTheRest()
+        {
+            DateTimeOffset now = _clock.GetUtcNow();
+            using (var db = new InMemoryFormsDbContext(_options))
+            {
+                db.RegistrationEmailVerifications.AddRange(
+                    new RegistrationEmailVerification { Subject = "abandoned-unverified", Email = "a@example.com", RequestedAt = now.AddMinutes(-61) },
+                    new RegistrationEmailVerification { Subject = "abandoned-verified", Email = "b@example.com", RequestedAt = now.AddMinutes(-90), VerifiedAt = now.AddMinutes(-61) },
+                    new RegistrationEmailVerification { Subject = "in-progress", Email = "c@example.com", RequestedAt = now.AddMinutes(-90), VerifiedAt = now.AddMinutes(-5) },
+                    new RegistrationEmailVerification { Subject = "just-sent", Email = "d@example.com", RequestedAt = now.AddMinutes(-1) });
+                await db.SaveChangesAsync();
+            }
+
+            int deleted;
+            using (var db = new InMemoryFormsDbContext(_options))
+            {
+                deleted = await EmailVerificationService.PurgeStaleRegistrationEmailsAsync(
+                    db, now, _config.TokenLifetime, CancellationToken.None);
+            }
+
+            Assert.Equal(2, deleted);
+            using var check = new InMemoryFormsDbContext(_options);
+            Assert.Equal(
+                ["in-progress", "just-sent"],
+                (await check.RegistrationEmailVerifications.Select(r => r.Subject).ToListAsync()).Order());
+        }
+
+        [Fact]
+        public async Task AnAccountHolderCannotAskForARegistrationLink()
+        {
+            await Seed(verified: true);
+
+            EmailVerificationResultModel result = await RequestRegistration(Next);
+
+            Assert.Equal(EmailVerificationOutcome.ProfileExists, result.Outcome);
+            Assert.Empty(_email.Sent);
+            using var db = new InMemoryFormsDbContext(_options);
+            Assert.Empty(await db.RegistrationEmailVerifications.ToListAsync());
+        }
+
+        [Fact]
+        public async Task AnAccountHolderHasNoRegistrationStatus()
+        {
+            await Seed(verified: true);
+            await SeedRegistrationRow(Next, verified: true);
+
+            RegistrationEmailModel status = await RegistrationStatus();
+
+            Assert.Null(status.Email);
+            Assert.False(status.Verified);
+        }
+
+        [Fact]
+        public async Task ForAnAccountHolderOnlyTheirOwnVerifiedAddressCountsAsProven()
+        {
+            await Seed(verified: true);
+            await SeedRegistrationRow(Next, verified: true);
+
+            using var db = new InMemoryFormsDbContext(_options);
+            EmailVerificationService service = NewService(db);
+            Assert.NotNull(await service.RegistrationEmailVerifiedAtAsync(Current, CancellationToken.None));
+            Assert.Null(await service.RegistrationEmailVerifiedAtAsync(Next, CancellationToken.None));
+        }
+
         [Fact]
         public async Task RegistrationStep2EmailsALinkBeforeAnyProfileExists()
         {
@@ -452,6 +538,7 @@ namespace Myss.Api.Tests.Services
                 MyssUserProfile profile = NewProfile(verifiedAt: null);
                 db.MyssUserProfiles.Add(profile);
                 service.ApplyVerifiedRegistrationEmail(profile, Current, provenAt);
+                await service.ForgetRegistrationEmailAsync(CancellationToken.None);
                 await db.SaveChangesAsync();
             }
 
@@ -500,6 +587,20 @@ namespace Myss.Api.Tests.Services
             return await NewService(db).RequestRegistrationEmailAsync(
                 new ChangeEmailRequestModel { Email = address },
                 CancellationToken.None);
+        }
+
+        /// <summary>A registration row as if proven earlier, however it got there.</summary>
+        private async Task SeedRegistrationRow(string address, bool verified)
+        {
+            using var db = new InMemoryFormsDbContext(_options);
+            db.RegistrationEmailVerifications.Add(new RegistrationEmailVerification
+            {
+                Subject = Subject,
+                Email = address,
+                RequestedAt = _clock.GetUtcNow(),
+                VerifiedAt = verified ? _clock.GetUtcNow() : null,
+            });
+            await db.SaveChangesAsync();
         }
 
         private async Task<RegistrationEmailModel> RegistrationStatus()

@@ -23,16 +23,19 @@ function sameAddress(a?: string | null, b?: string | null): boolean {
 
 export default function VerifyEmailStep({
   email,
+  subject,
   onBack,
   onVerified,
 }: Readonly<{
   /** The address from Step 1, the one the link was sent to. */
   email: string;
+  /** The signed-in subject, which scopes the cached status. */
+  subject: string;
   onBack: () => void;
   onVerified: () => void;
 }>) {
-  const status = useRegistrationEmail(isEmailAddress(email));
-  const resend = useRequestRegistrationEmail();
+  const status = useRegistrationEmail(subject, isEmailAddress(email));
+  const resend = useRequestRegistrationEmail(subject);
   const [notYet, setNotYet] = useState(false);
   const [checking, setChecking] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);

@@ -81,12 +81,21 @@ namespace Myss.Api.Services
 
         /// <summary>
         /// Puts an address proven during registration on the profile being saved,
-        /// as verified, and drops its registration record. Saves nothing; the
-        /// caller saves the profile.
+        /// as verified. Saves nothing; the caller saves the profile, and drops the
+        /// registration record with <see cref="ForgetRegistrationEmailAsync"/>.
         /// </summary>
         /// <param name="profile">The profile, tracked by the caller's context.</param>
         /// <param name="email">The proven address.</param>
         /// <param name="verifiedAt">When it was proven.</param>
         void ApplyVerifiedRegistrationEmail(MyssUserProfile profile, string email, DateTimeOffset verifiedAt);
+
+        /// <summary>
+        /// Drops the caller's registration proof, if any, in the caller's next
+        /// save. Called on every completed registration, with EmailVerification
+        /// on or off, so no proof outlives the registration it was for.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task.</returns>
+        Task ForgetRegistrationEmailAsync(CancellationToken cancellationToken);
     }
 }
