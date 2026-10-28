@@ -35,6 +35,7 @@ namespace Myss.Api.Tests.Services
         private readonly FakeErrorMessageProvider _errorMessages = new();
         private readonly PinHasher _pinHasher = new();
         private readonly FakeEmailProvider _email = new();
+        private readonly FakeContactMatchProvider _contactMatch = new();
         // Off by default: these tests are about the form, not Step 2's email proof (MYSS-295),
         // which the tests that need it switch on.
         private IFeatureManager _features = TestFeatures.AllOnExcept(FeatureFlags.EmailVerification);
@@ -320,6 +321,85 @@ namespace Myss.Api.Tests.Services
             Assert.Equal("augusta@example.com", profile.Email);
             Assert.Equal(new DateOnly(1815, 12, 10), profile.DateOfBirth);
             Assert.Equal(2, await db.FormSubmissions.CountAsync());
+        }
+
+        [Fact]
+        public async Task Submit_ANewRegistrationIsMatchedAgainstIcmContacts_OnTheIdentityAttributes()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":" ada@example.com ","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            ContactMatchCriteria criteria = Assert.Single(_contactMatch.Calls);
+            Assert.Equal(
+                new ContactMatchCriteria("Ada", "Lovelace", new DateOnly(1815, 12, 10), "ada@example.com", "050082833"),
+                criteria);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.NotNull(profile.IcmContactMatchedAt);
+        }
+
+        [Fact]
+        public async Task Submit_ANewRegistrationWithNoIcmMatchIsStillCreated_WithoutAMatchTime()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _contactMatch.Result = new ContactMatchResult(IsMatch: false);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Null(profile.IcmContactMatchedAt);
+        }
+
+        [Fact]
+        public async Task Submit_UpdatingAnExistingProfileDoesNotMatchAgain()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+            const string answers = """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}""";
+
+            await service.SubmitAsync("registration", Request(3, answers), CancellationToken.None);
+            await service.SubmitAsync("registration", Request(3, answers), CancellationToken.None);
+
+            Assert.Single(_contactMatch.Calls);
+        }
+
+        [Fact]
+        public async Task Submit_ARefusedRegistrationIsNotMatched()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"not-a-date","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.Empty(_contactMatch.Calls);
+        }
+
+        [Fact]
+        public async Task HardcodedContactMatch_AlwaysFindsAMatch()
+        {
+            ContactMatchResult result = await new HardcodedContactMatchProvider().MatchAsync(
+                new ContactMatchCriteria("Ada", "Lovelace", new DateOnly(1815, 12, 10), "ada@example.com", "050082833"),
+                CancellationToken.None);
+
+            Assert.True(result.IsMatch);
         }
 
         [Fact]
@@ -811,7 +891,8 @@ namespace Myss.Api.Tests.Services
                 _errorMessages,
                 _pinHasher,
                 TestEmailVerification.NewService(db, caller, _email),
-                _features);
+                _features,
+                _contactMatch);
         }
 
             private sealed class AnonymousCurrentUserAccessor : ICurrentUserAccessor

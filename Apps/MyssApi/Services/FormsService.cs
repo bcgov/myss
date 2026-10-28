@@ -42,6 +42,7 @@ namespace Myss.Api.Services
         private readonly IPinHasher _pinHasher;
         private readonly IEmailVerificationService _emailVerification;
         private readonly IFeatureManager _features;
+        private readonly IContactMatchProvider _contactMatch;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -54,6 +55,7 @@ namespace Myss.Api.Services
         /// <param name="pinHasher">Injected PIN hasher, for the PIN set at registration.</param>
         /// <param name="emailVerification">Proves the email address given at registration (MYSS-305).</param>
         /// <param name="features">The feature flags; registration proves its address only with EmailVerification on.</param>
+        /// <param name="contactMatch">Matches a new registrant against ICM's contacts.</param>
         public FormsService(
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
@@ -62,7 +64,8 @@ namespace Myss.Api.Services
             IErrorMessageProvider errorMessageProvider,
             IPinHasher pinHasher,
             IEmailVerificationService emailVerification,
-            IFeatureManager features)
+            IFeatureManager features,
+            IContactMatchProvider contactMatch)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -72,6 +75,7 @@ namespace Myss.Api.Services
             _pinHasher = pinHasher;
             _emailVerification = emailVerification;
             _features = features;
+            _contactMatch = contactMatch;
         }
 
         /// <inheritdoc/>
@@ -234,10 +238,11 @@ namespace Myss.Api.Services
             _dbContext.FormSubmissions.Add(submission);
             if (IsRegistration(formSpecId))
             {
-                AddOrUpdateProfile(
+                await AddOrUpdateProfileAsync(
                     request.Answers,
                     registrationPin is null ? null : _pinHasher.Hash(registrationPin),
-                    verifyEmail ? emailVerifiedAt : null);
+                    verifyEmail ? emailVerifiedAt : null,
+                    cancellationToken);
             }
             await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -257,7 +262,12 @@ namespace Myss.Api.Services
         /// <param name="answers">The registration answers.</param>
         /// <param name="pinHash">The new PIN's hash, or null to keep the profile's.</param>
         /// <param name="emailVerifiedAt">When the address was proven in Step 2, or null with EmailVerification off.</param>
-        private void AddOrUpdateProfile(JsonElement answers, string? pinHash, DateTimeOffset? emailVerifiedAt)
+        /// <param name="cancellationToken">Cancellation token.</param>
+        private async Task AddOrUpdateProfileAsync(
+            JsonElement answers,
+            string? pinHash,
+            DateTimeOffset? emailVerifiedAt,
+            CancellationToken cancellationToken)
         {
             CurrentUser currentUser = _currentUserAccessor.User;
             if (!currentUser.IsAuthenticated || string.IsNullOrWhiteSpace(currentUser.Subject))
@@ -285,11 +295,21 @@ namespace Myss.Api.Services
 
             _ = TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate);
 
-            MyssUserProfile? profile = _dbContext.MyssUserProfiles
+            MyssUserProfile? profile = await _dbContext.MyssUserProfiles
                 .Include(p => p.Phones)
-                .SingleOrDefault(p => p.Subject == currentUser.Subject);
+                .SingleOrDefaultAsync(p => p.Subject == currentUser.Subject, cancellationToken);
             if (profile is null)
             {
+                // A new registrant is matched against ICM's contacts. For the
+                // MVP the match is hardcoded to succeed: the citizen is taken to
+                // be known to ICM, so no ICM contact is created here.
+                ContactMatchResult match = await _contactMatch.MatchAsync(
+                    new ContactMatchCriteria(firstName, lastName, parsedDate, email, sin),
+                    cancellationToken);
+
+                // The outcome only; the criteria are PII.
+                _logger.LogInformation("ICM contact match for a new registration: {IsMatch}", match.IsMatch);
+
                 profile = new MyssUserProfile
                 {
                     Id = Guid.NewGuid(),
@@ -302,6 +322,7 @@ namespace Myss.Api.Services
                     Phone = phone,
                     Gender = gender,
                     PinHash = pinHash,
+                    IcmContactMatchedAt = match.IsMatch ? DateTimeOffset.UtcNow : null,
                     CreatedAt = DateTimeOffset.UtcNow,
                     UpdatedAt = DateTimeOffset.UtcNow,
                 };

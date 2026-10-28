@@ -195,6 +195,10 @@ namespace Myss.Api.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("gender");
 
+                    b.Property<DateTimeOffset?>("IcmContactMatchedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("icm_contact_matched_at");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(200)
