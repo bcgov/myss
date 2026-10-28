@@ -141,8 +141,12 @@ namespace Myss.Api.Tests
 
             using HttpResponseMessage response = await host.Send("alice", HttpMethod.Put, ChangeEmail, Body("alice.new@example.com"));
 
+            // A field error on the address, in the 422 shape the webclient reads.
             Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-            Assert.Equal(EmailVerificationController.AddressRejectedKeyword, await Keyword(response));
+            using JsonDocument body = await Json(response);
+            JsonElement error = Assert.Single(body.RootElement.GetProperty("payload").EnumerateArray());
+            Assert.Equal("email", error.GetProperty("field").GetString());
+            Assert.Equal(ValidationKeywords.EmailAddressRejected, error.GetProperty("keyword").GetString());
         }
 
         [Fact]

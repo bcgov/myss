@@ -7,6 +7,7 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Data;
+    using Myss.FormSpec;
     using Myss.FormSpec.Domain;
 
     /// <summary>
@@ -297,11 +298,31 @@ namespace Myss.Api.Tests.Services
             EmailVerificationResultModel first = await Change(Next);
             EmailVerificationResultModel second = await Change(Next);
 
-            Assert.Equal(EmailVerificationOutcome.AddressRejected, first.Outcome);
-            Assert.Equal(EmailVerificationOutcome.AddressRejected, second.Outcome);
+            // A field error on the address, the shape the webclient reads.
+            Assert.Equal(EmailVerificationOutcome.Invalid, first.Outcome);
+            ValidationErrorModel error = Assert.Single(first.Errors);
+            Assert.Equal("email", error.Field);
+            Assert.Equal(ValidationKeywords.EmailAddressRejected, error.Keyword);
+            Assert.Equal(EmailVerificationOutcome.Invalid, second.Outcome);
             MyssUserProfile profile = await Profile();
             Assert.Equal(Current, profile.Email);
             Assert.Null(profile.PendingEmail);
+        }
+
+        // Copilot review, MYSS-326: a send that may have reached the service
+        // (a timeout) must not take back a link that may be in the inbox.
+        [Fact]
+        public async Task ASendThatMayHaveGoneOutKeepsItsLink()
+        {
+            await Seed(verified: true);
+            _email.TimesOut = true;
+
+            EmailVerificationResultModel result = await Change(Next);
+
+            Assert.Equal(EmailVerificationOutcome.EmailNotSent, result.Outcome);
+            MyssUserProfile profile = await Profile();
+            Assert.Equal(Next, profile.PendingEmail);
+            Assert.NotNull(profile.EmailVerificationTokenHash);
         }
 
         [Fact]

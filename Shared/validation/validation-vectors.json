@@ -83,6 +83,9 @@
       },
       { "value": "a@b.co" },
       { "value": "ada@my-example.gov.bc.ca", "note": "hyphens inside a domain label" },
+      { "value": "ada@bücher.ca", "note": "a letter outside ASCII, as an internationalised domain is typed" },
+      { "value": "ada@𝒜.com", "note": "a letter outside the basic plane: both mirrors read whole characters" },
+      { "value": "ada@b².co", "note": "a number that is not a decimal digit: both mirrors use the Unicode number category" },
       { "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com", "note": "254 characters, the longest accepted" },
       {
         "value": "  ada@example.com  ",

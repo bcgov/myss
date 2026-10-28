@@ -70,22 +70,51 @@ namespace Myss.Api.Tests.Providers
             Assert.Contains(((int)status).ToString(System.Globalization.CultureInfo.InvariantCulture), ex.Message, StringComparison.Ordinal);
         }
 
-        [Fact]
-        public async Task AnAcceptanceWithoutAnIdIsNotSent()
+        // Copilot review, MYSS-326: once Notify has accepted the message, an
+        // answer without an id does not make it unsent.
+        [Theory]
+        [InlineData("{}")]
+        [InlineData("not json")]
+        public async Task AnAcceptanceWithoutAReadableIdStillCountsAsSent(string body)
         {
-            var handler = new CapturingHandler(HttpStatusCode.Accepted, "{}");
+            var handler = new CapturingHandler(HttpStatusCode.Accepted, body);
 
-            await Assert.ThrowsAsync<EmailNotSentException>(
-                () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+            string id = await NewProvider(handler).SendAsync(Message, CancellationToken.None);
+
+            Assert.Equal(string.Empty, id);
         }
 
         [Fact]
-        public async Task AnUnreachableNotifyIsNotSent()
+        public async Task AnUnreachableNotifyIsCertainlyNotSent()
         {
-            var handler = new CapturingHandler(new HttpRequestException("connection refused"));
+            var handler = new CapturingHandler(new HttpRequestException(HttpRequestError.ConnectionError, "connection refused"));
 
-            await Assert.ThrowsAsync<EmailNotSentException>(
+            EmailNotSentException ex = await Assert.ThrowsAsync<EmailNotSentException>(
                 () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+
+            Assert.False(ex.MayHaveBeenSent);
+        }
+
+        [Fact]
+        public async Task AConnectionLostMidRequestMayHaveBeenSent()
+        {
+            var handler = new CapturingHandler(new HttpRequestException(HttpRequestError.ResponseEnded, "response ended"));
+
+            EmailNotSentException ex = await Assert.ThrowsAsync<EmailNotSentException>(
+                () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+
+            Assert.True(ex.MayHaveBeenSent);
+        }
+
+        [Fact]
+        public async Task ATimeoutMayHaveBeenSent()
+        {
+            var handler = new CapturingHandler(new TaskCanceledException("timed out"));
+
+            EmailNotSentException ex = await Assert.ThrowsAsync<EmailNotSentException>(
+                () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+
+            Assert.True(ex.MayHaveBeenSent);
         }
 
         [Theory]

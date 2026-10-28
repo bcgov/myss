@@ -82,11 +82,17 @@ namespace Myss.Api.Providers
             }
             catch (HttpRequestException ex)
             {
-                throw new EmailNotSentException("Notify could not be reached.", ex);
+                // No connection, no name, no TLS: the request never left. Any
+                // other failure may have come after Notify had it.
+                bool neverLeft = ex.HttpRequestError
+                    is HttpRequestError.ConnectionError
+                    or HttpRequestError.NameResolutionError
+                    or HttpRequestError.SecureConnectionError;
+                throw new EmailNotSentException("Notify could not be reached.", ex) { MayHaveBeenSent = !neverLeft };
             }
             catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
-                throw new EmailNotSentException("Notify did not answer in time.", ex);
+                throw new EmailNotSentException("Notify did not answer in time.", ex) { MayHaveBeenSent = true };
             }
 
             using (response)
@@ -106,9 +112,12 @@ namespace Myss.Api.Providers
                     };
                 }
 
-                string? notifyId;
-                string? status;
-                bool duplicate;
+                // Past this point Notify has accepted the message: a reply that
+                // cannot be read does not make it unsent (MYSS-326), so it is
+                // logged and the send counts, with no id to trace it by.
+                string? notifyId = null;
+                string? status = null;
+                bool duplicate = false;
                 try
                 {
                     await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -122,12 +131,13 @@ namespace Myss.Api.Providers
                 }
                 catch (JsonException ex)
                 {
-                    throw new EmailNotSentException("Notify accepted the message but its answer could not be read.", ex);
+                    _logger.LogWarning(ex, "Notify accepted an email but its answer could not be read");
                 }
 
                 if (string.IsNullOrWhiteSpace(notifyId))
                 {
-                    throw new EmailNotSentException("Notify's answer carried no notifyId.");
+                    _logger.LogWarning("Notify accepted an email without a notifyId");
+                    return string.Empty;
                 }
 
                 _logger.LogInformation(

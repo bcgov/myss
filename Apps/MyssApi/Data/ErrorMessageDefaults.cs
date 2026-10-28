@@ -52,6 +52,7 @@ namespace Myss.Api.Data
                 ["IDA.PIN.MISMATCH"] = "The two PINs do not match.",
                 ["ACCOUNT.PIN.INCORRECT"] = "The current PIN is not correct.",
                 ["ACCOUNT.PIN.NOT_AVAILABLE"] = "A PIN is only used when you sign in with Basic BCeID.",
+                ["ACCOUNT.EMAIL.ADDRESS_REJECTED"] = "We could not send an email to that address. Check it and try again.",
                 ["BUSPASS.REQUEST.TYPE_INVALID"] = "Select a valid service type",
                 ["BUSPASS.IDENTITY.IDENTIFIER_REQUIRED"] = "A Social Insurance Number or bus pass account number is required",
                 ["BUSPASS.DOB.INVALID"] = "Enter a valid date of birth",

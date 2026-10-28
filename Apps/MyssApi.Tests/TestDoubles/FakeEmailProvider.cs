@@ -20,9 +20,20 @@ namespace Myss.Api.Tests.TestDoubles
         /// </summary>
         public bool RejectRecipient { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether every send fails as a
+        /// timeout would: the message may have reached the service (MYSS-326).
+        /// </summary>
+        public bool TimesOut { get; set; }
+
         /// <inheritdoc/>
         public Task<string> SendAsync(EmailMessage message, CancellationToken cancellationToken)
         {
+            if (TimesOut)
+            {
+                throw new EmailNotSentException("Fake email service did not answer in time.") { MayHaveBeenSent = true };
+            }
+
             if (RejectRecipient)
             {
                 throw new EmailNotSentException("Fake email service refused the address.") { RecipientRejected = true };

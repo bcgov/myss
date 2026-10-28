@@ -96,5 +96,8 @@ namespace Myss.FormSpec.Domain
 
         /// <summary>A PIN was sent for a sign-in that does not use one (only Basic BCeID does).</summary>
         public const string PinNotAvailable = "ACCOUNT.PIN.NOT_AVAILABLE";
+
+        /// <summary>The email service refused an address the citizen changed to (MYSS-326).</summary>
+        public const string EmailAddressRejected = "ACCOUNT.EMAIL.ADDRESS_REJECTED";
     }
 }

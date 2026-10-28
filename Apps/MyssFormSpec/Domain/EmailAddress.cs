@@ -2,6 +2,7 @@ namespace Myss.FormSpec.Domain
 {
     using System;
     using System.Linq;
+    using System.Text;
     using System.Text.RegularExpressions;
 
     /// <summary>
@@ -98,15 +99,18 @@ namespace Myss.FormSpec.Domain
         }
 
         /// <summary>
-        /// One label of a domain name: 1 to 63 letters, digits or hyphens, not
-        /// starting or ending with a hyphen. Letters and digits in any script.
-        /// Mirrors <c>isDomainLabel</c> in <c>@myss/formio</c>.
+        /// One label of a domain name: 1 to 63 UTF-16 units of letters, numbers
+        /// or hyphens, not starting or ending with a hyphen, in any script.
+        /// Checked by whole character (<see cref="Rune"/>), with the categories
+        /// JavaScript's <c>\p{L}</c> and <c>\p{N}</c> use, so it agrees with
+        /// <c>isDomainLabel</c> in <c>@myss/formio</c> on characters outside the
+        /// basic plane and on numbers that are not decimal digits.
         /// </summary>
         private static bool IsDomainLabel(string label) =>
             label.Length is >= 1 and <= 63
             && label[0] != '-'
             && label[^1] != '-'
-            && label.All(c => char.IsLetterOrDigit(c) || c == '-');
+            && label.EnumerateRunes().All(r => Rune.IsLetter(r) || Rune.IsNumber(r) || r.Value == '-');
 
         [GeneratedRegex(@"\s", RegexOptions.CultureInvariant)]
         private static partial Regex Whitespace();
