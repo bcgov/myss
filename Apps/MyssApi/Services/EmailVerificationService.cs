@@ -245,7 +245,18 @@ namespace Myss.Api.Services
         }
 
         /// <inheritdoc/>
-        public async Task<bool> SendIssuedLinkAsync(MyssUserProfile profile, Guid token, CancellationToken cancellationToken)
+        public async Task<bool> SendIssuedLinkAsync(MyssUserProfile profile, Guid token, CancellationToken cancellationToken) =>
+            await TrySendLinkAsync(profile, token, cancellationToken) == EmailVerificationOutcome.Ok;
+
+        /// <summary>
+        /// Sends the link for an issued token, and says how it went: Ok,
+        /// AddressRejected when the email service refused the address itself,
+        /// or EmailNotSent for anything else. Logged, not thrown.
+        /// </summary>
+        private async Task<EmailVerificationOutcome> TrySendLinkAsync(
+            MyssUserProfile profile,
+            Guid token,
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(profile);
             try
@@ -255,11 +266,11 @@ namespace Myss.Api.Services
             catch (EmailNotSentException ex)
             {
                 _logger.LogError(ex, "Email verification link for profile {ProfileId} was not sent", profile.Id);
-                return false;
+                return ex.RecipientRejected ? EmailVerificationOutcome.AddressRejected : EmailVerificationOutcome.EmailNotSent;
             }
 
             _logger.LogInformation("Sent an email verification link for profile {ProfileId}", profile.Id);
-            return true;
+            return EmailVerificationOutcome.Ok;
         }
 
         /// <summary>
@@ -373,15 +384,37 @@ namespace Myss.Api.Services
                 return EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
             }
 
+            // What the request changes, kept so a link that cannot be sent can
+            // be taken back (MYSS-326).
+            var before = (profile.Email, profile.PendingEmail, profile.EmailVerificationTokenHash, profile.EmailVerificationRequestedAt, profile.UpdatedAt);
+
             next.Apply?.Invoke(profile);
             Guid token = Issue(profile)!.Value;
 
             // Saved before sending, so the link works the moment it arrives.
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return await SendIssuedLinkAsync(profile, token, cancellationToken)
-                ? EmailVerificationResultModel.Done
-                : EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
+            EmailVerificationOutcome sent = await TrySendLinkAsync(profile, token, cancellationToken);
+            if (sent == EmailVerificationOutcome.Ok)
+            {
+                return EmailVerificationResultModel.Done;
+            }
+
+            // Nothing went out, so nothing changes (MYSS-326): the address in
+            // use, any earlier pending change and its link are as they were, and
+            // no cooldown starts on an email that was never sent. Otherwise the
+            // next try would be told an email had just been sent.
+            (profile.Email, profile.PendingEmail, profile.EmailVerificationTokenHash, profile.EmailVerificationRequestedAt, profile.UpdatedAt) = before;
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Another request wrote since; what it wrote stands.
+            }
+
+            return EmailVerificationResultModel.Refused(sent);
         }
 
         private async Task<MyssUserProfile?> FindOwnProfileAsync(CancellationToken cancellationToken)

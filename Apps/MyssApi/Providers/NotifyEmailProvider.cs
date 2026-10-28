@@ -95,8 +95,15 @@ namespace Myss.Api.Providers
                 // echo the recipient address back.
                 if (response.StatusCode != HttpStatusCode.Accepted && response.StatusCode != HttpStatusCode.OK)
                 {
+                    // 400 and 422 are Notify's answer to a request it will not
+                    // take, which for a plain send is the address; 401, 403 and
+                    // 429 are our key or our rate, and 5xx is Notify itself.
                     throw new EmailNotSentException(
-                        $"Notify refused the message ({(int)response.StatusCode}).");
+                        $"Notify refused the message ({(int)response.StatusCode}).")
+                    {
+                        RecipientRejected = response.StatusCode
+                            is HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity,
+                    };
                 }
 
                 string? notifyId;

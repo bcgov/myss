@@ -35,6 +35,9 @@ namespace Myss.Api.Controllers
         /// <summary>The verification email could not be sent.</summary>
         public const string EmailNotSentKeyword = "ACCOUNT.EMAIL.NOT_SENT";
 
+        /// <summary>The email service refused the address itself (MYSS-326).</summary>
+        public const string AddressRejectedKeyword = "ACCOUNT.EMAIL.ADDRESS_REJECTED";
+
         /// <summary>A resend was asked for with no address waiting to be verified.</summary>
         public const string NothingToVerifyKeyword = "ACCOUNT.EMAIL.NOTHING_TO_VERIFY";
 
@@ -196,6 +199,14 @@ namespace Myss.Api.Controllers
                             title: "The verification email could not be sent.",
                             detail: "Try again in a few minutes."),
                         EmailNotSentKeyword);
+
+                case EmailVerificationOutcome.AddressRejected:
+                    return Keyed(
+                        Problem(
+                            statusCode: StatusCodes.Status422UnprocessableEntity,
+                            title: "The email address was refused.",
+                            detail: "We could not send an email to that address. Check it and try again."),
+                        AddressRejectedKeyword);
 
                 case EmailVerificationOutcome.NothingToVerify:
                     return Keyed(

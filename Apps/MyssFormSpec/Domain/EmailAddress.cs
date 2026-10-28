@@ -1,6 +1,7 @@
 namespace Myss.FormSpec.Domain
 {
     using System;
+    using System.Linq;
     using System.Text.RegularExpressions;
 
     /// <summary>
@@ -69,13 +70,11 @@ namespace Myss.FormSpec.Domain
                 StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
-        /// One <c>@</c> with something before it, no whitespace, and a dot in the
-        /// domain with something on both sides. Checked step by step rather than
-        /// with the single pattern it replaces,
-        /// <c>^[^@\s]+@[^@\s]+\.[^@\s]+$</c>, which backtracks polynomially on
-        /// input like <c>!@!.!.!.…</c> (CodeQL polynomial ReDoS). These steps
-        /// accept exactly the addresses it did, in linear time; the TypeScript
-        /// mirror is <c>isEmailAddress</c> in <c>@myss/formio</c>.
+        /// One <c>@</c> with something before it, no whitespace, and a domain of
+        /// two or more labels (<see cref="IsDomainLabel"/>). Checked step by step
+        /// rather than with one pattern, which backtracks polynomially on input
+        /// like <c>!@!.!.!.…</c> (CodeQL polynomial ReDoS); every step is linear.
+        /// The TypeScript mirror is <c>isEmailAddress</c> in <c>@myss/formio</c>.
         /// </summary>
         private static bool IsPlausible(string trimmed)
         {
@@ -90,11 +89,24 @@ namespace Myss.FormSpec.Domain
                 return false;
             }
 
-            // The dot may not be the domain's first or last character.
-            int start = at + 2;
-            int end = trimmed.Length - 1;
-            return start < end && trimmed.IndexOf('.', start, end - start) >= 0;
+            // The local part stays permissive (it is the mailbox's business),
+            // but the domain must be a domain: two or more labels of letters,
+            // digits and hyphens (MYSS-326: "gov.bc.ca&&&&" was accepted, and
+            // only the email service refused it).
+            string[] labels = trimmed[(at + 1)..].Split('.');
+            return labels.Length >= 2 && labels.All(IsDomainLabel);
         }
+
+        /// <summary>
+        /// One label of a domain name: 1 to 63 letters, digits or hyphens, not
+        /// starting or ending with a hyphen. Letters and digits in any script.
+        /// Mirrors <c>isDomainLabel</c> in <c>@myss/formio</c>.
+        /// </summary>
+        private static bool IsDomainLabel(string label) =>
+            label.Length is >= 1 and <= 63
+            && label[0] != '-'
+            && label[^1] != '-'
+            && label.All(c => char.IsLetterOrDigit(c) || c == '-');
 
         [GeneratedRegex(@"\s", RegexOptions.CultureInvariant)]
         private static partial Regex Whitespace();

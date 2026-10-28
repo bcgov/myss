@@ -59,5 +59,13 @@ namespace Myss.Api.Providers
             : base(message, innerException)
         {
         }
+
+        /// <summary>
+        /// Gets a value indicating whether the sending service refused the
+        /// recipient's address itself (MYSS-326), rather than being unreachable
+        /// or misconfigured: asking again later will not help, a different
+        /// address might.
+        /// </summary>
+        public bool RecipientRejected { get; init; }
     }
 }

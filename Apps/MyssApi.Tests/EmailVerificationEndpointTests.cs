@@ -135,6 +135,17 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
+        public async Task AnAddressTheEmailServiceRefusesIs422WithItsKeyword()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"], email: new FakeEmailProvider { RejectRecipient = true });
+
+            using HttpResponseMessage response = await host.Send("alice", HttpMethod.Put, ChangeEmail, Body("alice.new@example.com"));
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            Assert.Equal(EmailVerificationController.AddressRejectedKeyword, await Keyword(response));
+        }
+
+        [Fact]
         public async Task AnEmailThatCannotBeSentIs503()
         {
             using IntakeTestHost host = NewHost(registered: ["alice"], email: new FakeEmailProvider { Unavailable = true });

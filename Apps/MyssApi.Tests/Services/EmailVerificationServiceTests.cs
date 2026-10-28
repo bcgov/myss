@@ -268,7 +268,9 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public async Task AnEmailThatCannotBeSentIsReported_AndCanBeResentAfterTheCooldown()
+        // MYSS-326: a link that could not be sent changes nothing and starts no
+        // cooldown, so the next try is not told an email had just gone out.
+        public async Task AnEmailThatCannotBeSentChangesNothing_AndCanBeTriedAgainAtOnce()
         {
             await Seed(verified: true);
             _email.Unavailable = true;
@@ -276,11 +278,71 @@ namespace Myss.Api.Tests.Services
             EmailVerificationResultModel result = await Change(Next);
 
             Assert.Equal(EmailVerificationOutcome.EmailNotSent, result.Outcome);
-            Assert.Equal(Next, (await Profile()).PendingEmail);
+            MyssUserProfile profile = await Profile();
+            Assert.Null(profile.PendingEmail);
+            Assert.Null(profile.EmailVerificationTokenHash);
+            Assert.Null(profile.EmailVerificationRequestedAt);
 
             _email.Unavailable = false;
+            Assert.Equal(EmailVerificationOutcome.Ok, (await Change(Next)).Outcome);
+            Assert.Equal(Next, (await Profile()).PendingEmail);
+        }
+
+        [Fact]
+        public async Task AnAddressTheEmailServiceRefusesIsReportedAsSuch_AndChangesNothing()
+        {
+            await Seed(verified: true);
+            _email.RejectRecipient = true;
+
+            EmailVerificationResultModel first = await Change(Next);
+            EmailVerificationResultModel second = await Change(Next);
+
+            Assert.Equal(EmailVerificationOutcome.AddressRejected, first.Outcome);
+            Assert.Equal(EmailVerificationOutcome.AddressRejected, second.Outcome);
+            MyssUserProfile profile = await Profile();
+            Assert.Equal(Current, profile.Email);
+            Assert.Null(profile.PendingEmail);
+        }
+
+        [Fact]
+        public async Task AFailedSendLeavesAnEarlierPendingChangeAndItsLinkAsTheyWere()
+        {
+            await Seed(verified: true);
+            await Change(Next);
+            string earlier = _email.LastVerificationToken();
             _clock.Advance(TimeSpan.FromSeconds(60));
-            Assert.Equal(EmailVerificationOutcome.Ok, (await Resend()).Outcome);
+            _email.Unavailable = true;
+
+            await Change("someone@example.com");
+
+            Assert.Equal(Next, (await Profile()).PendingEmail);
+            _email.Unavailable = false;
+            Assert.Equal(EmailVerificationOutcome.Ok, (await Verify(earlier)).Outcome);
+        }
+
+        [Fact]
+        public async Task AFailedSendLeavesAnUnverifiedAddressAsItWas()
+        {
+            await Seed(verified: false);
+            _email.Unavailable = true;
+
+            await Change(Next);
+
+            Assert.Equal(Current, (await Profile()).Email);
+        }
+
+        [Theory]
+        [InlineData("neetu.chaturvedi@gov.bc.ca&&&&")]
+        [InlineData("ada@exa_mple.com")]
+        public async Task AnAddressWithSymbolsInItsDomainIsAFieldError_AndNothingIsSent(string address)
+        {
+            await Seed(verified: true);
+
+            EmailVerificationResultModel result = await Change(address);
+
+            Assert.Equal(EmailVerificationOutcome.Invalid, result.Outcome);
+            Assert.Equal("email", Assert.Single(result.Errors).Field);
+            Assert.Empty(_email.Sent);
         }
 
         [Fact]

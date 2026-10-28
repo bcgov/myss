@@ -43,6 +43,12 @@ namespace Myss.Api.Models
         /// <summary>The email could not be sent; nothing the citizen did wrong.</summary>
         EmailNotSent,
 
+        /// <summary>
+        /// The email service refused the address itself (MYSS-326): the citizen
+        /// should check it, not wait and try again.
+        /// </summary>
+        AddressRejected,
+
         /// <summary>A resend was asked for with no address waiting to be verified.</summary>
         NothingToVerify,
 

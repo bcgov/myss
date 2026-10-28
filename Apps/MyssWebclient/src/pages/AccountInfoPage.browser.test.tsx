@@ -746,6 +746,29 @@ describe("Email address", () => {
     expect(writes).toEqual([]);
   });
 
+  // MYSS-326: symbols after the domain were let through to the email service,
+  // whose refusal read as "try again in a few minutes".
+  it("refuses symbols in the domain as an invalid address, before sending", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "alex@gov.bc.ca&&&&",
+    );
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(
+        screen.getByText(
+          "Enter an email address in the format name@example.com.",
+        ),
+      )
+      .toBeVisible();
+    expect(writes).toEqual([]);
+  });
+
   it("shows the API's field error", async () => {
     stubApi({
       account: account(),

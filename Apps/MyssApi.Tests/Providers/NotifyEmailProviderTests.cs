@@ -38,6 +38,23 @@ namespace Myss.Api.Tests.Providers
         }
 
         [Theory]
+        [InlineData(HttpStatusCode.BadRequest, true)]
+        [InlineData(HttpStatusCode.UnprocessableEntity, true)]
+        [InlineData(HttpStatusCode.Unauthorized, false)]
+        [InlineData(HttpStatusCode.TooManyRequests, false)]
+        [InlineData(HttpStatusCode.InternalServerError, false)]
+        public async Task ARefusalSaysWhetherItWasTheAddress(HttpStatusCode status, bool recipientRejected)
+        {
+            var handler = new CapturingHandler(status, "{}");
+
+            EmailNotSentException ex = await Assert.ThrowsAsync<EmailNotSentException>(
+                () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+
+            // MYSS-326: the address is the citizen's to fix; the rest is ours or Notify's.
+            Assert.Equal(recipientRejected, ex.RecipientRejected);
+        }
+
+        [Theory]
         [InlineData(HttpStatusCode.Unauthorized)]
         [InlineData(HttpStatusCode.UnprocessableEntity)]
         [InlineData(HttpStatusCode.InternalServerError)]

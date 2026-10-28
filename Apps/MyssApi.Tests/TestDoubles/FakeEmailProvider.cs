@@ -14,9 +14,20 @@ namespace Myss.Api.Tests.TestDoubles
         /// <summary>Gets or sets a value indicating whether every send fails as Notify being down would.</summary>
         public bool Unavailable { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether every send fails as Notify
+        /// refusing the recipient's address would (MYSS-326).
+        /// </summary>
+        public bool RejectRecipient { get; set; }
+
         /// <inheritdoc/>
         public Task<string> SendAsync(EmailMessage message, CancellationToken cancellationToken)
         {
+            if (RejectRecipient)
+            {
+                throw new EmailNotSentException("Fake email service refused the address.") { RecipientRejected = true };
+            }
+
             if (Unavailable)
             {
                 throw new EmailNotSentException("Fake email service is unavailable.");
