@@ -1,9 +1,16 @@
 name: Deploy release
 
-# Promote a release version to test or prod. Every merge to dev builds all six
-# images tagged <major>.<sprint>.<patch> (see version.json and
-# .github/scripts/release-version.sh); this workflow starts the tenant repo's
-# p-promote-all pipeline to move one of those versions into an environment.
+# Deploy a release to test or prod by starting the tenant repo's
+# p-promote-all pipeline.
+#
+# test: deploys the draft release kept by the "Release draft" workflow. Its
+#   body lists the build each app ships (see .github/scripts/release.sh); edit
+#   it on the Releases page first to pin other builds. The deploy tags those
+#   images v<version>, promotes them, publishes the draft as a pre-release
+#   with the exact list deployed, and starts the next draft. Give a published
+#   release instead to redeploy it (a rollback).
+# prod: deploys the newest pre-release, or the release given. Its images must
+#   be the ones in test. Marks the release as the latest.
 #
 # Who can deploy: repository admins only, checked in `authorize` and again in
 # `deploy` (a re-run of failed jobs skips `authorize`), for both the person
@@ -22,18 +29,12 @@ name: Deploy release
 #   OPENSHIFT_SERVER  repository variable, the cluster API URL
 #   OPENSHIFT_TOKEN   secret on the test and prod environments, the token of
 #                     the github-deployer ServiceAccount in e07f31-tools
-#
-# Test deploys create the git tag v<version> and a pre-release with generated
-# notes; prod accepts only the version currently in test and marks that
-# release as the latest.
+
+run-name: Deploy ${{ inputs.release || 'next release' }} to ${{ inputs.environment }}
 
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Release version, e.g. 1.15.6 (from the dev build's image tag)"
-        required: true
-        type: string
       environment:
         description: Environment to deploy to
         required: true
@@ -41,6 +42,14 @@ on:
         options:
           - test
           - prod
+      release:
+        description: >-
+          Leave empty for the usual release: the draft for test, the newest
+          pre-release for prod. Or a published release (e.g. v0.7.3) to
+          redeploy it.
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -50,17 +59,21 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  VERSION: ${{ inputs.version }}
   TARGET: ${{ inputs.environment }}
-  APPS: myss-api myss-webclient myss-content icm-api myss-admin-api myss-admin-webclient
 
 jobs:
   authorize:
     name: Check request
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write # read draft releases
     outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      release-id: ${{ steps.resolve.outputs.release-id }}
+      draft: ${{ steps.resolve.outputs.draft }}
       commit: ${{ steps.resolve.outputs.commit }}
+      images: ${{ steps.check.outputs.images }}
     steps:
       - name: Require repository admin
         env:
@@ -78,20 +91,71 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve the version to its commit on dev
+      - name: Find the release
         id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE: ${{ inputs.release }}
         run: |
-          commit=$(.github/scripts/release-version.sh commit "$VERSION" origin/dev)
-          echo "commit=$commit" >> "$GITHUB_OUTPUT"
-          echo "$VERSION was built from $(git log -1 --format='%h %s' "$commit")"
+          repo="${{ github.repository }}"
+          if [ -n "$RELEASE" ]; then
+            json=$(gh api "repos/$repo/releases/tags/$RELEASE") || {
+              echo "::error::No published release $RELEASE."; exit 1; }
+          elif [ "$TARGET" = test ]; then
+            json=$(gh api "repos/$repo/releases" --paginate --jq '.[] | select(.draft)' | jq -s '.[0] // empty')
+            [ -n "$json" ] || { echo "::error::There is no draft release; run the Release draft workflow."; exit 1; }
+          else
+            json=$(gh api "repos/$repo/releases" --paginate --jq '.[] | select(.draft | not) | select(.prerelease)' | jq -s '.[0] // empty')
+            [ -n "$json" ] || { echo "::error::There is no pre-release to deploy to prod."; exit 1; }
+          fi
+          tag=$(jq -r .tag_name <<<"$json")
+          draft=$(jq -r .draft <<<"$json")
+          if [ "$draft" = true ]; then
+            commit=$(jq -r .target_commitish <<<"$json")
+          else
+            commit=$(git rev-list -n1 "refs/tags/$tag")
+          fi
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Release tag $tag is not v<major>.<sprint>.<n>."; exit 1; }
+          {
+            echo "version=$tag"
+            echo "release-id=$(jq -r .id <<<"$json")"
+            echo "draft=$draft"
+            echo "commit=$commit"
+          } >> "$GITHUB_OUTPUT"
+          jq -r .body <<<"$json" > "$RUNNER_TEMP/body.md"
+          echo "Deploying $tag ($([ "$draft" = true ] && echo draft || echo published)) at $(git log -1 --format='%h %s' "$commit")"
 
-      - name: Require a test release before prod
-        if: inputs.environment == 'prod'
+      - name: Check the images listed in the release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.resolve.outputs.version }}
         run: |
-          git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || {
-            echo "::error::v$VERSION has not been deployed to test (no git tag)."
+          listed=$(.github/scripts/release.sh parse < "$RUNNER_TEMP/body.md")
+          images="" bad=0
+          {
+            echo "### $VERSION to $TARGET"
+            echo "| App | Image | Built from |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for app in $(.github/scripts/release.sh apps); do
+            value=$(sed -n "s/^$app: //p" <<<"$listed" | head -n1)
+            if [ -z "$value" ]; then
+              echo "::error::The release does not list $app."; bad=1; continue
+            fi
+            sha=$(.github/scripts/release.sh resolve "$app" "$value") || { echo "::error::$app: cannot use '$value'."; bad=1; continue; }
+            images+="$app=$value "
+            eval "sha_${app//-/_}=$sha"
+            echo "| $app | \`$value\` | $(git log -1 --format='%h %s' "$sha" | sed 's/|/\\|/g') |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          [ "$bad" = 0 ] || exit 1
+          # The API applies the database migrations for both APIs, so the two
+          # must agree on MyssData.
+          if ! git diff --quiet "$sha_myss_api" "$sha_myss_admin_api" -- Apps/MyssData; then
+            echo "::error::myss-api ($sha_myss_api) and myss-admin-api ($sha_myss_admin_api) have different Apps/MyssData; pick builds with the same database code."
             exit 1
-          }
+          fi
+          echo "images=$images" >> "$GITHUB_OUTPUT"
 
   # The first of the two prod approvals. Skipped for test.
   prod-approval:
@@ -102,10 +166,10 @@ jobs:
     timeout-minutes: 5
     environment: prod-approval
     steps:
-      - run: echo "First approval for $VERSION to prod recorded."
+      - run: echo "First approval for ${{ needs.authorize.outputs.version }} to prod recorded."
 
   deploy:
-    name: Deploy ${{ inputs.version }} to ${{ inputs.environment }}
+    name: Deploy ${{ needs.authorize.outputs.version }} to ${{ inputs.environment }}
     needs: [authorize, prod-approval]
     if: >-
       always() && needs.authorize.result == 'success' &&
@@ -115,10 +179,13 @@ jobs:
     timeout-minutes: 45
     environment: ${{ inputs.environment }}
     permissions:
-      contents: write # tag and release
-      actions: read # read this run's approvals
+      contents: write # publish the release
+      actions: write # read this run's approvals, start the next draft
     env:
+      VERSION: ${{ needs.authorize.outputs.version }}
       COMMIT: ${{ needs.authorize.outputs.commit }}
+      IMAGES: ${{ needs.authorize.outputs.images }}
+      DRAFT: ${{ needs.authorize.outputs.draft }}
     steps:
       - name: Require repository admin
         env:
@@ -160,11 +227,25 @@ jobs:
           # Role does not grant. This only sets the kubeconfig default.
           oc config set-context --current --namespace=e07f31-tools >/dev/null
 
-      - name: Check every image was built for this version
+      - name: Tag the release's images (draft)
+        if: env.DRAFT == 'true'
         run: |
           missing=0
-          for app in $APPS; do
-            oc get istag "$app:$VERSION" >/dev/null 2>&1 || { echo "::error::$app:$VERSION not found"; missing=1; }
+          for pair in $IMAGES; do
+            oc get istag "${pair%%=*}:${pair#*=}" >/dev/null 2>&1 || {
+              echo "::error::${pair%%=*}:${pair#*=} not found (has its build finished?)"; missing=1; }
+          done
+          [ "$missing" = 0 ] || exit 1
+          for pair in $IMAGES; do
+            oc tag "${pair%%=*}:${pair#*=}" "${pair%%=*}:$VERSION"
+          done
+
+      - name: Check the release's images exist
+        if: env.DRAFT != 'true'
+        run: |
+          missing=0
+          for pair in $IMAGES; do
+            oc get istag "${pair%%=*}:$VERSION" >/dev/null 2>&1 || { echo "::error::${pair%%=*}:$VERSION not found"; missing=1; }
           done
           exit $missing
 
@@ -172,7 +253,7 @@ jobs:
         if: inputs.environment == 'prod'
         run: |
           differ=0
-          for app in $APPS; do
+          for app in $(for pair in $IMAGES; do echo "${pair%%=*}"; done); do
             want=$(oc get istag "$app:$VERSION" -o jsonpath='{.image.metadata.name}')
             have=$(oc get istag "$app:test" -o jsonpath='{.image.metadata.name}' 2>/dev/null || true)
             [ "$want" = "$have" ] || { echo "::error::$app in test is not $VERSION"; differ=1; }
@@ -216,23 +297,30 @@ jobs:
             sleep 15
           done
 
-      - name: Tag and pre-release (test)
-        if: inputs.environment == 'test'
+      - name: Publish the pre-release (test)
+        if: env.DRAFT == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "v$VERSION" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "Release v$VERSION already exists (redeploy)."
-          else
-            gh release create "v$VERSION" --repo "${{ github.repository }}" --target "$COMMIT" \
-              --title "v$VERSION" --prerelease --generate-notes
-          fi
+          repo="${{ github.repository }}" id="${{ needs.authorize.outputs.release-id }}"
+          # The draft may have been refreshed since the run started; publish
+          # it with the list that was deployed.
+          deployed=$(for pair in $IMAGES; do echo "${pair%%=*}: ${pair#*=}"; done)
+          gh api "repos/$repo/releases/$id" --jq .body | tr -d '\r' |
+            DEPLOYED="$deployed" awk '
+              /^```release[[:space:]]*$/ { print; print ENVIRON["DEPLOYED"]; skip = 1; next }
+              skip && /^```/ { skip = 0 }
+              !skip' > "$RUNNER_TEMP/body.md"
+          gh api -X PATCH "repos/$repo/releases/$id" \
+            -f "tag_name=$VERSION" -f "name=$VERSION" -f "target_commitish=$COMMIT" \
+            -F draft=false -F prerelease=true -F "body=@$RUNNER_TEMP/body.md" --jq '"Published " + .html_url'
+          gh workflow run release-draft.yml --repo "$repo" --ref dev
 
       - name: Mark the release as latest (prod)
         if: inputs.environment == 'prod'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release edit "v$VERSION" --repo "${{ github.repository }}" --prerelease=false --latest
+        run: gh release edit "$VERSION" --repo "${{ github.repository }}" --prerelease=false --latest
 
       - name: Summary
         run: |
@@ -240,4 +328,5 @@ jobs:
             echo "### $VERSION deployed to $TARGET"
             echo "- Commit: \`$COMMIT\`"
             echo "- Requested by: ${{ github.actor }}"
+            for pair in $IMAGES; do echo "- ${pair%%=*}: \`${pair#*=}\`"; done
           } >> "$GITHUB_STEP_SUMMARY"
