@@ -5,6 +5,8 @@ import {
   cancelEmailChange,
   changeEmail,
   getAccount,
+  getRegistrationEmail,
+  requestRegistrationEmail,
   requestPinReset,
   resendEmailVerification,
   resetPin,
@@ -37,6 +39,7 @@ export type {
   PhoneInput,
   PinInput,
   PinResetRequested,
+  RegistrationEmail,
   ResetPinInput,
 } from "@/api/account";
 
@@ -123,4 +126,32 @@ export function useCancelEmailChange() {
 /** Follows an emailed verification link. Anonymous; nothing to cache. */
 export function useVerifyEmail() {
   return useMutation({ mutationFn: (token: string) => verifyEmail(token) });
+}
+
+export const REGISTRATION_EMAIL_QUERY_KEY = ["registration-email"] as const;
+
+/**
+ * Registration's Step 2 status (MYSS-295). Read again when the citizen comes
+ * back to the tab, so it shows the address as verified once they have
+ * followed the link elsewhere; Continue still checks it afresh.
+ */
+export function useRegistrationEmail(enabled: boolean) {
+  return useQuery({
+    queryKey: REGISTRATION_EMAIL_QUERY_KEY,
+    queryFn: getRegistrationEmail,
+    enabled,
+    refetchOnWindowFocus: true,
+    retry: shouldRetry,
+  });
+}
+
+/** Emails the registration link; the status it answers with goes in the cache. */
+export function useRequestRegistrationEmail() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (email: string) => requestRegistrationEmail(email),
+    onSuccess: (status) => {
+      queryClient.setQueryData(REGISTRATION_EMAIL_QUERY_KEY, status);
+    },
+  });
 }

@@ -4,6 +4,8 @@ import {
   formatPhone,
   namesFrom,
   prepareRegistrationSpec,
+  reviewRows,
+  splitRegistrationSpec,
 } from "./registrationSpec";
 
 type Component = Record<string, unknown>;
@@ -106,7 +108,11 @@ describe("prepareRegistrationSpec", () => {
       { phoneNumber: "555-0100" },
       "phone",
     ],
-    ["a phone number with a country code", { phoneNumber: "+1 778 123 4567" }, "phone"],
+    [
+      "a phone number with a country code",
+      { phoneNumber: "+1 778 123 4567" },
+      "phone",
+    ],
     ["a year-only birthdate", { birthdate: "1990" }, "dateOfBirth"],
     [
       "a birthdate that is not a real day",
@@ -252,5 +258,130 @@ describe("a full name with no family name", () => {
       familyName: "Lovelace",
       guessed: true,
     });
+  });
+});
+
+// MYSS-295: the consent moves to the review step, which reviews the answers.
+describe("splitRegistrationSpec", () => {
+  const spec = {
+    display: "form",
+    components: [
+      { type: "textfield", key: "firstName", input: true },
+      {
+        type: "content",
+        key: "consentHeading",
+        input: false,
+        html: "<h2>Consent</h2>",
+      },
+      { type: "checkbox", key: "consent", label: "I agree", input: true },
+    ],
+  };
+
+  it("keeps Step 1 free of the consent and gives it to Step 3", () => {
+    const { info, consent } = splitRegistrationSpec(spec);
+
+    expect(info.components.map((c) => c.key)).toEqual(["firstName"]);
+    expect(consent?.components.map((c) => c.key)).toEqual([
+      "consentHeading",
+      "consent",
+    ]);
+    expect(consent?.display).toBe("form");
+  });
+
+  it("has no consent part for a spec without a consent", () => {
+    const { info, consent } = splitRegistrationSpec({
+      components: [{ type: "textfield", key: "firstName", input: true }],
+    });
+
+    expect(consent).toBeNull();
+    expect(info.components).toHaveLength(1);
+  });
+
+  it("does not change the spec it is given", () => {
+    const before = JSON.stringify(spec);
+    splitRegistrationSpec(spec);
+    expect(JSON.stringify(spec)).toBe(before);
+  });
+});
+
+describe("reviewRows", () => {
+  const spec = {
+    components: [
+      { type: "content", key: "intro", input: false, html: "<p>Hello</p>" },
+      { type: "textfield", key: "firstName", label: "First name", input: true },
+      { type: "phoneNumber", key: "phone", label: "Phone number", input: true },
+      {
+        type: "datetime",
+        key: "dateOfBirth",
+        label: "Date of birth",
+        input: true,
+      },
+      {
+        type: "panel",
+        key: "aboutYou",
+        input: false,
+        components: [
+          {
+            type: "bcgovRadio",
+            key: "gender",
+            label: "Gender",
+            input: true,
+            values: [
+              { label: "Man/Boy", value: "man" },
+              { label: "Woman/Girl", value: "woman" },
+            ],
+          },
+        ],
+      },
+      {
+        type: "textfield",
+        key: "sin",
+        label: "Social Insurance Number (SIN)",
+        input: true,
+      },
+      {
+        type: "textfield",
+        key: "middleName",
+        label: "Middle name",
+        input: true,
+      },
+      { type: "checkbox", key: "consent", label: "I agree", input: true },
+    ],
+  };
+
+  it("lists each answer in form order, as the citizen reads it", () => {
+    const rows = reviewRows(spec, {
+      firstName: "Jane",
+      phone: "2505550199",
+      dateOfBirth: "1990-01-01T00:00:00",
+      gender: "woman",
+      sin: "050 082 833",
+      consent: true,
+    });
+
+    expect(rows.map((row) => [row.label, row.value])).toEqual([
+      ["First name", "Jane"],
+      ["Phone number", "(250) 555-0199"],
+      ["Date of birth", "January 1, 1990"],
+      ["Gender", "Woman/Girl"],
+      ["Social Insurance Number (SIN)", "050-082-833"],
+    ]);
+  });
+
+  it("leaves out unanswered fields, content and the consent", () => {
+    const keys = reviewRows(spec, {
+      firstName: "Jane",
+      middleName: "",
+      consent: true,
+    }).map((row) => row.key);
+    expect(keys).toEqual(["firstName"]);
+  });
+
+  it("shows the calendar date given, whatever the time zone", () => {
+    const [row] = reviewRows(
+      { components: [{ type: "datetime", key: "d", label: "D", input: true }] },
+      { d: "1990-01-01" },
+    );
+    expect(row.value).toBe("January 1, 1990");
   });
 });

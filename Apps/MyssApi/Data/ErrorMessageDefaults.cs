@@ -45,6 +45,7 @@ namespace Myss.Api.Data
                 ["REGISTRATION.DOB.INVALID"] = "Enter a valid date of birth.",
                 ["REGISTRATION.DOB.FUTURE"] = "Date of birth cannot be in the future.",
                 ["REGISTRATION.GENDER.UNKNOWN"] = "Choose one of the listed options.",
+                ["REGISTRATION.EMAIL.NOT_VERIFIED"] = "Verify your email address before you complete your registration.",
                 ["ACCOUNT.PHONE.TYPE_UNKNOWN"] = "Choose a phone type: home, cell, work or message.",
                 ["ACCOUNT.PHONE.DUPLICATE_TYPE"] = "You can have one phone number of each type. Choose a different type.",
                 ["ACCOUNT.PHONE.TOO_MANY"] = "You can have up to 4 phone numbers, one of each type.",

@@ -15,6 +15,18 @@ namespace Myss.Api.Models
     }
 
     /// <summary>
+    /// The address a registration is proving (MYSS-295), and whether it has been.
+    /// </summary>
+    public class RegistrationEmailModel
+    {
+        /// <summary>Gets or sets the address a link was sent to, or null when none has been.</summary>
+        public string? Email { get; set; }
+
+        /// <summary>Gets or sets a value indicating whether the link has been followed.</summary>
+        public bool Verified { get; set; }
+    }
+
+    /// <summary>
     /// The body of a verification from the emailed link.
     /// </summary>
     public class VerifyEmailRequestModel

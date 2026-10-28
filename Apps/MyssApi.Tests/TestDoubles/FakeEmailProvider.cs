@@ -52,7 +52,7 @@ namespace Myss.Api.Tests.TestDoubles
         [GeneratedRegex(@"/pin-reset#token=([0-9a-f-]{36})\)")]
         private static partial Regex ResetToken();
 
-        [GeneratedRegex(@"/verify-email#token=([0-9a-f-]{36})\)")]
+        [GeneratedRegex(@"/verify-email(?:\?for=registration)?#token=([0-9a-f-]{36})\)")]
         private static partial Regex VerificationToken();
     }
 }

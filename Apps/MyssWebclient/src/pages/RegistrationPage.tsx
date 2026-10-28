@@ -103,6 +103,7 @@ export default function RegistrationPage() {
                 <RegistrationForm
                     identity={user ?? {}}
                     requirePin={requirePin}
+                    signedInWith={signedInWith}
                     onRegistered={handleRegistered}
                     onCancel={logout}
                 />

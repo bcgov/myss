@@ -50,25 +50,43 @@ namespace Myss.Api.Services
         Task<EmailVerificationResultModel> VerifyAsync(VerifyEmailRequestModel request, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Registration's half (MYSS-305): applies the address from the form to a
-        /// profile being saved and, when it needs proving, issues its token. Saves
-        /// nothing; the caller saves the profile, then calls
-        /// <see cref="SendIssuedLinkAsync"/>.
+        /// Registration's Step 2 (MYSS-295): emails a link to prove the address
+        /// the caller is registering with, before any profile exists. An address
+        /// already proven in this registration is not sent another (AC6); a new
+        /// one replaces the last and must be proven afresh.
         /// </summary>
-        /// <param name="profile">The profile, new or existing, tracked by the caller's context.</param>
-        /// <param name="email">The address from the form.</param>
-        /// <returns>The token to send, or null when there is nothing to verify or no link can be built.</returns>
-        Guid? ApplyRegistrationEmail(MyssUserProfile profile, string email);
+        /// <param name="request">The address from Step 1.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Ok, Invalid, TooSoon or EmailNotSent.</returns>
+        Task<EmailVerificationResultModel> RequestRegistrationEmailAsync(
+            ChangeEmailRequestModel request,
+            CancellationToken cancellationToken);
 
         /// <summary>
-        /// Emails the link for a token issued by <see cref="ApplyRegistrationEmail"/>
-        /// once the profile is saved. A failure is logged, not thrown: the
-        /// registration stands, and the citizen can resend from Account Info.
+        /// The address the caller's registration is proving, and whether it has
+        /// been: what Step 2's Continue checks.
         /// </summary>
-        /// <param name="profile">The saved profile.</param>
-        /// <param name="token">The issued token.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True when the email was accepted for sending.</returns>
-        Task<bool> SendIssuedLinkAsync(MyssUserProfile profile, Guid token, CancellationToken cancellationToken);
+        /// <returns>The status; no address when none has been asked for.</returns>
+        Task<RegistrationEmailModel> GetRegistrationEmailAsync(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// When the caller proved <paramref name="email"/> in this registration,
+        /// or null when they have not: registration cannot complete without it.
+        /// </summary>
+        /// <param name="email">The address on the submitted form.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>When it was proven, or null.</returns>
+        Task<DateTimeOffset?> RegistrationEmailVerifiedAtAsync(string email, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Puts an address proven during registration on the profile being saved,
+        /// as verified, and drops its registration record. Saves nothing; the
+        /// caller saves the profile.
+        /// </summary>
+        /// <param name="profile">The profile, tracked by the caller's context.</param>
+        /// <param name="email">The proven address.</param>
+        /// <param name="verifiedAt">When it was proven.</param>
+        void ApplyVerifiedRegistrationEmail(MyssUserProfile profile, string email, DateTimeOffset verifiedAt);
     }
 }

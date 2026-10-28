@@ -102,6 +102,11 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
     note: "Registration: the gender is not one of the options the form offered.",
   },
   {
+    keyword: "REGISTRATION.EMAIL.NOT_VERIFIED",
+    message: "Verify your email address before you complete your registration.",
+    note: "Registration: the email address has not been verified by its emailed link (MYSS-295).",
+  },
+  {
     keyword: "ACCOUNT.PHONE.TYPE_UNKNOWN",
     message: "Choose a phone type: home, cell, work or message.",
     note: "Account info: a phone number's type is not one of Home, Cell, Work or Message.",

@@ -33,6 +33,12 @@ namespace Myss.Data
         /// </summary>
         public DbSet<BusPassDispatchEvent> BusPassDispatchEvents => Set<BusPassDispatchEvent>();
 
+        /// <summary>
+        /// Gets the email addresses being proven during registration (MYSS-295),
+        /// one per signed-in identity, before any profile exists.
+        /// </summary>
+        public DbSet<RegistrationEmailVerification> RegistrationEmailVerifications => Set<RegistrationEmailVerification>();
+
         /// <inheritdoc/>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -94,6 +100,19 @@ namespace Myss.Data
                 .IsConcurrencyToken();
             profile.Property(p => p.EmailVerificationRequestedAt).HasColumnName("email_verification_requested_at");
             profile.HasIndex(p => p.EmailVerificationTokenHash).IsUnique();
+
+            // Registration's email proof (MYSS-295): keyed by the identity
+            // subject, because no profile exists yet. The token as its hash and
+            // a concurrency token, as on the profile.
+            var registrationEmail = modelBuilder.Entity<RegistrationEmailVerification>();
+            registrationEmail.ToTable("registration_email_verifications");
+            registrationEmail.HasKey(r => r.Subject);
+            registrationEmail.Property(r => r.Subject).HasColumnName("subject").HasMaxLength(255);
+            registrationEmail.Property(r => r.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
+            registrationEmail.Property(r => r.TokenHash).HasColumnName("token_hash").HasMaxLength(64).IsConcurrencyToken();
+            registrationEmail.Property(r => r.RequestedAt).HasColumnName("requested_at");
+            registrationEmail.Property(r => r.VerifiedAt).HasColumnName("verified_at");
+            registrationEmail.HasIndex(r => r.TokenHash).IsUnique();
             profile.HasMany(p => p.Phones)
                 .WithOne()
                 .HasForeignKey(p => p.ProfileId)

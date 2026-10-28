@@ -158,8 +158,14 @@ namespace Myss.Api.Services
             MyssUserProfile? profile = await _dbContext.MyssUserProfiles
                 .SingleOrDefaultAsync(p => p.EmailVerificationTokenHash == tokenHash, cancellationToken);
             DateTimeOffset now = _timeProvider.GetUtcNow();
-            if (profile is null
-                || profile.EmailVerificationRequestedAt is not { } requestedAt
+            if (profile is null)
+            {
+                // Not a profile's link: perhaps registration's (MYSS-295),
+                // sent before the profile exists. Same page, same endpoint.
+                return await VerifyRegistrationAsync(tokenHash, now, cancellationToken);
+            }
+
+            if (profile.EmailVerificationRequestedAt is not { } requestedAt
                 || now >= requestedAt + _config.TokenLifetime)
             {
                 return EmailVerificationResultModel.Refused(EmailVerificationOutcome.LinkInvalid);
@@ -208,49 +214,136 @@ namespace Myss.Api.Services
         }
 
         /// <inheritdoc/>
-        public Guid? ApplyRegistrationEmail(MyssUserProfile profile, string email)
+        public async Task<EmailVerificationResultModel> RequestRegistrationEmailAsync(
+            ChangeEmailRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            DomainValidationResult<EmailAddress> address = EmailAddress.TryCreate(request.Email);
+            if (!address.IsValid)
+            {
+                var error = new ValidationErrorModel { Field = "email", Keyword = address.Keyword!, Message = address.Message! };
+                return EmailVerificationResultModel.Invalid(ErrorMessageResolver.Resolve(
+                    [error],
+                    await _errorMessageProvider.GetMessagesAsync(cancellationToken)));
+            }
+
+            string email = address.Value!.Value;
+            string subject = OwnSubject();
+            RegistrationEmailVerification? row = await _dbContext.RegistrationEmailVerifications
+                .SingleOrDefaultAsync(r => r.Subject == subject, cancellationToken);
+            DateTimeOffset now = _timeProvider.GetUtcNow();
+
+            // Already proven in this registration (AC6): nothing to send.
+            if (row is { VerifiedAt: not null } && SameAddress(email, row.Email))
+            {
+                return EmailVerificationResultModel.Done;
+            }
+
+            // One email per cooldown, as on Account Info, whatever the address:
+            // otherwise a signed-in caller could send to any number of them.
+            if (row is { TokenHash: not null } && now < row.RequestedAt + _config.RequestCooldown)
+            {
+                return EmailVerificationResultModel.TooSoon(row.RequestedAt + _config.RequestCooldown);
+            }
+
+            if (_links.LinkBaseUrl is null)
+            {
+                _logger.LogError(
+                    "No registration email verification link: Account:PinReset:LinkBaseUrl is not set "
+                    + "(deployed: Myss_Account__PinReset__LinkBaseUrl)");
+                return EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
+            }
+
+            Guid token = EmailedLinkToken.New();
+            if (row is null)
+            {
+                row = new RegistrationEmailVerification { Subject = subject, Email = email };
+                _dbContext.RegistrationEmailVerifications.Add(row);
+            }
+
+            row.Email = email;
+            row.VerifiedAt = null;
+            row.TokenHash = EmailedLinkToken.Hash(token);
+            row.RequestedAt = now;
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                // Another request for this registration saved first (the row's
+                // key, or its token, changed under this one) and is sending now.
+                return EmailVerificationResultModel.TooSoon(now + _config.RequestCooldown);
+            }
+
+            try
+            {
+                await _emailProvider.SendAsync(VerificationEmail(email, token, forRegistration: true), cancellationToken);
+            }
+            catch (EmailNotSentException ex)
+            {
+                _logger.LogError(ex, "Registration email verification link was not sent");
+                return EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
+            }
+
+            _logger.LogInformation("Sent a registration email verification link");
+            return EmailVerificationResultModel.Done;
+        }
+
+        /// <inheritdoc/>
+        public async Task<RegistrationEmailModel> GetRegistrationEmailAsync(CancellationToken cancellationToken)
+        {
+            string subject = OwnSubject();
+            RegistrationEmailVerification? row = await _dbContext.RegistrationEmailVerifications
+                .AsNoTracking()
+                .SingleOrDefaultAsync(r => r.Subject == subject, cancellationToken);
+            return new RegistrationEmailModel { Email = row?.Email, Verified = row?.VerifiedAt is not null };
+        }
+
+        /// <inheritdoc/>
+        public async Task<DateTimeOffset?> RegistrationEmailVerifiedAtAsync(string email, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(email);
+            string subject = OwnSubject();
+            RegistrationEmailVerification? row = await _dbContext.RegistrationEmailVerifications
+                .SingleOrDefaultAsync(r => r.Subject == subject, cancellationToken);
+            return row is { VerifiedAt: { } verifiedAt } && SameAddress(email, row.Email) ? verifiedAt : null;
+        }
+
+        /// <inheritdoc/>
+        public void ApplyVerifiedRegistrationEmail(MyssUserProfile profile, string email, DateTimeOffset verifiedAt)
         {
             ArgumentNullException.ThrowIfNull(profile);
             ArgumentNullException.ThrowIfNull(email);
 
-            // The form validator accepts surrounding whitespace and checks the
-            // trimmed address, so that is the one stored and emailed.
-            email = email.Trim();
-            bool isNew = string.IsNullOrEmpty(profile.Email);
-            if (!isNew && SameAddress(email, profile.Email))
-            {
-                // Registering again with the address on file (or a new profile
-                // already given it): a verified one stays verified, an unverified
-                // one is stored as typed now and sent a fresh link.
-                if (profile.EmailVerifiedAt is not null)
-                {
-                    return null;
-                }
+            // Proven before the profile existed, so it is the address in use at
+            // once, and any earlier pending change or link goes.
+            profile.Email = email.Trim();
+            profile.EmailVerifiedAt = verifiedAt;
+            profile.PendingEmail = null;
+            profile.EmailVerificationTokenHash = null;
+            profile.EmailVerificationRequestedAt = null;
 
-                profile.Email = email;
-                return Issue(profile);
-            }
-
-            if (isNew || profile.EmailVerifiedAt is null)
+            // Its job is done; removed in the caller's save, with the profile.
+            if (_dbContext.RegistrationEmailVerifications.Find(profile.Subject) is { } row)
             {
-                profile.Email = email;
-                profile.PendingEmail = null;
+                _dbContext.RegistrationEmailVerifications.Remove(row);
             }
-            else
-            {
-                profile.PendingEmail = email;
-            }
-
-            return Issue(profile);
         }
 
-        /// <inheritdoc/>
-        public async Task<bool> SendIssuedLinkAsync(MyssUserProfile profile, Guid token, CancellationToken cancellationToken)
+        /// <summary>
+        /// Emails the link for a token just issued and saved on a profile. A
+        /// failure is logged and reported, not thrown.
+        /// </summary>
+        private async Task<bool> SendIssuedLinkAsync(MyssUserProfile profile, Guid token, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(profile);
             try
             {
-                await _emailProvider.SendAsync(VerificationEmail(VerificationTarget(profile)!, token), cancellationToken);
+                await _emailProvider.SendAsync(
+                    VerificationEmail(VerificationTarget(profile)!, token, forRegistration: false),
+                    cancellationToken);
             }
             catch (EmailNotSentException ex)
             {
@@ -386,14 +479,52 @@ namespace Myss.Api.Services
 
         private async Task<MyssUserProfile?> FindOwnProfileAsync(CancellationToken cancellationToken)
         {
+            string subject = OwnSubject();
+            return await _dbContext.MyssUserProfiles
+                .SingleOrDefaultAsync(p => p.Subject == subject, cancellationToken);
+        }
+
+        private string OwnSubject()
+        {
             CurrentUser user = _currentUserAccessor.User;
             if (!user.IsAuthenticated || string.IsNullOrWhiteSpace(user.Subject))
             {
                 throw new InvalidOperationException("An authenticated identity is required to change an email address.");
             }
 
-            return await _dbContext.MyssUserProfiles
-                .SingleOrDefaultAsync(p => p.Subject == user.Subject, cancellationToken);
+            return user.Subject;
+        }
+
+        /// <summary>
+        /// Follows a registration link (MYSS-295): the address is proven for the
+        /// registration still to be completed. Nothing is emailed: there is no
+        /// earlier address to tell.
+        /// </summary>
+        private async Task<EmailVerificationResultModel> VerifyRegistrationAsync(
+            string tokenHash,
+            DateTimeOffset now,
+            CancellationToken cancellationToken)
+        {
+            RegistrationEmailVerification? row = await _dbContext.RegistrationEmailVerifications
+                .SingleOrDefaultAsync(r => r.TokenHash == tokenHash, cancellationToken);
+            if (row is null || now >= row.RequestedAt + _config.TokenLifetime)
+            {
+                return EmailVerificationResultModel.Refused(EmailVerificationOutcome.LinkInvalid);
+            }
+
+            row.VerifiedAt = now;
+            row.TokenHash = null;
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return EmailVerificationResultModel.Refused(EmailVerificationOutcome.LinkInvalid);
+            }
+
+            _logger.LogInformation("Verified a registration email address");
+            return EmailVerificationResultModel.Done;
         }
 
         private void LogNoLinkBaseUrl(MyssUserProfile profile)
@@ -404,15 +535,17 @@ namespace Myss.Api.Services
                 profile.Id);
         }
 
-        private EmailMessage VerificationEmail(string to, Guid token)
+        private EmailMessage VerificationEmail(string to, Guid token, bool forRegistration)
         {
-            Uri link = _links.BuildLink(EmailVerificationConfig.LinkPath, token);
+            Uri link = _links.BuildLink(
+                forRegistration ? EmailVerificationConfig.RegistrationLinkPath : EmailVerificationConfig.LinkPath,
+                token);
             string lifetime = EmailedLinkToken.Describe(_config.TokenLifetime);
             string body =
                 "Confirm that this is your email address for your My Self Serve account.\n\n"
                 + $"[Confirm your email address]({link.AbsoluteUri})\n\n"
                 + $"The link works once and expires in {lifetime}. "
-                + "If it has expired, sign in to My Self Serve and choose Resend link on Account Info.\n\n"
+                + "If it has expired, go back to My Self Serve and choose Resend link.\n\n"
                 + "If you did not ask for this, you can ignore this email. Nothing on your account has changed.";
             return new EmailMessage(to, "Confirm your email address for My Self Serve", body);
         }

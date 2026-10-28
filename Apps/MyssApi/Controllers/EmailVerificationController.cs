@@ -125,6 +125,56 @@ namespace Myss.Api.Controllers
         }
 
         /// <summary>
+        /// Registration's Step 2 (MYSS-295): emails a link to prove the address
+        /// from Step 1, before the profile exists. Any signed-in caller, as the
+        /// registration submit is. An address already proven in this
+        /// registration is not sent another link.
+        /// </summary>
+        /// <param name="request">The address from Step 1.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpPost("registration/email-verification-requests")]
+        [Authorize]
+        [Produces("application/json")]
+        [EndpointName("RequestRegistrationEmailVerification")]
+        [ProducesResponseType(typeof(BaseResponseModel<RegistrationEmailModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ValidationErrorModel>>), StatusCodes.Status422UnprocessableEntity)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+        public async Task<ActionResult<BaseResponseModel<RegistrationEmailModel>>> RequestRegistrationEmail(
+            [FromBody] ChangeEmailRequestModel request,
+            CancellationToken cancellationToken)
+        {
+            EmailVerificationResultModel result =
+                await _emailVerificationService.RequestRegistrationEmailAsync(request, cancellationToken);
+            if (result.Outcome != EmailVerificationOutcome.Ok)
+            {
+                return Refusal(result);
+            }
+
+            return await RegistrationEmail(cancellationToken);
+        }
+
+        /// <summary>
+        /// The address the caller's registration is proving, and whether its
+        /// link has been followed: what Step 2's Continue checks (MYSS-295).
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpGet("registration/email-verification")]
+        [Authorize]
+        [Produces("application/json")]
+        [EndpointName("GetRegistrationEmailVerification")]
+        [ProducesResponseType(typeof(BaseResponseModel<RegistrationEmailModel>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<BaseResponseModel<RegistrationEmailModel>>> RegistrationEmail(
+            CancellationToken cancellationToken)
+        {
+            return new BaseResponseModel<RegistrationEmailModel>
+            {
+                Payload = await _emailVerificationService.GetRegistrationEmailAsync(cancellationToken),
+                DatetimeRequested = DateTime.Now,
+            };
+        }
+
+        /// <summary>
         /// Follows an emailed verification link: a pending address becomes the
         /// one in use, or the address from registration is marked verified.
         /// Anonymous: the token in the body is the credential.

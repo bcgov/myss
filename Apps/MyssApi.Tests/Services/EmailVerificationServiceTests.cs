@@ -325,45 +325,6 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void RegistrationIssuesALinkForANewProfilesAddress()
-        {
-            var profile = NewProfile(verifiedAt: null);
-
-            using var db = new InMemoryFormsDbContext(_options);
-            Guid? token = NewService(db).ApplyRegistrationEmail(profile, Current);
-
-            Assert.NotNull(token);
-            Assert.Equal(Current, profile.Email);
-            Assert.NotNull(profile.EmailVerificationTokenHash);
-        }
-
-        [Fact]
-        public async Task RegisteringAgainWithANewAddressLeavesTheVerifiedOneInUse()
-        {
-            await Seed(verified: true);
-
-            using var db = new InMemoryFormsDbContext(_options);
-            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync(p => p.Subject == Subject);
-            Guid? token = NewService(db).ApplyRegistrationEmail(profile, Next);
-
-            Assert.NotNull(token);
-            Assert.Equal(Current, profile.Email);
-            Assert.Equal(Next, profile.PendingEmail);
-        }
-
-        [Fact]
-        public void RegistrationStoresTheAddressTrimmed()
-        {
-            MyssUserProfile profile = NewProfile(verifiedAt: null);
-            profile.Email = "  " + Current + " ";
-
-            using var db = new InMemoryFormsDbContext(_options);
-            NewService(db).ApplyRegistrationEmail(profile, "  " + Current + " ");
-
-            Assert.Equal(Current, profile.Email);
-        }
-
-        [Fact]
         public async Task AnAddressLongerThanMailAllowsIsAFieldError()
         {
             await Seed(verified: true);
@@ -376,15 +337,127 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public async Task RegisteringAgainWithTheVerifiedAddressSendsNothing()
+        public async Task RegistrationStep2EmailsALinkBeforeAnyProfileExists()
         {
-            await Seed(verified: true);
+            EmailVerificationResultModel result = await RequestRegistration(Current);
+
+            Assert.Equal(EmailVerificationOutcome.Ok, result.Outcome);
+            EmailMessage email = Assert.Single(_email.Sent);
+            Assert.Equal(Current, email.To);
+
+            // Marked as registration's, so the page sends the citizen back to
+            // their open registration rather than anywhere else.
+            Assert.Contains("/verify-email?for=registration#token=", email.MarkdownBody, StringComparison.Ordinal);
+            RegistrationEmailModel status = await RegistrationStatus();
+            Assert.Equal(Current, status.Email);
+            Assert.False(status.Verified);
+        }
+
+        [Fact]
+        public async Task TheRegistrationLinkProvesTheAddress()
+        {
+            await RequestRegistration(Current);
+
+            EmailVerificationResultModel result = await Verify(_email.LastVerificationToken());
+
+            Assert.Equal(EmailVerificationOutcome.Ok, result.Outcome);
+            Assert.True((await RegistrationStatus()).Verified);
+            Assert.Equal(EmailVerificationOutcome.LinkInvalid, (await Verify(_email.LastVerificationToken())).Outcome);
+        }
+
+        [Fact]
+        public async Task AnAddressProvenInThisRegistrationIsNotSentAnotherLink()
+        {
+            await RequestRegistration(Current);
+            await Verify(_email.LastVerificationToken());
+            _clock.Advance(TimeSpan.FromMinutes(5));
+
+            EmailVerificationResultModel result = await RequestRegistration(" ADA@example.com ");
+
+            Assert.Equal(EmailVerificationOutcome.Ok, result.Outcome);
+            Assert.Single(_email.Sent);
+            Assert.True((await RegistrationStatus()).Verified);
+        }
+
+        [Fact]
+        public async Task ADifferentAddressMustBeProvenAfresh()
+        {
+            await RequestRegistration(Current);
+            await Verify(_email.LastVerificationToken());
+
+            EmailVerificationResultModel result = await RequestRegistration(Next);
+
+            Assert.Equal(EmailVerificationOutcome.Ok, result.Outcome);
+            RegistrationEmailModel status = await RegistrationStatus();
+            Assert.Equal(Next, status.Email);
+            Assert.False(status.Verified);
+        }
+
+        [Fact]
+        public async Task RegistrationLinksObeyTheCooldown_AndTheEarlierLinkStillWorks()
+        {
+            await RequestRegistration(Current);
+            string first = _email.LastVerificationToken();
+            _clock.Advance(TimeSpan.FromSeconds(30));
+
+            EmailVerificationResultModel result = await RequestRegistration(Next);
+
+            Assert.Equal(EmailVerificationOutcome.TooSoon, result.Outcome);
+            Assert.Single(_email.Sent);
+            Assert.Equal(EmailVerificationOutcome.Ok, (await Verify(first)).Outcome);
+        }
+
+        [Fact]
+        public async Task TheRegistrationLinkExpires()
+        {
+            await RequestRegistration(Current);
+            _clock.Advance(TimeSpan.FromMinutes(60));
+
+            Assert.Equal(EmailVerificationOutcome.LinkInvalid, (await Verify(_email.LastVerificationToken())).Outcome);
+            Assert.False((await RegistrationStatus()).Verified);
+        }
+
+        [Fact]
+        public async Task AnInvalidRegistrationAddressIsAFieldError()
+        {
+            EmailVerificationResultModel result = await RequestRegistration("not-an-address");
+
+            Assert.Equal(EmailVerificationOutcome.Invalid, result.Outcome);
+            Assert.Equal("email", Assert.Single(result.Errors).Field);
+            Assert.Empty(_email.Sent);
+        }
+
+        [Fact]
+        public async Task OnlyTheProvenAddressCountsAsVerified()
+        {
+            await RequestRegistration(Current);
+            await Verify(_email.LastVerificationToken());
 
             using var db = new InMemoryFormsDbContext(_options);
-            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync(p => p.Subject == Subject);
+            EmailVerificationService service = NewService(db);
+            Assert.NotNull(await service.RegistrationEmailVerifiedAtAsync(" ADA@EXAMPLE.COM", CancellationToken.None));
+            Assert.Null(await service.RegistrationEmailVerifiedAtAsync(Next, CancellationToken.None));
+        }
 
-            Assert.Null(NewService(db).ApplyRegistrationEmail(profile, Current.ToUpperInvariant()));
-            Assert.Null(profile.PendingEmail);
+        [Fact]
+        public async Task AProvenAddressGoesOnTheProfileVerified_AndItsRecordIsDropped()
+        {
+            await RequestRegistration(Current);
+            await Verify(_email.LastVerificationToken());
+
+            using (var db = new InMemoryFormsDbContext(_options))
+            {
+                EmailVerificationService service = NewService(db);
+                DateTimeOffset provenAt = (await service.RegistrationEmailVerifiedAtAsync(Current, CancellationToken.None))!.Value;
+                MyssUserProfile profile = NewProfile(verifiedAt: null);
+                db.MyssUserProfiles.Add(profile);
+                service.ApplyVerifiedRegistrationEmail(profile, Current, provenAt);
+                await db.SaveChangesAsync();
+            }
+
+            MyssUserProfile saved = await Profile();
+            Assert.NotNull(saved.EmailVerifiedAt);
+            Assert.Null((await RegistrationStatus()).Email);
         }
 
         [Fact]
@@ -419,6 +492,20 @@ namespace Myss.Api.Tests.Services
         {
             using var db = new InMemoryFormsDbContext(_options);
             return await NewService(db).CancelChangeAsync(CancellationToken.None);
+        }
+
+        private async Task<EmailVerificationResultModel> RequestRegistration(string address)
+        {
+            using var db = new InMemoryFormsDbContext(_options);
+            return await NewService(db).RequestRegistrationEmailAsync(
+                new ChangeEmailRequestModel { Email = address },
+                CancellationToken.None);
+        }
+
+        private async Task<RegistrationEmailModel> RegistrationStatus()
+        {
+            using var db = new InMemoryFormsDbContext(_options);
+            return await NewService(db).GetRegistrationEmailAsync(CancellationToken.None);
         }
 
         private async Task<EmailVerificationResultModel> Verify(string? token)
