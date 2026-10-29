@@ -119,17 +119,34 @@ export const EMAIL_MAX_LENGTH = 254;
  * EmailAddress, as the "email" rule below does.
  */
 export function isEmailAddress(value: string): boolean {
-  // Checked step by step rather than with one regex: the pattern this replaces,
-  // /^[^@\s]+@[^@\s]+\.[^@\s]+$/, backtracks polynomially on input like
-  // "!@!.!.!.…" (CodeQL js/polynomial-redos). These steps accept exactly the
-  // addresses it did, in linear time.
+  // Checked step by step rather than with one regex: a single pattern for
+  // this backtracks polynomially on input like "!@!.!.!.…" (CodeQL
+  // js/polynomial-redos). Every step is linear.
   const trimmed = value.trim();
   if (trimmed.length > EMAIL_MAX_LENGTH || /\s/.test(trimmed)) return false;
   const at = trimmed.indexOf("@");
   if (at < 1 || at !== trimmed.lastIndexOf("@")) return false;
-  // A dot in the domain with something on both sides: "example.com", not
-  // ".com" or "example.".
-  return trimmed.slice(at + 2, -1).includes(".");
+  // The local part stays permissive (it is the mailbox's business), but the
+  // domain must be a domain: two or more labels of letters, digits and
+  // hyphens (MYSS-326: "gov.bc.ca&&&&" was accepted, and only Notify refused it).
+  const labels = trimmed.slice(at + 1).split(".");
+  return labels.length >= 2 && labels.every(isDomainLabel);
+}
+
+/**
+ * One label of a domain name: 1 to 63 letters, digits or hyphens, not
+ * starting or ending with a hyphen. Letters and digits in any script, so an
+ * internationalised domain typed as such is not turned away. Mirrors
+ * IsDomainLabel in Myss.FormSpec's EmailAddress.
+ */
+function isDomainLabel(label: string): boolean {
+  return (
+    label.length >= 1 &&
+    label.length <= 63 &&
+    !label.startsWith("-") &&
+    !label.endsWith("-") &&
+    /^[\p{L}\p{N}-]+$/u.test(label)
+  );
 }
 
 const email: ValidationRule = (value) =>

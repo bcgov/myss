@@ -16,7 +16,10 @@ namespace Myss.Api.Providers
         /// </summary>
         /// <param name="message">The recipient and the content.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The sending service's id for the message, for tracing its delivery.</returns>
+        /// <returns>
+        /// The sending service's id for the message, for tracing its delivery;
+        /// empty when the service accepted it but its answer gave none.
+        /// </returns>
         /// <exception cref="EmailNotSentException">When the message was not accepted.</exception>
         Task<string> SendAsync(EmailMessage message, CancellationToken cancellationToken);
     }
@@ -59,5 +62,21 @@ namespace Myss.Api.Providers
             : base(message, innerException)
         {
         }
+
+        /// <summary>
+        /// Gets a value indicating whether the sending service refused the
+        /// recipient's address itself (MYSS-326), rather than being unreachable
+        /// or misconfigured: asking again later will not help, a different
+        /// address might.
+        /// </summary>
+        public bool RecipientRejected { get; init; }
+
+        /// <summary>
+        /// Gets a value indicating whether the message may have reached the
+        /// sending service despite the failure: a timeout or a broken connection
+        /// after the request went out. A caller must not assume nothing was
+        /// sent, and so must not take back a link it may already have delivered.
+        /// </summary>
+        public bool MayHaveBeenSent { get; init; }
     }
 }

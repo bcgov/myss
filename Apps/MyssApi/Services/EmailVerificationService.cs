@@ -245,7 +245,17 @@ namespace Myss.Api.Services
         }
 
         /// <inheritdoc/>
-        public async Task<bool> SendIssuedLinkAsync(MyssUserProfile profile, Guid token, CancellationToken cancellationToken)
+        public async Task<bool> SendIssuedLinkAsync(MyssUserProfile profile, Guid token, CancellationToken cancellationToken) =>
+            await TrySendLinkAsync(profile, token, cancellationToken) == SendResult.Sent;
+
+        /// <summary>
+        /// Sends the link for an issued token, and says how it went. Logged,
+        /// not thrown.
+        /// </summary>
+        private async Task<SendResult> TrySendLinkAsync(
+            MyssUserProfile profile,
+            Guid token,
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(profile);
             try
@@ -255,11 +265,16 @@ namespace Myss.Api.Services
             catch (EmailNotSentException ex)
             {
                 _logger.LogError(ex, "Email verification link for profile {ProfileId} was not sent", profile.Id);
-                return false;
+                if (ex.RecipientRejected)
+                {
+                    return SendResult.AddressRejected;
+                }
+
+                return ex.MayHaveBeenSent ? SendResult.MayHaveBeenSent : SendResult.NotSent;
             }
 
             _logger.LogInformation("Sent an email verification link for profile {ProfileId}", profile.Id);
-            return true;
+            return SendResult.Sent;
         }
 
         /// <summary>
@@ -373,15 +388,56 @@ namespace Myss.Api.Services
                 return EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
             }
 
+            // What the request changes, kept so a link that cannot be sent can
+            // be taken back (MYSS-326).
+            var before = (profile.Email, profile.PendingEmail, profile.EmailVerificationTokenHash, profile.EmailVerificationRequestedAt, profile.UpdatedAt);
+
             next.Apply?.Invoke(profile);
             Guid token = Issue(profile)!.Value;
 
             // Saved before sending, so the link works the moment it arrives.
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return await SendIssuedLinkAsync(profile, token, cancellationToken)
-                ? EmailVerificationResultModel.Done
-                : EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
+            SendResult sent = await TrySendLinkAsync(profile, token, cancellationToken);
+            if (sent == SendResult.Sent)
+            {
+                return EmailVerificationResultModel.Done;
+            }
+
+            // Only when certainly nothing went out does nothing change
+            // (MYSS-326): the address in use, any earlier pending change and its
+            // link are as they were, and no cooldown starts on an email never
+            // sent. When it may have gone out (a timeout, say), the link stays:
+            // taking it back could kill one already in the inbox.
+            if (sent != SendResult.MayHaveBeenSent)
+            {
+                (profile.Email, profile.PendingEmail, profile.EmailVerificationTokenHash, profile.EmailVerificationRequestedAt, profile.UpdatedAt) = before;
+                try
+                {
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Another request wrote since; what it wrote stands.
+                }
+            }
+
+            if (sent == SendResult.AddressRejected)
+            {
+                // The citizen's to fix: a field error on the address, in the
+                // 422 shape every account form reads.
+                var error = new ValidationErrorModel
+                {
+                    Field = "email",
+                    Keyword = ValidationKeywords.EmailAddressRejected,
+                    Message = "We could not send an email to that address. Check it and try again.",
+                };
+                return EmailVerificationResultModel.Invalid(ErrorMessageResolver.Resolve(
+                    [error],
+                    await _errorMessageProvider.GetMessagesAsync(cancellationToken)));
+            }
+
+            return EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
         }
 
         private async Task<MyssUserProfile?> FindOwnProfileAsync(CancellationToken cancellationToken)
@@ -452,6 +508,22 @@ namespace Myss.Api.Services
         /// <param name="Step">How the write finishes.</param>
         /// <param name="Apply">The change to make to the profile, if any.</param>
         private readonly record struct Plan(Step Step, Action<MyssUserProfile>? Apply = null);
+
+        /// <summary>How a send went, as far as this side can tell (MYSS-326).</summary>
+        private enum SendResult
+        {
+            /// <summary>Accepted by the email service.</summary>
+            Sent,
+
+            /// <summary>Certainly not sent: refused, or never reached the service.</summary>
+            NotSent,
+
+            /// <summary>The service refused the address itself; certainly not sent.</summary>
+            AddressRejected,
+
+            /// <summary>Failed in a way the service may have taken it anyway (a timeout).</summary>
+            MayHaveBeenSent,
+        }
 
         private enum Step
         {
