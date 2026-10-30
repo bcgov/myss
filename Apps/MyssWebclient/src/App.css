@@ -49,6 +49,12 @@ main.main--dashboard {
     padding: 0;
 }
 
+/* The phone menu replaces the page while open. The rule above outranks the
+   browser's own one for `hidden`. */
+main[hidden] {
+    display: none;
+}
+
 /* Header actions (Sign out) sit at the far right of the header row. */
 .app-header-actions {
     margin-left: auto;
@@ -90,5 +96,29 @@ body .bcds-header {
     .bcds-header > .bcds-header--container {
         padding-left: var(--layout-padding-medium);
         padding-right: var(--layout-padding-medium);
+    }
+}
+
+/* On a phone the header shows the logo without the portal title. */
+@media (max-width: 767px) {
+    .bcds-header > .bcds-header--container > .bcds-header--title {
+        display: none;
+    }
+}
+
+/* BCDS keeps the footer's logo and link columns at least 324px and 320px
+   wide, wider than a small phone, and the content's 32px inset above leaves
+   less still. Here the footer lines up with the page's 16px gutter. `body`
+   outranks BCDS's runtime-injected rules of the same chain. */
+@media (max-width: 575px) {
+    body .bcds-footer > .bcds-footer--acknowledgement > .bcds-footer--acknowledgement-text,
+    body .bcds-footer > .bcds-footer--container > .bcds-footer--container-content {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    body .bcds-footer > .bcds-footer--container > .bcds-footer--container-content > .bcds-footer--logo-links > .bcds-footer--logo,
+    body .bcds-footer > .bcds-footer--container > .bcds-footer--container-content > .bcds-footer--logo-links.horizontal > .bcds-footer--links {
+        min-width: 0;
     }
 }

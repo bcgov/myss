@@ -1,20 +1,34 @@
 /* Menu column beside the content, both stretched to the full height left
-   under the header. Narrow screens (and 200% zoom) stack the menu above the
-   content so the page keeps its full width; the mobile design is still to
-   come (MYSS-194). */
+   under the header. At phone width the menu moves to the header, leaving
+   the content alone in one column. */
 .layout {
     display: grid;
     flex: 1 1 auto;
     grid-template-columns: 15rem minmax(0, 1fr);
 }
 
+/* The column fills the frame when no menu sits beside it; the section grows,
+   so the copyright line stays at the bottom of a short page. */
 .content {
     background-color: var(--surface-color-background-white);
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+.section {
+    flex: 1 1 auto;
     padding: var(--layout-padding-xlarge);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
     .layout {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .section {
+        padding: var(--layout-padding-xlarge) var(--layout-padding-medium);
     }
 }

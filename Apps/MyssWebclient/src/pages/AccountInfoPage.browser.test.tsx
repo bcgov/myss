@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { userEvent } from "@vitest/browser/context";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccountPayload, PhoneInput } from "@/api/account";
+import { loadPageStyles } from "@/testing/pageStyles";
 import { phoneDigits } from "@myss/formio/phone";
 import AccountInfoPage from "./AccountInfoPage";
 
@@ -431,6 +433,80 @@ describe("AccountInfoPage", () => {
     await expect
       .element(screen.getByRole("alert"))
       .toHaveTextContent("Could not load your account");
+  });
+});
+
+describe("Contact information layout", () => {
+  let initial = { width: 0, height: 0 };
+
+  beforeAll(loadPageStyles);
+
+  beforeEach(() => {
+    initial = { width: window.innerWidth, height: window.innerHeight };
+  });
+
+  afterEach(async () => {
+    await page.viewport(initial.width, initial.height);
+  });
+
+  /** Where the first number's two fields sit, read-only or in edit mode. */
+  function phoneFields(screen: Awaited<ReturnType<typeof renderPage>>) {
+    const phone = screen.getByRole("group", { name: "Phone number 1" });
+    const number = phone
+      .getByRole("textbox", { name: "Phone Number" })
+      .element();
+    const type =
+      phone.getByRole("button", { name: /Type/ }).query() ??
+      phone.getByRole("textbox", { name: "Type" }).element();
+    const field = (control: Element) =>
+      control
+        .closest(".bcds-react-aria-TextField, .bcds-react-aria-Select")!
+        .getBoundingClientRect();
+    return { number: field(number), type: field(type) };
+  }
+
+  // 320 less the dashboard frame's 16-pixel gutters: what the page gets on
+  // the narrowest phone.
+  it("puts the phone type under the number, both full width, on a phone", async () => {
+    await page.viewport(288, 640);
+    stubApi({ account: account() });
+    const screen = await renderPage();
+    const section = screen.getByRole("region", { name: "Contact Information" });
+    await expect.element(section).toBeVisible();
+
+    for (const mode of ["read-only", "edit"]) {
+      if (mode === "edit") {
+        await screen
+          .getByRole("button", { name: "Edit contact information" })
+          .click();
+        await expect
+          .element(screen.getByRole("button", { name: "Save" }))
+          .toBeVisible();
+      }
+      const { number, type } = phoneFields(screen);
+      const width = section.element().getBoundingClientRect().width;
+      expect(type.top, mode).toBeGreaterThanOrEqual(number.bottom);
+      expect(number.width, mode).toBeCloseTo(width, 0);
+      expect(type.width, mode).toBeCloseTo(width, 0);
+      const root = document.documentElement;
+      expect(root.scrollWidth, mode).toBeLessThanOrEqual(root.clientWidth);
+    }
+  });
+
+  it("keeps the phone type beside the number on a desktop", async () => {
+    await page.viewport(1280, 800);
+    stubApi({ account: account() });
+    const screen = await renderPage();
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
+    await expect
+      .element(screen.getByRole("button", { name: "Save" }))
+      .toBeVisible();
+
+    const { number, type } = phoneFields(screen);
+    expect(type.left).toBeGreaterThanOrEqual(number.right);
+    expect(type.top).toBeCloseTo(number.top, 0);
   });
 });
 

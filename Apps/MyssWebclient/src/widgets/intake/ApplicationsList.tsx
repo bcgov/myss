@@ -32,31 +32,45 @@ export default function ApplicationsList() {
     return <p>You have not started an application yet.</p>;
   }
 
+  // On a phone the rows are restyled as blocks of labelled lines, which can
+  // drop a table's semantics in some browsers; the explicit roles keep them.
   return (
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          <th scope="col">Request number</th>
-          <th scope="col">Status</th>
-          <th scope="col">Started</th>
-          <th scope="col">Submitted on</th>
-          <th scope="col">
+    <table className={styles.table} role="table">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader">
+            Request number
+          </th>
+          <th scope="col" role="columnheader">
+            Status
+          </th>
+          <th scope="col" role="columnheader">
+            Started
+          </th>
+          <th scope="col" role="columnheader">
+            Submitted on
+          </th>
+          <th scope="col" role="columnheader">
             <span className={styles.visuallyHidden}>Action</span>
           </th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         {applications.map((application) => (
-          <tr key={application.id}>
-            <td>
+          <tr key={application.id} role="row">
+            <td role="cell" data-label="Request number">
               <code>{application.referenceNumber}</code>
             </td>
-            <td>
+            <td role="cell" data-label="Status">
               <StatusPill status={application.status} />
             </td>
-            <td>{formatDate(application.createdAt)}</td>
-            <td>{formatDate(application.submittedAt)}</td>
-            <td>
+            <td role="cell" data-label="Started">
+              {formatDate(application.createdAt)}
+            </td>
+            <td role="cell" data-label="Submitted on">
+              {formatDate(application.submittedAt)}
+            </td>
+            <td role="cell">
               <Link to={applicationPath(application.id)}>
                 {LINK_TEXT[application.status] ?? "View"}
                 <span className={styles.visuallyHidden}>

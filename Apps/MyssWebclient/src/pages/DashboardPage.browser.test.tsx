@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { MemoryRouter, Route, Routes, useParams } from "react-router";
 
 import type { ApplicationSummaryPayload } from "@/api/intake";
 import type { Session } from "@/auth/useSession";
 import { paths } from "@/routes/paths";
+import { loadPageStyles } from "@/testing/pageStyles";
 
 const session = vi.hoisted(
   () =>
@@ -161,6 +163,77 @@ describe("DashboardPage", () => {
     await expect
       .element(submittedLink)
       .toHaveAttribute("href", `/applications/${SUBMITTED_ID}`);
+  });
+
+  describe("My applications layout", () => {
+    let initial = { width: 0, height: 0 };
+
+    beforeAll(loadPageStyles);
+
+    beforeEach(() => {
+      initial = { width: window.innerWidth, height: window.innerHeight };
+    });
+
+    afterEach(async () => {
+      await page.viewport(initial.width, initial.height);
+    });
+
+    it("stacks each application into labelled lines on a phone, still a table", async () => {
+      await page.viewport(320, 640);
+      stubApi();
+      const screen = await renderDashboard();
+      const table = screen.getByRole("table");
+      await expect
+        .element(table.getByRole("link", { name: /^Continue/ }))
+        .toBeVisible();
+
+      for (const name of ["Request number", "Status", "Started", "Submitted on"]) {
+        await expect
+          .element(table.getByRole("columnheader", { name }))
+          .toBeInTheDocument();
+      }
+      // The table's own rows; each status pill is a grid with a row of its own.
+      const rows = table
+        .element()
+        .querySelectorAll(':scope > * > [role="row"]');
+      expect(rows).toHaveLength(3);
+      const head = rows[0].parentElement!;
+      expect(head.getBoundingClientRect().height).toBeLessThanOrEqual(1);
+      // Block display can drop a table's semantics; the explicit roles keep them.
+      await expect.element(table).toHaveAttribute("role", "table");
+      expect(head.getAttribute("role")).toBe("rowgroup");
+      expect(rows[1].getAttribute("role")).toBe("row");
+      const [number, started] = table
+        .getByRole("cell")
+        .all()
+        .map((cell) => cell.element() as HTMLElement)
+        .filter((cell) => cell.dataset.label !== "Status");
+      expect(number.dataset.label).toBe("Request number");
+      expect(number.getAttribute("role")).toBe("cell");
+      expect(started.dataset.label).toBe("Started");
+      expect(getComputedStyle(number, "::before").display).toBe("block");
+      expect(started.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        number.getBoundingClientRect().bottom,
+      );
+      const root = document.documentElement;
+      expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+    });
+
+    it("keeps the table's columns on a desktop", async () => {
+      await page.viewport(1280, 800);
+      stubApi();
+      const screen = await renderDashboard();
+      const table = screen.getByRole("table");
+
+      await expect
+        .element(table.getByRole("columnheader", { name: "Started" }))
+        .toBeVisible();
+      const [number, status] = table
+        .getByRole("cell")
+        .all()
+        .map((cell) => cell.element().getBoundingClientRect());
+      expect(status.left).toBeGreaterThanOrEqual(number.right);
+    });
   });
 
   it("says so when there are no applications yet", async () => {

@@ -24,3 +24,53 @@
     white-space: nowrap;
     border: 0;
 }
+
+/* On a phone each application is a bordered block of lines, each labelled
+   from its cell's data-label. The header row stays for screen readers, as
+   .visuallyHidden does, and the "/ ''" keeps them from reading the label
+   twice. */
+@media (max-width: 767px) {
+    .table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+
+    .table,
+    .table tbody,
+    .table tr,
+    .table td {
+        display: block;
+    }
+
+    .table tr {
+        border: var(--layout-border-width-small) solid
+            var(--surface-color-border-default);
+        padding: var(--layout-padding-medium);
+    }
+
+    .table tr + tr {
+        margin-top: var(--layout-margin-small);
+    }
+
+    .table td {
+        border-bottom: none;
+        padding: 0;
+    }
+
+    .table td + td {
+        margin-top: var(--layout-margin-small);
+    }
+
+    .table td[data-label]::before {
+        /* Browsers without the alternative-text form keep the first. */
+        content: attr(data-label);
+        content: attr(data-label) / "";
+        display: block;
+        font-weight: var(--typography-font-weights-bold);
+    }
+}

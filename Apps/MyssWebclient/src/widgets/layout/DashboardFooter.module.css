@@ -1,0 +1,12 @@
+/* The design's 22px side inset has no token. */
+.footer {
+    border-top: var(--layout-border-width-small) solid
+        var(--surface-color-border-medium);
+    color: var(--typography-color-secondary);
+    font: var(--typography-regular-small-body);
+    padding: var(--layout-padding-medium) 22px;
+}
+
+.footer p {
+    margin: 0;
+}
