@@ -576,6 +576,64 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(EmailVerificationOutcome.Ok, (await Verify(first)).Outcome);
         }
 
+        // MYSS-326, on registration too: a link that could not be sent starts
+        // no cooldown, so the next try is not told an email had just gone out.
+        [Fact]
+        public async Task ARegistrationLinkThatCannotBeSentChangesNothing_AndCanBeTriedAgainAtOnce()
+        {
+            _email.Unavailable = true;
+
+            EmailVerificationResultModel result = await RequestRegistration(Current);
+
+            Assert.Equal(EmailVerificationOutcome.EmailNotSent, result.Outcome);
+            Assert.Null((await RegistrationStatus()).Email);
+
+            _email.Unavailable = false;
+            Assert.Equal(EmailVerificationOutcome.Ok, (await RequestRegistration(Current)).Outcome);
+        }
+
+        [Fact]
+        public async Task ARegistrationAddressTheEmailServiceRefusesIsAFieldError()
+        {
+            _email.RejectRecipient = true;
+
+            EmailVerificationResultModel result = await RequestRegistration(Current);
+
+            Assert.Equal(EmailVerificationOutcome.Invalid, result.Outcome);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("email", error.Field);
+            Assert.Equal(ValidationKeywords.EmailAddressRejected, error.Keyword);
+            Assert.Null((await RegistrationStatus()).Email);
+        }
+
+        [Fact]
+        public async Task AFailedRegistrationSendKeepsTheAddressAlreadyProven()
+        {
+            await RequestRegistration(Current);
+            await Verify(_email.LastVerificationToken());
+            _clock.Advance(TimeSpan.FromSeconds(60));
+            _email.Unavailable = true;
+
+            await RequestRegistration(Next);
+
+            RegistrationEmailModel status = await RegistrationStatus();
+            Assert.Equal(Current, status.Email);
+            Assert.True(status.Verified);
+        }
+
+        [Fact]
+        public async Task ARegistrationLinkThatMayHaveGoneOutIsKept()
+        {
+            _email.TimesOut = true;
+
+            EmailVerificationResultModel result = await RequestRegistration(Current);
+
+            Assert.Equal(EmailVerificationOutcome.EmailNotSent, result.Outcome);
+            RegistrationEmailModel status = await RegistrationStatus();
+            Assert.Equal(Current, status.Email);
+            Assert.False(status.Verified);
+        }
+
         [Fact]
         public async Task TheRegistrationLinkExpires()
         {

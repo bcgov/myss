@@ -269,6 +269,11 @@ namespace Myss.Api.Services
                 return EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
             }
 
+            // What the request changes, kept so a link that cannot be sent can
+            // be taken back (MYSS-326, as on Account Info).
+            bool isNew = row is null;
+            var before = (Email: row?.Email, TokenHash: row?.TokenHash, RequestedAt: row?.RequestedAt, VerifiedAt: row?.VerifiedAt);
+
             Guid token = EmailedLinkToken.New();
             if (row is null)
             {
@@ -298,7 +303,39 @@ namespace Myss.Api.Services
             catch (EmailNotSentException ex)
             {
                 _logger.LogError(ex, "Registration email verification link was not sent");
-                return EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
+                SendResult sent = Classify(ex);
+
+                // Only when certainly nothing went out does nothing change: no
+                // cooldown starts on an email never sent, and an earlier link
+                // or proof is as it was. One that may have gone out stays.
+                if (sent != SendResult.MayHaveBeenSent)
+                {
+                    if (isNew)
+                    {
+                        _dbContext.RegistrationEmailVerifications.Remove(row);
+                    }
+                    else
+                    {
+                        row.Email = before.Email!;
+                        row.TokenHash = before.TokenHash;
+                        row.RequestedAt = before.RequestedAt!.Value;
+                        row.VerifiedAt = before.VerifiedAt;
+                    }
+
+                    try
+                    {
+                        await _dbContext.SaveChangesAsync(cancellationToken);
+                    }
+                    catch (DbUpdateException)
+                    {
+                        // Another request for this registration wrote since;
+                        // what it wrote stands.
+                    }
+                }
+
+                return sent == SendResult.AddressRejected
+                    ? await AddressRejectedAsync(cancellationToken)
+                    : EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
             }
 
             _logger.LogInformation("Sent a registration email verification link");
@@ -435,16 +472,39 @@ namespace Myss.Api.Services
             catch (EmailNotSentException ex)
             {
                 _logger.LogError(ex, "Email verification link for profile {ProfileId} was not sent", profile.Id);
-                if (ex.RecipientRejected)
-                {
-                    return SendResult.AddressRejected;
-                }
-
-                return ex.MayHaveBeenSent ? SendResult.MayHaveBeenSent : SendResult.NotSent;
+                return Classify(ex);
             }
 
             _logger.LogInformation("Sent an email verification link for profile {ProfileId}", profile.Id);
             return SendResult.Sent;
+        }
+
+        /// <summary>How a send that failed went, as far as this side can tell.</summary>
+        private static SendResult Classify(EmailNotSentException ex)
+        {
+            if (ex.RecipientRejected)
+            {
+                return SendResult.AddressRejected;
+            }
+
+            return ex.MayHaveBeenSent ? SendResult.MayHaveBeenSent : SendResult.NotSent;
+        }
+
+        /// <summary>
+        /// The email service refused the address itself: the citizen's to fix,
+        /// so a field error on the address, in the 422 shape every form reads.
+        /// </summary>
+        private async Task<EmailVerificationResultModel> AddressRejectedAsync(CancellationToken cancellationToken)
+        {
+            var error = new ValidationErrorModel
+            {
+                Field = "email",
+                Keyword = ValidationKeywords.EmailAddressRejected,
+                Message = "We could not send an email to that address. Check it and try again.",
+            };
+            return EmailVerificationResultModel.Invalid(ErrorMessageResolver.Resolve(
+                [error],
+                await _errorMessageProvider.GetMessagesAsync(cancellationToken)));
         }
 
         /// <summary>
@@ -592,22 +652,9 @@ namespace Myss.Api.Services
                 }
             }
 
-            if (sent == SendResult.AddressRejected)
-            {
-                // The citizen's to fix: a field error on the address, in the
-                // 422 shape every account form reads.
-                var error = new ValidationErrorModel
-                {
-                    Field = "email",
-                    Keyword = ValidationKeywords.EmailAddressRejected,
-                    Message = "We could not send an email to that address. Check it and try again.",
-                };
-                return EmailVerificationResultModel.Invalid(ErrorMessageResolver.Resolve(
-                    [error],
-                    await _errorMessageProvider.GetMessagesAsync(cancellationToken)));
-            }
-
-            return EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
+            return sent == SendResult.AddressRejected
+                ? await AddressRejectedAsync(cancellationToken)
+                : EmailVerificationResultModel.Refused(EmailVerificationOutcome.EmailNotSent);
         }
 
         private async Task<MyssUserProfile?> FindOwnProfileAsync(CancellationToken cancellationToken)
