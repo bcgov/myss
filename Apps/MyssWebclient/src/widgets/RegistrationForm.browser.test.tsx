@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
+import { AccountRequestError } from "@/api/account";
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
 import type { IdentityDetails } from "./registrationSpec";
 import { registerBcgovComponents } from "@myss/formio";
@@ -22,11 +23,35 @@ const formState = vi.hoisted(() => ({
             formState.submit.error = null;
         }),
     },
+    // EmailVerification off unless a test turns it on: most tests here are
+    // about the form, and go from Step 1 straight to the review.
+    features: {} as Record<string, boolean | undefined>,
+    requestEmail: {
+        mutate: vi.fn(),
+        reset: vi.fn(),
+        isPending: false,
+        isSuccess: false,
+        error: null as Error | null,
+    },
+    emailStatus: {
+        data: undefined as { email?: string | null; verified: boolean } | undefined,
+        refetch: vi.fn(),
+    },
 }));
 
 vi.mock("@/hooks/usePocForm", () => ({
     useFormSpec: () => formState.spec,
     useSubmitForm: () => formState.submit,
+}));
+vi.mock("@/hooks/useFeatures", () => ({
+    // A name set to undefined is still loading; one not set at all is off.
+    useFeature: (name: string) =>
+        name in formState.features ? formState.features[name] : false,
+}));
+vi.mock("@/hooks/useAccount", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/hooks/useAccount")>()),
+    useRequestRegistrationEmail: () => formState.requestEmail,
+    useRegistrationEmail: () => formState.emailStatus,
 }));
 
 import RegistrationForm from "./RegistrationForm";
@@ -140,6 +165,17 @@ function renderForm(
     return { screen, rerender, onRegistered, onCancel };
 }
 
+/**
+ * Step 1's Continue, then the review (MYSS-295). With EmailVerification off,
+ * as most tests here have it, there is no Step 2 in between.
+ */
+async function continueToReview(screen: Awaited<ReturnType<typeof renderForm>["screen"]>) {
+    await screen.getByRole("button", { name: "Continue" }).click();
+    await expect
+        .element(screen.getByRole("heading", { name: /Review and submit/ }))
+        .toBeVisible();
+}
+
 /** A mutation the API refuses with these field errors, as useSubmitForm reports it. */
 function refuseWith(errors: FormValidationError[]) {
     formState.submit.mutate.mockImplementation(
@@ -167,6 +203,12 @@ describe("RegistrationForm", () => {
         formState.submit.isPending = false;
         formState.submit.mutate.mockReset();
         formState.submit.reset.mockClear();
+        formState.features = {};
+        formState.requestEmail.mutate.mockReset();
+        formState.requestEmail.isSuccess = false;
+        formState.requestEmail.error = null;
+        formState.emailStatus.data = undefined;
+        formState.emailStatus.refetch.mockReset();
     });
 
     it("shows loading while the registration spec is fetched", async () => {
@@ -211,7 +253,7 @@ describe("RegistrationForm", () => {
         await expect.element(screen.getByRole("radio", { name: "Man/Boy" })).toBeEnabled();
     });
 
-    it("draws the phone and consent fields like every other field", async () => {
+    it("draws the phone like every other field, and the consent on the review", async () => {
         formState.spec.data = {
             version: 4,
             spec: {
@@ -231,6 +273,10 @@ describe("RegistrationForm", () => {
         };
         const screen = await renderForm().screen;
 
+        // The consent is asked for on the review step (MYSS-295), not here.
+        await expect.element(screen.getByRole("textbox", { name: /First name/ })).toBeInTheDocument();
+        expect(document.querySelector(".bcds-react-aria-Checkbox")).toBeNull();
+
         // phoneNumber is a design system telephone input now, not Form.io's
         // own markup with its red star and "numeric only" hint.
         await expect.element(screen.getByRole("textbox", { name: /Phone/ })).toBeInTheDocument();
@@ -239,12 +285,15 @@ describe("RegistrationForm", () => {
         expect(phone?.closest(".bcds-react-aria-TextField")).not.toBeNull();
         expect(document.querySelector(".form-control, .required-star")).toBeNull();
 
-        // The consent checkbox lines up with the text inputs, not indented.
-        const firstName = screen.getByRole("textbox", { name: /First name/ }).element();
+        // On the review step it is a design system checkbox, lined up with
+        // the step's other content rather than indented.
+        await screen.getByRole("textbox", { name: /Phone/ }).fill("2505550199");
+        await continueToReview(screen);
         const checkbox = document.querySelector(".bcds-react-aria-Checkbox");
         expect(checkbox).not.toBeNull();
+        const heading = screen.getByRole("heading", { name: /Review and submit/ }).element();
         expect(Math.round(checkbox!.getBoundingClientRect().left)).toBe(
-            Math.round(firstName.closest(".bcds-react-aria-TextField")!.getBoundingClientRect().left),
+            Math.round(heading.getBoundingClientRect().left),
         );
     });
 
@@ -281,7 +330,7 @@ describe("RegistrationForm", () => {
 
     // v3, the version published today, still carries its own Form.io submit
     // button; the widget's BC Gov buttons replace it.
-    it("replaces the spec's submit button with BC Gov Cancel and Complete registration", async () => {
+    it("replaces the spec's submit button with BC Gov Cancel and Continue", async () => {
         formState.spec.data = {
             version: 3,
             spec: {
@@ -311,6 +360,7 @@ describe("RegistrationForm", () => {
         const screen = await pending;
 
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await screen.getByRole("button", { name: "Complete registration" }).click();
 
         await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
@@ -337,6 +387,7 @@ describe("RegistrationForm", () => {
         const screen = await pending;
 
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await screen.getByRole("button", { name: "Complete registration" }).click();
 
         await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
@@ -354,6 +405,7 @@ describe("RegistrationForm", () => {
 
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
         const complete = screen.getByRole("button", { name: "Complete registration" });
+        await continueToReview(screen);
         await complete.click();
         await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
         await complete.click();
@@ -372,6 +424,7 @@ describe("RegistrationForm", () => {
 
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
         const complete = screen.getByRole("button", { name: "Complete registration" });
+        await continueToReview(screen);
         await complete.click();
         await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
         await complete.click();
@@ -387,6 +440,7 @@ describe("RegistrationForm", () => {
 
         const sin = screen.getByRole("textbox", { name: /Social Insurance Number/ });
         await sin.fill("050082833");
+        await continueToReview(screen);
         await screen.getByRole("button", { name: "Complete registration" }).click();
         await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
         await rerender();
@@ -411,6 +465,7 @@ describe("RegistrationForm", () => {
         const sin = screen.getByRole("textbox", { name: /Social Insurance Number/ });
         const complete = screen.getByRole("button", { name: "Complete registration" });
         await sin.fill("050082833");
+        await continueToReview(screen);
         await complete.click();
         await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
         await rerender();
@@ -423,6 +478,7 @@ describe("RegistrationForm", () => {
         await vi.waitFor(() =>
             expect(screen.getByText(sinRefused.message).elements()).toHaveLength(1),
         );
+        await continueToReview(screen);
         await complete.click();
 
         await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledTimes(2));
@@ -442,6 +498,7 @@ describe("RegistrationForm", () => {
 
         await screen.getByText("Woman/Girl").click();
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await screen.getByRole("button", { name: "Complete registration" }).click();
         await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
         await rerender();
@@ -461,10 +518,13 @@ describe("RegistrationForm", () => {
         const screen = await renderForm().screen;
 
         await expect.element(screen.getByRole("textbox", { name: /First name/ })).toHaveValue("Jane");
-        await screen.getByRole("button", { name: "Complete registration" }).click();
+        await screen.getByRole("button", { name: "Continue" }).click();
 
         // Give Form.io's validation pass time to run and refuse.
         await new Promise((resolve) => setTimeout(resolve, 300));
+        await expect
+            .element(screen.getByRole("heading", { name: "Step 1: Provide your information" }))
+            .toBeVisible();
         expect(formState.submit.mutate).not.toHaveBeenCalled();
     });
 });
@@ -478,6 +538,12 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
         formState.submit.isPending = false;
         formState.submit.mutate.mockReset();
         formState.submit.reset.mockClear();
+        formState.features = {};
+        formState.requestEmail.mutate.mockReset();
+        formState.requestEmail.isSuccess = false;
+        formState.requestEmail.error = null;
+        formState.emailStatus.data = undefined;
+        formState.emailStatus.refetch.mockReset();
     });
 
     // Masked inputs have no textbox role; their labels end in "(required)".
@@ -503,6 +569,7 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
             screen.getByRole("heading", { name: /Create your Personal Identification Number/ }).query(),
         ).toBeNull();
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await screen.getByRole("button", { name: "Complete registration" }).click();
 
         await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
@@ -510,8 +577,10 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
         expect(sentInput()).not.toHaveProperty("pinConfirmation");
     });
 
-    it("asks a BCeID citizen for a 4-digit PIN, twice", async () => {
+    it("asks a BCeID citizen for a 4-digit PIN, twice, on the review step", async () => {
         const screen = await renderForm({}, { requirePin: true }).screen;
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
 
         await expect
             .element(screen.getByRole("heading", { name: "Create your Personal Identification Number (PIN)" }))
@@ -530,6 +599,7 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
         const screen = await pending;
 
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await pinInput(screen).fill("4821");
         await confirmInput(screen).fill("4821");
         await screen.getByRole("button", { name: "Complete registration" }).click();
@@ -545,6 +615,7 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
         const screen = await renderForm({}, { requirePin: true }).screen;
 
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await pinInput(screen).fill("4821");
         await confirmInput(screen).fill("4812");
         await screen.getByRole("button", { name: "Complete registration" }).click();
@@ -560,16 +631,21 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
         expect(formState.submit.mutate).not.toHaveBeenCalled();
     });
 
-    it("lists the form's problems and the PIN's in one summary", async () => {
+    it("holds Step 1 back on its own problems, and the review on the PIN's", async () => {
         const screen = await renderForm({}, { requirePin: true }).screen;
 
-        // The SIN is required and left empty; the PIN is too short.
+        // The SIN is required and left empty: Step 1 does not let go.
+        await screen.getByRole("button", { name: "Continue" }).click();
+        await expect.element(screen.getByRole("alert")).toHaveTextContent(/Social Insurance Number/);
+
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await pinInput(screen).fill("48");
         await screen.getByRole("button", { name: "Complete registration" }).click();
 
-        const summary = screen.getByRole("alert");
-        await expect.element(summary).toHaveTextContent(/Social Insurance Number/);
-        await expect.element(summary).toHaveTextContent("Enter a 4-digit PIN using numbers only.");
+        await expect
+            .element(screen.getByRole("alert"))
+            .toHaveTextContent("Enter a 4-digit PIN using numbers only.");
         expect(formState.submit.mutate).not.toHaveBeenCalled();
     });
 
@@ -577,6 +653,7 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
         const screen = await renderForm({}, { requirePin: true }).screen;
 
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await screen.getByRole("button", { name: "Complete registration" }).click();
 
         await screen
@@ -590,6 +667,7 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
         const screen = await renderForm({}, { requirePin: true }).screen;
 
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await pinInput(screen).fill("4821");
         await confirmInput(screen).fill("4812");
         await screen.getByRole("button", { name: "Complete registration" }).click();
@@ -612,6 +690,7 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
         const screen = await pending;
 
         await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await continueToReview(screen);
         await pinInput(screen).fill("4821");
         await confirmInput(screen).fill("4821");
         await screen.getByRole("button", { name: "Complete registration" }).click();
@@ -620,5 +699,219 @@ describe("RegistrationForm PIN (MYSS-258)", () => {
 
         await expect.element(confirmInput(screen)).toHaveFocus();
         await expect.element(confirmInput(screen)).toHaveAttribute("aria-invalid", "true");
+    });
+});
+
+describe("RegistrationForm steps (MYSS-295)", () => {
+    beforeEach(() => {
+        formState.spec.data = { version: 4, spec: specV4 };
+        formState.spec.error = null;
+        formState.spec.isPending = false;
+        formState.submit.error = null;
+        formState.submit.isPending = false;
+        formState.submit.mutate.mockReset();
+        formState.submit.reset.mockClear();
+        formState.features = { EmailVerification: true };
+        formState.requestEmail.mutate.mockReset();
+        formState.requestEmail.isSuccess = false;
+        formState.requestEmail.error = null;
+        formState.emailStatus.data = undefined;
+        formState.emailStatus.refetch.mockReset();
+    });
+
+    type Screen = Awaited<ReturnType<typeof renderForm>["screen"]>;
+
+    /** The link request answers as the API would. */
+    function emailAnswers(status: { email: string; verified: boolean }) {
+        formState.requestEmail.mutate.mockImplementation(
+            (_email: string, callbacks?: { onSuccess?: (s: typeof status) => void }) =>
+                callbacks?.onSuccess?.(status),
+        );
+    }
+
+    /** Step 2's own buttons: Step 1's, hidden but mounted, share the name. */
+    const step2 = (screen: Screen) =>
+        screen.getByRole("region", { name: "Step 2: Verify your email" });
+
+    async function fillAndContinue(screen: Screen) {
+        await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+        await screen.getByRole("button", { name: "Continue" }).click();
+    }
+
+    it("waits for the feature flags before Step 1 can continue", async () => {
+        formState.features = { EmailVerification: undefined };
+        const screen = await renderForm().screen;
+
+        await expect.element(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    });
+
+    it("shows the steps, the current one marked", async () => {
+        const screen = await renderForm().screen;
+
+        const current = screen.getByRole("listitem").filter({ hasText: "Provide your information" });
+        await expect.element(current).toHaveAttribute("aria-current", "step");
+        await expect.element(screen.getByText("Verify your email")).toBeVisible();
+    });
+
+    it("sends the link to the Step 1 address and opens Step 2 with it", async () => {
+        emailAnswers({ email: "jane@example.com", verified: false });
+        const screen = await renderForm().screen;
+
+        await fillAndContinue(screen);
+
+        // Form.io validates before it submits, so the request arrives a moment later.
+        await vi.waitFor(() =>
+            expect(formState.requestEmail.mutate.mock.calls[0]?.[0]).toBe("jane@example.com"),
+        );
+        await expect
+            .element(screen.getByRole("heading", { name: "Step 2: Verify your email" }))
+            .toBeVisible();
+        await expect.element(screen.getByText("jane@example.com").first()).toBeVisible();
+    });
+
+    it("goes straight to the review for an address already proven (AC6)", async () => {
+        emailAnswers({ email: "jane@example.com", verified: true });
+        const screen = await renderForm().screen;
+
+        await fillAndContinue(screen);
+
+        await expect
+            .element(screen.getByRole("heading", { name: "Step 3: Review and submit" }))
+            .toBeVisible();
+    });
+
+    it("will not continue until the address is verified, then does (AC4, AC5)", async () => {
+        emailAnswers({ email: "jane@example.com", verified: false });
+        formState.emailStatus.refetch.mockResolvedValueOnce({
+            data: { email: "jane@example.com", verified: false },
+        });
+        const screen = await renderForm().screen;
+        await fillAndContinue(screen);
+
+        await step2(screen).getByRole("button", { name: "Continue" }).click();
+        await expect.element(screen.getByText("Email verification is required")).toBeVisible();
+
+        formState.emailStatus.refetch.mockResolvedValueOnce({
+            data: { email: "jane@example.com", verified: true },
+        });
+        await step2(screen).getByRole("button", { name: "Continue" }).click();
+        await expect
+            .element(screen.getByRole("heading", { name: "Step 3: Review and submit" }))
+            .toBeVisible();
+    });
+
+    // MYSS-295 retest, 2026-10-28: an API without the endpoint answered 404,
+    // and the form took that for "verification is off" and skipped Step 2,
+    // which the stepper then showed as done. It is a failure, and says so.
+    it("does not skip Step 2 when the link cannot be sent", async () => {
+        formState.requestEmail.mutate.mockImplementation(
+            (_email: string, callbacks?: { onError?: (e: Error) => void }) =>
+                callbacks?.onError?.(new AccountRequestError(404, [])),
+        );
+        const screen = await renderForm().screen;
+
+        await fillAndContinue(screen);
+
+        await expect
+            .element(screen.getByText(/We could not send the verification email/))
+            .toBeVisible();
+        await expect
+            .element(screen.getByRole("heading", { name: "Step 1: Provide your information" }))
+            .toBeVisible();
+        expect(screen.getByRole("heading", { name: /Review and submit/ }).query()).toBeNull();
+    });
+
+    it("puts a refused address on Step 1's email field", async () => {
+        formState.requestEmail.mutate.mockImplementation(
+            (_email: string, callbacks?: { onError?: (e: Error) => void }) =>
+                callbacks?.onError?.(
+                    new AccountRequestError(422, [
+                        {
+                            field: "email",
+                            keyword: "IDA.EMAIL.INVALID_FORMAT",
+                            message: "That address cannot be used.",
+                        },
+                    ]),
+                ),
+        );
+        const { screen: pending, rerender } = renderForm();
+        const screen = await pending;
+
+        await fillAndContinue(screen);
+        await rerender();
+
+        await vi.waitFor(() =>
+            expect(screen.getByText("That address cannot be used.").elements().length).toBeGreaterThan(0),
+        );
+        await expect
+            .element(screen.getByRole("heading", { name: "Step 1: Provide your information" }))
+            .toBeVisible();
+    });
+
+    it("reviews the answers as the citizen reads them", async () => {
+        emailAnswers({ email: "jane@example.com", verified: true });
+        const screen = await renderForm().screen;
+        await fillAndContinue(screen);
+
+        const table = screen.getByRole("table");
+        await expect.element(table.getByRole("row", { name: /First name Jane/ })).toBeVisible();
+        await expect.element(table.getByRole("row", { name: /Gender Woman\/Girl/ })).toBeVisible();
+        await expect
+            .element(table.getByRole("row", { name: /Social Insurance Number \(SIN\) 050-082-833/ }))
+            .toBeVisible();
+    });
+
+    it("asks for the spec's consent on the review and sends it with the answers", async () => {
+        formState.spec.data = {
+            version: 4,
+            spec: {
+                ...specV4,
+                components: [
+                    ...specV4.components,
+                    { type: "content", key: "consentHeading", input: false, html: "<h2>Registration consent</h2>" },
+                    {
+                        type: "checkbox",
+                        key: "consent",
+                        label: "I agree to the Terms of Use.",
+                        input: true,
+                        validate: { required: true },
+                    },
+                ],
+            },
+        };
+        emailAnswers({ email: "jane@example.com", verified: true });
+        const screen = await renderForm().screen;
+        await fillAndContinue(screen);
+
+        // Not given: nothing is sent.
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        expect(formState.submit.mutate).not.toHaveBeenCalled();
+
+        await screen.getByRole("checkbox", { name: /I agree to the Terms of Use/ }).click({ force: true });
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+        const [input] = formState.submit.mutate.mock.calls[0] as [{ answers: Record<string, unknown> }];
+        expect(input.answers).toMatchObject({ sin: "050082833", consent: true, email: "jane@example.com" });
+    });
+
+    it("takes the citizen back to Step 2 when the API says the address is not verified", async () => {
+        emailAnswers({ email: "jane@example.com", verified: true });
+        refuseWith([
+            {
+                field: "email",
+                keyword: "REGISTRATION.EMAIL.NOT_VERIFIED",
+                message: "Verify your email address before you complete your registration.",
+            },
+        ]);
+        const screen = await renderForm().screen;
+        await fillAndContinue(screen);
+
+        await screen.getByRole("button", { name: "Complete registration" }).click();
+
+        await expect
+            .element(screen.getByRole("heading", { name: "Step 2: Verify your email" }))
+            .toBeVisible();
     });
 });

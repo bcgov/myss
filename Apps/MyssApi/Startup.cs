@@ -266,6 +266,11 @@ namespace Myss.Api
             services.AddSingleton(emailVerification);
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();
 
+            // Registration's email proofs (MYSS-295) are useless once older than a
+            // link's lifetime; this deletes them, so an abandoned registration does
+            // not keep an address (PII inventory retention).
+            services.AddHostedService<RegistrationEmailPurge>();
+
             // Feature flags (handbook §2.7). A flag that is not set is off.
             services.AddFeatureManagement(configuration.GetSection(FeatureFlags.SectionName));
 

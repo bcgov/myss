@@ -156,12 +156,41 @@ namespace Myss.Api.Services
                 FormSpecValidator.Validate(spec.Spec, request.Answers);
 
             Pin? registrationPin = null;
+            bool verifyEmail = false;
+            DateTimeOffset? emailVerifiedAt = null;
             if (IsRegistration(formSpecId))
             {
                 (IReadOnlyList<ValidationErrorModel> pinErrors, registrationPin) =
                     await ValidateRegistrationPinAsync(request, cancellationToken);
                 errors = FormSpecValidator.OnePerField(
                     [.. errors, .. ValidateRegistration(spec.Spec, request.Answers), .. pinErrors]);
+
+                // MYSS-295: with EmailVerification on, the address must have been
+                // proven in registration's Step 2 before the profile is created.
+                // Checked only when the address itself passed, so the citizen
+                // reads one reason for the field.
+                verifyEmail = await _features.IsEnabledAsync(FeatureFlags.EmailVerification);
+                if (verifyEmail
+                    && !errors.Any(e => e.Field == "email")
+                    && OptionalString(request.Answers, "email") is { } submittedEmail)
+                {
+                    emailVerifiedAt = await _emailVerification.RegistrationEmailVerifiedAtAsync(
+                        submittedEmail.Trim(),
+                        cancellationToken);
+                    if (emailVerifiedAt is null)
+                    {
+                        errors = FormSpecValidator.OnePerField(
+                        [
+                            .. errors,
+                            new ValidationErrorModel
+                            {
+                                Field = "email",
+                                Keyword = ValidationKeywords.RegistrationEmailNotVerified,
+                                Message = "Verify your email address before you complete your registration.",
+                            },
+                        ]);
+                    }
+                }
             }
 
             if (domainRules is not null)
@@ -207,26 +236,20 @@ namespace Myss.Api.Services
             };
 
             _dbContext.FormSubmissions.Add(submission);
-            (MyssUserProfile Profile, Guid Token)? verification = null;
             if (IsRegistration(formSpecId))
             {
-                bool verifyEmail = await _features.IsEnabledAsync(FeatureFlags.EmailVerification);
-                verification = await AddOrUpdateProfileAsync(
+                await AddOrUpdateProfileAsync(
                     request.Answers,
                     registrationPin is null ? null : _pinHasher.Hash(registrationPin),
-                    verifyEmail,
+                    verifyEmail ? emailVerifiedAt : null,
                     cancellationToken);
+
+                // The registration's email proof has done its job, or, with the
+                // flag switched off mid-registration, never will: it goes with
+                // this save either way (MYSS-295).
+                await _emailVerification.ForgetRegistrationEmailAsync(cancellationToken);
             }
             await _dbContext.SaveChangesAsync(cancellationToken);
-
-            // The address from the form is proven by an emailed link (MYSS-305),
-            // sent once the profile, and the link's token, are saved. A failed
-            // send is logged and does not undo the registration: the citizen can
-            // resend from Account Info.
-            if (verification is { } sendLink)
-            {
-                await _emailVerification.SendIssuedLinkAsync(sendLink.Profile, sendLink.Token, cancellationToken);
-            }
 
             // Don't log the answers; they may contain PII.
             _logger.LogInformation(
@@ -241,11 +264,14 @@ namespace Myss.Api.Services
         private static bool IsRegistration(string formSpecId) =>
             string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase);
 
-        /// <returns>The profile and the token of a verification link to send once it is saved, or null.</returns>
-        private async Task<(MyssUserProfile Profile, Guid Token)?> AddOrUpdateProfileAsync(
+        /// <param name="answers">The registration answers.</param>
+        /// <param name="pinHash">The new PIN's hash, or null to keep the profile's.</param>
+        /// <param name="emailVerifiedAt">When the address was proven in Step 2, or null with EmailVerification off.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        private async Task AddOrUpdateProfileAsync(
             JsonElement answers,
             string? pinHash,
-            bool verifyEmail,
+            DateTimeOffset? emailVerifiedAt,
             CancellationToken cancellationToken)
         {
             CurrentUser currentUser = _currentUserAccessor.User;
@@ -307,7 +333,8 @@ namespace Myss.Api.Services
                 };
                 _dbContext.MyssUserProfiles.Add(profile);
                 AddRegistrationPhone(profile, phone);
-                return WithVerification(profile, email, verifyEmail);
+                ApplyEmail(profile, email, emailVerifiedAt);
+                return;
             }
 
             profile.FirstName = firstName;
@@ -338,25 +365,34 @@ namespace Myss.Api.Services
 
             profile.UpdatedAt = DateTimeOffset.UtcNow;
 
-            // Not assigned directly: a verified address stays in use until a
-            // different one from the form is proven, as on Account Info.
-            return WithVerification(profile, email, verifyEmail);
+            // With EmailVerification on, an existing account's address is only
+            // ever its own verified one here (checked before saving), so there
+            // is nothing to change; Account Info changes it. Off, as before.
+            if (emailVerifiedAt is null)
+            {
+                ApplyEmail(profile, email, emailVerifiedAt: null);
+            }
         }
 
         /// <summary>
-        /// With EmailVerification on, the address goes through verification
-        /// (MYSS-305). Off, it is stored as given, as before the feature: it
-        /// stays unverified, and is offered a link once the flag is turned on.
+        /// With EmailVerification on, the address was proven in Step 2
+        /// (MYSS-295) and goes on the profile as verified. Off, it is stored as
+        /// given, as before the feature; a different address is not verified.
         /// </summary>
-        private (MyssUserProfile Profile, Guid Token)? WithVerification(MyssUserProfile profile, string email, bool verifyEmail)
+        private void ApplyEmail(MyssUserProfile profile, string email, DateTimeOffset? emailVerifiedAt)
         {
-            if (!verifyEmail)
+            if (emailVerifiedAt is { } verifiedAt)
             {
-                profile.Email = email;
-                return null;
+                _emailVerification.ApplyVerifiedRegistrationEmail(profile, email, verifiedAt);
+                return;
             }
 
-            return _emailVerification.ApplyRegistrationEmail(profile, email) is { } token ? (profile, token) : null;
+            if (!string.IsNullOrEmpty(profile.Email) && !EmailAddress.ConfirmationMatches(profile.Email, email))
+            {
+                profile.EmailVerifiedAt = null;
+            }
+
+            profile.Email = email;
         }
 
         /// <summary>

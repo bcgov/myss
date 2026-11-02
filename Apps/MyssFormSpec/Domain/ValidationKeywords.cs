@@ -76,6 +76,9 @@ namespace Myss.FormSpec.Domain
         /// <summary>A registration gender is not one of the form's gender options.</summary>
         public const string RegistrationGenderUnknown = "REGISTRATION.GENDER.UNKNOWN";
 
+        /// <summary>A registration email address has not been verified by its emailed link (MYSS-295).</summary>
+        public const string RegistrationEmailNotVerified = "REGISTRATION.EMAIL.NOT_VERIFIED";
+
         /// <summary>A phone type is not one of Home, Cell, Work or Message.</summary>
         public const string PhoneTypeUnknown = "ACCOUNT.PHONE.TYPE_UNKNOWN";
 

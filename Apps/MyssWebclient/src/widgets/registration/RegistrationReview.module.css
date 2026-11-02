@@ -1,0 +1,36 @@
+/* The review table, as in the design: a tinted header row, a rule under each row. */
+.review {
+    border-collapse: collapse;
+    max-width: 52rem;
+    width: 100%;
+}
+
+.review th,
+.review td {
+    border-bottom: var(--layout-border-width-small) solid
+        var(--surface-color-border-medium);
+    padding: var(--layout-padding-small) var(--layout-padding-small);
+    text-align: left;
+    vertical-align: top;
+}
+
+.review thead th {
+    background: var(--surface-color-background-light-blue);
+    border-top: var(--layout-border-width-small) solid
+        var(--surface-color-border-medium);
+}
+
+/* Labels read as plain text in the body, as the design shows them. */
+.review tbody th {
+    font-weight: normal;
+    width: 50%;
+}
+
+.visuallyHidden {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}

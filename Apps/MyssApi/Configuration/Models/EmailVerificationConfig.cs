@@ -17,6 +17,15 @@ namespace Myss.Api.Configuration.Models
         public const string LinkPath = "verify-email";
 
         /// <summary>
+        /// The same page for a registration's link (MYSS-295), marked so it tells
+        /// the citizen to go back to the window where their registration is open,
+        /// rather than taking them anywhere. The mark only chooses the wording; the
+        /// token alone decides what is verified. Must match the webclient's
+        /// <c>VerifyEmailPage</c>.
+        /// </summary>
+        public const string RegistrationLinkPath = LinkPath + "?for=registration";
+
+        /// <summary>
         /// Gets or sets how long a verification link works after it is sent, in
         /// minutes (env var <c>Myss_Account__EmailVerification__TokenLifetimeMinutes</c>).
         /// Longer than a PIN reset's: a citizen may not open their mail at once,

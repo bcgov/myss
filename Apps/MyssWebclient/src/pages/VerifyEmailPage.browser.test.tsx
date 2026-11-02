@@ -112,4 +112,52 @@ describe("VerifyEmailPage", () => {
       screen.getByRole("button", { name: "Confirm my email address" }).query(),
     ).toBeNull();
   });
+
+  // MYSS-295: a registration's link opens in a new window while the
+  // registration waits, half-filled, in the first.
+  describe("for a registration", () => {
+    it("tells the citizen to close it and go back, and links nowhere", async () => {
+      const calls = stubVerify(() => new Response(null, { status: 204 }));
+      const screen = await renderPage(`?for=registration#token=${TOKEN}`);
+
+      await screen
+        .getByRole("button", { name: "Confirm my email address" })
+        .click();
+
+      await expect
+        .element(
+          screen.getByText(
+            /You can close this window\. Go back to the window where you are creating your MySS account/,
+          ),
+        )
+        .toBeVisible();
+      expect(calls[0].body).toEqual({ token: TOKEN });
+      expect(screen.getByRole("link").query()).toBeNull();
+    });
+
+    it("sends the citizen back to their registration for a new link", async () => {
+      stubVerify(() =>
+        json(410, {
+          detail:
+            "Sign in and choose Resend link on Account Info to get a new one.",
+          keyword: "ACCOUNT.EMAIL.LINK_INVALID",
+        }),
+      );
+      const screen = await renderPage(`?for=registration#token=${TOKEN}`);
+
+      await screen
+        .getByRole("button", { name: "Confirm my email address" })
+        .click();
+
+      await expect
+        .element(
+          screen.getByText(
+            /Go back to the window where you are creating your MySS account and choose Resend link/,
+          ),
+        )
+        .toBeVisible();
+      expect(screen.getByText(/Account Info/).query()).toBeNull();
+      expect(screen.getByRole("link").query()).toBeNull();
+    });
+  });
 });

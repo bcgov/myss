@@ -400,6 +400,20 @@ export type MyssApiModelsPinResetRequestedModel = {
 };
 
 /**
+ * The address a registration is proving (MYSS-295), and whether it has been.
+ */
+export type MyssApiModelsRegistrationEmailModel = {
+    /**
+     * Gets or sets the address a link was sent to, or null when none has been.
+     */
+    email?: string | null;
+    /**
+     * Gets or sets a value indicating whether the link has been followed.
+     */
+    verified?: boolean;
+};
+
+/**
  * The body of a PIN reset from the emailed link. All three are checked by
  * the service, so a mistake comes back as a refusal or a field error.
  */
@@ -667,6 +681,19 @@ export type MyssCommonModelsBaseResponseModelMyssApiModelsPinResetRequestedModel
 };
 
 /**
+ * BaseResponseModel<RegistrationEmailModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsRegistrationEmailModel = {
+    payload: MyssApiModelsRegistrationEmailModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
  * BaseResponseModel<EligibilityRatesModel>
  *
  * Represents the result of a request.
@@ -686,6 +713,26 @@ export type MyssCommonModelsBaseResponseModelMyssCommonContentEligibilityRatesMo
  */
 export type MyssCommonModelsBaseResponseModelMyssFormSpecFormSpecModel = {
     payload: MyssFormSpecFormSpecModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyDictionary`2>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemBoolean = {
+    /**
+     * IReadOnlyDictionary<String>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: {
+        [key: string]: boolean;
+    } | null;
     /**
      * Gets or sets the payload information.
      */
@@ -1207,6 +1254,58 @@ export type CancelAccountEmailChangeResponses = {
 
 export type CancelAccountEmailChangeResponse = CancelAccountEmailChangeResponses[keyof CancelAccountEmailChangeResponses];
 
+export type RequestRegistrationEmailVerificationData = {
+    /**
+     * The address from Step 1.
+     */
+    body?: MyssApiModelsChangeEmailRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/registration/email-verification-requests';
+};
+
+export type RequestRegistrationEmailVerificationErrors = {
+    /**
+     * Unprocessable Content
+     */
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
+    /**
+     * Too Many Requests
+     */
+    429: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Service Unavailable
+     */
+    503: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type RequestRegistrationEmailVerificationError = RequestRegistrationEmailVerificationErrors[keyof RequestRegistrationEmailVerificationErrors];
+
+export type RequestRegistrationEmailVerificationResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsRegistrationEmailModel;
+};
+
+export type RequestRegistrationEmailVerificationResponse = RequestRegistrationEmailVerificationResponses[keyof RequestRegistrationEmailVerificationResponses];
+
+export type GetRegistrationEmailVerificationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/registration/email-verification';
+};
+
+export type GetRegistrationEmailVerificationResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsRegistrationEmailModel;
+};
+
+export type GetRegistrationEmailVerificationResponse = GetRegistrationEmailVerificationResponses[keyof GetRegistrationEmailVerificationResponses];
+
 export type VerifyEmailData = {
     /**
      * The token from the link.
@@ -1234,6 +1333,22 @@ export type VerifyEmailResponses = {
 };
 
 export type VerifyEmailResponse = VerifyEmailResponses[keyof VerifyEmailResponses];
+
+export type GetFeaturesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/features';
+};
+
+export type GetFeaturesResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemBoolean;
+};
+
+export type GetFeaturesResponse = GetFeaturesResponses[keyof GetFeaturesResponses];
 
 export type GetFormSpecData = {
     body?: never;

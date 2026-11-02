@@ -243,3 +243,39 @@ export async function verifyEmail(token: string): Promise<void> {
   });
   await ensureOk(res);
 }
+
+/** Mirrors RegistrationEmailModel: the address registration is proving (MYSS-295). */
+export interface RegistrationEmail {
+  /** The address a link was sent to; null before Step 2 has asked for one. */
+  email?: string | null;
+  verified: boolean;
+}
+
+/**
+ * Registration's Step 2 (MYSS-295): emails a link to prove `email` before the
+ * account exists. An address already proven in this registration is not sent
+ * another. Needs the sign-in, not a profile.
+ */
+export async function requestRegistrationEmail(
+  email: string,
+): Promise<RegistrationEmail> {
+  const res = await fetch(
+    `${API_URL}/v1/registration/email-verification-requests`,
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    },
+  );
+  await ensureOk(res);
+  return ((await res.json()) as { payload: RegistrationEmail }).payload;
+}
+
+/** Whether the address registration is proving has been verified yet. */
+export async function getRegistrationEmail(): Promise<RegistrationEmail> {
+  const res = await fetch(`${API_URL}/v1/registration/email-verification`, {
+    headers: authHeaders(),
+  });
+  await ensureOk(res);
+  return ((await res.json()) as { payload: RegistrationEmail }).payload;
+}
