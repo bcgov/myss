@@ -30,6 +30,7 @@ import {
   ruleMessage,
   type RuleFailure,
 } from "./validationRules";
+import { isPhoneField } from "./phone";
 
 /** One validation error as Form.io passes it around (a loose shape). */
 export interface FormioError {
@@ -490,7 +491,7 @@ export function withBcgovField<TBase extends FormioFieldCtor>(Base: TBase) {
       }
 
       const text = String(value);
-      const rule = properties?.myssValidator;
+      const rule = properties?.myssValidator ?? (isPhoneField(this.component) ? "phone" : undefined);
       if (typeof rule === "string" && rule !== "") {
         const failed = checkRule(rule, text, {
           data: this.rootValue,

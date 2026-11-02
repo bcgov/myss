@@ -248,7 +248,7 @@ describe("RegistrationForm", () => {
         );
     });
 
-    it("validates a v5 phone on blur without masking an overlong number", async () => {
+    it("validates a v5 phone on blur and stops at ten digits", async () => {
         formState.spec.data = { version: 5, spec: specV5 };
         const screen = await renderForm({ phoneNumber: "+1 250 555 0199" }).screen;
         const phone = screen.getByRole("textbox", { name: "Phone number" });
@@ -257,11 +257,14 @@ describe("RegistrationForm", () => {
         await expect.element(phone).toBeEnabled();
         await expect.element(phone).toHaveValue("");
         await phone.fill("25055501999");
-        await expect.element(phone).toHaveValue("25055501999");
+        await expect.element(phone).toHaveValue("(250) 555-0199");
+        await phone.fill("250555019");
+        await expect.element(phone).toHaveValue("(250) 555-019");
         await email.click();
         await expect.element(screen.getByText("Phone number is invalid").first()).toBeVisible();
 
-        await phone.fill("(250) 555-0199");
+        await phone.fill(" 250 555 - 0199 ");
+        await expect.element(phone).toHaveValue("(250) 555-0199");
         await email.click();
         await expect.element(screen.getByText("Phone number is invalid")).not.toBeInTheDocument();
 

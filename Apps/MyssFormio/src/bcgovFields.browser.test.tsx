@@ -1,5 +1,6 @@
 import { Form } from "@formio/react";
 import type { FormType } from "@formio/react/lib/components/Form";
+import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -44,6 +45,20 @@ const spec = {
       label: "Phone",
       input: true,
       inputMask: "(999) 999-9999",
+    },
+    {
+      type: "textfield",
+      key: "markedPhone",
+      label: "Marked phone",
+      input: true,
+      properties: { myssValidator: "phone" },
+    },
+    {
+      type: "phoneNumber",
+      key: "stockPhone",
+      label: "Stock phone",
+      input: true,
+      inputMask: "999-999-9999",
     },
     {
       type: "number",
@@ -210,12 +225,12 @@ describe("design system fields", () => {
     await vi.waitFor(() => expect(submissions).toHaveLength(1));
   });
 
-  it("applies the input mask to typed text and submits the masked value", async () => {
+  it("formats a legacy masked phone and submits the displayed value", async () => {
     const { screen, submissions } = await renderForm();
 
     await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
     await screen.getByText("I agree").click();
-    const phone = screen.getByRole("textbox", { name: "Phone" });
+    const phone = screen.getByRole("textbox", { name: "Phone", exact: true });
     await phone.fill("2505550199");
     await expect.element(phone).toHaveValue("(250) 555-0199");
 
@@ -223,6 +238,83 @@ describe("design system fields", () => {
     await vi.waitFor(() => expect(submissions).toHaveLength(1));
     expect(submissions[0].phone).toBe("(250) 555-0199");
   });
+
+  it("keeps progressive typing and deletion usable from the keyboard", async () => {
+    const { screen } = await renderForm();
+    const phone = screen.getByRole("textbox", { name: "Marked phone" });
+    const input = phone.element() as HTMLInputElement;
+    await phone.click();
+    for (const [key, shown] of [
+      ["2", "(2"],
+      ["5", "(25"],
+      ["0", "(250)"],
+      ["5", "(250) 5"],
+      ["5", "(250) 55"],
+      ["5", "(250) 555"],
+      ["0", "(250) 555-0"],
+      ["1", "(250) 555-01"],
+      ["9", "(250) 555-019"],
+      ["9", "(250) 555-0199"],
+    ]) {
+      await userEvent.keyboard(key);
+      await expect.element(phone).toHaveValue(shown);
+    }
+
+    // An eleventh digit is refused, at the end or in the middle.
+    await userEvent.keyboard("7");
+    await expect.element(phone).toHaveValue("(250) 555-0199");
+    input.setSelectionRange(7, 7);
+    await userEvent.keyboard("7");
+    await expect.element(phone).toHaveValue("(250) 555-0199");
+    await vi.waitFor(() => expect(input.selectionStart).toBe(7));
+
+    input.setSelectionRange(14, 14);
+    await userEvent.keyboard("{Backspace}");
+    await expect.element(phone).toHaveValue("(250) 555-019");
+    await userEvent.keyboard("9");
+    await expect.element(phone).toHaveValue("(250) 555-0199");
+    input.setSelectionRange(7, 8);
+    await userEvent.keyboard("6");
+    await expect.element(phone).toHaveValue("(250) 565-0199");
+    await vi.waitFor(() => expect(input.selectionStart).toBe(8));
+  });
+
+  it.each(["Phone", "Marked phone", "Stock phone"])(
+    "accepts pasted separators, keeps ten digits and reports a short number on %s",
+    async (label) => {
+      const { screen } = await renderForm();
+      const phone = screen.getByRole("textbox", { name: label, exact: true });
+
+      await phone.fill("  2 5 0 ( 5 5 5 ) - 0 1 9 9  ");
+      await expect.element(phone).toHaveValue("(250) 555-0199");
+      await expect.element(phone).toHaveAttribute("type", "tel");
+      await phone.fill("25055501999");
+      await expect.element(phone).toHaveValue("(250) 555-0199");
+      await phone.fill("250555019");
+      await expect.element(phone).toHaveValue("(250) 555-019");
+      await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
+      await screen.getByText("I agree").click();
+      await screen.getByRole("button", { name: "Submit" }).click();
+      await expect.element(phone).toHaveAttribute("aria-invalid", "true");
+      await expect
+        .element(screen.getByText("Phone number is invalid").first())
+        .toBeVisible();
+      const input = phone.element();
+      const errorIds = [
+        input.getAttribute("aria-describedby"),
+        input.getAttribute("aria-errormessage"),
+      ].flatMap((ids) => ids?.split(/\s+/) ?? []);
+      expect(
+        errorIds.some((id) =>
+          document.getElementById(id)?.textContent?.includes("Phone number is invalid"),
+        ),
+      ).toBe(true);
+
+      await phone.fill("2505550199");
+      await expect.element(phone).toHaveValue("(250) 555-0199");
+      await expect.element(phone).not.toHaveAttribute("aria-invalid", "true");
+    },
+  );
 
   it("submits a number, a chosen option and a checked box in their own types", async () => {
     const { screen, submissions } = await renderForm();

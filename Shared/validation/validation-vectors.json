@@ -157,15 +157,18 @@
       { "value": "(250) 055-0199", "note": "exchange 0 is permitted" },
       { "value": "(250 555-0199", "note": "legacy regex permits unmatched parentheses" },
       { "value": "250) 555-0199" },
-      { "value": "250\t555\t0199", "note": "whitespace separators include tabs" }
+      { "value": "250\t555\t0199", "note": "whitespace separators include tabs" },
+      { "value": "  250-555-0199  ", "note": "surrounding whitespace is stripped" },
+      { "value": "2505550199\n", "note": "trailing whitespace is stripped" },
+      { "value": " (2 5 0)  5 5 5 - 0 1 9 9 ", "note": "embedded whitespace is stripped before matching the legacy punctuation" }
     ],
     "invalid": [
       { "value": "1505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
       { "value": "0505550199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
       { "value": "1 250 555 0199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
       { "value": "+1 250 555 0199", "keyword": "IDA.PHONE.INVALID_FORMAT" },
-      { "value": "  250-555-0199  ", "keyword": "IDA.PHONE.INVALID_FORMAT" },
-      { "value": "2505550199\n", "keyword": "IDA.PHONE.INVALID_FORMAT" },
+      { "value": "250(555)-0199", "keyword": "IDA.PHONE.INVALID_FORMAT", "note": "parentheses cannot surround the exchange" },
+      { "value": "250--555-0199", "keyword": "IDA.PHONE.INVALID_FORMAT", "note": "repeated punctuation is not a legacy separator" },
       {
         "value": "250555019",
         "keyword": "IDA.PHONE.INVALID_FORMAT",

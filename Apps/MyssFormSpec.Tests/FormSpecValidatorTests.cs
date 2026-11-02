@@ -463,6 +463,31 @@ namespace Myss.FormSpec.Tests
             Assert.Equal("This answer is required.", Assert.Single(requiredErrors, e => e.Field == "name").Message);
         }
 
+          [Theory]
+          [InlineData("(999) 999-9999", true)]
+          [InlineData("999-999-9999", true)]
+          [InlineData("999999999", false)]
+          public void Validate_RecognizesLegacyPhoneMasksWithoutAffectingOtherMasks(string mask, bool isPhone)
+          {
+            using JsonDocument spec = JsonDocument.Parse($$"""
+              { "components": [
+                { "type": "textfield", "key": "phone", "input": true, "inputMask": "{{mask}}" }
+              ] }
+              """);
+            using JsonDocument answers = JsonDocument.Parse("""{"phone":"25055501999"}""");
+
+            IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.Validate(spec.RootElement, answers.RootElement);
+
+            if (isPhone)
+            {
+              Assert.Equal(ValidationKeywords.PhoneInvalidFormat, Assert.Single(errors).Keyword);
+            }
+            else
+            {
+              Assert.Empty(errors);
+            }
+          }
+
         private const string DatePartsSpec = """
         {
           "components": [

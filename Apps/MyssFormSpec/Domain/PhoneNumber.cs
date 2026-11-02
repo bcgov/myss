@@ -36,9 +36,10 @@ namespace Myss.FormSpec.Domain
         /// <returns>A result carrying the validated number, or a failure keyword.</returns>
         public static DomainValidationResult<PhoneNumber> TryCreate(string? raw)
         {
-            Match match = Pattern.Match(raw ?? string.Empty);
-            // .NET's $ can also match just before a trailing newline.
-            if (raw is null || !match.Success || match.Length != raw.Length)
+            string normalized = new((raw ?? string.Empty)
+                .Where(c => !char.IsWhiteSpace(c)).ToArray());
+            Match match = Pattern.Match(normalized);
+            if (raw is null || !match.Success || match.Length != normalized.Length)
             {
                 return DomainValidationResult<PhoneNumber>.Fail(
                     ValidationKeywords.PhoneInvalidFormat,
@@ -46,7 +47,7 @@ namespace Myss.FormSpec.Domain
             }
 
             return DomainValidationResult<PhoneNumber>.Ok(
-                new PhoneNumber(new string(raw.Where(char.IsAsciiDigit).ToArray())));
+                new PhoneNumber(new string(normalized.Where(char.IsAsciiDigit).ToArray())));
         }
     }
 }

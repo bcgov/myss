@@ -99,7 +99,7 @@ namespace Myss.Api.Tests
                 {
                     phones = new[]
                     {
-                        new { number = "(250) 555-0123", type = "Cell" },
+                        new { number = " (2 5 0)  5 5 5 - 0 1 2 3 ", type = "Cell" },
                         new { number = "604.555.0199", type = "home" },
                     },
                 }));
