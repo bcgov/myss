@@ -1,0 +1,39 @@
+name: Release draft
+
+# Keeps one draft release, the next release, in step with dev: its body lists
+# the image each app would ship (its latest dev build, unless the line is
+# pinned) and the notes since the last release. Edit the draft to choose other
+# builds, then run "Deploy release" to test. See .github/scripts/release.sh.
+#
+# Runs on every push to dev, and after each test deploy (which publishes the
+# draft) to start the next one. The images appear a few minutes after the
+# push, when the Tekton builds finish; the deploy checks they exist.
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: write # create and edit the draft release
+
+concurrency:
+  group: release-draft
+  cancel-in-progress: true
+
+jobs:
+  draft:
+    name: Refresh draft release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Create or update the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/release.sh draft

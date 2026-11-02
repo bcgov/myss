@@ -175,24 +175,30 @@ migrations afterwards.
 
 # Releases
 
-Versions are `<major>.<sprint>.<patch>`. `version.json` holds major and
-sprint; patch is counted from git, so nobody edits it.
+A release is the set of six images deployed together, named
+`v<major>.<sprint>.<n>`. `version.json` holds major and sprint; `n` counts the
+releases published for that sprint, starting at 0.
 
-1. **Sprint start:** a PR bumps `sprint` in `version.json` (and `major` when
-   needed). That merge builds `<major>.<sprint>.0`; each later merge adds
-   one to the patch.
-2. **Every merge to `dev`:** the Tekton builds tag all six images with that
-   version (for example `1.15.6`) and deploy them to dev.
-   `.github/scripts/release-version.sh current` prints the version of your
-   checkout.
-3. **Test:** a repository admin runs the **Deploy release** workflow
-   (Actions tab) with the version and `test`. One approval. It promotes the
-   images, then creates git tag `v1.15.6` and a pre-release with notes.
-4. **Prod:** the same workflow with `prod`. It accepts only the version that
-   is in test, needs two approvers other than the requester, and marks the
-   release as the latest.
+1. **Every merge to `dev`:** Tekton builds only the apps whose code changed,
+   tags each image with its 7-character commit, and deploys it to dev. The
+   folders that rebuild each app are listed in `.github/scripts/release.sh`.
+2. **Draft release:** the **Release draft** workflow keeps one draft on the
+   Releases page, already named with the next version. Its `release` block
+   lists the build each app would ship (its latest dev build) and whether it
+   changed since the last release. To ship a different build of an app, edit
+   the draft: put another commit or an earlier release (`v0.7.2`) on its
+   line, and add `# pinned` to keep it when new builds land.
+3. **Test:** a repository admin runs **Deploy release** (Actions tab) with
+   `test`. One approval. It tags the listed images `v0.7.4`, promotes them,
+   and publishes the draft as a pre-release with the exact list deployed.
+   Name a published release in the `release` field to redeploy it.
+4. **Prod:** the same workflow with `prod`. It deploys the newest
+   pre-release, which must be what test is running, needs two approvers other
+   than the requester, and marks the release as the latest.
 
-A hotfix is a normal PR to `dev`; promote the version it builds. Setup
+`myss-api` applies the database migrations for both APIs, so a release must
+give `myss-api` and `myss-admin-api` builds with the same `Apps/MyssData`; the
+deploy refuses otherwise. A hotfix is a normal PR to `dev`, then a release. Setup
 (environments, reviewers, the deployer token) is described at the top of
 `.github/workflows/deploy.yml`.
 
