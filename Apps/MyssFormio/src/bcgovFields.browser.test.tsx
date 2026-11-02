@@ -302,6 +302,25 @@ describe("design system fields", () => {
     },
   );
 
+  it.each([
+    ["a trailing letter", "2505550199x", "Backspace", 11],
+    ["a leading plus", "+2505550199", "Delete", 0],
+  ])(
+    "removing %s keeps every digit",
+    async (_name, typed, key, caret) => {
+      const { screen } = await renderForm();
+      const phone = screen.getByRole("textbox", { name: "Marked phone" });
+      const input = phone.element() as HTMLInputElement;
+      await phone.fill(typed);
+      await expect.element(phone).toHaveValue(typed);
+      input.focus();
+      input.setSelectionRange(caret as number, caret as number);
+
+      await userEvent.keyboard(`{${key}}`);
+      await expect.element(phone).toHaveValue("(250) 555-0199");
+    },
+  );
+
   it("keeps deleting forward through the hyphen and brackets", async () => {
     const { screen } = await renderForm();
     const phone = screen.getByRole("textbox", { name: "Marked phone" });

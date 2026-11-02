@@ -26,9 +26,14 @@ function isInsertion(previous: string, next: string): boolean {
   return next.endsWith(previous.slice(prefix));
 }
 
-/** Whether `next` is `previous` with only brackets, spaces or hyphens removed. */
+/**
+ * Whether `next` is `previous` with only brackets, spaces or hyphens removed.
+ * Both must be phone text: removing a letter or "+" from "2505550199x" is a
+ * correction, not a stalled separator, and must not take a digit with it.
+ */
 function isSeparatorOnlyDeletion(previous: string, next: string): boolean {
   return (
+    isPhoneText(previous) &&
     isPhoneText(next) &&
     next.length < previous.length &&
     countDigits(next) === countDigits(previous)
