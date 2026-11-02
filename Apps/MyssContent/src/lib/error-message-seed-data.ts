@@ -49,7 +49,7 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
   {
     keyword: "IDA.PHONE.INVALID_FORMAT",
     message: "Phone number is invalid",
-    note: "A phone field (properties.myssValidator = phone) that does not match the legacy MySS phone format.",
+    note: "A phone field (phoneNumber type, properties.myssValidator = phone, or a legacy phone mask) that does not match the legacy MySS phone format after whitespace is removed.",
   },
   {
     keyword: "IDA.POSTAL_CODE.INVALID_FORMAT",

@@ -210,6 +210,25 @@ const phoneSpecV7 = {
   },
 };
 
+const legacyPhoneSpec = {
+  ...phoneSpecV7,
+  version: 2,
+  spec: {
+    ...phoneSpecV7.spec,
+    components: [
+      {
+        type: "textfield",
+        key: "phoneNumber",
+        label: "Phone number",
+        input: true,
+        inputMask: "(999) 999-9999",
+        validate: { required: true },
+      },
+      ...phoneSpecV7.spec.components.slice(1),
+    ],
+  },
+};
+
 /** An API answer; `wait`, when given, holds it back until it settles. */
 type Answer = { status: number; body: unknown; wait?: Promise<unknown> };
 
@@ -364,7 +383,7 @@ test("phone errors appear inline on blur and clear after correction", async () =
     .toBeVisible();
 
   await phone.fill("2505550199");
-  await expect.element(phone).toHaveValue("2505550199");
+  await expect.element(phone).toHaveValue("(250) 555-0199");
   await firstName.click();
   await expect
     .element(screen.getByText("Phone number is invalid"))
@@ -377,7 +396,9 @@ test("phone errors appear inline on blur and clear after correction", async () =
     .not.toBeInTheDocument();
 
   await phone.fill("25055501999");
-  await expect.element(phone).toHaveValue("25055501999");
+  await expect.element(phone).toHaveValue("(250) 555-0199");
+  await phone.fill("250555019");
+  await expect.element(phone).toHaveValue("(250) 555-019");
   await firstName.click();
   await expect
     .element(screen.getByText("Phone number is invalid").first())
@@ -388,6 +409,25 @@ test("phone errors appear inline on blur and clear after correction", async () =
   await expect
     .element(screen.getByText("Phone number is invalid").first())
     .toBeVisible();
+});
+
+test("an older masked phone reports a short number, then submits formatted digits", async () => {
+  const posts = stubApi(accepted, legacyPhoneSpec);
+  const screen = await renderForm();
+  const phone = screen.getByRole("textbox", { name: "Phone number" });
+
+  await phone.fill("250555019");
+  await expect.element(phone).toHaveValue("(250) 555-019");
+  await screen.getByRole("textbox", { name: "First name" }).fill("Ada");
+  await screen.getByRole("button", { name: "Submit" }).click();
+  await expect.element(phone).toHaveAttribute("aria-invalid", "true");
+  expect(posts).toHaveLength(0);
+
+  await phone.fill(" 250 555 - 0199 ");
+  await expect.element(phone).toHaveValue("(250) 555-0199");
+  await screen.getByRole("button", { name: "Submit" }).click();
+  await vi.waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0].body).toMatchObject({ answers: { phoneNumber: "(250) 555-0199" } });
 });
 
 test("posts to the bus pass endpoint with the rendered version and shows the reference number", async () => {

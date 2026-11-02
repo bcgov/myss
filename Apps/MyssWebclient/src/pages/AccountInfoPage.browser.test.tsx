@@ -227,12 +227,15 @@ describe("AccountInfoPage", () => {
     const first = screen.getByRole("group", { name: "Phone number 1" });
     await first
       .getByRole("textbox", { name: "Phone Number" })
-      .fill("604 555 0199");
+      .fill(" 604 555 0199 ");
     await screen.getByRole("button", { name: "Add phone number" }).click();
     const second = screen.getByRole("group", { name: "Phone number 2" });
     await second
       .getByRole("textbox", { name: "Phone Number" })
       .fill("250-555-0124");
+    await expect
+      .element(second.getByRole("textbox", { name: "Phone Number" }))
+      .toHaveValue("(250) 555-0124");
     // A new row offers the first free type; choose another.
     await second.getByRole("button", { name: /Type/ }).click();
     await screen.getByRole("option", { name: "Work Phone" }).click();
@@ -246,8 +249,8 @@ describe("AccountInfoPage", () => {
         route: "phones",
         body: {
           phones: [
-            { number: "604 555 0199", type: "Home" },
-            { number: "250-555-0124", type: "Work" },
+            { number: "(604) 555-0199", type: "Home" },
+            { number: "(250) 555-0124", type: "Work" },
           ],
         },
       },

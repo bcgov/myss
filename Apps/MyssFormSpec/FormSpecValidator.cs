@@ -572,13 +572,13 @@ namespace Myss.FormSpec
                 }
             }
 
-            // Fall back to the component type, which is how custom components
-            // and Form.io's own email and phone types declare themselves.
+            // Fall back to the component type or the phone masks on older published specs.
             validator ??= type switch
             {
                 "sin" => "sin",
                 "email" => "email",
                 "phoneNumber" => "phone",
+                "textfield" when ReadString(component, "inputMask") is "(999) 999-9999" or "999-999-9999" => "phone",
                 _ => null,
             };
 

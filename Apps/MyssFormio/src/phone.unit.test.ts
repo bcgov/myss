@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { formatPhone, phoneDigits, phoneTypeLabel } from "./phone";
+import { formatPhone, formatPhoneInput, isPhoneField, phoneDigits, phoneTypeLabel } from "./phone";
 
-// The same cases as MyssApi.Tests/Domain/PhoneNumberTests.cs, so the browser
+// The same cases as MyssFormSpec.Tests/Domain/PhoneNumberTests.cs, so the browser
 // and the API agree on what a phone number is. Every number is in the
 // 555-01xx range reserved for fiction.
 describe("phoneDigits", () => {
@@ -12,6 +12,7 @@ describe("phoneDigits", () => {
     ["250.555.0123"],
     ["2505550123"],
     ["(250 555-0123"],
+    [" (2 5 0) 5 5 5 - 0 1 2 3 \n"],
   ])("accepts %j", (input) => {
     expect(phoneDigits(input)).toBe("2505550123");
   });
@@ -24,11 +25,43 @@ describe("phoneDigits", () => {
     ["250-555-0123 ext 4"],
     ["+1 250 555 0123"],
     ["250-CALL-NOW"],
-    [" 250 555 0123 "],
     ["1505550123"],
-    ["2505550123\n"],
+    ["25055501234"],
+    ["2505550123x"],
+    ["250(555)-0123"],
+    ["250--555-0123"],
   ])("refuses %j", (input) => {
     expect(phoneDigits(input)).toBeNull();
+  });
+});
+
+describe("formatPhoneInput", () => {
+  it.each([
+    ["2", "(2"],
+    ["250", "(250)"],
+    ["2505", "(250) 5"],
+    ["250555", "(250) 555"],
+    ["2505550123", "(250) 555-0123"],
+    [" \t(250)  555 - 0123  ", "(250) 555-0123"],
+    ["25055501234", "(250) 555-0123"],
+    ["1 250 555 0123 4", "(125) 055-5012"],
+    ["2505550123x", "2505550123x"],
+  ])("formats %j as %j", (input, expected) => {
+    expect(formatPhoneInput(input)).toBe(expected);
+  });
+});
+
+describe("isPhoneField", () => {
+  it.each([
+    [{ type: "textfield", properties: { myssValidator: "phone" } }, true],
+    [{ type: "phoneNumber" }, true],
+    [{ type: "textfield", inputMask: "(999) 999-9999" }, true],
+    [{ type: "textfield", inputMask: "999-999-9999" }, true],
+    [{ type: "textfield", inputMask: "999999999" }, false],
+    [{ type: "textfield", inputMask: "9999" }, false],
+    [{ type: "textfield", inputMask: "(999) 999-9999", properties: { myssValidator: "sin" } }, false],
+  ])("classifies %j as %j", (component, expected) => {
+    expect(isPhoneField(component)).toBe(expected);
   });
 });
 

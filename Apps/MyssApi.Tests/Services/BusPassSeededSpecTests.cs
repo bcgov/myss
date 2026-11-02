@@ -220,7 +220,7 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void V6ToV8_UseTheSharedPhoneRuleBeforeDispatch()
+        public void EveryVersion_UsesTheSharedPhoneRuleBeforeDispatch()
         {
             var earlierVersion = NewApplicant(6);
             earlierVersion["phoneNumber"] = "1 (250) 555-0199";
@@ -228,16 +228,16 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(ValidationKeywords.PhoneInvalidFormat, earlierError.Keyword);
             Assert.Equal("Phone number is invalid", earlierError.Message);
 
-            foreach (int version in new[] { 7, 8 })
+            foreach (int version in Enumerable.Range(1, 8))
             {
-                foreach (string accepted in new[] { "2501550199", "(250) 055-0199" })
+                foreach (string accepted in new[] { "2501550199", "(250) 055-0199", "  250 555-0199 \n" })
                 {
                     var answers = NewApplicant(version);
                     answers["phoneNumber"] = accepted;
                     Assert.Empty(Run(version, answers));
                 }
 
-                foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12", "25055501999", "" })
+                foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12", "250555019", "25055501999", "" })
                 {
                     var answers = NewApplicant(version);
                     answers["phoneNumber"] = refused;
