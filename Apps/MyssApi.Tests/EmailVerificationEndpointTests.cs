@@ -135,6 +135,21 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
+        public async Task AnAddressTheEmailServiceRefusesIs422WithItsKeyword()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"], email: new FakeEmailProvider { RejectRecipient = true });
+
+            using HttpResponseMessage response = await host.Send("alice", HttpMethod.Put, ChangeEmail, Body("alice.new@example.com"));
+
+            // A field error on the address, in the 422 shape the webclient reads.
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            using JsonDocument body = await Json(response);
+            JsonElement error = Assert.Single(body.RootElement.GetProperty("payload").EnumerateArray());
+            Assert.Equal("email", error.GetProperty("field").GetString());
+            Assert.Equal(ValidationKeywords.EmailAddressRejected, error.GetProperty("keyword").GetString());
+        }
+
+        [Fact]
         public async Task AnEmailThatCannotBeSentIs503()
         {
             using IntakeTestHost host = NewHost(registered: ["alice"], email: new FakeEmailProvider { Unavailable = true });

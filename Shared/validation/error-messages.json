@@ -143,6 +143,11 @@
       "note": "A PIN sent for a sign-in that does not use one (BC Services Card). The webclient never shows a PIN to those users."
     },
     {
+      "keyword": "ACCOUNT.EMAIL.ADDRESS_REJECTED",
+      "message": "We could not send an email to that address. Check it and try again.",
+      "note": "Account Info email change: the email service refused the address itself (MYSS-326). Shown on the email field."
+    },
+    {
       "keyword": "BUSPASS.REQUEST.TYPE_INVALID",
       "message": "Select a valid service type",
       "note": "Bus pass: the service type selector holds a value the form does not offer."

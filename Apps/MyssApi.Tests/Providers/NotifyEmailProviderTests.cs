@@ -38,6 +38,23 @@ namespace Myss.Api.Tests.Providers
         }
 
         [Theory]
+        [InlineData(HttpStatusCode.BadRequest, true)]
+        [InlineData(HttpStatusCode.UnprocessableEntity, true)]
+        [InlineData(HttpStatusCode.Unauthorized, false)]
+        [InlineData(HttpStatusCode.TooManyRequests, false)]
+        [InlineData(HttpStatusCode.InternalServerError, false)]
+        public async Task ARefusalSaysWhetherItWasTheAddress(HttpStatusCode status, bool recipientRejected)
+        {
+            var handler = new CapturingHandler(status, "{}");
+
+            EmailNotSentException ex = await Assert.ThrowsAsync<EmailNotSentException>(
+                () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+
+            // MYSS-326: the address is the citizen's to fix; the rest is ours or Notify's.
+            Assert.Equal(recipientRejected, ex.RecipientRejected);
+        }
+
+        [Theory]
         [InlineData(HttpStatusCode.Unauthorized)]
         [InlineData(HttpStatusCode.UnprocessableEntity)]
         [InlineData(HttpStatusCode.InternalServerError)]
@@ -53,22 +70,51 @@ namespace Myss.Api.Tests.Providers
             Assert.Contains(((int)status).ToString(System.Globalization.CultureInfo.InvariantCulture), ex.Message, StringComparison.Ordinal);
         }
 
-        [Fact]
-        public async Task AnAcceptanceWithoutAnIdIsNotSent()
+        // Copilot review, MYSS-326: once Notify has accepted the message, an
+        // answer without an id does not make it unsent.
+        [Theory]
+        [InlineData("{}")]
+        [InlineData("not json")]
+        public async Task AnAcceptanceWithoutAReadableIdStillCountsAsSent(string body)
         {
-            var handler = new CapturingHandler(HttpStatusCode.Accepted, "{}");
+            var handler = new CapturingHandler(HttpStatusCode.Accepted, body);
 
-            await Assert.ThrowsAsync<EmailNotSentException>(
-                () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+            string id = await NewProvider(handler).SendAsync(Message, CancellationToken.None);
+
+            Assert.Equal(string.Empty, id);
         }
 
         [Fact]
-        public async Task AnUnreachableNotifyIsNotSent()
+        public async Task AnUnreachableNotifyIsCertainlyNotSent()
         {
-            var handler = new CapturingHandler(new HttpRequestException("connection refused"));
+            var handler = new CapturingHandler(new HttpRequestException(HttpRequestError.ConnectionError, "connection refused"));
 
-            await Assert.ThrowsAsync<EmailNotSentException>(
+            EmailNotSentException ex = await Assert.ThrowsAsync<EmailNotSentException>(
                 () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+
+            Assert.False(ex.MayHaveBeenSent);
+        }
+
+        [Fact]
+        public async Task AConnectionLostMidRequestMayHaveBeenSent()
+        {
+            var handler = new CapturingHandler(new HttpRequestException(HttpRequestError.ResponseEnded, "response ended"));
+
+            EmailNotSentException ex = await Assert.ThrowsAsync<EmailNotSentException>(
+                () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+
+            Assert.True(ex.MayHaveBeenSent);
+        }
+
+        [Fact]
+        public async Task ATimeoutMayHaveBeenSent()
+        {
+            var handler = new CapturingHandler(new TaskCanceledException("timed out"));
+
+            EmailNotSentException ex = await Assert.ThrowsAsync<EmailNotSentException>(
+                () => NewProvider(handler).SendAsync(Message, CancellationToken.None));
+
+            Assert.True(ex.MayHaveBeenSent);
         }
 
         [Theory]

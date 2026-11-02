@@ -82,6 +82,10 @@
         "note": "plus addressing is legitimate and commonly used"
       },
       { "value": "a@b.co" },
+      { "value": "ada@my-example.gov.bc.ca", "note": "hyphens inside a domain label" },
+      { "value": "ada@bücher.ca", "note": "a letter outside ASCII, as an internationalised domain is typed" },
+      { "value": "ada@𝒜.com", "note": "a letter outside the basic plane: both mirrors read whole characters" },
+      { "value": "ada@b².co", "note": "a number that is not a decimal digit: both mirrors use the Unicode number category" },
       { "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com", "note": "254 characters, the longest accepted" },
       {
         "value": "  ada@example.com  ",
@@ -105,6 +109,11 @@
       },
       { "value": "ada@exa mple.com", "keyword": "IDA.EMAIL.INVALID_FORMAT" },
       { "value": "ada@.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "the domain's dot needs something before it" },
+      { "value": "neetu.chaturvedi@gov.bc.ca&&&&", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "MYSS-326: symbols in the domain" },
+      { "value": "ada@exa_mple.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "an underscore is not a domain character" },
+      { "value": "ada@-example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "a domain label cannot start with a hyphen" },
+      { "value": "ada@example-.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "a domain label cannot end with a hyphen" },
+      { "value": "ada@example..com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "an empty domain label" },
       { "value": "ada@example.", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "the domain's dot needs something after it" },
       { "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com", "keyword": "IDA.EMAIL.INVALID_FORMAT", "note": "255 characters: one over the 254 that mail can be delivered to" },
       { "value": "", "keyword": "IDA.EMAIL.INVALID_FORMAT" }
