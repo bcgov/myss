@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "vitest-browser-react";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { userEvent } from "vitest/browser";
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { page, userEvent } from "vitest/browser";
 
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import { registerBcgovComponents } from "@myss/formio";
+import { loadPageStyles } from "@/testing/pageStyles";
 
 // End-to-end of the estimator page against a stubbed anonymous API, driving the
 // v5 spec: residency is a hard gate (the status question reveals only for "Yes",
@@ -927,4 +928,34 @@ test("a submit blocked by validation hides the previous result", async () => {
   await expect
     .element(screen.getByText(/\$2,766\.00/))
     .not.toBeInTheDocument();
+});
+
+// --- Layout ------------------------------------------------------------------
+
+describe("layout", () => {
+  let initial = { width: 0, height: 0 };
+
+  beforeAll(loadPageStyles);
+
+  beforeEach(() => {
+    initial = { width: window.innerWidth, height: window.innerHeight };
+  });
+
+  afterEach(async () => {
+    await page.viewport(initial.width, initial.height);
+  });
+
+  test.each([
+    ["32px", 320, 640],
+    ["36px", 1280, 800],
+  ])("sets the title to %s at %i pixels wide", async (size, width, height) => {
+    await page.viewport(width, height);
+    const screen = await renderPage();
+    const title = screen.getByRole("heading", { level: 1 });
+    await expect.element(title).toBeVisible();
+
+    expect(getComputedStyle(title.element()).fontSize).toBe(size);
+    const root = document.documentElement;
+    expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+  });
 });

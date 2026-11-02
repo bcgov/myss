@@ -1,66 +1,76 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Button } from "@bcgov/design-system-react-components";
 import { Outlet, useNavigate } from "react-router";
 
+import { getDashboardAccess } from "@/auth/dashboardAccess";
 import { useSession } from "@/auth/useSession";
+import { usePhoneLayout } from "@/hooks/usePhoneLayout";
 import { paths } from "@/routes/paths";
+import DashboardFooter from "@/widgets/layout/DashboardFooter";
 import DashboardNav from "@/widgets/layout/DashboardNav";
 import styles from "./DashboardLayout.module.css";
 
-// The signed-in dashboard frame (MYSS-194): the left-hand menu beside the
-// current section. Every section route renders into the <Outlet />, so the
-// landing checks below cover all of them, not just Home.
+// The signed-in dashboard frame: the left-hand menu beside the current
+// section, or on a phone the section alone, its menu opened from the
+// header. Every section route renders into the <Outlet />, so the landing
+// checks below cover all of them, not just Home.
 export default function DashboardLayout() {
-  const { user, hasProfile, isMeLoading, logout } = useSession();
+  const session = useSession();
+  const access = getDashboardAccess(session);
+  const isPhoneLayout = usePhoneLayout();
   const navigate = useNavigate();
-
-  // Ministry staff work on the admin site, not here. The sign-in chooser no
-  // longer offers IDIR, but an IDIR session can still arrive (Keycloak's own
-  // provider page, or an existing IDIR SSO session on the shared client), and
-  // staff have no citizen profile, so without this they would be sent to
-  // citizen registration.
-  const isStaff = Boolean(user?.idirUsername);
 
   // A citizen without a registered profile is sent to registration. The API
   // refuses to create an application for them too; this is the courtesy.
   useEffect(() => {
-    if (!isMeLoading && !isStaff && hasProfile === false) {
+    if (access === "unregistered") {
       void navigate(paths.register, { replace: true });
     }
-  }, [hasProfile, isMeLoading, isStaff, navigate]);
+  }, [access, navigate]);
 
-  if (!isMeLoading && isStaff) {
+  if (access === "staff") {
     return (
-      <div className={styles.content}>
+      <DashboardContent>
         <div role="alert">
           <p>
             My Self Serve is for citizens. Ministry staff use My Self Serve
             Administration, signed in with IDIR.
           </p>
-          <Button variant="secondary" onPress={() => logout()}>
+          <Button variant="secondary" onPress={() => session.logout()}>
             Sign out
           </Button>
         </div>
-      </div>
+      </DashboardContent>
     );
   }
 
   // Hold the menu back until the user is known to belong here, so an
   // unregistered citizen never glimpses it on the way past.
-  if (isMeLoading || hasProfile !== true) {
+  if (access !== "ready") {
     return (
-      <div className={styles.content}>
+      <DashboardContent>
         <output>Checking your MySS account…</output>
-      </div>
+      </DashboardContent>
     );
   }
 
   return (
     <div className={styles.layout}>
-      <DashboardNav />
-      <div className={styles.content}>
+      {!isPhoneLayout && <DashboardNav />}
+      <DashboardContent>
         <Outlet />
-      </div>
+      </DashboardContent>
+    </div>
+  );
+}
+
+// The content column: what the frame shows, then the copyright line, which
+// sits at the bottom of the window when the content is short.
+function DashboardContent({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <div className={styles.content}>
+      <div className={styles.section}>{children}</div>
+      <DashboardFooter />
     </div>
   );
 }

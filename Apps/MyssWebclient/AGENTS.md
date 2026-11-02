@@ -39,8 +39,9 @@ sections) ·
 `components/` (shared presentational leaves) · `hooks/` (`useX` naming)
 · `routes/paths.ts` (every URL) · `ui/` (global CSS layers) · `api/`
 (generated — regenerate with `npm run generate:schema`, never
-hand-edit) · `auth/` · `lib/` · `constants.ts` (config + external
-links, the only registry).
+hand-edit) · `auth/` · `lib/` · `testing/` (helpers for browser tests,
+such as the page-wide styles a layout check needs) · `constants.ts`
+(config + external links, the only registry).
 
 The Form.io bridge (every stock input type re-registered with a design
 system wrapper on the shared `bcgovField` base, plus the client half of

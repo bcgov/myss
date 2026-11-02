@@ -8,9 +8,10 @@ import {
 import { useFeatures } from "@/hooks/useFeatures";
 import styles from "./DashboardNav.module.css";
 
-// The dashboard's left-hand menu (MYSS-194). NavLink marks the current
-// section with aria-current="page", which is also what the selected style
-// keys on, so the visual and the accessible state cannot drift apart.
+// The dashboard's menu: beside the content on a desktop, in the header's
+// menu panel on a phone. NavLink marks the current section with
+// aria-current="page", which is also what the selected style keys on, so the
+// visual and the accessible state cannot drift apart.
 
 // Glyphs from Material Icons (Apache License 2.0), drawn with currentColor so
 // they follow the link's text colour. Decorative: the label names the link.
@@ -37,7 +38,12 @@ function NavIcon({ icon }: { icon: DashboardIcon }): ReactNode {
   );
 }
 
-export default function DashboardNav() {
+interface DashboardNavProps {
+  /** Called when a section link is chosen, including the current one. */
+  onNavigate?: () => void;
+}
+
+export default function DashboardNav({ onNavigate }: DashboardNavProps) {
   // A section shows once its flag reads on, or when the flags cannot be
   // read (see useFeature).
   const { data: features, isError } = useFeatures();
@@ -51,7 +57,12 @@ export default function DashboardNav() {
         {sections.map((section) => (
           <li key={section.path}>
             {/* `end`: Home is /dashboard and must not stay selected on deeper paths. */}
-            <NavLink to={section.path} end className={styles.link}>
+            <NavLink
+              to={section.path}
+              end
+              className={styles.link}
+              onClick={onNavigate}
+            >
               <NavIcon icon={section.icon} />
               <span>{section.label}</span>
             </NavLink>

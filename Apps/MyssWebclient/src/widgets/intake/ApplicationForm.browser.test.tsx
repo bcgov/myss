@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { render } from "vitest-browser-react";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 
 import type { FormSpecPayload } from "@/api/forms";
 import type { ApplicationPayload } from "@/api/intake";
 import ApplicationForm from "@/widgets/intake/ApplicationForm";
+import { loadPageStyles } from "@/testing/pageStyles";
 
 // The draft edits and saves without Form.io's client validation getting in
 // the way, submits through the spec's own button, and turns read-only with
@@ -426,3 +428,36 @@ test.each([
       .not.toBeInTheDocument();
   },
 );
+
+describe("layout", () => {
+  let initial = { width: 0, height: 0 };
+
+  beforeAll(loadPageStyles);
+
+  beforeEach(() => {
+    initial = { width: window.innerWidth, height: window.innerHeight };
+  });
+
+  afterEach(async () => {
+    await page.viewport(initial.width, initial.height);
+  });
+
+  test("fits a phone, with Save and Submit on the screen", async () => {
+    await page.viewport(320, 640);
+    stubApi({ application: draft() });
+    const screen = await renderForm();
+    await expect
+      .element(screen.getByRole("textbox", { name: "First name" }))
+      .toHaveValue("Ada");
+
+    const root = document.documentElement;
+    for (const name of ["Save", "Submit"]) {
+      const button = screen.getByRole("button", { name });
+      await expect.element(button).toBeVisible();
+      expect(button.element().getBoundingClientRect().right).toBeLessThanOrEqual(
+        root.clientWidth,
+      );
+    }
+    expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+  });
+});

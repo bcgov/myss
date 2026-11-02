@@ -48,6 +48,8 @@ src/
   api/              generated OpenAPI client (never hand-edited)
   auth/             auth feature module (provider, guards, session)
   lib/              shared pure utilities
+  testing/          helpers for browser tests only (the page-wide
+                    styles a layout check needs)
   constants.ts      runtime config + external link registry
 ```
 

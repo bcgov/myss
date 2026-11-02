@@ -32,6 +32,19 @@
     margin: 0 0 var(--layout-margin-small);
 }
 
+/* On a phone the status, the details and the link stack in that order. */
+@media (max-width: 767px) {
+    .request {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .details {
+        align-self: stretch;
+        flex: none;
+    }
+}
+
 .visuallyHidden {
     position: absolute;
     width: 1px;
