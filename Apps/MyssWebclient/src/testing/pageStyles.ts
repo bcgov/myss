@@ -4,6 +4,7 @@
 // these so the page measures as it does live.
 import "@bcgov/design-tokens/css/variables.css";
 import "@/index.css";
+import "@/ui/typography.css";
 import "@bcgov/bc-sans/css/BC_Sans.css";
 
 const LINKED_STYLESHEETS = ["/vendor/bootstrap.css", "/vendor/myss-theme.css"];

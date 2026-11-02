@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import type { ApplicationSummaryPayload } from "@/api/intake";
 import { paths } from "@/routes/paths";
+import { loadPageStyles } from "@/testing/pageStyles";
 import ServiceRequestsPage from "./ServiceRequestsPage";
 
 const draft: ApplicationSummaryPayload = {
@@ -148,4 +150,58 @@ test("starts an AFA and opens the detail page", async () => {
     .click();
   await expect.element(screen.getByText("AFA detail")).toBeVisible();
   expect(posts).toHaveLength(1);
+});
+
+describe("layout", () => {
+  let initial = { width: 0, height: 0 };
+
+  beforeAll(loadPageStyles);
+
+  beforeEach(() => {
+    initial = { width: window.innerWidth, height: window.innerHeight };
+  });
+
+  afterEach(async () => {
+    await page.viewport(initial.width, initial.height);
+  });
+
+  function stubOneDraft() {
+    vi.spyOn(window, "fetch").mockImplementation(async (input) =>
+      String(input).endsWith("/v1/forms/application-for-assistance/spec")
+        ? json(200, { payload: {} })
+        : json(200, { payload: [draft] }),
+    );
+  }
+
+  // At 767, the widest phone, a wrapping row would keep the link beside the details.
+  test.each([
+    [320, 640],
+    [767, 900],
+  ])("puts a request's link under its details at %i pixels wide", async (width, height) => {
+    await page.viewport(width, height);
+    stubOneDraft();
+    const screen = await renderPage();
+    const link = screen.getByRole("link", { name: /Continue application/ });
+    await expect.element(link).toBeVisible();
+
+    const number = screen.getByText(/Request number/).element();
+    expect(link.element().getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      number.getBoundingClientRect().bottom,
+    );
+    const root = document.documentElement;
+    expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+  });
+
+  test("keeps a request's link beside its details on a desktop", async () => {
+    await page.viewport(1280, 800);
+    stubOneDraft();
+    const screen = await renderPage();
+    const link = screen.getByRole("link", { name: /Continue application/ });
+    await expect.element(link).toBeVisible();
+
+    const number = screen.getByText(/Request number/).element();
+    expect(link.element().getBoundingClientRect().left).toBeGreaterThanOrEqual(
+      number.getBoundingClientRect().right,
+    );
+  });
 });

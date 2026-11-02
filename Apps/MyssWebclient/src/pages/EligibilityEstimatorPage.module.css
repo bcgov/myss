@@ -23,6 +23,13 @@
   color: var(--typography-color-primary);
 }
 
+/* The phone size of a page heading. */
+@media (max-width: 767px) {
+  .title {
+    font-size: var(--typography-font-size-h2);
+  }
+}
+
 /* The callout supplies its own accent bar, outline, surface, padding and body
    text (components/Callout). This wrapper places it in the column. */
 .privacyCallout {

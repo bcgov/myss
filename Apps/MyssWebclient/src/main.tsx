@@ -10,6 +10,7 @@ import { AuthProvider } from "@/auth/AuthProvider";
 import { API_URL, CANADA_POST_API_KEY } from "@/constants.ts";
 import "@bcgov/design-tokens/css/variables.css";
 import "@/index.css";
+import "@/ui/typography.css";
 import "@bcgov/bc-sans/css/BC_Sans.css";
 
 client.setConfig({ baseUrl: API_URL });

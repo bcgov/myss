@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import type { Session } from "@/auth/useSession";
 import { paths } from "@/routes/paths";
+import { loadPageStyles } from "@/testing/pageStyles";
 
 const session = vi.hoisted(
     () =>
@@ -219,5 +221,36 @@ describe("RegistrationPage", () => {
         const screen = await renderRegistration();
 
         await expect.element(screen.getByText("Dashboard landing")).toBeInTheDocument();
+    });
+});
+
+describe("RegistrationPage layout", () => {
+    let initial = { width: 0, height: 0 };
+
+    beforeAll(loadPageStyles);
+
+    beforeEach(() => {
+        session.user = undefined;
+        session.isAuthenticated = false;
+        session.hasProfile = undefined;
+        initial = { width: window.innerWidth, height: window.innerHeight };
+    });
+
+    afterEach(async () => {
+        await page.viewport(initial.width, initial.height);
+    });
+
+    it.each([
+        ["32px", 320, 640],
+        ["36px", 1280, 800],
+    ])("sets the title to %s at %i pixels wide", async (size, width, height) => {
+        await page.viewport(width, height);
+        const screen = await renderRegistration();
+        const title = screen.getByRole("heading", { level: 1, name: "Create your MySS account" });
+        await expect.element(title).toBeVisible();
+
+        expect(getComputedStyle(title.element()).fontSize).toBe(size);
+        const root = document.documentElement;
+        expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
     });
 });

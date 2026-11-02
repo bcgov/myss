@@ -70,5 +70,6 @@
 
 .actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--layout-margin-small);
 }
