@@ -279,6 +279,49 @@ describe("design system fields", () => {
     await vi.waitFor(() => expect(input.selectionStart).toBe(8));
   });
 
+  it.each([
+    ["Delete before the hyphen", "Delete", 9, "(250) 555-199", 9],
+    ["Delete before the space", "Delete", 5, "(250) 550-199", 4],
+    ["Delete before the bracket", "Delete", 4, "(250) 550-199", 4],
+    ["Backspace after the hyphen", "Backspace", 10, "(250) 550-199", 8],
+    ["Backspace after the bracket", "Backspace", 5, "(255) 550-199", 3],
+  ])(
+    "%s removes the neighbouring digit instead of stalling",
+    async (_name, key, caret, expected, expectedCaret) => {
+      const { screen } = await renderForm();
+      const phone = screen.getByRole("textbox", { name: "Marked phone" });
+      const input = phone.element() as HTMLInputElement;
+      await phone.fill("2505550199");
+      await expect.element(phone).toHaveValue("(250) 555-0199");
+      input.focus();
+      input.setSelectionRange(caret as number, caret as number);
+
+      await userEvent.keyboard(`{${key}}`);
+      await expect.element(phone).toHaveValue(expected as string);
+      await vi.waitFor(() => expect(input.selectionStart).toBe(expectedCaret));
+    },
+  );
+
+  it("keeps deleting forward through the hyphen and brackets", async () => {
+    const { screen } = await renderForm();
+    const phone = screen.getByRole("textbox", { name: "Marked phone" });
+    const input = phone.element() as HTMLInputElement;
+    await phone.fill("2505550199");
+    input.focus();
+    input.setSelectionRange(9, 9);
+
+    await userEvent.keyboard("{Delete}");
+    await expect.element(phone).toHaveValue("(250) 555-199");
+    await userEvent.keyboard("{Delete}");
+    await expect.element(phone).toHaveValue("(250) 555-99");
+    await userEvent.keyboard("{Delete}");
+    await userEvent.keyboard("{Delete}");
+    await expect.element(phone).toHaveValue("(250) 555");
+    // Nothing left to remove: the value stays.
+    await userEvent.keyboard("{Delete}");
+    await expect.element(phone).toHaveValue("(250) 555");
+  });
+
   it.each(["Phone", "Marked phone", "Stock phone"])(
     "accepts pasted separators, keeps ten digits and reports a short number on %s",
     async (label) => {

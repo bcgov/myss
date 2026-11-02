@@ -32,6 +32,15 @@ export function withBcgovTextInput<TBase extends FormioFieldCtor>(
   variant: TextVariant,
 ) {
   return class BcgovTextInput extends withBcgovField(Base) {
+    /**
+     * A phone field shows (250) 555-0199 whatever `inputMask` an older spec
+     * carries ("999-999-9999", "(999) 999-9999"), so Form.io's mask rule would
+     * refuse or pre-empt the phone rule's own "Phone number is invalid".
+     */
+    get skipMaskValidation(): boolean {
+      return isPhoneField(this.component);
+    }
+
     protected renderReact(): ReactNode {
       const component = this.component;
       const props = this.bcgovFieldProps();
