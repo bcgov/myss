@@ -113,8 +113,8 @@ namespace Myss.AdminApi.Intake
 
             ApplicationState state = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
             FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
-            Guid? accountId = await _accounts.FindAsync(row.OwnerSubject, cancellationToken);
-            return WorkerOverrideResultModel.Ok(ToModel(row, state, spec, accountId));
+            Guid? profileId = await _accounts.FindAsync(row.OwnerSubject, cancellationToken);
+            return WorkerOverrideResultModel.Ok(ToModel(row, state, spec, profileId));
         }
 
         /// <inheritdoc/>
@@ -238,7 +238,7 @@ namespace Myss.AdminApi.Intake
             // Then the account, before the event: a file in the queue always
             // has its account. Should the event then fail, the account is there
             // with these details and the next submit brings it up to date.
-            Guid accountId = await _accounts.SaveAsync(row.OwnerSubject, client, idir, cancellationToken);
+            Guid profileId = await _accounts.SaveAsync(row.OwnerSubject, client, idir, cancellationToken);
 
             var payload = new SubmittedPayload
             {
@@ -262,14 +262,14 @@ namespace Myss.AdminApi.Intake
             }
 
             _logger.LogInformation(
-                "Worker {Idir} {EventType} worker override application {ApplicationId} for account {AccountId}",
+                "Worker {Idir} {EventType} worker override application {ApplicationId} for profile {ProfileId}",
                 idir,
                 eventType,
                 id,
-                accountId);
+                profileId);
 
             ApplicationState submitted = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
-            return WorkerOverrideResultModel.Ok(ToModel(row, submitted, spec: null, accountId));
+            return WorkerOverrideResultModel.Ok(ToModel(row, submitted, spec: null, profileId));
         }
 
         /// <summary>
