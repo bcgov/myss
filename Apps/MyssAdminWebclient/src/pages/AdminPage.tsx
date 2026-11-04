@@ -6,8 +6,8 @@ import pageStyles from "./Page.module.css";
 import styles from "./AdminPage.module.css";
 
 // The landing page lists what the signed-in user may use: form management for
-// any IDIR user, and the application review queue only for a caller whose
-// roles allow it. The roles come from /auth/me, so that link appears once they
+// any IDIR user, and the application review queue and worker override only
+// for a caller whose roles allow it. The roles come from /auth/me, so that link appears once they
 // have arrived; the review pages check again (RequireWorker), and the API is
 // the real gate.
 export default function AdminPage() {
@@ -29,6 +29,13 @@ export default function AdminPage() {
                         <li className={styles.capabilityItem}>
                             <Link to={paths.applications}>
                                 Applications to review
+                            </Link>
+                        </li>
+                    )}
+                    {canReview && (
+                        <li className={styles.capabilityItem}>
+                            <Link to={paths.workerOverride}>
+                                Worker override
                             </Link>
                         </li>
                     )}

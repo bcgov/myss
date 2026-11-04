@@ -119,6 +119,19 @@ namespace Myss.Data
         /// </summary>
         public DateTimeOffset? IcmContactMatchedAt { get; set; }
 
+        /// <summary>
+        /// Gets or sets how the account was made: one of
+        /// <see cref="ProfileOrigins"/>. A citizen's own registration, or a
+        /// worker override (MYSS-321), which no one signs in to.
+        /// </summary>
+        public string Origin { get; set; } = ProfileOrigins.Registration;
+
+        /// <summary>
+        /// Gets or sets the IDIR of the worker who made a worker override
+        /// account (MYSS-321). Null for a citizen's own registration.
+        /// </summary>
+        public string? CreatedByIdir { get; set; }
+
         /// <summary>Gets or sets the citizen's phone numbers, in their chosen order.</summary>
         public List<MyssUserPhone> Phones { get; set; } = [];
 
