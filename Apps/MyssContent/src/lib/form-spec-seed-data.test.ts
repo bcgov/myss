@@ -11,6 +11,7 @@ import {
   busPassFormSpecV6,
   busPassFormSpecV7,
   busPassFormSpecV8,
+  busPassFormSpecV9,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
   ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
   INCOME_ASSISTANCE_FORM_SPEC_ID,
@@ -387,7 +388,7 @@ describe("seeded forms collection", () => {
     expect(estimator?.versions.map((v) => v.version)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
-  it("seeds the bus pass with v1 through v8", () => {
+  it("seeds the bus pass with v1 through v9", () => {
     const busPass = seededForms.find(
       (form) => form.formSpecId === BUS_PASS_FORM_SPEC_ID,
     );
@@ -401,6 +402,7 @@ describe("seeded forms collection", () => {
       { version: 6, spec: busPassFormSpecV6 },
       { version: 7, spec: busPassFormSpecV7 },
       { version: 8, spec: busPassFormSpecV8 },
+      { version: 9, spec: busPassFormSpecV9 },
     ]);
   });
 
@@ -859,5 +861,77 @@ describe("bus pass seed — v8 (layout, single date of birth, required SIN)", ()
           component.input === true && !changed.has(String(component.key)),
       );
     expect(fields(busPassFormSpecV8)).toEqual(fields(busPassFormSpecV7));
+  });
+});
+
+describe("bus pass seed — v9 (contact method as radio buttons, SIN help)", () => {
+  it("asks for the preferred method of communication with required radio buttons", () => {
+    expect(componentByKey(busPassFormSpecV9, "preferredCommunication")).toEqual({
+      key: "preferredCommunication",
+      type: "radio",
+      input: true,
+      label: "Preferred method of communication",
+      values: [
+        { label: "Phone", value: "phone" },
+        { label: "Email", value: "email" },
+      ],
+      validate: { required: true },
+    });
+  });
+
+  it("offers the same choices as the v8 dropdown", () => {
+    const dropdown = componentByKey(busPassFormSpecV8, "preferredCommunication") as {
+      data?: { values?: unknown };
+    };
+    expect(componentByKey(busPassFormSpecV9, "preferredCommunication").values).toEqual(
+      dropdown.data?.values,
+    );
+  });
+
+  it("still requires the email and its confirmation when email is the preferred method", () => {
+    for (const key of ["email", "emailVerification"]) {
+      expect(componentByKey(busPassFormSpecV9, key).logic).toEqual([
+        expect.objectContaining({
+          trigger: {
+            type: "simple",
+            simple: { show: true, when: "preferredCommunication", eq: "email" },
+          },
+        }),
+      ]);
+    }
+  });
+
+  it("keeps v8's order, with the SIN help after the SIN field and no account number note", () => {
+    const expected = keysOf(busPassFormSpecV8)
+      .filter((key) => key !== "sinAccountNumberNote")
+      .flatMap((key) =>
+        key === "socialInsuranceNumber" ? [key, "sinHelp", "sinMissing"] : [key],
+      );
+    expect(keysOf(busPassFormSpecV8)).toContain("sinAccountNumberNote");
+    expect(keysOf(busPassFormSpecV9)).toEqual(expected);
+  });
+
+  it("uses the registration form's SIN help", () => {
+    expect(componentByKey(busPassFormSpecV9, "sinHelp")).toMatchObject({
+      type: "bcgovAccordion",
+      accordionLabel: "Why do we need your SIN?",
+    });
+    for (const key of ["sinHelp", "sinMissing"]) {
+      expect(componentByKey(busPassFormSpecV9, key)).toEqual(
+        componentByKey(registrationFormSpecV4, key),
+      );
+    }
+  });
+
+  it("leaves every other v8 component unchanged", () => {
+    const changed = new Set([
+      "preferredCommunication",
+      "sinAccountNumberNote",
+      "sinHelp",
+      "sinMissing",
+    ]);
+    const others = (spec: Json) =>
+      allComponents(spec).filter((component) => !changed.has(String(component.key)));
+    expect(others(busPassFormSpecV9)).toEqual(others(busPassFormSpecV8));
   });
 });

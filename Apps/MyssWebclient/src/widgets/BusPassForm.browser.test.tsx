@@ -229,6 +229,104 @@ const legacyPhoneSpec = {
   },
 };
 
+const requiredWhenEmailPreferred = [
+  {
+    name: "Required when email is the preferred method of communication",
+    trigger: {
+      type: "simple",
+      simple: { show: true, when: "preferredCommunication", eq: "email" },
+    },
+    actions: [
+      {
+        name: "Require",
+        type: "property",
+        property: {
+          label: "Required",
+          value: "validate.required",
+          type: "boolean",
+        },
+        state: true,
+      },
+    ],
+  },
+];
+
+/** The contact questions of the seeded v9, where the preferred method became radio buttons. */
+const contactSpecV9 = {
+  formSpecId: "bc-bus-pass",
+  version: 9,
+  title: "BC Bus Pass",
+  spec: {
+    display: "form",
+    components: [
+      {
+        key: "phoneNumber",
+        type: "textfield",
+        input: true,
+        label: "Phone number",
+        validate: { required: true, customMessage: "Phone number is invalid" },
+        validateOn: "blur",
+        properties: { myssValidator: "phone" },
+      },
+      {
+        key: "phoneType",
+        type: "radio",
+        input: true,
+        label: "Phone type",
+        values: [
+          { label: "Home", value: "home" },
+          { label: "Work", value: "work" },
+          { label: "Cell", value: "cell" },
+        ],
+        validate: { required: false },
+      },
+      {
+        key: "email",
+        type: "email",
+        input: true,
+        label: "Email",
+        validate: { required: false },
+        logic: requiredWhenEmailPreferred,
+        errors: {
+          required:
+            "An email address is required when email is the preferred means of communication",
+        },
+      },
+      {
+        key: "emailVerification",
+        type: "email",
+        input: true,
+        label: "Email verification",
+        validate: { required: false },
+        properties: { myssMatches: "email" },
+        errors: {
+          matches: "The two email addresses do not match",
+          required: "Enter your email address again to confirm it",
+        },
+        logic: requiredWhenEmailPreferred,
+      },
+      {
+        key: "preferredCommunication",
+        type: "radio",
+        input: true,
+        label: "Preferred method of communication",
+        values: [
+          { label: "Phone", value: "phone" },
+          { label: "Email", value: "email" },
+        ],
+        validate: { required: true },
+      },
+      {
+        type: "button",
+        key: "submit",
+        action: "submit",
+        label: "Submit",
+        input: true,
+      },
+    ],
+  },
+};
+
 /** An API answer; `wait`, when given, holds it back until it settles. */
 type Answer = { status: number; body: unknown; wait?: Promise<unknown> };
 
@@ -813,4 +911,131 @@ test("says the request is being submitted while it is on its way", async () => {
   expect(document.body.textContent).not.toContain(
     "Your request is being submitted.",
   );
+});
+
+type Screen = Awaited<ReturnType<typeof renderForm>>;
+
+function contactGroup(screen: Screen) {
+  return screen.getByRole("radiogroup", {
+    name: "Preferred method of communication (required)",
+  });
+}
+
+/** Clicks an option's label, the surface a citizen clicks; the design system hides the input. */
+async function choose(screen: Screen, name: string) {
+  await contactGroup(screen).getByText(name, { exact: true }).click();
+}
+
+test("asks for the preferred method of communication with radio buttons, none chosen", async () => {
+  stubApi(accepted, contactSpecV9);
+  const screen = await renderForm();
+  const group = contactGroup(screen);
+
+  await expect.element(group).toBeVisible();
+  await expect.element(group).toHaveAttribute("aria-required", "true");
+  const options = group.getByRole("radio").elements() as HTMLInputElement[];
+  expect(options.map((option) => option.value)).toEqual(["phone", "email"]);
+  for (const name of ["Phone", "Email"]) {
+    await expect
+      .element(group.getByRole("radio", { name, exact: true }))
+      .not.toBeChecked();
+  }
+  await expect
+    .element(
+      screen.getByRole("button", { name: /Preferred method of communication/ }),
+    )
+    .not.toBeInTheDocument();
+});
+
+test("refuses to send without a contact choice and says why under the question", async () => {
+  const posts = stubApi(accepted, contactSpecV9);
+  const screen = await renderForm();
+
+  await screen.getByRole("textbox", { name: "Phone number" }).fill("2505550199");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  const group = contactGroup(screen);
+  await expect.element(group).toHaveAttribute("aria-invalid", "true");
+  await expect
+    .element(group.getByText("Preferred method of communication is required"))
+    .toBeVisible();
+  expect(posts).toHaveLength(0);
+});
+
+test("requires the email address only while Email is the chosen method", async () => {
+  const posts = stubApi(accepted, contactSpecV9);
+  const screen = await renderForm();
+
+  await screen.getByRole("textbox", { name: "Phone number" }).fill("2505550199");
+  await expect
+    .element(screen.getByRole("textbox", { name: "Email", exact: true }))
+    .toBeVisible();
+
+  await choose(screen, "Email");
+  await expect
+    .element(
+      screen.getByRole("textbox", { name: /^Email ?\(required\)$/ }),
+    )
+    .toBeVisible();
+  await screen.getByRole("button", { name: "Submit" }).click();
+  await expect
+    .element(
+      screen
+        .getByText(
+          "An email address is required when email is the preferred means of communication",
+        )
+        .first(),
+    )
+    .toBeVisible();
+  expect(posts).toHaveLength(0);
+
+  await choose(screen, "Phone");
+  await expect
+    .element(screen.getByRole("textbox", { name: "Email", exact: true }))
+    .toBeVisible();
+});
+
+test("posts the chosen method under the dropdown's key, with the version rendered", async () => {
+  const posts = stubApi(accepted, contactSpecV9);
+  const screen = await renderForm();
+
+  await screen.getByRole("textbox", { name: "Phone number" }).fill("2505550199");
+  await choose(screen, "Email");
+  await screen
+    .getByRole("textbox", { name: /^Email ?\(required\)$/ })
+    .fill("ada@example.com");
+  await screen
+    .getByRole("textbox", { name: /^Email verification ?\(required\)$/ })
+    .fill("ada@example.com");
+  await screen.getByRole("button", { name: "Submit" }).click();
+
+  await vi.waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0].body).toMatchObject({
+    formSpecVersion: 9,
+    answers: {
+      preferredCommunication: "email",
+      email: "ada@example.com",
+      phoneNumber: "(250) 555-0199",
+    },
+  });
+});
+
+test("keeps one contact method when the choice changes", async () => {
+  stubApi(accepted, contactSpecV9);
+  const screen = await renderForm();
+  const group = contactGroup(screen);
+
+  await expect.element(group).toBeVisible();
+  await choose(screen, "Phone");
+  await expect
+    .element(group.getByRole("radio", { name: "Phone", exact: true }))
+    .toBeChecked();
+
+  await choose(screen, "Email");
+  await expect
+    .element(group.getByRole("radio", { name: "Email", exact: true }))
+    .toBeChecked();
+  await expect
+    .element(group.getByRole("radio", { name: "Phone", exact: true }))
+    .not.toBeChecked();
 });
