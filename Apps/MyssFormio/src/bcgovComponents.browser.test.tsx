@@ -1,6 +1,7 @@
 import { Formio } from "@formio/js";
 import { Form } from "@formio/react";
 import type { FormType } from "@formio/react/lib/components/Form";
+import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -135,6 +136,55 @@ describe("bcgovRadio required state", () => {
     await expect.element(group).toBeInTheDocument();
     await expect.element(group).not.toHaveAttribute("aria-required", "true");
     expect(document.querySelector("[data-myss-required]")).toBeNull();
+  });
+});
+
+describe("radio keyboard use", () => {
+  const spec = {
+    display: "form",
+    components: [
+      { type: "textfield", key: "firstName", label: "First name", input: true },
+      {
+        type: "radio",
+        key: "phoneType",
+        label: "Phone type",
+        input: true,
+        values: [
+          { label: "Home", value: "home" },
+          { label: "Work", value: "work" },
+          { label: "Cell", value: "cell" },
+        ],
+      },
+      { type: "textfield", key: "lastName", label: "Last name", input: true },
+    ],
+  } as unknown as FormType;
+
+  it("is one tab stop, and the arrow keys move the single choice", async () => {
+    const screen = await render(<Form src={spec} />);
+    const radio = (name: string) => screen.getByRole("radio", { name });
+
+    await expect.element(radio("Home")).toBeInTheDocument();
+    await screen.getByRole("textbox", { name: "First name" }).click();
+
+    await userEvent.tab();
+    await expect.element(radio("Home")).toHaveFocus();
+    for (const name of ["Home", "Work", "Cell"]) {
+      await expect.element(radio(name)).not.toBeChecked();
+    }
+
+    await userEvent.keyboard("{ArrowDown}");
+    await expect.element(radio("Work")).toBeChecked();
+    await expect.element(radio("Home")).not.toBeChecked();
+    await expect.element(radio("Cell")).not.toBeChecked();
+
+    await userEvent.keyboard("{ArrowUp}");
+    await expect.element(radio("Home")).toBeChecked();
+    await expect.element(radio("Work")).not.toBeChecked();
+
+    await userEvent.tab();
+    await expect
+      .element(screen.getByRole("textbox", { name: "Last name" }))
+      .toHaveFocus();
   });
 });
 

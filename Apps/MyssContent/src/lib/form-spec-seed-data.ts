@@ -20,6 +20,7 @@ import busPassFormSpecV5Json from "./bus-pass-specs/bus-pass-form-v5.json";
 import busPassFormSpecV6Json from "./bus-pass-specs/bus-pass-form-v6.json";
 import busPassFormSpecV7Json from "./bus-pass-specs/bus-pass-form-v7.json";
 import busPassFormSpecV8Json from "./bus-pass-specs/bus-pass-form-v8.json";
+import busPassFormSpecV9Json from "./bus-pass-specs/bus-pass-form-v9.json";
 
 export type Json =
   | string
@@ -77,6 +78,13 @@ export const busPassFormSpecV7 = busPassFormSpecV7Json as unknown as Json;
  * - The social insurance number is required.
  */
 export const busPassFormSpecV8 = busPassFormSpecV8Json as unknown as Json;
+
+/**
+ * Bus pass v9: the preferred method of communication as radio buttons, with
+ * the dropdown's key and values, and the registration form's SIN help in place
+ * of the note that an account number can stand in for the SIN.
+ */
+export const busPassFormSpecV9 = busPassFormSpecV9Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -1836,6 +1844,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 6, spec: busPassFormSpecV6 },
       { version: 7, spec: busPassFormSpecV7 },
       { version: 8, spec: busPassFormSpecV8 },
+      { version: 9, spec: busPassFormSpecV9 },
     ],
   },
 ];
