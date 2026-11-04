@@ -115,6 +115,12 @@ namespace Myss.Api
             services.AddHttpClient<IErrorMessageProvider, StrapiErrorMessageProvider>(
                 client => client.Timeout = TimeSpan.FromSeconds(5));
 
+            // The confirmation message a form's page shows after a successful
+            // submission, with the same read-only token, cache and short timeout.
+            services.AddHttpClient<SubmissionAcknowledgementReader>(
+                client => client.Timeout = TimeSpan.FromSeconds(5));
+            services.AddTransient<ISubmissionAcknowledgementProvider, StrapiSubmissionAcknowledgementProvider>();
+
             // Configure the attachments module: validate -> quarantined row ->
             // ClamAV scan -> object store -> release. Protected behind
             // authentication (see AttachmentsController [Authorize]).

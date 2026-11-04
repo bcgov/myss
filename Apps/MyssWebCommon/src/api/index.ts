@@ -2,6 +2,19 @@
 // these are the payloads and refusals the two APIs answer with alike.
 
 export {
+  ACKNOWLEDGEMENT_FORM_IDS,
+  ACKNOWLEDGEMENT_KEYWORDS,
+  ACKNOWLEDGEMENT_LIMITS,
+  BUS_PASS_ACKNOWLEDGEMENT,
+  isSafeLinkTarget,
+  normaliseAcknowledgementText,
+  REFERENCE_PLACEHOLDER,
+  validateAcknowledgement,
+  type AcknowledgementError,
+  type AcknowledgementField,
+  type SubmissionAcknowledgement,
+} from "./acknowledgements";
+export {
   ApplicationRequestError,
   readProblem,
   throwApplicationRequestError,

@@ -77,6 +77,14 @@ namespace Myss.AdminApi
                 client => client.Timeout = TimeSpan.FromSeconds(10));
             services.AddScoped<IEligibilityRatesService, EligibilityRatesService>();
 
+            // The confirmation message editor: an uncached read of a form's newest
+            // messages, and the write that adds a new one.
+            services.AddHttpClient<SubmissionAcknowledgementReader>(
+                client => client.Timeout = TimeSpan.FromSeconds(5));
+            services.AddHttpClient<ISubmissionAcknowledgementAdminProvider, StrapiSubmissionAcknowledgementAdminProvider>(
+                client => client.Timeout = TimeSpan.FromSeconds(10));
+            services.AddScoped<ISubmissionAcknowledgementService, SubmissionAcknowledgementService>();
+
             // The worker side, moved from MyssApi: application review over the shared
             // data model (MyssData), stored form submissions and the bus pass PDF.
             // Same connection-string keys and history tables as MyssApi, but this API
