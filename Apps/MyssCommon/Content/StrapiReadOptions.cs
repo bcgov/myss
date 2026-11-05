@@ -7,7 +7,7 @@ namespace Myss.Common.Content
 
     /// <summary>
     /// Where the Strapi readers (<see cref="StrapiFormSpecProvider"/>,
-    /// <see cref="EligibilityRateTableReader"/>, <see cref="SubmissionAcknowledgementReader"/>)
+    /// <see cref="EligibilityRateTableReader"/>, <see cref="FormMessageReader"/>)
     /// read from, and with which token.
     /// <para>
     /// Each API registers one: MyssApi reads with its read-only <c>Strapi:ApiToken</c>,

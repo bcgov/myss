@@ -48,7 +48,7 @@ function renderLine(line: MessageLine, values: Values): ReactNode {
 }
 
 /**
- * A confirmation message in its formatting set: paragraphs, line breaks,
+ * A form message in its formatting set: paragraphs, line breaks,
  * bold, bulleted lists and links (https links in a new tab), with each
  * placeholder replaced by its value from `values`. Spacing and colours come
  * from the page that shows it.

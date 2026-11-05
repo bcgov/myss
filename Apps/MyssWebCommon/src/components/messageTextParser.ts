@@ -1,6 +1,6 @@
-import { isSafeLinkTarget } from "../api/acknowledgements";
+import { isSafeLinkTarget } from "../api/formMessages";
 
-// A confirmation message's formatting set, parsed into blocks of inline parts; anything
+// A form message's formatting set, parsed into blocks of inline parts; anything
 // else, HTML included, stays text. Each part's offset in the message is its render key.
 
 export type InlinePart =

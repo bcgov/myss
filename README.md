@@ -61,17 +61,17 @@ Still manual, because they live inside Strapi's admin UI: the first-visit admin 
 the API token for `Strapi:ApiToken` (goes in `Apps/MyssApi/appsettings.local.json`), and
 the write-scoped token for `Strapi:AdminApiToken` (goes in
 `Apps/MyssAdminApi/appsettings.local.json`; `find`, `findOne`, `create` and `update` on
-Form Spec and Eligibility Rate, and `find`, `findOne` and `create` on Submission
-Acknowledgement, whose entries are never changed; never `delete`). Only the admin API
+Form Spec and Eligibility Rate, and `find`, `findOne` and `create` on Form
+Message, whose entries are never changed; never `delete`). Only the admin API
 holds the write token.
 The admin API's bus pass PDF also needs the CDOGS credentials (`Cdogs:ClientId` and
 `Cdogs:ClientSecret`) in the same file; without them only the PDF fails.
 The token is read-only and scoped: it needs `find` and `findOne` on Form Spec,
-Eligibility Rate, Error Message and Submission Acknowledgement. A token created before the
+Eligibility Rate, Error Message and Form Message. A token created before the
 Error Message collection existed lacks that grant; MyssApi then logs a warning and words
 refused submissions from its compiled defaults until the token is updated. Without the
-read grant on Submission Acknowledgement, applicants see the built-in confirmation
-message; without the write token's grant, saving a confirmation message fails with 502.
+read grant on Form Message, applicants see each form's built-in message; without
+the write token's grant, saving a form message fails with 502.
 
 ## Start the stack manually (compose)
 

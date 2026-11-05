@@ -51,7 +51,7 @@ describe("parseMessageText", () => {
     expect(shape(message)).toEqual(expected);
   });
 
-  // The links acknowledgements.unit.test.ts accepts all render as links.
+  // The links formMessages.unit.test.ts accepts all render as links.
   it.each([
     ["the program", "https://www2.gov.bc.ca/gov/content/bus-pass"],
     ["email us", "mailto:buspass@example.com"],

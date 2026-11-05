@@ -2,18 +2,18 @@
 // these are the payloads and refusals the two APIs answer with alike.
 
 export {
-  ACKNOWLEDGEMENT_FORM_IDS,
-  ACKNOWLEDGEMENT_KEYWORDS,
-  ACKNOWLEDGEMENT_LIMITS,
-  BUS_PASS_ACKNOWLEDGEMENT,
+  BUS_PASS_CONFIRMATION,
+  builtInFormMessage,
+  FORM_MESSAGE_KEYWORDS,
+  FORM_MESSAGE_LIMITS,
   isSafeLinkTarget,
-  normaliseAcknowledgementText,
-  REFERENCE_PLACEHOLDER,
-  validateAcknowledgement,
-  type AcknowledgementError,
-  type AcknowledgementField,
-  type SubmissionAcknowledgement,
-} from "./acknowledgements";
+  normaliseFormMessageText,
+  validateFormMessage,
+  type FormMessageError,
+  type FormMessageField,
+  type FormMessagePlaceholder,
+  type FormMessageTexts,
+} from "./formMessages";
 export {
   ApplicationRequestError,
   readProblem,
