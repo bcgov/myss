@@ -100,6 +100,15 @@ namespace Myss.Data
                 .IsConcurrencyToken();
             profile.Property(p => p.EmailVerificationRequestedAt).HasColumnName("email_verification_requested_at");
             profile.Property(p => p.IcmContactMatchedAt).HasColumnName("icm_contact_matched_at");
+
+            // Worker override accounts (MYSS-321). Every existing row is a
+            // citizen's own registration, which the default records.
+            profile.Property(p => p.Origin)
+                .HasColumnName("origin")
+                .HasMaxLength(32)
+                .HasDefaultValue(ProfileOrigins.Registration)
+                .IsRequired();
+            profile.Property(p => p.CreatedByIdir).HasColumnName("created_by_idir").HasMaxLength(64);
             profile.HasIndex(p => p.EmailVerificationTokenHash).IsUnique();
 
             // Registration's email proof (MYSS-295): keyed by the identity

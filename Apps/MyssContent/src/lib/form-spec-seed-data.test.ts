@@ -31,6 +31,9 @@ import {
   testFormSpecV2,
   testFormSpecV3,
   type Json,
+  WORKER_OVERRIDE_AFA_FORM_SPEC_ID,
+  WORKER_OVERRIDE_AFA_FORM_SPEC_TITLE,
+  workerOverrideAfaFormSpecV1,
 } from "./form-spec-seed-data";
 import { validateFormSpec } from "./form-spec-rules";
 
@@ -339,6 +342,43 @@ describe("seeded forms collection", () => {
     );
     expect(poc?.title).toBe(POC_FORM_SPEC_TITLE);
     expect(poc?.versions).toBe(seededFormSpecs);
+  });
+
+  /**
+   * The keys are a contract with MyssAdminApi's WorkerOverrideService, which
+   * makes the client's account from them (MYSS-321): all six required, each
+   * with its domain rule.
+   */
+  it("seeds the worker override AFA with the six account details", () => {
+    const override = seededForms.find(
+      (form) => form.formSpecId === WORKER_OVERRIDE_AFA_FORM_SPEC_ID,
+    );
+    expect(WORKER_OVERRIDE_AFA_FORM_SPEC_ID).toBe("worker-override-afa");
+    expect(override?.title).toBe(WORKER_OVERRIDE_AFA_FORM_SPEC_TITLE);
+    expect(override?.versions).toEqual([
+      { version: 1, spec: workerOverrideAfaFormSpecV1 },
+    ]);
+    expect(validateFormSpec(workerOverrideAfaFormSpecV1)).toEqual([]);
+    expect(keysOf(workerOverrideAfaFormSpecV1)).toEqual([
+      "firstName",
+      "lastName",
+      "email",
+      "phone",
+      "dateOfBirth",
+      "sin",
+      "submit",
+    ]);
+    for (const key of keysOf(workerOverrideAfaFormSpecV1).slice(0, 6)) {
+      expect(
+        componentByKey(workerOverrideAfaFormSpecV1, key).validate?.required,
+      ).toBe(true);
+    }
+    const rule = (key: string) =>
+      componentByKey(workerOverrideAfaFormSpecV1, key).properties
+        ?.myssValidator;
+    expect(rule("phone")).toBe("phone");
+    expect(rule("dateOfBirth")).toBe("date");
+    expect(rule("sin")).toBe("sin");
   });
 
   it("seeds the income assistance application with v1 only", () => {

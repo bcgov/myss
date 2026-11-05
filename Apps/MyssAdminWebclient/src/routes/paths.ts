@@ -12,6 +12,10 @@ export const paths = {
     // from it. Ministry workers only (WORKER or ADMIN role).
     applications: "/applications",
     application: "/applications/:id",
+    // Worker override (MYSS-321): start an Application for Assistance for a
+    // client, and one opened by its link. Workers only.
+    workerOverride: "/worker-override",
+    workerOverrideApplication: "/worker-override/:id",
     // The OIDC redirect target.
     authCallback: "/auth/callback",
     // Where sign-out and idle logout land. Deliberately unguarded: a guarded
@@ -57,6 +61,11 @@ export function formFromJsonPath(
     }
     const query = params.toString();
     return `${formEditorPath(formSpecId)}/from-json${query ? `?${query}` : ""}`;
+}
+
+/** Concrete URL of one worker override application, beside its pattern. */
+export function workerOverridePath(id: string): string {
+    return `/worker-override/${encodeURIComponent(id)}`;
 }
 
 /** Concrete review URL for one application, kept beside the `application` pattern. */

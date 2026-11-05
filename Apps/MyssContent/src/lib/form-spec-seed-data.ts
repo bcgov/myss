@@ -426,6 +426,88 @@ registrationPhoneV5.properties = {
   myssValidator: "phone",
 };
 
+/**
+ * The ID of the worker override Application for Assistance (MYSS-321). Must
+ * match MyssData's `IntakeFormSpecIds.WorkerOverrideAfa`.
+ */
+export const WORKER_OVERRIDE_AFA_FORM_SPEC_ID = "worker-override-afa";
+
+/** The human-readable title for the worker override AFA. */
+export const WORKER_OVERRIDE_AFA_FORM_SPEC_TITLE =
+  "Worker override: Application for Assistance";
+
+/**
+ * The simplified Application for Assistance a worker submits for a client who
+ * cannot submit their own (MYSS-321): the six details the client's account is
+ * made from. The keys are a contract with MyssAdminApi's WorkerOverrideService,
+ * which reads them to make the account, and match registration's. Every field
+ * is required and carries its domain rule, so FormSpecValidator checks it on
+ * submit and the browser shows the same errors first. Its own Submit button
+ * runs the browser's checks first; the worker portal draws Save beside it.
+ */
+export const workerOverrideAfaFormSpecV1: Json = {
+  display: "form",
+  components: [
+    {
+      type: "textfield",
+      key: "firstName",
+      label: "First name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "lastName",
+      label: "Last name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "email",
+      key: "email",
+      label: "Email",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "phone",
+      label: "Phone number",
+      placeholder: "(250) 555-0199",
+      input: true,
+      validateOn: "blur",
+      validate: { required: true, customMessage: "Phone number is invalid" },
+      properties: { myssValidator: "phone" },
+    },
+    {
+      type: "datetime",
+      key: "dateOfBirth",
+      label: "Date of birth",
+      input: true,
+      format: "yyyy-MM-dd",
+      enableDate: true,
+      enableTime: false,
+      validate: { required: true },
+      properties: { myssValidator: "date" },
+    },
+    {
+      type: "textfield",
+      key: "sin",
+      label: "Social Insurance Number (SIN)",
+      input: true,
+      validate: { required: true },
+      properties: { myssValidator: "sin" },
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Submit",
+      input: true,
+    },
+  ],
+};
+
 // POC test form. v1 is seeded so a fresh database has a working form;
 // later versions are authored through the admin panel as new entries.
 export const testFormSpecV1: Json = {
@@ -1819,6 +1901,11 @@ export const seededForms: readonly SeededForm[] = [
     formSpecId: INCOME_ASSISTANCE_FORM_SPEC_ID,
     title: INCOME_ASSISTANCE_FORM_SPEC_TITLE,
     versions: [{ version: 1, spec: incomeAssistanceFormSpecV1 }],
+  },
+  {
+    formSpecId: WORKER_OVERRIDE_AFA_FORM_SPEC_ID,
+    title: WORKER_OVERRIDE_AFA_FORM_SPEC_TITLE,
+    versions: [{ version: 1, spec: workerOverrideAfaFormSpecV1 }],
   },
   {
     formSpecId: ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
