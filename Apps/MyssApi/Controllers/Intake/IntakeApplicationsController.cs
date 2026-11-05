@@ -215,6 +215,21 @@ namespace Myss.Api.Intake
             return Map(await _intakeService.SubmitAsync(id, request, cancellationToken));
         }
 
+        /// <summary>Withdraws the caller's draft, submitted or returned application.</summary>
+        /// <param name="id">The application identifier.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpPost("{id:guid}/withdraw")]
+        [FeatureGate(RequirementType.Any, FeatureFlags.Intake, FeatureFlags.ServiceRequests)]
+        [Produces("application/json")]
+        [EndpointName("WithdrawApplication")]
+        [ProducesResponseType(typeof(BaseResponseModel<ApplicationModel>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<BaseResponseModel<ApplicationModel>>> Withdraw(Guid id, CancellationToken cancellationToken)
+        {
+            return Map(await _intakeService.WithdrawAsync(id, cancellationToken));
+        }
+
         private static BaseResponseModel<ApplicationModel> Envelope(ApplicationModel application)
         {
             return new BaseResponseModel<ApplicationModel>
@@ -259,7 +274,7 @@ namespace Myss.Api.Intake
                         StatusCodes.Status409Conflict,
                         IntakeKeywords.NotEditable,
                         "This application can no longer be changed.",
-                        "It has been submitted and has not been returned for more information.",
+                        "Its current status does not allow this action. Reload to see its latest status.",
                         result.CurrentVersion);
 
                 case IntakeOutcome.StaleVersion:
@@ -275,7 +290,7 @@ namespace Myss.Api.Intake
                         StatusCodes.Status409Conflict,
                         PlatformKeywords.EventStoreConflict,
                         "This application was changed elsewhere.",
-                        "It was submitted from another tab or window. Reload to see it.",
+                        "Another applicant or worker action changed it. Reload to see it.",
                         result.CurrentVersion);
 
                 case IntakeOutcome.SpecUnavailable:

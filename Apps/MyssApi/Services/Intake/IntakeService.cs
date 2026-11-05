@@ -341,6 +341,43 @@ namespace Myss.Api.Intake
             return IntakeResultModel.Ok(ToModel(row, submitted, spec: null));
         }
 
+        /// <inheritdoc/>
+        public async Task<IntakeResultModel> WithdrawAsync(Guid id, CancellationToken cancellationToken)
+        {
+            ApplicationAnswers? row = await FindOwnAsync(id, track: false, cancellationToken);
+            if (row is null)
+            {
+                return IntakeResultModel.NotFound();
+            }
+
+            EventStream stream = await _eventStore.LoadAsync(id, cancellationToken);
+            ApplicationState state = ApplicationProjection.Fold(stream);
+            if (!ApplicationProjection.CanWithdraw(state))
+            {
+                _logger.LogInformation("Refused withdrawal of application {ApplicationId} in status {Status}", id, state.StatusCode);
+                return IntakeResultModel.NotEditable(row.Version);
+            }
+
+            try
+            {
+                await _eventStore.AppendAsync(
+                    id,
+                    stream.Version,
+                    [new MarkerPayload().ToEvent(ApplicationEventTypes.Withdrawn)],
+                    ApplicationActors.Applicant(row.OwnerSubject),
+                    cancellationToken);
+            }
+            catch (ConcurrencyException ex)
+            {
+                _logger.LogInformation(ex, "Withdrawal of application {ApplicationId} lost a race; the caller reloads", id);
+                return IntakeResultModel.StreamConflict(row.Version);
+            }
+
+            _logger.LogInformation("Withdrew application {ApplicationId}", id);
+            ApplicationState withdrawn = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
+            return IntakeResultModel.Ok(ToModel(row, withdrawn, spec: null));
+        }
+
         /// <summary>
         /// Swaps the validators' compiled default wording for the catalogue the
         /// content engine publishes, keyword by keyword. Read only on a refused

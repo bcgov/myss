@@ -11,6 +11,7 @@ import {
   listApplications,
   saveAnswers,
   submitApplication,
+  withdrawApplication,
   type AnswersInput,
   type ApplicationPayload,
 } from "@/api/intake";
@@ -24,6 +25,7 @@ export {
   ApplicationRequestError,
   INTAKE_KEYWORDS,
   isEditableStatus,
+  isWithdrawableStatus,
 } from "@/api/intake";
 export type {
   ApplicationPayload,
@@ -169,6 +171,24 @@ export function useSubmitApplication(id: string, afa = false) {
         void queryClient.invalidateQueries({
           queryKey: applicationKey(id, afa),
         });
+      }
+
+    },
+  });
+}
+
+/** Withdraws and refreshes all applicant lists and reads, including on a conflict. */
+export function useWithdrawApplication(id: string, afa = false) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => withdrawApplication(id),
+    onSuccess: (updated) => {
+      mergeIntoCache(queryClient, id, afa, updated);
+      void queryClient.invalidateQueries({ queryKey: INTAKE_QUERY_KEY });
+    },
+    onError: (error) => {
+      if (error instanceof ApplicationRequestError && error.isConflict) {
+        void queryClient.invalidateQueries({ queryKey: INTAKE_QUERY_KEY });
       }
     },
   });

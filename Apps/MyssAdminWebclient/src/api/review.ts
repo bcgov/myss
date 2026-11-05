@@ -66,6 +66,7 @@ export type ReviewHistoryCode =
   | "ESCALATE"
   | "ACCEPT"
   | "DENY"
+  | "WITHDRAW"
   | "PROMOTED"
   | "PROMOTION_FAILED";
 

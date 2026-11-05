@@ -280,6 +280,16 @@ marked by **namespace** (`Myss.Data.Platform`, `Myss.Data.Intake` for the shared
 subfolders of the layer folders. Design: `docs/development_design/income-assistance-application.md`
 in the workspace; the forms and profile dependencies are ADR-0008.
 
+Applicants may withdraw only from Draft, Submitted or Returned (not Resubmitted).
+`POST v1/intake/applications/{id}/withdraw` checks ownership and the folded status,
+then appends a `Withdrawn` marker with the loaded stream's expected version.
+Withdrawn is terminal: no save, submit, withdrawal, worker action or note is allowed.
+Both portals label it "Withdrawn"; worker history records `WITHDRAW`. Worker visibility
+is unchanged: only previously submitted Income Assistance applications appear,
+not withdrawn drafts or AFA requests. Withdrawal does not delete answers or require
+an available form spec. The applicant confirms through a BCDS dialog before the call;
+Cancel keeps the current page and unsaved answers.
+
 ### IcmApi
 
 A client library for ICM (Siebel), layered so that Siebel's shape never leaves the

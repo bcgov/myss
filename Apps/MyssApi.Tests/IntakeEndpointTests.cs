@@ -88,10 +88,13 @@ namespace Myss.Api.Tests
             using HttpResponseMessage get = await host.Send("bob", HttpMethod.Get, $"{Route}/{id}");
             using HttpResponseMessage save = await host.Send("bob", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Eve" }));
             using HttpResponseMessage submit = await host.Send("bob", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, new { firstName = "Eve", lastName = "X" }));
+            using HttpResponseMessage withdraw = await host.Send("bob", HttpMethod.Post, $"{Route}/{id}/withdraw");
 
             Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, save.StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, submit.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, withdraw.StatusCode);
+            Assert.Equal(0, await host.CountEvents(id));
         }
 
         [Fact]
@@ -219,6 +222,52 @@ namespace Myss.Api.Tests
             using HttpResponseMessage response = await host.Send(persona: null, HttpMethod.Get, Route);
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task Withdrawal_PersistsWithoutRequiringCompleteAnswersOrAnAvailableSpec(bool submitted)
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            Guid id = await host.Create("alice");
+            if (submitted)
+            {
+                using HttpResponseMessage submit = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/submit",
+                    Answers(1, new { firstName = "Ada", lastName = "Lovelace" }));
+                Assert.Equal(HttpStatusCode.OK, submit.StatusCode);
+            }
+
+            _provider.VersionResult = null;
+            using HttpResponseMessage withdraw = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/withdraw");
+            using HttpResponseMessage get = await host.Send("alice", HttpMethod.Get, $"{Route}/{id}");
+            using HttpResponseMessage list = await host.Send("alice", HttpMethod.Get, Route);
+            using HttpResponseMessage again = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/withdraw");
+            using HttpResponseMessage save = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(submitted ? 2 : 1, new { firstName = "Eve" }));
+            using HttpResponseMessage resubmit = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/submit", Answers(submitted ? 2 : 1, new { firstName = "Eve", lastName = "X" }));
+
+            Assert.Equal(HttpStatusCode.OK, withdraw.StatusCode);
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, (await Payload(withdraw)).GetProperty("status").GetString());
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, (await Payload(get)).GetProperty("status").GetString());
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, (await Payload(list))[0].GetProperty("status").GetString());
+            Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, save.StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, resubmit.StatusCode);
+            Assert.Equal(IntakeKeywords.NotEditable, await Keyword(again));
+            Assert.Equal(submitted ? 2 : 1, await host.CountEvents(id));
+        }
+
+        [Fact]
+        public async Task Withdrawal_RequiresAnAuthenticatedApplicant()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            Guid id = await host.Create("alice");
+            using HttpResponseMessage worker = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/withdraw");
+            Assert.Equal(HttpStatusCode.Forbidden, worker.StatusCode);
+            using IntakeTestHost anonymousHost = NewHost(registered: [], mockAuth: false);
+            using HttpResponseMessage anonymous = await anonymousHost.Send(null, HttpMethod.Post, $"{Route}/{id}/withdraw");
+            Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+            Assert.Equal(0, await host.CountEvents(id));
         }
 
         private static JsonContent Answers(int version, object answers)

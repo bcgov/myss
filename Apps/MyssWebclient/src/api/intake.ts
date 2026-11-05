@@ -37,6 +37,11 @@ export function isEditableStatus(status: ApplicationStatus): boolean {
   return status === "DRAFT" || status === "RETURNED";
 }
 
+/** Whether the applicant may withdraw, including a submitted application. */
+export function isWithdrawableStatus(status: ApplicationStatus): boolean {
+  return status === "DRAFT" || status === "SUBMITTED" || status === "RETURNED";
+}
+
 /** Mirrors the intake ApplicationModel in MyssApi (Myss.Api.Intake). */
 export interface ApplicationPayload {
   id: string;
@@ -205,6 +210,16 @@ export async function submitApplication(
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(input),
+  });
+  if (!res.ok) await throwFor(res);
+  return (await res.json()).payload;
+}
+
+/** Withdraws without validating or changing answers; the server guards the lifecycle. */
+export async function withdrawApplication(id: string): Promise<ApplicationPayload> {
+  const res = await fetch(`${BASE_URL}/${encodeURIComponent(id)}/withdraw`, {
+    method: "POST",
+    headers: authHeaders(),
   });
   if (!res.ok) await throwFor(res);
   return (await res.json()).payload;

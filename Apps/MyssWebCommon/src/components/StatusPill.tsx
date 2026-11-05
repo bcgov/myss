@@ -19,6 +19,7 @@ const STATUS_LABELS: Record<string, string> = {
   ESCALATED: "Review",
   ACCEPTED: "Accepted",
   DENIED: "Denied",
+  WITHDRAWN: "Withdrawn",
   PROMOTION_FAILED: "Promotion Failed",
 };
 
@@ -33,6 +34,7 @@ const STATUS_COLORS: Record<string, TagColor> = {
   ESCALATED: "yellow",
   ACCEPTED: "green",
   DENIED: "red",
+  WITHDRAWN: "gray",
   PROMOTION_FAILED: "red",
 };
 

@@ -86,6 +86,25 @@ const ASSIGNEE_ACTIONS: ReviewApplicationPayload["availableActions"] = [
   "Release",
 ];
 
+test("Withdrawn is read-only with applicant history and no Review or other worker action", async () => {
+  stubApi({
+    application: submitted({
+      status: "WITHDRAWN",
+      inQueue: false,
+      availableActions: [],
+      history: [
+        { code: "SUBMIT", actorKind: "APPLICANT", occurredAt: "2026-09-28T11:00:00Z" },
+        { code: "WITHDRAW", actorKind: "APPLICANT", occurredAt: "2026-09-28T12:00:00Z" },
+      ],
+    }),
+  });
+  const screen = await renderReview();
+  await expect.element(screen.getByRole("gridcell", { name: "Withdrawn" })).toBeVisible();
+  await expect.element(screen.getByRole("cell", { name: "Withdrawn", exact: true })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: "Pick up for review", exact: true })).not.toBeInTheDocument();
+  await expect.element(screen.getByRole("textbox", { name: "First name" })).toBeDisabled();
+});
+
 /** A file the mock worker (MWORKER) has picked up. */
 function underReview(
   overrides: Partial<ReviewApplicationPayload> = {},
