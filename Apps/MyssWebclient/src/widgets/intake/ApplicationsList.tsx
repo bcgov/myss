@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { StatusPill } from "@myss/web-common/components";
 
 import styles from "./ApplicationsList.module.css";
+import WithdrawApplication from "./WithdrawApplication";
 
 import { useApplications } from "@/hooks/useIntake";
 import { applicationPath } from "@/routes/paths";
@@ -78,6 +79,7 @@ export default function ApplicationsList() {
                   application {application.referenceNumber}
                 </span>
               </Link>
+              <WithdrawApplication application={application} />
             </td>
           </tr>
         ))}

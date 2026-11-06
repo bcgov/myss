@@ -12,6 +12,7 @@ export type ApplicationStatus =
   | "ESCALATED"
   | "ACCEPTED"
   | "DENIED"
+  | "WITHDRAWN"
   | "PROMOTION_FAILED";
 
 /**

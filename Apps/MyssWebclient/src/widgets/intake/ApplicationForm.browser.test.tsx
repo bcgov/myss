@@ -83,6 +83,7 @@ interface Stub {
   nextSave?: Answer;
   /** A canned answer for the next POST /submit; consumed once. */
   nextSubmit?: Answer;
+  nextWithdraw?: Answer;
 }
 
 function json(status: number, body: unknown) {
@@ -150,6 +151,16 @@ function stubApi(stub: Stub) {
       };
       return json(200, { payload: withoutSpec(stub.application) });
     }
+    if (url.endsWith(`${base}/withdraw`) && method === "POST") {
+      writes.push({ method, url, body: init?.body });
+      if (stub.nextWithdraw) {
+        const answer = stub.nextWithdraw;
+        stub.nextWithdraw = undefined;
+        return json(answer.status, answer.body);
+      }
+      stub.application = { ...stub.application, status: "WITHDRAWN" };
+      return json(200, { payload: withoutSpec(stub.application) });
+    }
     throw new Error(`Unexpected fetch in test: ${method} ${url}`);
   });
   return writes;
@@ -170,6 +181,93 @@ function renderForm() {
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+test.each(["DRAFT", "SUBMITTED", "RETURNED"] as const)(
+  "%s can confirm withdrawal and switches to a persisted read-only Withdrawn status",
+  async (status) => {
+    const stub: Stub = { application: draft({ status }) };
+    const writes = stubApi(stub);
+    const screen = await renderForm();
+
+    await screen.getByRole("button", { name: /Withdraw application/ }).click();
+    const dialog = screen.getByRole("alertdialog", { name: "Withdraw application" });
+    await expect.element(dialog).toHaveTextContent(
+      "Your application will no longer be considered for assistance. Please confirm you no longer need assistance?",
+    );
+    await expect.element(dialog.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(writes).toHaveLength(0);
+    await dialog.getByRole("button", { name: "Confirm" }).click();
+
+    await expect.element(screen.getByRole("gridcell", { name: "Withdrawn" })).toBeVisible();
+    await expect.element(dialog).not.toBeInTheDocument();
+    await expect.element(screen.getByText("Application withdrawn.", { exact: true })).toHaveFocus();
+    await expect.element(screen.getByRole("button", { name: /Withdraw application/ })).not.toBeInTheDocument();
+    await expect.element(screen.getByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    await expect.element(screen.getByRole("textbox", { name: "First name" })).toBeDisabled();
+    expect(writes).toHaveLength(1);
+    expect(writes[0].url).toContain("/withdraw");
+    expect(writes[0].body).toBeUndefined();
+    expect(stub.application.status).toBe("WITHDRAWN");
+  },
+);
+
+test("Cancel closes withdrawal without changing the page or unsaved answers", async () => {
+  const writes = stubApi({ application: draft() });
+  const screen = await renderForm();
+  await screen.getByRole("textbox", { name: "First name" }).fill("Augusta");
+  const withdraw = screen.getByRole("button", { name: /Withdraw application/ });
+  await withdraw.click();
+  await screen.getByRole("button", { name: "Cancel" }).click();
+  await expect.element(screen.getByRole("alertdialog")).not.toBeInTheDocument();
+  await expect.element(withdraw).toHaveFocus();
+  await expect.element(screen.getByRole("textbox", { name: "First name" })).toHaveValue("Augusta");
+  expect(writes).toHaveLength(0);
+});
+
+test.each([
+  "UNDER_REVIEW", "RESUBMITTED", "ESCALATED", "ACCEPTED",
+  "DENIED", "PROMOTION_FAILED", "WITHDRAWN",
+] as const)("does not offer withdrawal for %s", async (status) => {
+  stubApi({ application: draft({ status }) });
+  const screen = await renderForm();
+  await expect.element(screen.getByRole("heading", { name: /Application/ })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: /Withdraw application/ })).not.toBeInTheDocument();
+});
+
+test("withdrawal errors remain visible and can be retried", async () => {
+  const stub: Stub = {
+    application: draft(),
+    nextWithdraw: { status: 503, body: { detail: "Service unavailable" } },
+  };
+  const writes = stubApi(stub);
+  const screen = await renderForm();
+  await screen.getByRole("button", { name: /Withdraw application/ }).click();
+  await screen.getByRole("button", { name: "Confirm" }).click();
+  await expect.element(screen.getByRole("alert")).toHaveTextContent(
+    "Could not withdraw the application: Service unavailable",
+  );
+  expect(stub.application.status).toBe("DRAFT");
+  await screen.getByRole("button", { name: "Confirm" }).click();
+  await expect.element(screen.getByRole("gridcell", { name: "Withdrawn" })).toBeVisible();
+  expect(writes).toHaveLength(2);
+});
+
+test("a withdrawal conflict refreshes the status and does not report success", async () => {
+  const stub: Stub = {
+    application: draft({ status: "SUBMITTED" }),
+    nextWithdraw: { status: 409, body: { detail: "Its current status does not allow this action." } },
+  };
+  stubApi(stub);
+  const screen = await renderForm();
+  await screen.getByRole("button", { name: /Withdraw application/ }).click();
+  stub.application = { ...stub.application, status: "UNDER_REVIEW" };
+  await screen.getByRole("button", { name: "Confirm" }).click();
+  await expect.element(screen.getByRole("alert")).toHaveTextContent(/Could not withdraw/);
+  await screen.getByRole("button", { name: "Cancel" }).click();
+  await expect.element(screen.getByRole("gridcell", { name: "Under Review" })).toBeVisible();
+  await expect.element(screen.getByText("Application withdrawn.", { exact: true })).not.toBeInTheDocument();
+  await expect.element(screen.getByRole("button", { name: /Withdraw application/ })).not.toBeInTheDocument();
 });
 
 test("renders the draft's saved answers and Save sends them without client validation", async () => {

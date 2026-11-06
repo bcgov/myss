@@ -100,6 +100,12 @@ namespace Myss.AdminApi.Tests.Intake
             Assert.Equal(HttpStatusCode.NotFound, review.StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, note.StatusCode);
             Assert.Equal(1, await host.CountEvents(id));
+
+            await Ok(host.Send("alice", HttpMethod.Post, $"/v1/intake/applications/{id}/withdraw"));
+            using HttpResponseMessage withdrawn = await host.Send("alice", HttpMethod.Get, $"/v1/intake/applications/afa/{id}");
+            using HttpResponseMessage after = await host.Send("worker", HttpMethod.Get, Route);
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, (await Payload(withdrawn)).GetProperty("status").GetString());
+            Assert.Empty((await Payload(after)).EnumerateArray());
         }
 
         [Fact]
@@ -145,6 +151,89 @@ namespace Myss.AdminApi.Tests.Intake
 
             Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, review.StatusCode);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task Withdrawal_ShowsInBothPortalsAndRefusesEveryWorkerAction(bool returned)
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await host.Create("alice");
+            await host.Submit("alice", id, 1, Ada);
+            if (returned)
+            {
+                await Ok(host.Send("worker", HttpMethod.Post, $"{Route}/{id}/review", Version(1)));
+                await Ok(host.Send("worker", HttpMethod.Post, $"{Route}/{id}/request-more-info", Version(2)));
+            }
+
+            await Ok(host.Send("alice", HttpMethod.Post, $"/v1/intake/applications/{id}/withdraw"));
+            using HttpResponseMessage mine = await host.Send("alice", HttpMethod.Get, $"/v1/intake/applications/{id}");
+            using HttpResponseMessage theirs = await host.Send("worker", HttpMethod.Get, $"{Route}/{id}");
+            using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, Route);
+            JsonElement app = await Payload(theirs);
+            int version = app.GetProperty("streamVersion").GetInt32();
+
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, (await Payload(mine)).GetProperty("status").GetString());
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, app.GetProperty("status").GetString());
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, (await Payload(list))[0].GetProperty("status").GetString());
+            Assert.False(app.GetProperty("inQueue").GetBoolean());
+            Assert.False(app.GetProperty("canAddNote").GetBoolean());
+            Assert.Empty(Actions(app));
+            Assert.Equal("Ada", app.GetProperty("answers").GetProperty("firstName").GetString());
+            Assert.Equal(ApplicationHistoryCodes.Withdraw, History(app)[^1]);
+            Assert.Equal("APPLICANT", app.GetProperty("history").EnumerateArray().Last().GetProperty("actorKind").GetString());
+
+            foreach (string action in new[] { "review", "release", "request-more-info", "escalate", "accept", "deny" })
+            {
+                using HttpResponseMessage refused = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/{action}", Version(version));
+                Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+            }
+
+            using HttpResponseMessage note = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/notes",
+                JsonContent.Create(new { streamVersion = version, text = "Cannot add a note." }));
+            Assert.Equal(HttpStatusCode.Conflict, note.StatusCode);
+            Assert.Equal(returned ? 4 : 2, await host.CountEvents(id));
+        }
+
+        [Theory]
+        [InlineData("review")]
+        [InlineData("escalate")]
+        [InlineData("deny")]
+        [InlineData("accept")]
+        [InlineData("resubmit")]
+        public async Task Withdrawal_IsRefusedOutsideTheAllowedStatuses(string next)
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await host.Create("alice");
+            await host.Submit("alice", id, 1, Ada);
+            await Ok(host.Send("worker", HttpMethod.Post, $"{Route}/{id}/review", Version(1)));
+            if (next == "resubmit")
+            {
+                await Ok(host.Send("worker", HttpMethod.Post, $"{Route}/{id}/request-more-info", Version(2)));
+                await host.Submit("alice", id, 2, Ada);
+            }
+            else if (next != "review")
+            {
+                await Ok(host.Send("worker", HttpMethod.Post, $"{Route}/{id}/{next}", Version(2)));
+            }
+
+            int before = await host.CountEvents(id);
+            using HttpResponseMessage withdraw = await host.Send("alice", HttpMethod.Post, $"/v1/intake/applications/{id}/withdraw");
+            Assert.Equal(HttpStatusCode.Conflict, withdraw.StatusCode);
+            Assert.Equal(before, await host.CountEvents(id));
+        }
+
+        [Fact]
+        public async Task AWithdrawnDraft_RemainsInvisibleToWorkers()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await host.Create("alice");
+            await Ok(host.Send("alice", HttpMethod.Post, $"/v1/intake/applications/{id}/withdraw"));
+            using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, Route);
+            using HttpResponseMessage get = await host.Send("worker", HttpMethod.Get, $"{Route}/{id}");
+            Assert.Empty((await Payload(list)).EnumerateArray());
+            Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
         }
 
         [Fact]

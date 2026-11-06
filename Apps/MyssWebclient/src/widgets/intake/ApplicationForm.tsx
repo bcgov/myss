@@ -10,6 +10,7 @@ import { ReadOnlySpecForm } from "@myss/formio";
 import "@formio/js/dist/formio.form.min.css";
 import "@/widgets/FormSpecWidget.css";
 import styles from "@myss/web-common/components/ApplicationForm.module.css";
+import WithdrawApplication from "./WithdrawApplication";
 
 import {
   ApplicationRequestError,
@@ -197,24 +198,33 @@ export default function ApplicationForm({
 
   if (!application.spec) {
     return (
+      <>
+      <WithdrawApplication application={application} />
+      <StatusPill status={application.status} />
       <p role="alert">
         The form version v{application.formSpecVersion} this application uses is
         no longer available from the content engine.
       </p>
+      </>
     );
   }
 
   if (!isEditableStatus(application.status)) {
     return (
+      <>
+      <WithdrawApplication application={application} />
       <SubmittedView
         application={application}
         spec={application.spec.spec}
         announce={submittedHere}
       />
+      </>
     );
   }
 
   return (
+    <>
+    <WithdrawApplication application={application} />
     <DraftForm
       // A return remounts the form, so it starts from the answers as loaded.
       key={`${application.id}:${application.status}`}
@@ -222,5 +232,6 @@ export default function ApplicationForm({
       spec={application.spec.spec}
       onSubmitted={handleSubmitted}
     />
+    </>
   );
 }

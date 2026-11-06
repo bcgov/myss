@@ -12,6 +12,8 @@ namespace Myss.Api.Tests.TestDoubles
     /// </summary>
     public sealed class FakeFormSpecProvider : IFormSpecProvider
     {
+        private readonly OneShotPause _versionLookupPause = new();
+
         /// <summary>
         /// Gets the formSpecIds passed to <see cref="GetLatestAsync"/>.
         /// </summary>
@@ -78,10 +80,23 @@ namespace Myss.Api.Tests.TestDoubles
         }
 
         /// <inheritdoc/>
-        public Task<FormSpecModel?> GetVersionAsync(string formSpecId, int version, CancellationToken cancellationToken)
+        public async Task<FormSpecModel?> GetVersionAsync(string formSpecId, int version, CancellationToken cancellationToken)
         {
             VersionCalls.Add((formSpecId, version));
-            return Task.FromResult(VersionResult);
+            await _versionLookupPause.WaitIfArmedAsync(cancellationToken);
+            return VersionResult;
+        }
+
+        /// <summary>
+        /// Holds the next <see cref="GetVersionAsync"/> call until released.
+        /// The intake service reads the spec between a save's or submit's
+        /// status check and its write, so this parks a request at exactly
+        /// the point a concurrent action can race it.
+        /// </summary>
+        /// <returns>A task that completes once the call is held, and the source that releases it.</returns>
+        public (Task Reached, TaskCompletionSource Release) PauseNextVersionLookup()
+        {
+            return _versionLookupPause.Arm();
         }
     }
 }
