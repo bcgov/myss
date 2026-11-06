@@ -196,8 +196,9 @@ pipeline: see `Apps/MyssApi/AGENTS.md`.
 The staff side, split from MyssApi into its own deployable. The form editor
 (`GET v1/forms`, `GET`/`PUT v1/forms/{id}/draft`, `POST v1/forms/{id}/publish`) and the
 estimator rates editor (`GET`/`POST v1/EligibilityRates`) are behind the `AdminIdir`
-policy; the worker endpoints (`v1/intake/review/applications/...`, the stored form
-submissions, the bus pass PDF through CDOGS) behind `WorkerWithIdir`; `GET v1/auth/me`
+policy; the worker endpoints (`v1/intake/review/applications/...`, worker override at
+`v1/intake/worker-override/applications/...`, the stored form submissions, the bus pass
+PDF through CDOGS) behind `WorkerWithIdir`; `GET v1/auth/me`
 gives the staff site the caller's roles. It uses MyssApi's database through
 `Apps/MyssData` but never migrates it (ADR-0010), and it holds the only write-scoped
 Strapi token (`Strapi:AdminApiToken`, also used to read specs); MyssApi keeps the

@@ -1,7 +1,9 @@
 /*
- * One Income Assistance application: the draft form with its Save action,
- * or the acknowledgement above the read-only render once submitted. Border
- * and left bar carry the meaning alongside colour.
+ * One intake application, citizen or worker override: the draft form with its
+ * Save action (DraftApplicationForm), or the acknowledgement above the
+ * read-only render once submitted (each app's own view, which imports this as
+ * @myss/web-common/components/ApplicationForm.module.css). Border and left bar
+ * carry the meaning alongside colour.
  */
 .formHost {
     display: flex;

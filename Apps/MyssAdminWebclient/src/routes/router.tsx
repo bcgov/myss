@@ -9,14 +9,16 @@ import FormFromJsonPage from "@/pages/FormFromJsonPage";
 import SignedOutPage from "@/pages/SignedOutPage";
 import ApplicationsPage from "@/pages/ApplicationsPage";
 import ApplicationReviewPage from "@/pages/ApplicationReviewPage";
+import WorkerOverrideStartPage from "@/pages/WorkerOverrideStartPage";
+import WorkerOverridePage from "@/pages/WorkerOverridePage";
 import RequireWorker from "@/auth/RequireWorker";
 import RequireIdir from "@/auth/RequireIdir";
 import { paths } from "@/routes/paths";
 
 // App is the shared layout (header + app-wide auth concerns). Every page but
 // the OIDC callback and the signed-out page needs an IDIR sign-in, and the
-// application review pages also need the worker role; the API enforces the
-// same rules.
+// application review and worker override pages also need the worker role;
+// the API enforces the same rules.
 export const router = createBrowserRouter([
     {
         path: paths.home,
@@ -75,6 +77,26 @@ export const router = createBrowserRouter([
                     <RequireIdir>
                         <RequireWorker>
                             <ApplicationReviewPage />
+                        </RequireWorker>
+                    </RequireIdir>
+                ),
+            },
+            {
+                path: paths.workerOverride,
+                element: (
+                    <RequireIdir>
+                        <RequireWorker>
+                            <WorkerOverrideStartPage />
+                        </RequireWorker>
+                    </RequireIdir>
+                ),
+            },
+            {
+                path: paths.workerOverrideApplication,
+                element: (
+                    <RequireIdir>
+                        <RequireWorker>
+                            <WorkerOverridePage />
                         </RequireWorker>
                     </RequireIdir>
                 ),

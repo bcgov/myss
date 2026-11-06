@@ -26,6 +26,17 @@ namespace Myss.AdminApi.Intake
     /// </summary>
     public class ReviewService : IReviewService
     {
+        /// <summary>
+        /// The forms whose submissions come to the worker queue: the income
+        /// assistance application, and the worker override Application for
+        /// Assistance (MYSS-321). The citizen's own AFA does not, yet.
+        /// </summary>
+        private static readonly string[] QueuedForms =
+        [
+            IntakeFormSpecIds.IncomeAssistance,
+            IntakeFormSpecIds.WorkerOverrideAfa,
+        ];
+
         private readonly ILogger<ReviewService> _logger;
         private readonly IntakeDbContext _dbContext;
         private readonly IEventStore _eventStore;
@@ -65,7 +76,7 @@ namespace Myss.AdminApi.Intake
             // replaces this once volume warrants it (design: deferred).
             List<ApplicationAnswers> rows = await _dbContext.Applications
                 .AsNoTracking()
-                .Where(a => a.FormSpecId == IntakeFormSpecIds.IncomeAssistance)
+                .Where(a => QueuedForms.Contains(a.FormSpecId))
                 .ToListAsync(cancellationToken);
             IReadOnlyDictionary<Guid, EventStream> streams = await _eventStore.LoadManyAsync(
                 rows.Select(r => r.Id).ToList(),
@@ -296,7 +307,7 @@ namespace Myss.AdminApi.Intake
         {
             return _dbContext.Applications
                 .AsNoTracking()
-                .SingleOrDefaultAsync(a => a.Id == id && a.FormSpecId == IntakeFormSpecIds.IncomeAssistance, cancellationToken);
+                .SingleOrDefaultAsync(a => a.Id == id && QueuedForms.Contains(a.FormSpecId), cancellationToken);
         }
 
         private static ReviewApplicationSummaryModel ToSummary(ApplicationAnswers row, ApplicationState state)

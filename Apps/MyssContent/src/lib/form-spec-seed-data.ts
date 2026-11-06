@@ -20,6 +20,7 @@ import busPassFormSpecV5Json from "./bus-pass-specs/bus-pass-form-v5.json";
 import busPassFormSpecV6Json from "./bus-pass-specs/bus-pass-form-v6.json";
 import busPassFormSpecV7Json from "./bus-pass-specs/bus-pass-form-v7.json";
 import busPassFormSpecV8Json from "./bus-pass-specs/bus-pass-form-v8.json";
+import busPassFormSpecV9Json from "./bus-pass-specs/bus-pass-form-v9.json";
 
 export type Json =
   | string
@@ -77,6 +78,13 @@ export const busPassFormSpecV7 = busPassFormSpecV7Json as unknown as Json;
  * - The social insurance number is required.
  */
 export const busPassFormSpecV8 = busPassFormSpecV8Json as unknown as Json;
+
+/**
+ * Bus pass v9: the preferred method of communication as radio buttons, with
+ * the dropdown's key and values, and the registration form's SIN help in place
+ * of the note that an account number can stand in for the SIN.
+ */
+export const busPassFormSpecV9 = busPassFormSpecV9Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -416,6 +424,88 @@ registrationPhoneV5.validate = { required: true, customMessage: "Phone number is
 registrationPhoneV5.properties = {
   ...(registrationPhoneV5.properties as Record<string, Json>),
   myssValidator: "phone",
+};
+
+/**
+ * The ID of the worker override Application for Assistance (MYSS-321). Must
+ * match MyssData's `IntakeFormSpecIds.WorkerOverrideAfa`.
+ */
+export const WORKER_OVERRIDE_AFA_FORM_SPEC_ID = "worker-override-afa";
+
+/** The human-readable title for the worker override AFA. */
+export const WORKER_OVERRIDE_AFA_FORM_SPEC_TITLE =
+  "Worker override: Application for Assistance";
+
+/**
+ * The simplified Application for Assistance a worker submits for a client who
+ * cannot submit their own (MYSS-321): the six details the client's account is
+ * made from. The keys are a contract with MyssAdminApi's WorkerOverrideService,
+ * which reads them to make the account, and match registration's. Every field
+ * is required and carries its domain rule, so FormSpecValidator checks it on
+ * submit and the browser shows the same errors first. Its own Submit button
+ * runs the browser's checks first; the worker portal draws Save beside it.
+ */
+export const workerOverrideAfaFormSpecV1: Json = {
+  display: "form",
+  components: [
+    {
+      type: "textfield",
+      key: "firstName",
+      label: "First name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "lastName",
+      label: "Last name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "email",
+      key: "email",
+      label: "Email",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "phone",
+      label: "Phone number",
+      placeholder: "(250) 555-0199",
+      input: true,
+      validateOn: "blur",
+      validate: { required: true, customMessage: "Phone number is invalid" },
+      properties: { myssValidator: "phone" },
+    },
+    {
+      type: "datetime",
+      key: "dateOfBirth",
+      label: "Date of birth",
+      input: true,
+      format: "yyyy-MM-dd",
+      enableDate: true,
+      enableTime: false,
+      validate: { required: true },
+      properties: { myssValidator: "date" },
+    },
+    {
+      type: "textfield",
+      key: "sin",
+      label: "Social Insurance Number (SIN)",
+      input: true,
+      validate: { required: true },
+      properties: { myssValidator: "sin" },
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Submit",
+      input: true,
+    },
+  ],
 };
 
 // POC test form. v1 is seeded so a fresh database has a working form;
@@ -1813,6 +1903,11 @@ export const seededForms: readonly SeededForm[] = [
     versions: [{ version: 1, spec: incomeAssistanceFormSpecV1 }],
   },
   {
+    formSpecId: WORKER_OVERRIDE_AFA_FORM_SPEC_ID,
+    title: WORKER_OVERRIDE_AFA_FORM_SPEC_TITLE,
+    versions: [{ version: 1, spec: workerOverrideAfaFormSpecV1 }],
+  },
+  {
     formSpecId: ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     title: ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
     versions: [
@@ -1836,6 +1931,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 6, spec: busPassFormSpecV6 },
       { version: 7, spec: busPassFormSpecV7 },
       { version: 8, spec: busPassFormSpecV8 },
+      { version: 9, spec: busPassFormSpecV9 },
     ],
   },
 ];
