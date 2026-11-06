@@ -290,14 +290,15 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.Invalid(await this.WordAsync(errors, cancellationToken));
             }
 
-            // The row first: it takes the submitted answers and a new version,
-            // so any other tab still holding the old version is refused from
-            // here on, including after a return reopens the application. The
-            // answers that count stay the ones in the event's payload; the row
-            // is only the working copy a return starts from.
-            row.Answers = JsonDocument.Parse(request.Answers.GetRawText());
+            // Three writes, in this order, so the answers change only once the
+            // event has landed. First claim the row's version token, answers
+            // untouched: any other tab still holding the old version is
+            // refused from here on, including after a return reopens the
+            // application, and so is a save or withdrawal that read the row
+            // before this point. A withdrawal that landed after the status
+            // check above has already claimed the token, so this matches
+            // nothing and the submit stops with nothing changed.
             row.Version = request.Version + 1;
-            row.UpdatedAt = _timeProvider.GetUtcNow();
             try
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
@@ -308,7 +309,9 @@ namespace Myss.Api.Intake
             }
 
             // Then the event. A returned application is resubmitted rather
-            // than submitted again.
+            // than submitted again. A withdrawal that read the row after the
+            // claim and appended first makes this fail, and the answers have
+            // not been touched.
             var payload = new SubmittedPayload
             {
                 FormSpecVersion = row.FormSpecVersion,
@@ -330,6 +333,25 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.StreamConflict(row.Version);
             }
 
+            // Last the working copy a return starts from, still under the
+            // claimed token (the version stays where the claim put it). The
+            // answers that count are the event's, so if a withdrawal claimed
+            // the row since then this write matches nothing, the retained
+            // answers stay as they were, and the submit still stands.
+            row.Answers = JsonDocument.Parse(request.Answers.GetRawText());
+            row.UpdatedAt = _timeProvider.GetUtcNow();
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _logger.LogInformation(
+                    "Application {ApplicationId} was claimed after its submit landed; its working copy keeps the earlier answers",
+                    id);
+                await _dbContext.Entry(row).ReloadAsync(cancellationToken);
+            }
+
             _logger.LogInformation(
                 "{EventType} application {ApplicationId} on {FormSpecId} v{FormSpecVersion}",
                 eventType,
@@ -344,7 +366,7 @@ namespace Myss.Api.Intake
         /// <inheritdoc/>
         public async Task<IntakeResultModel> WithdrawAsync(Guid id, CancellationToken cancellationToken)
         {
-            ApplicationAnswers? row = await FindOwnAsync(id, track: false, cancellationToken);
+            ApplicationAnswers? row = await FindOwnAsync(id, track: true, cancellationToken);
             if (row is null)
             {
                 return IntakeResultModel.NotFound();
@@ -356,6 +378,26 @@ namespace Myss.Api.Intake
             {
                 _logger.LogInformation("Refused withdrawal of application {ApplicationId} in status {Status}", id, state.StatusCode);
                 return IntakeResultModel.NotEditable(row.Version);
+            }
+
+            // Claim the row before the event, under the same version token a
+            // save or submit writes it with. Whichever of them commits first
+            // wins: a save or submit that passed its status check before this
+            // point now matches nothing and is refused, a submit that claimed
+            // first but has not appended yet loses at its append, and a
+            // withdrawal that read the row before one of them landed is
+            // refused here, so the retained answers are never changed after
+            // the application is withdrawn. The answers and UpdatedAt are
+            // left as they were.
+            row.Version++;
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _logger.LogInformation("Withdrawal of application {ApplicationId} lost a race with a save or submit; the caller reloads", id);
+                return IntakeResultModel.StaleVersion(currentVersion: null);
             }
 
             try

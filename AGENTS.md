@@ -283,7 +283,13 @@ in the workspace; the forms and profile dependencies are ADR-0008.
 
 Applicants may withdraw only from Draft, Submitted or Returned (not Resubmitted).
 `POST v1/intake/applications/{id}/withdraw` checks ownership and the folded status,
-then appends a `Withdrawn` marker with the loaded stream's expected version.
+then claims the answers row's version token (the one save and submit write under, so
+a save or submit already past its status check is refused rather than overwriting the
+retained answers) and appends a `Withdrawn` marker with the loaded stream's expected version.
+Submit writes in the same order: it claims the token, appends its event, and only then
+copies its answers into the row under the claimed token, so a submit that loses to a
+withdrawal changes nothing, and a withdrawal that follows a submit's event refuses the
+submit's late answers write (the event still holds the submitted answers).
 Withdrawn is terminal: no save, submit, withdrawal, worker action or note is allowed.
 Both portals label it "Withdrawn"; worker history records `WITHDRAW`. Worker visibility
 is unchanged: only previously submitted Income Assistance applications appear,

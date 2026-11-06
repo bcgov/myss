@@ -14,6 +14,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
     using Myss.Data.Intake;
+    using Myss.Data.Platform;
     using Myss.FormSpec.Domain;
 
     /// <summary>
@@ -255,6 +256,129 @@ namespace Myss.Api.Tests
             Assert.Equal(HttpStatusCode.Conflict, resubmit.StatusCode);
             Assert.Equal(IntakeKeywords.NotEditable, await Keyword(again));
             Assert.Equal(submitted ? 2 : 1, await host.CountEvents(id));
+        }
+
+        [Theory]
+        [InlineData("answers")]
+        [InlineData("submit")]
+        public async Task ASaveOrSubmitPausedPastItsStatusCheck_CannotChangeAWithdrawnApplication(string action)
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            Guid id = await host.Create("alice");
+            using HttpResponseMessage first = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Ada" }));
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+
+            // Park the write after it has seen an editable draft, withdraw
+            // the application, then let the write finish.
+            (Task reached, TaskCompletionSource release) = _provider.PauseNextVersionLookup();
+            HttpMethod method = action == "submit" ? HttpMethod.Post : HttpMethod.Put;
+            Task<HttpResponseMessage> racing = host.Send("alice", method, $"{Route}/{id}/{action}",
+                Answers(2, new { firstName = "Eve", lastName = "Lovelace" }));
+            await reached.WaitAsync(TimeSpan.FromSeconds(10));
+            using HttpResponseMessage withdraw = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/withdraw");
+            release.SetResult();
+            using HttpResponseMessage late = await racing.WaitAsync(TimeSpan.FromSeconds(10));
+            using HttpResponseMessage get = await host.Send("alice", HttpMethod.Get, $"{Route}/{id}");
+
+            Assert.Equal(HttpStatusCode.OK, withdraw.StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, late.StatusCode);
+            Assert.Equal(IntakeKeywords.Conflict, await Keyword(late));
+            JsonElement application = await Payload(get);
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, application.GetProperty("status").GetString());
+            Assert.Equal("Ada", application.GetProperty("answers").GetProperty("firstName").GetString());
+            Assert.False(application.GetProperty("answers").TryGetProperty("lastName", out _));
+            Assert.Equal(1, await host.CountEvents(id));
+        }
+
+        [Fact]
+        public async Task ASubmitPausedBetweenItsRowClaimAndItsEvent_LeavesAWithdrawnApplicationsAnswersAlone()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            Guid id = await host.Create("alice");
+            using HttpResponseMessage first = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Ada" }));
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+
+            // Park the submit after its row write, before its event; the
+            // withdrawal reads the row it wrote and appends first.
+            (Task reached, TaskCompletionSource release) = host.PauseNextAppend();
+            Task<HttpResponseMessage> racing = host.Send("alice", HttpMethod.Post, $"{Route}/{id}/submit",
+                Answers(2, new { firstName = "Eve", lastName = "Lovelace" }));
+            await reached.WaitAsync(TimeSpan.FromSeconds(10));
+            using HttpResponseMessage withdraw = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/withdraw");
+            release.SetResult();
+            using HttpResponseMessage late = await racing.WaitAsync(TimeSpan.FromSeconds(10));
+            using HttpResponseMessage get = await host.Send("alice", HttpMethod.Get, $"{Route}/{id}");
+
+            Assert.Equal(HttpStatusCode.OK, withdraw.StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, late.StatusCode);
+            Assert.Equal(PlatformKeywords.EventStoreConflict, await Keyword(late));
+            JsonElement application = await Payload(get);
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, application.GetProperty("status").GetString());
+            Assert.Equal("Ada", application.GetProperty("answers").GetProperty("firstName").GetString());
+            Assert.False(application.GetProperty("answers").TryGetProperty("lastName", out _));
+            JsonElement row = await host.RowAnswers(id);
+            Assert.Equal("Ada", row.GetProperty("firstName").GetString());
+            Assert.False(row.TryGetProperty("lastName", out _));
+            Assert.Equal(1, await host.CountEvents(id));
+        }
+
+        [Fact]
+        public async Task AWithdrawalPausedBetweenItsRowClaimAndItsEvent_RefusesASubmit()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            Guid id = await host.Create("alice");
+            using HttpResponseMessage first = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Ada" }));
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+
+            (Task reached, TaskCompletionSource release) = host.PauseNextAppend();
+            Task<HttpResponseMessage> withdrawing = host.Send("alice", HttpMethod.Post, $"{Route}/{id}/withdraw");
+            await reached.WaitAsync(TimeSpan.FromSeconds(10));
+            using HttpResponseMessage submit = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/submit",
+                Answers(2, new { firstName = "Eve", lastName = "Lovelace" }));
+            release.SetResult();
+            using HttpResponseMessage withdraw = await withdrawing.WaitAsync(TimeSpan.FromSeconds(10));
+            using HttpResponseMessage get = await host.Send("alice", HttpMethod.Get, $"{Route}/{id}");
+
+            Assert.Equal(HttpStatusCode.Conflict, submit.StatusCode);
+            Assert.Equal(IntakeKeywords.Conflict, await Keyword(submit));
+            Assert.Equal(HttpStatusCode.OK, withdraw.StatusCode);
+            JsonElement application = await Payload(get);
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, application.GetProperty("status").GetString());
+            Assert.Equal("Ada", application.GetProperty("answers").GetProperty("firstName").GetString());
+            Assert.False((await host.RowAnswers(id)).TryGetProperty("lastName", out _));
+            Assert.Equal(1, await host.CountEvents(id));
+        }
+
+        [Fact]
+        public async Task AWithdrawalAfterASubmitsEventLands_LeavesTheRowAsItWasWithdrawn()
+        {
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            Guid id = await host.Create("alice");
+            using HttpResponseMessage first = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Ada" }));
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+
+            // Park the submit with its event in the log but its answers not
+            // yet copied into the row, and withdraw the now-submitted file.
+            (Task reached, TaskCompletionSource release) = host.PauseAfterNextAppend();
+            Task<HttpResponseMessage> racing = host.Send("alice", HttpMethod.Post, $"{Route}/{id}/submit",
+                Answers(2, new { firstName = "Eve", lastName = "Lovelace" }));
+            await reached.WaitAsync(TimeSpan.FromSeconds(10));
+            using HttpResponseMessage withdraw = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/withdraw");
+            release.SetResult();
+            using HttpResponseMessage submit = await racing.WaitAsync(TimeSpan.FromSeconds(10));
+            using HttpResponseMessage get = await host.Send("alice", HttpMethod.Get, $"{Route}/{id}");
+
+            // The submit stands (its event is the record) and the withdrawal
+            // follows it; the row was not written after the withdrawal.
+            Assert.Equal(HttpStatusCode.OK, submit.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, withdraw.StatusCode);
+            JsonElement application = await Payload(get);
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, application.GetProperty("status").GetString());
+            Assert.Equal("Lovelace", application.GetProperty("answers").GetProperty("lastName").GetString());
+            JsonElement row = await host.RowAnswers(id);
+            Assert.Equal("Ada", row.GetProperty("firstName").GetString());
+            Assert.False(row.TryGetProperty("lastName", out _));
+            Assert.Equal(2, await host.CountEvents(id));
         }
 
         [Fact]
