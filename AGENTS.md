@@ -196,8 +196,9 @@ pipeline: see `Apps/MyssApi/AGENTS.md`.
 The staff side, split from MyssApi into its own deployable. The form editor
 (`GET v1/forms`, `GET`/`PUT v1/forms/{id}/draft`, `POST v1/forms/{id}/publish`) and the
 estimator rates editor (`GET`/`POST v1/EligibilityRates`) are behind the `AdminIdir`
-policy; the worker endpoints (`v1/intake/review/applications/...`, the stored form
-submissions, the bus pass PDF through CDOGS) behind `WorkerWithIdir`; `GET v1/auth/me`
+policy; the worker endpoints (`v1/intake/review/applications/...`, worker override at
+`v1/intake/worker-override/applications/...`, the stored form submissions, the bus pass
+PDF through CDOGS) behind `WorkerWithIdir`; `GET v1/auth/me`
 gives the staff site the caller's roles. It uses MyssApi's database through
 `Apps/MyssData` but never migrates it (ADR-0010), and it holds the only write-scoped
 Strapi token (`Strapi:AdminApiToken`, also used to read specs); MyssApi keeps the
@@ -279,6 +280,22 @@ marked by **namespace** (`Myss.Data.Platform`, `Myss.Data.Intake` for the shared
 `Myss.Api.Intake` and `Myss.AdminApi.Intake` for each API's services), with files in
 subfolders of the layer folders. Design: `docs/development_design/income-assistance-application.md`
 in the workspace; the forms and profile dependencies are ADR-0008.
+
+Applicants may withdraw only from Draft, Submitted or Returned (not Resubmitted).
+`POST v1/intake/applications/{id}/withdraw` checks ownership and the folded status,
+then claims the answers row's version token (the one save and submit write under, so
+a save or submit already past its status check is refused rather than overwriting the
+retained answers) and appends a `Withdrawn` marker with the loaded stream's expected version.
+Submit writes in the same order: it claims the token, appends its event, and only then
+copies its answers into the row under the claimed token, so a submit that loses to a
+withdrawal changes nothing, and a withdrawal that follows a submit's event refuses the
+submit's late answers write (the event still holds the submitted answers).
+Withdrawn is terminal: no save, submit, withdrawal, worker action or note is allowed.
+Both portals label it "Withdrawn"; worker history records `WITHDRAW`. Worker visibility
+is unchanged: only previously submitted Income Assistance applications appear,
+not withdrawn drafts or AFA requests. Withdrawal does not delete answers or require
+an available form spec. The applicant confirms through a BCDS dialog before the call;
+Cancel keeps the current page and unsaved answers.
 
 ### IcmApi
 

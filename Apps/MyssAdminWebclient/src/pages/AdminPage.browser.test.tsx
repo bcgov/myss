@@ -59,6 +59,16 @@ describe("AdminPage", () => {
         await expect
             .element(screen.getByRole("link", { name: "Applications to review" }))
             .toHaveAttribute("href", "/applications");
+        await expect
+            .element(screen.getByRole("link", { name: "Worker override" }))
+            .toHaveAttribute("href", "/worker-override");
+        await expect
+            .element(
+                screen.getByRole("link", {
+                    name: "Unsubmitted IA applications",
+                }),
+            )
+            .toHaveAttribute("href", "/worker-override/drafts");
     });
 
     it("does not offer the review queue to an IDIR user without the worker role", async () => {
@@ -67,6 +77,12 @@ describe("AdminPage", () => {
         await expect.element(screen.getByText("Form management")).toBeVisible();
         await expect
             .element(screen.getByText("Applications to review"))
+            .not.toBeInTheDocument();
+        await expect
+            .element(screen.getByText("Worker override"))
+            .not.toBeInTheDocument();
+        await expect
+            .element(screen.getByText("Unsubmitted IA applications"))
             .not.toBeInTheDocument();
     });
 });

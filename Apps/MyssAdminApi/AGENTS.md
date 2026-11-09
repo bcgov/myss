@@ -15,9 +15,15 @@ The API behind the admin webclient, in two parts:
   defines; `v1/forms/{id}/messages/{key}` reads one message's live texts and history and
   saves a new version, each save adding an entry that records who made it). Strapi only.
 - **Worker side** (`WorkerWithIdir`: the WORKER or ADMIN role and an IDIR identity):
-  application review (`v1/intake/review/applications...`), stored submissions
-  (`GET v1/forms/{id}/submissions`, `GET v1/forms/submissions/{id}`) and the bus pass
-  PDF (`GET v1/bus-pass/submissions/{id}/pdf`, rendered by CDOGS).
+  application review (`v1/intake/review/applications...`), worker override
+  (`v1/intake/worker-override/applications...`, MYSS-321: a worker submits the
+  simplified Application for Assistance for a client who cannot submit their own,
+  which makes the client a worker override account through
+  `IWorkerOverrideAccountService` and puts the application in the review queue;
+  `GET .../drafts` lists every worker's unsubmitted drafts with who started them,
+  MYSS-322),
+  stored submissions (`GET v1/forms/{id}/submissions`, `GET v1/forms/submissions/{id}`)
+  and the bus pass PDF (`GET v1/bus-pass/submissions/{id}/pdf`, rendered by CDOGS).
 
 `GET v1/auth/me` returns the caller with their effective roles, for the webclient to
 choose which screens to show. Every route is the one MyssApi served before the split.

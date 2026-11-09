@@ -36,6 +36,9 @@ namespace Myss.Data.Intake
 
         /// <summary>Accepted, but handing it on to the case management system failed.</summary>
         PromotionFailed,
+
+        /// <summary>The applicant no longer needs assistance. Terminal.</summary>
+        Withdrawn,
     }
 
     /// <summary>
@@ -71,6 +74,9 @@ namespace Myss.Data.Intake
     {
         /// <summary>The applicant submitted.</summary>
         public const string Submit = "SUBMIT";
+
+        /// <summary>The applicant withdrew.</summary>
+        public const string Withdraw = "WITHDRAW";
 
         /// <summary>The applicant resubmitted after a return.</summary>
         public const string Resubmit = "RESUBMIT";
@@ -175,6 +181,7 @@ namespace Myss.Data.Intake
             ApplicationStatus.Accepted => ApplicationStatusCodes.Accepted,
             ApplicationStatus.Denied => ApplicationStatusCodes.Denied,
             ApplicationStatus.PromotionFailed => ApplicationStatusCodes.PromotionFailed,
+            ApplicationStatus.Withdrawn => ApplicationStatusCodes.Withdrawn,
             _ => throw new InvalidOperationException($"Unmapped status {Status}."),
         };
     }
@@ -187,6 +194,9 @@ namespace Myss.Data.Intake
     {
         /// <summary>Being drafted.</summary>
         public const string Draft = "DRAFT";
+
+        /// <summary>Withdrawn by the applicant.</summary>
+        public const string Withdrawn = "WITHDRAWN";
 
         /// <summary>Submitted.</summary>
         public const string Submitted = "SUBMITTED";
@@ -265,6 +275,11 @@ namespace Myss.Data.Intake
             ArgumentNullException.ThrowIfNull(evt);
             ApplicationState next = evt.Type switch
             {
+                ApplicationEventTypes.Withdrawn => Logged(state, evt, ApplicationHistoryCodes.Withdraw) with
+                {
+                    Status = ApplicationStatus.Withdrawn,
+                    Assignee = null,
+                },
                 ApplicationEventTypes.Submitted => Logged(state, evt, ApplicationHistoryCodes.Submit) with
                 {
                     Status = ApplicationStatus.Submitted,
@@ -351,6 +366,15 @@ namespace Myss.Data.Intake
         public static bool CanSubmit(ApplicationState state)
         {
             return CanSave(state);
+        }
+
+        /// <summary>Whether the applicant may withdraw.</summary>
+        /// <param name="state">The state.</param>
+        /// <returns>True only for Draft, Submitted and Returned.</returns>
+        public static bool CanWithdraw(ApplicationState state)
+        {
+            ArgumentNullException.ThrowIfNull(state);
+            return state.Status is ApplicationStatus.Draft or ApplicationStatus.Submitted or ApplicationStatus.Returned;
         }
 
         /// <summary>

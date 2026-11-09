@@ -30,6 +30,8 @@ namespace Myss.Api.Tests.TestSupport
     {
         private readonly WebApplicationFactory<Startup> _factory;
         private readonly HttpClient _client;
+        private readonly OneShotPause _beforeAppend = new();
+        private readonly OneShotPause _afterAppend = new();
 
         /// <summary>Initializes a new instance of the <see cref="IntakeTestHost"/> class.</summary>
         /// <param name="factory">The shared host factory.</param>
@@ -99,6 +101,13 @@ namespace Myss.Api.Tests.TestSupport
                     services.RemoveAll<PlatformDbContext>();
                     services.AddScoped<PlatformDbContext>(_ => new InMemoryPlatformDbContext(platform));
 
+                    // The real store, with pauses a race test can arm.
+                    services.RemoveAll<IEventStore>();
+                    services.AddScoped<IEventStore>(sp => new PausableEventStore(
+                        ActivatorUtilities.CreateInstance<EventStore>(sp),
+                        _beforeAppend,
+                        _afterAppend));
+
                     services.RemoveAll<DbContextOptions<IntakeDbContext>>();
                     services.RemoveAll<IntakeDbContext>();
                     services.AddScoped<IntakeDbContext>(_ => new InMemoryIntakeDbContext(intake));
@@ -133,6 +142,22 @@ namespace Myss.Api.Tests.TestSupport
             return _client.SendAsync(request);
         }
 
+        /// <summary>
+        /// Holds the next event append, before it reaches the store, until
+        /// released. Submit and withdrawal both claim the answers row before
+        /// they append, so this parks either one between those two writes.
+        /// </summary>
+        /// <returns>A task that completes once the append is held, and the source that releases it.</returns>
+        public (Task Reached, TaskCompletionSource Release) PauseNextAppend() => _beforeAppend.Arm();
+
+        /// <summary>
+        /// Holds the next event append, once it has been written, until
+        /// released: a submit parked here has its event in the log but has
+        /// not yet copied its answers into the row.
+        /// </summary>
+        /// <returns>A task that completes once the append is held, and the source that releases it.</returns>
+        public (Task Reached, TaskCompletionSource Release) PauseAfterNextAppend() => _afterAppend.Arm();
+
         public async Task<Guid> Create(string persona)
         {
             using HttpResponseMessage response = await Send(persona, HttpMethod.Post, "/v1/intake/applications");
@@ -152,6 +177,15 @@ namespace Myss.Api.Tests.TestSupport
         {
             using IServiceScope scope = _factory.Services.CreateScope();
             return await scope.ServiceProvider.GetRequiredService<IntakeDbContext>().Applications.CountAsync();
+        }
+
+        /// <summary>Reads the row's working copy straight from the database, past the projection's choice of answers.</summary>
+        public async Task<JsonElement> RowAnswers(Guid id)
+        {
+            using IServiceScope scope = _factory.Services.CreateScope();
+            ApplicationAnswers row = await scope.ServiceProvider.GetRequiredService<IntakeDbContext>()
+                .Applications.AsNoTracking().SingleAsync(a => a.Id == id);
+            return row.Answers.RootElement.Clone();
         }
 
         public async Task OverwriteRow(Guid id, string answersJson)

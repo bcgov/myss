@@ -15,6 +15,13 @@ export const paths = {
     // from it. Ministry workers only (WORKER or ADMIN role).
     applications: "/applications",
     application: "/applications/:id",
+    // Worker override (MYSS-321): start an Application for Assistance for a
+    // client, and one opened by its link. Workers only.
+    workerOverride: "/worker-override",
+    // Every worker's unsubmitted worker override drafts (MYSS-322). A static
+    // segment, so it ranks above the :id route beside it.
+    workerOverrideDrafts: "/worker-override/drafts",
+    workerOverrideApplication: "/worker-override/:id",
     // The OIDC redirect target.
     authCallback: "/auth/callback",
     // Where sign-out and idle logout land. Deliberately unguarded: a guarded
@@ -70,6 +77,11 @@ export function formMessagesPath(formSpecId: string): string {
 /** The editor of one form message, kept beside the `formMessage` pattern. */
 export function formMessagePath(formSpecId: string, messageKey: string): string {
     return `${formMessagesPath(formSpecId)}/${encodeURIComponent(messageKey)}`;
+}
+
+/** Concrete URL of one worker override application, beside its pattern. */
+export function workerOverridePath(id: string): string {
+    return `/worker-override/${encodeURIComponent(id)}`;
 }
 
 /** Concrete review URL for one application, kept beside the `application` pattern. */

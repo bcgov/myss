@@ -22,6 +22,10 @@ export default defineConfig({
             },
             {
                 plugins: [react()],
+                // Pre-bundle deps Vite would otherwise discover mid-run: a
+                // late-optimized react-query binds a second copy of React and
+                // its provider fails with a null hooks dispatcher.
+                optimizeDeps: { include: ["@tanstack/react-query"] },
                 test: {
                     name: "browser",
                     include: ["**/*.browser.{test,spec}.tsx"],

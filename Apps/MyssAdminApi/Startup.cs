@@ -123,6 +123,12 @@ namespace Myss.AdminApi
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
             services.AddScoped<IReviewService, ReviewService>();
 
+            // Worker override (MYSS-321): a worker submits a simplified AFA for a
+            // client, which makes the client's account through the forms module's
+            // seam and puts the application in the review queue above.
+            services.AddScoped<IWorkerOverrideAccountService, WorkerOverrideAccountService>();
+            services.AddScoped<IWorkerOverrideService, WorkerOverrideService>();
+
             // What follows a worker's Accept. Nothing receives applications
             // yet; the placeholder succeeds without leaving the API.
             services.AddSingleton<IApplicationPromotionProvider, PlaceholderApplicationPromotionProvider>();

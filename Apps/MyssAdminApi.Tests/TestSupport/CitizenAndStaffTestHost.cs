@@ -159,7 +159,7 @@ namespace Myss.AdminApi.Tests.TestSupport
             }
 
             bool staffRoute = relativePath.StartsWith("/v1/intake/review/", StringComparison.Ordinal)
-                || relativePath == "/v1/intake/review/applications";
+                || relativePath.StartsWith("/v1/intake/worker-override/", StringComparison.Ordinal);
             return (staffRoute ? _staff : _citizen).SendAsync(request);
         }
 
@@ -192,6 +192,29 @@ namespace Myss.AdminApi.Tests.TestSupport
                 .OrderBy(e => e.Version)
                 .Select(e => e.Type)
                 .ToListAsync();
+        }
+
+        /// <summary>Every profile in the shared forms store, with its phone numbers.</summary>
+        public async Task<IReadOnlyList<MyssUserProfile>> Profiles()
+        {
+            using IServiceScope scope = _staffFactory.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<FormsDbContext>()
+                .MyssUserProfiles.Include(p => p.Phones)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Bumps an application row's version straight in the intake store, as a
+        /// concurrent save by someone else would.
+        /// </summary>
+        public async Task BumpVersion(Guid id)
+        {
+            using IServiceScope scope = _staffFactory.Services.CreateScope();
+            IntakeDbContext db = scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
+            ApplicationAnswers row = await db.Applications.SingleAsync(a => a.Id == id);
+            row.Version++;
+            await db.SaveChangesAsync();
         }
 
         /// <summary>The number of events on a stream.</summary>

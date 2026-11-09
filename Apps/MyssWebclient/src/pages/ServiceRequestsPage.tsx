@@ -9,6 +9,7 @@ import {
 } from "@/hooks/useIntake";
 import { afaServiceRequestPath } from "@/routes/paths";
 import styles from "./ServiceRequestsPage.module.css";
+import WithdrawApplication from "@/widgets/intake/WithdrawApplication";
 
 function formatDate(value: string | null | undefined): string {
   return value ? new Date(value).toLocaleDateString() : "—";
@@ -90,6 +91,7 @@ export default function ServiceRequestsPage() {
                       {request.referenceNumber}
                     </span>
                   </Link>
+                  <WithdrawApplication application={request} />
                 </li>
               ))}
             </ul>

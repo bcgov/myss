@@ -31,6 +31,14 @@ namespace Myss.Data.Intake
         public required string OwnerSubject { get; set; }
 
         /// <summary>
+        /// Gets or sets the IDIR username of the worker who started the
+        /// application, for a worker override (MYSS-322); null for a citizen's
+        /// own application and for worker override drafts started before it
+        /// was recorded.
+        /// </summary>
+        public string? StartedBy { get; set; }
+
+        /// <summary>
         /// Gets or sets the logical form identifier.
         /// </summary>
         public required string FormSpecId { get; set; }

@@ -76,6 +76,18 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+test("Withdrawn applications remain visible outside the actionable queue", async () => {
+  stubApi({
+    status: 200,
+    body: { payload: [{ ...queue[0], status: "WITHDRAWN", inQueue: false }] },
+  });
+  const screen = await renderQueue();
+  await expect.element(screen.getByRole("table", { name: "Queue", exact: true })).not.toBeInTheDocument();
+  const others = screen.getByRole("table", { name: "Under review and decided" });
+  await expect.element(others.getByRole("gridcell", { name: "Withdrawn" })).toBeVisible();
+  await expect.element(others.getByRole("link", { name: "IA-11111111" })).toBeVisible();
+});
+
 test("lists every submitted application with its request number, date and status", async () => {
   stubApi({ status: 200, body: { payload: queue } });
   const screen = await renderQueue();

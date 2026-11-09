@@ -24,7 +24,7 @@ namespace Myss.Api.Migrations.Intake
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Myss.Api.Intake.ApplicationAnswers", b =>
+            modelBuilder.Entity("Myss.Data.Intake.ApplicationAnswers", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -54,6 +54,11 @@ namespace Myss.Api.Migrations.Intake
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("owner_subject");
+
+                    b.Property<string>("StartedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("started_by");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
