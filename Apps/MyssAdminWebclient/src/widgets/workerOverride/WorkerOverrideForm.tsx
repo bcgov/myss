@@ -1,6 +1,5 @@
 import type { FormType } from "@formio/react/lib/components/Form";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
 import { ApplicationRequestError } from "@myss/web-common/api";
 import {
   DraftApplicationForm,
@@ -20,14 +19,15 @@ import {
   WORKER_OVERRIDE_KEYWORDS,
   type WorkerOverrideApplicationPayload,
 } from "@/hooks/useWorkerOverride";
-import { applicationPath } from "@/routes/paths";
 
 // One worker override Application for Assistance (MYSS-321): the client's six
 // details, filled in by a worker for a client who cannot submit their own.
 // While it is a draft, or once returned for more information, it renders in
 // the shared DraftApplicationForm (as the citizen's ApplicationForm does).
-// Once submitted it renders read-only, with the request number and a link to
-// it in the review queue. Any worker may open any draft.
+// Once submitted it renders read-only, with the request number and status.
+// No account id and no review queue link: the worker who fills it in is
+// usually not the one who reviews it; reviewers find it under Applications to
+// review. Any worker may open any draft.
 
 const DRAFT_MESSAGES: DraftFormMessages = {
   conflict:
@@ -85,20 +85,7 @@ function SubmittedView({
           <dd>
             <StatusPill status={application.status} />
           </dd>
-          {application.accountId && (
-            <>
-              <dt>Account</dt>
-              <dd>
-                <code>{application.accountId}</code>
-              </dd>
-            </>
-          )}
         </dl>
-        <p>
-          <Link to={applicationPath(application.id)}>
-            Open it in the review queue
-          </Link>
-        </p>
       </section>
       <ReadOnlySpecForm spec={spec} answers={application.answers} />
     </>
