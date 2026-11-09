@@ -43,9 +43,7 @@ function request(
     spouseSenior: false,
     monthlyIncome: 0,
     spouseMonthlyIncome: 0,
-    primaryVehicleValue: 0,
-    otherVehicleValue: 0,
-    otherAssetValue: 0,
+    assetValue: 0,
     ...overrides,
   };
 }
@@ -155,7 +153,7 @@ describe("assetLimitCategory + asset gate (BR-D9-06 / BR-D9-07)", () => {
           dependants,
           applicantPwd,
           spousePwd,
-          otherAssetValue: limit,
+          assetValue: limit,
         }),
         RATES,
       );
@@ -165,7 +163,7 @@ describe("assetLimitCategory + asset gate (BR-D9-06 / BR-D9-07)", () => {
           dependants,
           applicantPwd,
           spousePwd,
-          otherAssetValue: limit + 0.01,
+          assetValue: limit + 0.01,
         }),
         RATES,
       );
@@ -176,16 +174,9 @@ describe("assetLimitCategory + asset gate (BR-D9-06 / BR-D9-07)", () => {
     },
   );
 
-  it("sums all three asset fields for the gate", () => {
-    // Single, category A ($5,000): 2000 + 2000 + 1500 = 5500 > 5000.
-    const result = calculateEstimate(
-      request({
-        primaryVehicleValue: 2000,
-        otherVehicleValue: 2000,
-        otherAssetValue: 1500,
-      }),
-      RATES,
-    );
+  it("gates on the assets and reports them as the total", () => {
+    // Single, category A ($5,000): 5500 > 5000.
+    const result = calculateEstimate(request({ assetValue: 5500 }), RATES);
     expect(result.eligible).toBe(false);
     expect(result.ineligibilityReasonKeyword).toBe(INELIGIBLE_ASSETS);
     expect(result.estimatedAmount).toBe(0);
@@ -194,7 +185,7 @@ describe("assetLimitCategory + asset gate (BR-D9-06 / BR-D9-07)", () => {
 
   it("checks the asset gate before income (asset reason wins)", () => {
     const result = calculateEstimate(
-      request({ monthlyIncome: 9000, otherAssetValue: 9000 }),
+      request({ monthlyIncome: 9000, assetValue: 9000 }),
       RATES,
     );
     expect(result.ineligibilityReasonKeyword).toBe(INELIGIBLE_ASSETS);
@@ -278,7 +269,7 @@ describe("sanity vectors", () => {
   });
 
   it("single / assets $6,000 => ineligible ASSETS, type B", () => {
-    const result = calculateEstimate(request({ otherAssetValue: 6000 }), RATES);
+    const result = calculateEstimate(request({ assetValue: 6000 }), RATES);
     expect(result.eligible).toBe(false);
     expect(result.ineligibilityReasonKeyword).toBe(INELIGIBLE_ASSETS);
     expect(result.estimatedAmount).toBe(0);
@@ -354,7 +345,7 @@ describe("result echoes the household inputs", () => {
         relationshipStatus: "Couple",
         monthlyIncome: 600,
         spouseMonthlyIncome: 400,
-        otherAssetValue: 1500,
+        assetValue: 1500,
       }),
       RATES,
     );

@@ -27,7 +27,7 @@ export type AssetCategory = "A" | "B" | "C" | "D";
 
 /**
  * The calculator's flat input. Spouse fields are 0/false for a Single
- * household; the three asset fields already combine applicant + spouse values.
+ * household; `assetValue` already combines applicant + spouse values.
  */
 export interface EligibilityRequest {
   relationshipStatus: HouseholdType;
@@ -40,9 +40,8 @@ export interface EligibilityRequest {
   spouseSenior: boolean;
   monthlyIncome: number;
   spouseMonthlyIncome: number;
-  primaryVehicleValue: number;
-  otherVehicleValue: number;
-  otherAssetValue: number;
+  /** Assets, including additional vehicles; a primary vehicle is exempt and not asked for. */
+  assetValue: number;
 }
 
 // The rate table's shape is shared with the admin rates editor
@@ -125,7 +124,7 @@ function toCount(value: unknown): number {
  * - collapses the six relationship values to Single/Couple;
  * - a Single household forces every spouse field to 0/false;
  * - coerces "true"/"false" -> boolean, blanks/negatives -> 0, dependants -> integer;
- * - sums applicant + spouse into each of the three combined asset fields.
+ * - adds the spouse's assets to the applicant's.
  *
  * These field keys are half of the seed<->frontend contract; they must match
  * the seeded spec exactly.
@@ -145,13 +144,7 @@ export function mapAnswersToEstimate(
     spouseSenior: isCouple ? toBool(answers.partnerAge65) : false,
     monthlyIncome: toMoney(answers.monthlyIncome),
     spouseMonthlyIncome: isCouple ? toMoney(answers.partnerMonthlyIncome) : 0,
-    primaryVehicleValue:
-      toMoney(answers.vehicleValueMinusTransportation) +
-      (isCouple ? toMoney(answers.partnerVehicleValueMinusTransportation) : 0),
-    otherVehicleValue:
-      toMoney(answers.vehicleValue) +
-      (isCouple ? toMoney(answers.partnerVehicleValue) : 0),
-    otherAssetValue:
+    assetValue:
       toMoney(answers.assetValue) +
       (isCouple ? toMoney(answers.partnerAssetValue) : 0),
   };

@@ -7,8 +7,8 @@ import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import { registerBcgovComponents } from "@myss/formio";
 import { loadPageStyles } from "@/testing/pageStyles";
 
-// End-to-end of the estimator page against a stubbed anonymous API, driving the
-// v5 spec: residency is a hard gate (the status question reveals only for "Yes",
+// End-to-end of the estimator page against a stubbed anonymous API, driving a
+// slice of the spec: residency is a hard gate (the status question reveals only for "Yes",
 // so "No" is terminal), the remaining questions reveal only when status is "Yes",
 // the inline "not eligible" warning fires on either "No", plus validation display
 // and the client-side estimate. The spec + rates fetches are mocked; the
@@ -31,15 +31,15 @@ const yesNo = [
 const partneredConditional = {
   json: { in: [{ var: "data.relationshipStatus" }, ["married", "marriagelike"]] },
 };
-// v5 gates (see form-spec-seed-data.ts). The status question shows only for
+// The spec's gates (see form-spec-seed-data.ts). The status question shows only for
 // residesInBc = "true", so answering "No" is terminal.
 const q1YesConditional = { show: true, when: "residesInBc", eq: "true" };
 const hasStatusConditional = { show: true, when: "hasEligibleStatus", eq: "true" };
 
-/** A faithful slice of the v5 estimator spec — real keys + the v5 conditionals. */
+/** A slice of the estimator spec: the current keys, labels and conditionals, with the money fields as plain numbers. */
 const estimatorSpec = {
   formSpecId: "eligibility-estimator",
-  version: 5,
+  version: 7,
   title: "Eligibility Estimator",
   spec: {
     display: "form",
@@ -56,7 +56,7 @@ const estimatorSpec = {
       {
         type: "bcgovRadio",
         key: "hasEligibleStatus",
-        label: "Do you have a status that allows you to live in Canada?",
+        label: "Do you meet the ministry's citizenship requirements?",
         // (No Q2 tooltip — removed from the v3 seed; help lives in the accordion.)
         input: true,
         values: yesNo,
@@ -69,7 +69,7 @@ const estimatorSpec = {
         key: "statusHelp",
         input: false,
         accordionLabel:
-          'What does "status that allows you to live in Canada" mean?',
+          'What does "the ministry\'s citizenship requirements" mean?',
         accordionBody:
           "<p>To be eligible for assistance, your status must meet the citizenship and residency requirements.</p>",
         conditional: q1YesConditional,
@@ -90,7 +90,7 @@ const estimatorSpec = {
         label: "What is your relationship status?",
         input: true,
         values: [
-          { label: "Single and Never Married", value: "single" },
+          { label: "Single", value: "single" },
           { label: "Married", value: "married" },
           { label: "Marriage-Like Relationship", value: "marriagelike" },
           { label: "Divorced", value: "divorced" },
@@ -281,8 +281,8 @@ type Screen = Awaited<ReturnType<typeof renderPage>>;
  * click ("intercepts pointer events"); clicking the label is what a person does
  * and what react-aria listens for.
  *
- * A string is matched EXACTLY (anchored), so "Married" cannot also match
- * "Single and Never Married".
+ * A string is matched EXACTLY (anchored), so a label cannot also match a
+ * longer one that contains it.
  */
 function option(screen: Screen, label: string | RegExp, index = 0) {
   const matcher =
@@ -333,7 +333,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-const Q2_LABEL = "Do you have a status that allows you to live in Canada?";
+const Q2_LABEL = "Do you meet the ministry's citizenship requirements?";
 const RELATIONSHIP_LABEL = "What is your relationship status?";
 const AGE_LABEL = "Are you 65 years of age or older?";
 const SPOUSE_AGE_LABEL = "Is your spouse 65 years of age or older?";
@@ -341,6 +341,21 @@ const PWD_LABEL =
   "Do you plan to apply for the Persons with Disabilities (PWD) designation?";
 const SPOUSE_PWD_LABEL =
   "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?";
+const WARNING_TITLE = "You may not be eligible for assistance";
+
+/** After a "No" to either pre-screen question, the warning offers no hardship assistance. */
+async function expectNoHardshipOffer(screen: Screen) {
+  await expect
+    .element(screen.getByText("Not eligible but still in need?"))
+    .not.toBeInTheDocument();
+  await expect
+    .element(
+      screen.getByRole("link", {
+        name: "Contact us to find out more about this kind of support.",
+      }),
+    )
+    .not.toBeInTheDocument();
+}
 
 // --- Progressive disclosure ------------------------------------------------
 
@@ -403,14 +418,13 @@ test("Q2 = No shows the inline warning and keeps the remaining questions hidden"
   await option(screen, /^No$/, 1).click(); // hasEligibleStatus = No
 
   await expect
-    .element(screen.getByText("You might not be eligible for assistance"))
+    .element(screen.getByText(WARNING_TITLE))
     .toBeVisible();
   await expect
     .element(screen.getByText(RELATIONSHIP_LABEL))
     .not.toBeInTheDocument();
 
-  // Both links in the warning box are clickable and point at the real
-  // gov.bc.ca pages (residency requirements + hardship "Contact us").
+  // The warning's link points at the real gov.bc.ca page.
   const residencyLink = screen.getByRole("link", {
     name: "residency requirements",
   });
@@ -418,13 +432,7 @@ test("Q2 = No shows the inline warning and keeps the remaining questions hidden"
   await expect
     .element(residencyLink)
     .toHaveAttribute("href", expect.stringContaining("citizenship-requirements"));
-  const hardshipLink = screen.getByRole("link", {
-    name: "Contact us to find out more about this kind of support.",
-  });
-  await expect.element(hardshipLink).toBeVisible();
-  await expect
-    .element(hardshipLink)
-    .toHaveAttribute("href", expect.stringContaining("access-services"));
+  await expectNoHardshipOffer(screen);
 });
 
 // --- Estimate flows -------------------------------------------------------
@@ -435,8 +443,16 @@ test("Q1 = No is terminal — Q2 never reveals and the warning shows", async () 
   await option(screen, /^No$/, 0).click(); // residesInBc = No
 
   await expect
-    .element(screen.getByText("You might not be eligible for assistance"))
+    .element(screen.getByText(WARNING_TITLE))
     .toBeVisible();
+  await expect
+    .element(
+      screen.getByText(
+        "Based on your answer, you may not meet the residency requirements for assistance in British Columbia.",
+      ),
+    )
+    .toBeVisible();
+  await expectNoHardshipOffer(screen);
   // The hard gate: Q2 is not revealed at all, so there is nothing to answer.
   await expect.element(screen.getByText(Q2_LABEL)).not.toBeInTheDocument();
   await expect
@@ -451,7 +467,7 @@ test("the not-eligible warning sits in a live region", async () => {
 
   await option(screen, /^No$/, 0).click(); // residesInBc = No
 
-  const warning = screen.getByText("You might not be eligible for assistance");
+  const warning = screen.getByText(WARNING_TITLE);
   await expect.element(warning).toBeVisible();
   // The wrapper must be mounted before the text appears, or the insertion is
   // announced unreliably — so assert the region, not just the text.
@@ -494,7 +510,7 @@ test("a newly revealed question carries NO error once the form is dirty", async 
   await expect.element(screen.getByText(/is required/i).first()).toBeVisible();
 
   // Answer everything outstanding, so no error is left on screen.
-  await option(screen, "Single and Never Married").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Single");
   await answer(screen, AGE_LABEL, "No");
   await answer(screen, PWD_LABEL, "No");
   await expect
@@ -549,7 +565,7 @@ test("re-passing the Q1 gate re-reveals Q2 CLEAN after a SUCCESSFUL estimate", a
   await option(screen, /^Yes$/, 0).click(); // Q1 = Yes
   await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await option(screen, "Single and Never Married").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Single");
   await answer(screen, AGE_LABEL, "No");
   await answer(screen, PWD_LABEL, "No");
   await screen.getByRole("button", { name: "Get Estimate" }).click();
@@ -592,7 +608,7 @@ test("Q1 = No, then Yes, then Q2 = Yes reaches a full estimate", async () => {
   await option(screen, /^Yes$/, 0).click(); // Q1 = Yes
   await option(screen, /^Yes$/, 1).click(); // Q2 = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await option(screen, "Single and Never Married").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Single");
   await answer(screen, AGE_LABEL, "No");
   await answer(screen, PWD_LABEL, "No");
 
@@ -631,7 +647,7 @@ test("computes an eligible estimate in the browser (single, no PWD, no income �
   await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
   await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await option(screen, "Single and Never Married").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Single");
   await answer(screen, AGE_LABEL, "No");
   await answer(screen, PWD_LABEL, "No");
 
@@ -651,7 +667,7 @@ test("shows the ineligible ($0) result with the hardship link when income exceed
   await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
   await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await option(screen, "Single and Never Married").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Single");
   await answer(screen, AGE_LABEL, "No");
   await answer(screen, PWD_LABEL, "No");
   // Single type-B income limit is 1060 → 2000 is over the limit → ineligible.
@@ -754,16 +770,16 @@ test("the spouse age question appears only for Married and Marriage-Like", async
   await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).not.toBeInTheDocument();
 
   // Each step changes the visibility, so each assertion waits for that change.
-  await option(screen, "Married").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Married");
   await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).toBeVisible();
 
-  await option(screen, "Single and Never Married").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Single");
   await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).not.toBeInTheDocument();
 
-  await option(screen, "Marriage-Like Relationship").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Marriage-Like Relationship");
   await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).toBeVisible();
 
-  await option(screen, "Divorced").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Divorced");
   await expect.element(screen.getByText(SPOUSE_AGE_LABEL)).not.toBeInTheDocument();
 });
 
@@ -792,7 +808,7 @@ test.each<AgeCase>([
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
 
   await answer(screen, AGE_LABEL, age);
-  await option(screen, spouse?.relationship ?? "Single and Never Married").click();
+  await answer(screen, RELATIONSHIP_LABEL, spouse?.relationship ?? "Single");
   if (spouse) {
     await answer(screen, SPOUSE_AGE_LABEL, spouse.age);
     await answer(screen, SPOUSE_PWD_LABEL, spouse.pwd);
@@ -887,7 +903,7 @@ test("changing Q2 to No after an estimate hides the stale result under the warni
   await option(screen, /^Yes$/, 0).click(); // residesInBc = Yes
   await option(screen, /^Yes$/, 1).click(); // hasEligibleStatus = Yes
   await expect.element(screen.getByText(RELATIONSHIP_LABEL)).toBeVisible();
-  await option(screen, "Single and Never Married").click();
+  await answer(screen, RELATIONSHIP_LABEL, "Single");
   await answer(screen, AGE_LABEL, "No");
   await answer(screen, PWD_LABEL, "No");
   await screen.getByRole("button", { name: "Get Estimate" }).click();
@@ -897,7 +913,7 @@ test("changing Q2 to No after an estimate hides the stale result under the warni
   await option(screen, /^No$/, 1).click(); // hasEligibleStatus = No
 
   await expect
-    .element(screen.getByText("You might not be eligible for assistance"))
+    .element(screen.getByText(WARNING_TITLE))
     .toBeVisible();
   // Async, retried — the clear runs in the change handler as the warning
   // renders, so a synchronous body check here could race the re-render.

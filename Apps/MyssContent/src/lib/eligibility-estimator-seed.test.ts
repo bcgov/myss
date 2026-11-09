@@ -9,9 +9,11 @@ import {
   eligibilityEstimatorSpecV4,
   eligibilityEstimatorSpecV5,
   eligibilityEstimatorSpecV6,
+  eligibilityEstimatorSpecV7,
   seededForms,
   type Json,
 } from "./form-spec-seed-data";
+import { validateFormSpec } from "./form-spec-rules";
 
 /**
  * The eligibility estimator spec is served from Strapi and rendered by MyssApi;
@@ -88,7 +90,7 @@ const MONEY_FIELDS = [
 describe("eligibility estimator seed", () => {
   const spec = eligibilityEstimatorSpecV1;
 
-  it("is registered in seededForms with published v1 to v5", () => {
+  it("is registered in seededForms with published v1 to v7", () => {
     const estimator = seededForms.find(
       (form) => form.formSpecId === ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     );
@@ -101,6 +103,7 @@ describe("eligibility estimator seed", () => {
       { version: 4, spec: eligibilityEstimatorSpecV4 },
       { version: 5, spec: eligibilityEstimatorSpecV5 },
       { version: 6, spec: eligibilityEstimatorSpecV6 },
+      { version: 7, spec: eligibilityEstimatorSpecV7 },
     ]);
   });
 
@@ -659,5 +662,130 @@ describe("eligibility estimator seed — v6 (money fields as currency)", () => {
       return copy.type === "currency" ? { ...copy, type: "number" } : copy;
     };
     expect(asNumber(v6)).toEqual(eligibilityEstimatorSpecV5);
+  });
+});
+
+describe("eligibility estimator seed — v7 (citizenship wording, no vehicle questions)", () => {
+  const v6 = eligibilityEstimatorSpecV6;
+  const v7 = eligibilityEstimatorSpecV7;
+
+  const VEHICLE_FIELDS: ReadonlySet<unknown> = new Set([
+    "vehicleValueMinusTransportation",
+    "vehicleValue",
+    "partnerVehicleValueMinusTransportation",
+    "partnerVehicleValue",
+  ]);
+  const CITIZENSHIP_LABEL = "Do you meet the ministry's citizenship requirements?";
+  const CITIZENSHIP_HELP_LABEL =
+    'What does "the ministry\'s citizenship requirements" mean?';
+  const CITIZENSHIP_HELP_BODY =
+    "<p>To be eligible for assistance, your status must meet the citizenship and residency requirements.</p>" +
+    "<p>This includes:</p>" +
+    "<ul>" +
+    "<li>Canadian citizen</li>" +
+    "<li>Permanent Resident</li>" +
+    "<li>Convention Refugee</li>" +
+    "<li>Temporary Resident Permit</li>" +
+    "<li>Refugee Claimant</li>" +
+    "<li>Temporary Resident Visa issued through an emergency authorization</li>" +
+    "</ul>" +
+    '<p>If you do not meet the citizenship requirements, you may qualify for an exemption. Learn more about <a href="https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/eligibility/citizenship-requirements" target="_blank" rel="noopener noreferrer">residence requirements for income assistance</a></p>';
+  const ASSETS_LABEL =
+    "What is the total value of your assets not listed above (additional vehicles, property, investments, cash or savings)?";
+  const SPOUSE_ASSETS_LABEL =
+    "What is the total value of your spouse's assets not listed above (additional vehicles, property, investments, cash or savings)?";
+
+  type Option = { label: string; value: string };
+  const v6Relationship = componentByKey(v6, "relationshipStatus").values as Option[];
+
+  /** v6 with exactly the expected changes applied, built without reading v7. */
+  function v6WithTheseChanges(): object {
+    const changes = new Map<unknown, object>([
+      ["hasEligibleStatus", { label: CITIZENSHIP_LABEL }],
+      [
+        "statusHelp",
+        {
+          accordionLabel: CITIZENSHIP_HELP_LABEL,
+          accordionBody: CITIZENSHIP_HELP_BODY,
+        },
+      ],
+      [
+        "relationshipStatus",
+        {
+          values: v6Relationship.map((option, index) =>
+            index === 0 ? { ...option, label: "Single" } : option,
+          ),
+        },
+      ],
+      ["assetValue", { label: ASSETS_LABEL }],
+      ["partnerAssetValue", { label: SPOUSE_ASSETS_LABEL }],
+    ]);
+    const components = componentsOf(v6)
+      .filter((component) => !VEHICLE_FIELDS.has(component.key))
+      .map((component) => ({ ...component, ...changes.get(component.key) }));
+    return { ...(v6 as object), components };
+  }
+
+  it("has unique component keys and passes the form-spec rules Strapi applies", () => {
+    const keys = keysOf(v7);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(validateFormSpec(v7)).toEqual([]);
+  });
+
+  it("is v6 with only these changes", () => {
+    expect(v7).toEqual(v6WithTheseChanges());
+  });
+
+  it("drops the four vehicle questions and keeps every other key in v6's order", () => {
+    expect(keysOf(v7)).toEqual(keysOf(v6).filter((key) => !VEHICLE_FIELDS.has(key)));
+  });
+
+  it("asks whether the applicant meets the ministry's citizenship requirements and explains them", () => {
+    expect((componentByKey(v7, "hasEligibleStatus") as { label?: unknown }).label).toBe(
+      CITIZENSHIP_LABEL,
+    );
+    const help = componentByKey(v7, "statusHelp") as {
+      accordionLabel?: unknown;
+      accordionBody?: unknown;
+    };
+    expect(help.accordionLabel).toBe(CITIZENSHIP_HELP_LABEL);
+    expect(help.accordionBody).toBe(CITIZENSHIP_HELP_BODY);
+
+    const text = JSON.stringify(v7);
+    expect(text).not.toContain("status that allows you to live in Canada");
+    expect(text).not.toContain("lawyer");
+  });
+
+  it("offers Single as the first relationship option and keeps every value", () => {
+    const options = componentByKey(v7, "relationshipStatus").values as Option[];
+    expect(options.map((option) => option.label)).toEqual([
+      "Single",
+      "Married",
+      "Marriage-Like Relationship",
+      "Divorced",
+      "Separated",
+      "Widowed",
+    ]);
+    expect(options.map((option) => option.value)).toEqual(
+      v6Relationship.map((option) => option.value),
+    );
+  });
+
+  it("names additional vehicles in both assets questions", () => {
+    expect((componentByKey(v7, "assetValue") as { label?: unknown }).label).toBe(
+      ASSETS_LABEL,
+    );
+    expect((componentByKey(v7, "partnerAssetValue") as { label?: unknown }).label).toBe(
+      SPOUSE_ASSETS_LABEL,
+    );
+  });
+
+  it("keeps every spouse field on the partnered conditional and never server-required", () => {
+    for (const key of ["partnerAge65", "partnerPwd", "partnerMonthlyIncome", "partnerAssetValue"]) {
+      const field = componentByKey(v7, key);
+      expect(field.conditional?.when).toBeUndefined();
+      expect(field.conditional?.json).toBeDefined();
+      expect(field.validate?.required).toBeUndefined();
+    }
   });
 });
