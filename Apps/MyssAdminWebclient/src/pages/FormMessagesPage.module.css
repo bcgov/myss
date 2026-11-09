@@ -1,0 +1,53 @@
+.intro {
+    color: var(--typography-color-secondary);
+    margin: var(--layout-margin-medium) 0 0;
+    max-width: 46rem;
+}
+
+.status {
+    color: var(--typography-color-secondary);
+    margin: 0;
+}
+
+.error {
+    color: var(--typography-color-danger);
+    font-weight: 600;
+    margin: 0;
+}
+
+/* The table can be wider than the page on a phone. */
+.tableWrap {
+    overflow-x: auto;
+}
+
+.table {
+    background-color: var(--surface-color-background-white);
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.table th,
+.table td {
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    text-align: left;
+    vertical-align: top;
+}
+
+.table thead th {
+    background-color: var(--surface-color-primary-button-default);
+    color: var(--typography-color-primary-invert);
+}
+
+/* The states are named so the site's link colours do not apply. */
+.messageLink,
+.messageLink:hover,
+.messageLink:focus {
+    color: var(--surface-color-primary-button-default);
+    font-weight: 700;
+}
+
+.muted {
+    color: var(--typography-color-secondary);
+}

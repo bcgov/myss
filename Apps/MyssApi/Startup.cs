@@ -115,6 +115,12 @@ namespace Myss.Api
             services.AddHttpClient<IErrorMessageProvider, StrapiErrorMessageProvider>(
                 client => client.Timeout = TimeSpan.FromSeconds(5));
 
+            // The texts of form messages, such as a form's confirmation, with the same
+            // read-only token, cache and short timeout.
+            services.AddHttpClient<FormMessageReader>(
+                client => client.Timeout = TimeSpan.FromSeconds(5));
+            services.AddTransient<IFormMessageProvider, StrapiFormMessageProvider>();
+
             // Configure the attachments module: validate -> quarantined row ->
             // ClamAV scan -> object store -> release. Protected behind
             // authentication (see AttachmentsController [Authorize]).

@@ -1,6 +1,6 @@
 import { Button, ProgressCircle } from "@bcgov/design-system-react-components";
 import { Form } from "@formio/react";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 
 import "@formio/js/dist/formio.form.min.css";
 import "./FormSpecWidget.css";
@@ -11,6 +11,10 @@ import {
   BusPassUnavailableError,
   type BusPassSubmissionPayload,
 } from "@/api/busPass";
+import {
+  BUS_PASS_CONFIRMATION,
+  type FormMessageTexts,
+} from "@myss/web-common/api";
 import { SubmissionErrors } from "@myss/web-common/components";
 import { useSubmitBusPass } from "@/hooks/useBusPass";
 import { useClientValidation } from "@myss/web-common/components";
@@ -19,7 +23,10 @@ import {
   useErrorMessages,
   type ErrorMessageCatalogue,
 } from "@/hooks/useErrorMessages";
+import { useFocusOnMount } from "@/hooks/useFocusOnMount";
+import { useFormMessage } from "@/hooks/useFormMessage";
 import { useFormSpec } from "@/hooks/usePocForm";
+import SubmissionConfirmation from "@/widgets/SubmissionConfirmation";
 
 const FORM_SPEC_ID = "bc-bus-pass";
 
@@ -46,20 +53,38 @@ interface FormInstance {
   emit: (event: string, ...args: unknown[]) => void;
 }
 
-/**
- * Moves focus to a result heading when it appears, so a screen-reader user is
- * told the outcome rather than being left at the submit button.
- */
-function useFocusOnMount() {
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
-  return headingRef;
-}
-
 /** The ministry answered: the request was accepted, or it was declined. */
 function SubmissionOutcome({
+  result,
+  catalogue,
+  confirmation,
+  onStartAgain,
+}: Readonly<{
+  result: BusPassSubmissionPayload;
+  catalogue: ErrorMessageCatalogue | undefined;
+  confirmation: Readonly<FormMessageTexts>;
+  onStartAgain: () => void;
+}>) {
+  if (result.outcome === "Accepted") {
+    return (
+      <SubmissionConfirmation
+        message={confirmation}
+        referenceNumber={result.referenceNumber}
+        submissionId={result.submissionId}
+      />
+    );
+  }
+
+  return (
+    <SubmissionRejected
+      result={result}
+      catalogue={catalogue}
+      onStartAgain={onStartAgain}
+    />
+  );
+}
+
+function SubmissionRejected({
   result,
   catalogue,
   onStartAgain,
@@ -69,29 +94,6 @@ function SubmissionOutcome({
   onStartAgain: () => void;
 }>) {
   const headingRef = useFocusOnMount();
-
-  if (result.outcome === "Accepted") {
-    return (
-      <section className={styles.outcome} aria-live="polite">
-        <h2 ref={headingRef} tabIndex={-1} className={styles.heading}>
-          Request submitted
-        </h2>
-        <p>
-          The BC Bus Pass Program has received your request. Your reference
-          number is{" "}
-          <span className={styles.reference}>{result.referenceNumber}</span>.
-          Keep it for your records.
-        </p>
-        <dl className={styles.details}>
-          <dt>Submission ID</dt>
-          <dd>
-            <code>{result.submissionId}</code>
-          </dd>
-        </dl>
-      </section>
-    );
-  }
-
   const message = errorMessageFor(
     catalogue,
     result.keyword,
@@ -207,6 +209,13 @@ export default function BusPassForm() {
   // Never awaited: the outcomes fall back to the compiled wording until the
   // catalogue arrives, and a failed read is not a reason to withhold the form.
   const { data: catalogue } = useErrorMessages();
+  // Read when the form opens, never at submit, so the request does not depend
+  // on it; the built-in texts stand in until it arrives or if it fails.
+  const confirmation = useFormMessage(
+    FORM_SPEC_ID,
+    "confirmation",
+    BUS_PASS_CONFIRMATION,
+  );
   const submit = useSubmitBusPass();
   // A submit Form.io blocks is listed in the same summary as one the API
   // refuses; Form.io's own alert is switched off so nothing shows twice.
@@ -228,6 +237,7 @@ export default function BusPassForm() {
       <SubmissionOutcome
         result={submit.data}
         catalogue={catalogue}
+        confirmation={confirmation}
         onStartAgain={() => submit.reset()}
       />
     );

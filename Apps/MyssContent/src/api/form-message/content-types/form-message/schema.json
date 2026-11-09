@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "form_messages",
+  "info": {
+    "singularName": "form-message",
+    "pluralName": "form-messages",
+    "displayName": "Form Message",
+    "description": "Texts a form's page shows applicants: page heading, title and message. The newest published entry for a form and message key is the live message. Edit it on the Form messages page of My Self Serve Administration, where each save is a new entry that records who made it. An edit made here is not checked against the message rules and is not recorded."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "formSpecId": {
+      "type": "string",
+      "required": true,
+      "regex": "^[a-z0-9-]+$"
+    },
+    "messageKey": {
+      "type": "string",
+      "required": true,
+      "maxLength": 50,
+      "regex": "^[a-z0-9-]+$"
+    },
+    "heading": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "body": {
+      "type": "text",
+      "required": true,
+      "maxLength": 1000
+    },
+    "changedBy": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    }
+  }
+}

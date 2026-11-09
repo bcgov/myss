@@ -9,8 +9,11 @@ specific to the admin API.
 The API behind the admin webclient, in two parts:
 
 - **Content** (`AdminIdir`: any authenticated caller with an IDIR identity): the form
-  editor (list forms, open and save a draft, publish) and the eligibility rates
-  editor (read the published table, save a new one). Strapi only.
+  editor (list forms, open and save a draft, publish), the eligibility rates
+  editor (read the published table, save a new one) and the form message
+  editor (`v1/form-messages` lists the messages `FormMessageDefinitions` in MyssCommon
+  defines; `v1/forms/{id}/messages/{key}` reads one message's live texts and history and
+  saves a new version, each save adding an entry that records who made it). Strapi only.
 - **Worker side** (`WorkerWithIdir`: the WORKER or ADMIN role and an IDIR identity):
   application review (`v1/intake/review/applications...`), worker override
   (`v1/intake/worker-override/applications...`, MYSS-321: a worker submits the
@@ -47,8 +50,8 @@ MyssData lands with its migration in MyssApi.
   CORS), `KeycloakClaims`, `RoleCalculator` (what stops a citizen-IDP token from
   keeping WORKER or ADMIN), mock auth (the same personas; this API defaults to
   `admin`), `CurrentUser`, the Strapi readers (`StrapiFormSpecProvider`,
-  `EligibilityRateTableReader`), the rate table (`EligibilityRateColumns`,
-  `FddRateData`) and `BusPassAnswers`. A change there changes both APIs. If you change
+  `EligibilityRateTableReader`, `FormMessageReader`), the rate table
+  (`EligibilityRateColumns`, `FddRateData`) and `BusPassAnswers`. A change there changes both APIs. If you change
   the rate table shape, change MyssContent's schema with it.
 - What differs stays here: the authorization policies, `/auth/me` (no registration
   fields), and `StrapiEligibilityRateProvider`, which reads through the shared reader
@@ -63,7 +66,9 @@ MyssData lands with its migration in MyssApi.
 Same layering and `Myss_` env var prefix as MyssApi (the same `ProgramConfiguration`).
 The only Strapi token this API holds is `Strapi:AdminApiToken` (write-scoped); MyssApi
 keeps the read-only `Strapi:ApiToken`. The shared readers read with it too (it has find
-and findOne): `Startup` registers `StrapiReadOptions` with this setting.
+and findOne): `Startup` registers `StrapiReadOptions` with this setting. On Form Message
+the token has `find`, `findOne` and `create` only, never `update` or `delete`, so the
+form message history cannot be rewritten through this API.
 `AllowOrigins` lists the admin webclient's origins (`*` is refused). The bus pass PDF needs `Cdogs:BaseUrl`, `Cdogs:TokenEndpoint`,
 `Cdogs:ClientId` and `Cdogs:ClientSecret` (checked at the first render, not at startup,
 as in MyssApi before the move). Copy `appsettings.local.sample.json` to

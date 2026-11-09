@@ -24,6 +24,15 @@ export function useAdminForms() {
   });
 }
 
+/** A form's title, or its ID while the forms list loads or when it lacks the form. */
+export function useFormName(formSpecId: string): string {
+  const { data: forms } = useAdminForms();
+  const title = forms
+    ?.find((form) => form.formSpecId === formSpecId)
+    ?.title?.trim();
+  return title || formSpecId;
+}
+
 /** Every form with its versions, read now and without retries, as a function.
  * On success the result becomes the forms list's cached data; a failure
  * rejects and leaves the cached list and its error state as they were. */

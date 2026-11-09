@@ -9,12 +9,14 @@ import { jsonEqual } from "./lib/json-equal";
 const FORM_SPEC_UID = "api::form-spec.form-spec";
 const ELIGIBILITY_RATE_UID = "api::eligibility-rate.eligibility-rate";
 const ERROR_MESSAGE_UID = "api::error-message.error-message";
+const FORM_MESSAGE_UID = "api::form-message.form-message";
 
-// Form specs, the eligibility rate table and the error message
-// catalogue are read with a scoped, read-only Strapi API token held by MyssApi
-// (Strapi:ApiToken), so the Public role must NOT be able to read them. This
-// actively revokes the grant rather than merely no longer creating it, because
-// earlier boots of this app wrote those permission rows into the database —
+// Form specs, the eligibility rate table, the error message catalogue and the
+// form messages are read with a scoped, read-only Strapi API token
+// held by MyssApi (Strapi:ApiToken), so the Public role must NOT be able to
+// read them. This actively revokes the grant rather than merely no longer
+// creating it, because earlier boots of this app wrote those permission rows
+// into the database —
 // removing the code that created them would leave the API exactly as open as
 // before, in a way that reads as fixed.
 //
@@ -25,7 +27,12 @@ async function revokePublicRead(strapi: Core.Strapi) {
     .findOne({ where: { type: "public" } });
   if (!publicRole) return;
 
-  for (const uid of [FORM_SPEC_UID, ELIGIBILITY_RATE_UID, ERROR_MESSAGE_UID]) {
+  for (const uid of [
+    FORM_SPEC_UID,
+    ELIGIBILITY_RATE_UID,
+    ERROR_MESSAGE_UID,
+    FORM_MESSAGE_UID,
+  ]) {
     for (const action of [`${uid}.find`, `${uid}.findOne`]) {
       const existing = await strapi.db
         .query("plugin::users-permissions.permission")

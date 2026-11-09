@@ -1,6 +1,6 @@
 /*
- * The outcome of a bus pass submission, shown in place of the form (accepted,
- * rejected) or above it (saved but not delivered). Border and left bar carry
+ * The outcome of a bus pass submission, shown in place of the form (rejected)
+ * or above it (saved but not delivered). Border and left bar carry
  * the meaning alongside colour.
  */
 .outcome {
@@ -28,10 +28,6 @@
 .heading:focus-visible {
     outline: 2px solid var(--surface-color-border-active);
     outline-offset: 2px;
-}
-
-.reference {
-    font-weight: var(--typography-font-weights-bold);
 }
 
 .details {

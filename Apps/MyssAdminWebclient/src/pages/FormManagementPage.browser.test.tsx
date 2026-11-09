@@ -8,9 +8,10 @@ import {
   useParams,
   useSearchParams,
 } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import FormManagementPage from "./FormManagementPage";
+import { listFormMessages, type FormMessageSummary } from "@/api/formMessages";
 import { getFormVersion, listForms } from "@/api/forms";
 import type { FormSpecPayload, FormSummary } from "@/api/forms";
 
@@ -26,7 +27,13 @@ vi.mock("@/api/forms", async (importActual) => ({
   publishForm: vi.fn(),
 }));
 
+vi.mock("@/api/formMessages", async (importActual) => ({
+  ...(await importActual<typeof import("@/api/formMessages")>()),
+  listFormMessages: vi.fn(),
+}));
+
 const mockListForms = vi.mocked(listForms);
+const mockListFormMessages = vi.mocked(listFormMessages);
 const mockGetFormVersion = vi.mocked(getFormVersion);
 
 function versionPayload(formSpecId: string, version: number): FormSpecPayload {
@@ -85,6 +92,12 @@ function JsonPageProbe() {
   );
 }
 
+// Stands in for a form's messages page, showing which form it opened.
+function MessagesPageProbe() {
+  const { formSpecId } = useParams();
+  return <p>Messages page opened: {formSpecId}</p>;
+}
+
 function renderPage() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -105,11 +118,19 @@ function renderPage() {
             path="/form-management/:formSpecId/from-json"
             element={<JsonPageProbe />}
           />
+          <Route
+            path="/form-management/:formSpecId/messages"
+            element={<MessagesPageProbe />}
+          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
+
+beforeEach(() => {
+  mockListFormMessages.mockResolvedValue([]);
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -229,6 +250,62 @@ describe("FormManagementPage", () => {
         ),
       )
       .toBeVisible();
+  });
+});
+
+describe("FormManagementPage: Edit messages", () => {
+  const busPassMessage: FormMessageSummary = {
+    definition: {
+      formSpecId: "bus-pass",
+      messageKey: "confirmation",
+      name: "Confirmation message",
+      description: "Shown after a request is submitted successfully.",
+      placeholders: [],
+    },
+    lastChangedAt: null,
+    lastChangedBy: null,
+  };
+
+  it("links a form with messages to them, and shows no link on a form without", async () => {
+    mockListForms.mockResolvedValue(forms);
+    mockListFormMessages.mockResolvedValue([busPassMessage]);
+
+    const screen = await renderPage();
+
+    const link = screen.getByRole("link", { name: "Edit messages of bus-pass" });
+    await expect.element(link).toBeVisible();
+    await expect.element(link).toHaveTextContent("Edit messages");
+    await expect
+      .element(link)
+      .toHaveAttribute("href", "/form-management/bus-pass/messages");
+    expect(
+      screen.getByRole("link", { name: /^Edit messages/ }).elements(),
+    ).toHaveLength(1);
+
+    await link.click();
+    await expect
+      .element(screen.getByText("Messages page opened: bus-pass"))
+      .toBeVisible();
+  });
+
+  it("still lists the forms, without links, when the messages cannot be read", async () => {
+    mockListForms.mockResolvedValue(forms);
+    mockListFormMessages.mockRejectedValue(new Error("Form messages fetch failed (502)"));
+
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByText(/The form messages could not be loaded/))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("link", { name: "Eligibility Estimator" }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("link", { name: "bus-pass" }))
+      .toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /^Edit messages/ }).elements(),
+    ).toHaveLength(0);
   });
 });
 

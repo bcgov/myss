@@ -128,6 +128,40 @@ describe("ErrorSummary", () => {
       .toHaveTextContent("There is a problem");
   });
 
+  it("keeps the other items' nodes when one is removed, so a live box does not read them again", async () => {
+    const screen = await render(<Harness focusKey={null} announce />);
+    const kept = screen
+      .getByText('A form with the ID "intake" already exists.')
+      .element();
+
+    await screen.rerender(
+      <Harness items={[ITEMS[1]]} focusKey={null} announce />,
+    );
+
+    await expect
+      .element(
+        screen.getByRole("button", { name: "Duplicate field key: email" }),
+      )
+      .not.toBeInTheDocument();
+    expect(
+      screen.getByText('A form with the ID "intake" already exists.').element(),
+    ).toBe(kept);
+  });
+
+  it("shows a repeated message once per item", async () => {
+    const screen = await render(
+      <Harness
+        items={[{ message: "Enter a value." }, { message: "Enter a value." }]}
+        focusKey={null}
+      />,
+    );
+
+    await expect
+      .element(screen.getByRole("listitem").nth(1))
+      .toHaveTextContent("Enter a value.");
+    expect(screen.getByRole("listitem").elements()).toHaveLength(2);
+  });
+
   it("renders nothing without items", async () => {
     const screen = await render(<Harness items={[]} focusKey={1} announce />);
 
