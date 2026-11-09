@@ -18,6 +18,7 @@ const HISTORY_LABELS: Record<ReviewHistoryCode, string> = {
   ESCALATE: "Escalated",
   ACCEPT: "Accepted",
   DENY: "Denied",
+  WITHDRAW: "Withdrawn",
   PROMOTED: "Promoted",
   PROMOTION_FAILED: "Promotion failed",
 };

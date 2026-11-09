@@ -51,6 +51,12 @@ namespace Myss.Api.Intake
         /// <returns>Ok or NotFound.</returns>
         Task<IntakeResultModel> GetAfaAsync(Guid id, CancellationToken cancellationToken);
 
+        /// <summary>Withdraws the caller's draft, submitted or returned application.</summary>
+        /// <param name="id">The application.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Ok, NotFound, NotEditable or StreamConflict.</returns>
+        Task<IntakeResultModel> WithdrawAsync(Guid id, CancellationToken cancellationToken);
+
         /// <summary>
         /// Saves the working copy of a draft, or of an application returned
         /// for more information.

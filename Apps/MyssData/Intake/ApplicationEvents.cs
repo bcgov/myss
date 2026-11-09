@@ -15,6 +15,9 @@ namespace Myss.Data.Intake
         /// <summary>The applicant submitted the application.</summary>
         public const string Submitted = "Submitted";
 
+        /// <summary>The applicant withdrew the application. Terminal.</summary>
+        public const string Withdrawn = "Withdrawn";
+
         /// <summary>
         /// The first worker slice's Under Review marker, from before
         /// assignment existed. No longer written; folded as a pick-up by the
