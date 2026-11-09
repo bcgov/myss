@@ -10,10 +10,12 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { SubmitEvent } from "react";
 import { Link, useNavigate } from "react-router";
 
+import { useFormMessages } from "@/hooks/useFormMessages";
 import { useAdminForms, useFreshFormList } from "@/hooks/useForms";
 import {
     formEditorPath,
     formFromJsonPath,
+    formMessagesPath,
     newFormPath,
 } from "@/routes/paths";
 import type { FormSummary, FormVersionSummary } from "@/api/forms";
@@ -30,9 +32,14 @@ import adminStyles from "./AdminPage.module.css";
 import styles from "./FormManagementPage.module.css";
 
 // The admin forms list: every form with its versions and which one is
-// published. Each row links into the editor, and each version opens its JSON.
+// published. Each row links into the editor, each version opens its JSON, and
+// a form with messages links to them.
 export default function FormManagementPage() {
     const { data: forms, isPending, error } = useAdminForms();
+    const messages = useFormMessages();
+    const formsWithMessages = new Set(
+        messages.data?.map((summary) => summary.definition.formSpecId),
+    );
     const [openVersion, setOpenVersion] = useState<{
         form: FormSummary;
         version: FormVersionSummary;
@@ -58,17 +65,28 @@ export default function FormManagementPage() {
             )}
 
             {!isPending && !error && forms && forms.length > 0 && (
-                <ul className={styles.list}>
-                    {forms.map((form) => (
-                        <FormRow
-                            key={form.formSpecId}
-                            form={form}
-                            onOpenVersion={(version) =>
-                                setOpenVersion({ form, version })
-                            }
-                        />
-                    ))}
-                </ul>
+                <>
+                    {messages.isError && (
+                        <p className={styles.status}>
+                            The form messages could not be loaded, so Edit
+                            messages is not shown. Reload the page to try again.
+                        </p>
+                    )}
+                    <ul className={styles.list}>
+                        {forms.map((form) => (
+                            <FormRow
+                                key={form.formSpecId}
+                                form={form}
+                                hasMessages={formsWithMessages.has(
+                                    form.formSpecId,
+                                )}
+                                onOpenVersion={(version) =>
+                                    setOpenVersion({ form, version })
+                                }
+                            />
+                        ))}
+                    </ul>
+                </>
             )}
 
             {openVersion && (
@@ -496,23 +514,37 @@ function versionLabel(version: FormVersionSummary): string {
     return `v${version.version} ${version.isPublished ? "Published" : "Draft"}`;
 }
 
-// Each version label opens that version's JSON. The name is set in full, so
-// it names the form too; a visually hidden suffix gains a stray space in Chrome.
+// Each version label opens that version's JSON, and Edit messages opens the
+// form's messages. Their names are set in full, so they name the form too; a
+// visually hidden suffix gains a stray space in Chrome.
 function FormRow({
     form,
+    hasMessages,
     onOpenVersion,
 }: Readonly<{
     form: FormSummary;
+    hasMessages: boolean;
     onOpenVersion: (version: FormVersionSummary) => void;
 }>) {
     return (
         <li className={styles.item}>
-            <Link
-                to={formEditorPath(form.formSpecId)}
-                className={styles.formLink}
-            >
-                {displayName(form)}
-            </Link>
+            <div className={styles.formHead}>
+                <Link
+                    to={formEditorPath(form.formSpecId)}
+                    className={styles.formLink}
+                >
+                    {displayName(form)}
+                </Link>
+                {hasMessages && (
+                    <Link
+                        to={formMessagesPath(form.formSpecId)}
+                        className={styles.messagesLink}
+                        aria-label={`Edit messages of ${displayName(form)}`}
+                    >
+                        Edit messages
+                    </Link>
+                )}
+            </div>
             <p className={styles.formId}>{form.formSpecId}</p>
             <ul className={styles.versions}>
                 {form.versions.map((version) => (

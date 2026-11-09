@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { parseMessageText, type InlinePart, type MessageBlock } from "./messageTextParser";
+import {
+  messageShowsPlaceholder,
+  parseMessageText,
+  type InlinePart,
+  type MessageBlock,
+} from "./messageTextParser";
 
 // The parts of each line or bullet point, without the offsets the renderer
 // uses only as keys.
@@ -70,5 +75,20 @@ describe("parseMessageText", () => {
     expect(paragraph.kind === "paragraph" && paragraph.lines.map((line) => line.at)).toEqual([0, 10]);
     expect(paragraph.kind === "paragraph" && paragraph.lines[0].parts.map((part) => part.at)).toEqual([0, 2, 7]);
     expect(list.kind === "list" && list.items.map((item) => item.at)).toEqual([14, 18]);
+  });
+});
+
+describe("messageShowsPlaceholder", () => {
+  it("finds the placeholder in a paragraph, a bullet point or bold text", () => {
+    expect(messageShowsPlaceholder("Your number is {referenceNumber}.", "referenceNumber")).toBe(true);
+    expect(messageShowsPlaceholder("Keep:\n- {referenceNumber}", "referenceNumber")).toBe(true);
+    expect(messageShowsPlaceholder("It is **{referenceNumber}**.", "referenceNumber")).toBe(true);
+  });
+
+  it("does not count a placeholder inside a link, another placeholder, or the bare name", () => {
+    expect(messageShowsPlaceholder("[{referenceNumber}](https://x.ca)", "referenceNumber")).toBe(false);
+    expect(messageShowsPlaceholder("[see](https://x.ca/{referenceNumber})", "referenceNumber")).toBe(false);
+    expect(messageShowsPlaceholder("Your number is {caseNumber}.", "referenceNumber")).toBe(false);
+    expect(messageShowsPlaceholder("Your referenceNumber.", "referenceNumber")).toBe(false);
   });
 });

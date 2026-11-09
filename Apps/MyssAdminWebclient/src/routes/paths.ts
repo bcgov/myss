@@ -8,6 +8,9 @@ export const paths = {
     formEditor: "/form-management/:formSpecId",
     // Creates a form, or a new version of one, from pasted JSON.
     formFromJson: "/form-management/:formSpecId/from-json",
+    // One form's messages, and the editor for one of them.
+    formMessages: "/form-management/:formSpecId/messages",
+    formMessage: "/form-management/:formSpecId/messages/:messageKey",
     // The application review queue (MYSS-226), and one application opened
     // from it. Ministry workers only (WORKER or ADMIN role).
     applications: "/applications",
@@ -57,6 +60,16 @@ export function formFromJsonPath(
     }
     const query = params.toString();
     return `${formEditorPath(formSpecId)}/from-json${query ? `?${query}` : ""}`;
+}
+
+/** The page of one form's messages, kept beside the `formMessages` pattern. */
+export function formMessagesPath(formSpecId: string): string {
+    return `${formEditorPath(formSpecId)}/messages`;
+}
+
+/** The editor of one form message, kept beside the `formMessage` pattern. */
+export function formMessagePath(formSpecId: string, messageKey: string): string {
+    return `${formMessagesPath(formSpecId)}/${encodeURIComponent(messageKey)}`;
 }
 
 /** Concrete review URL for one application, kept beside the `application` pattern. */

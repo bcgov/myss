@@ -23,6 +23,17 @@ type ErrorSummaryProps = Readonly<{
   announce: boolean;
 }>;
 
+// Keyed by message, so removing one item leaves the others' nodes in place and
+// a live box does not read them out again.
+function itemKeys(items: readonly ErrorSummaryItem[]): string[] {
+  const seen = new Map<string, number>();
+  return items.map(({ message }) => {
+    const count = seen.get(message) ?? 0;
+    seen.set(message, count + 1);
+    return `${message}:${count}`;
+  });
+}
+
 /**
  * The "There is a problem" box: every reason at once, each optionally a
  * button. Renders nothing without items, so a caller can keep it mounted and
@@ -41,6 +52,7 @@ export default function ErrorSummary({
 
   if (items.length === 0) return null;
 
+  const keys = itemKeys(items);
   return (
     <div className={styles.errorSummary} role={announce ? "alert" : undefined}>
       <h2 ref={headingRef} tabIndex={-1} className={styles.errorTitle}>
@@ -48,7 +60,7 @@ export default function ErrorSummary({
       </h2>
       <ul className={styles.errorList}>
         {items.map((item, index) => (
-          <li key={`${item.message}:${index}`}>
+          <li key={keys[index]}>
             {item.onSelect ? (
               <button
                 type="button"

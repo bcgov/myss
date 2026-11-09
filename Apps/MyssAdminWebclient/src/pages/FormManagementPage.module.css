@@ -16,10 +16,46 @@
     padding: var(--layout-padding-large, 20px);
 }
 
+/* The form's name, with Edit messages to its right; they wrap on a narrow screen. */
+.formHead {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small) var(--layout-margin-medium);
+    justify-content: space-between;
+}
+
 .formLink {
     color: var(--surface-color-primary-button-default, #234075);
     font-size: 1.125rem;
     font-weight: 700;
+}
+
+/* A link, since it opens another page, in the outlined button's look. The
+   states are named so the site's link colours do not apply. */
+.messagesLink,
+.messagesLink:visited,
+.messagesLink:hover,
+.messagesLink:focus {
+    background-color: var(--surface-color-background-white);
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-primary-button-default);
+    border-radius: var(--layout-border-radius-medium);
+    color: var(--surface-color-primary-button-default);
+    font-size: var(--typography-font-size-small-body);
+    font-weight: 700;
+    padding: var(--layout-padding-xsmall) var(--layout-padding-medium);
+    text-decoration: none;
+}
+
+.messagesLink:hover {
+    background-color: var(--surface-color-secondary-button-hover);
+}
+
+.messagesLink:focus-visible {
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-small);
 }
 
 .formId {

@@ -1,10 +1,21 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
-import { afterEach, expect, test, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from "vitest";
 
+import { loadPageStyles } from "@/testing/pageStyles";
 import BusPassForm from "@/widgets/BusPassForm";
 import { registerBcgovComponents } from "@myss/formio";
+import { BUS_PASS_CONFIRMATION } from "@myss/web-common/api";
 
 const currentSpecV1 = {
   formSpecId: "bc-bus-pass",
@@ -401,19 +412,46 @@ const refused: Answer = {
   },
 };
 
+/** The confirmation message's answer; "never" leaves the request unanswered. */
+type MessageAnswer = { status: number; body?: unknown } | "never";
+
+const configuredMessage = {
+  heading: "Your bus pass request is in",
+  title: "We have your request",
+  body: "Thank you. Your reference number is {referenceNumber}.",
+};
+
+function published(texts: typeof configuredMessage): MessageAnswer {
+  return { status: 200, body: { payload: texts } };
+}
+
+/** How many times the page asked for the confirmation message. */
+let messageReads = 0;
+
 /**
  * The error message catalogue the stubbed API serves: empty by default, so the
  * page words every outcome from its compiled fallback; null answers 500, the
- * way an unreachable content engine would surface through the API.
+ * way an unreachable content engine would surface through the API. No
+ * confirmation message is published unless `message` says otherwise.
  */
 function stubApi(
   answer: Answer,
   spec: unknown = currentSpecV1,
   catalogue: Record<string, string> | null = {},
+  message: MessageAnswer = { status: 404 },
 ) {
   const posts: Array<{ url: string; body: unknown }> = [];
+  messageReads = 0;
   vi.spyOn(window, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
+    if (url.endsWith("/v1/forms/bc-bus-pass/messages/confirmation")) {
+      messageReads += 1;
+      if (message === "never") return new Promise<Response>(() => {});
+      return new Response(
+        message.body === undefined ? "" : JSON.stringify(message.body),
+        { status: message.status, headers: { "Content-Type": "application/json" } },
+      );
+    }
     if (url.endsWith("/v1/forms/bc-bus-pass/spec")) {
       return new Response(JSON.stringify({ payload: spec }), {
         status: 200,
@@ -443,10 +481,11 @@ function stubApi(
 
 registerBcgovComponents();
 
-function renderForm() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+function newQueryClient() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
+}
+
+function renderForm(queryClient = newQueryClient()) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
@@ -535,7 +574,12 @@ test("posts to the bus pass endpoint with the rendered version and shows the ref
   await fillAndSubmit(screen);
 
   await expect
-    .element(screen.getByRole("heading", { name: "Request submitted" }))
+    .element(
+      screen.getByRole("heading", {
+        level: 1,
+        name: BUS_PASS_CONFIRMATION.heading,
+      }),
+    )
     .toBeVisible();
   await expect.element(screen.getByText("1-TEST-0001")).toBeVisible();
   expect(posts).toHaveLength(1);
@@ -595,7 +639,12 @@ test("renders the nested service choices in order and submits the address update
   await screen.getByRole("button", { name: "Submit" }).click();
 
   await expect
-    .element(screen.getByRole("heading", { name: "Request submitted" }))
+    .element(
+      screen.getByRole("heading", {
+        level: 1,
+        name: BUS_PASS_CONFIRMATION.heading,
+      }),
+    )
     .toBeVisible();
   expect(posts[0].body).toMatchObject({
     formSpecVersion: 3,
@@ -650,7 +699,12 @@ test("shows replacement cost information, requires acknowledgement, and submits 
   await screen.getByRole("button", { name: "Submit" }).click();
 
   await expect
-    .element(screen.getByRole("heading", { name: "Request submitted" }))
+    .element(
+      screen.getByRole("heading", {
+        level: 1,
+        name: BUS_PASS_CONFIRMATION.heading,
+      }),
+    )
     .toBeVisible();
   expect(posts[0].body).toMatchObject({
     formSpecVersion: 4,
@@ -914,6 +968,200 @@ test("says the request is being submitted while it is on its way", async () => {
 });
 
 type Screen = Awaited<ReturnType<typeof renderForm>>;
+
+const BUILT_IN_FIRST_LINE =
+  "The BC Bus Pass Program has received your request. Your reference number is 1-TEST-0001. Keep it for your records.";
+const BUILT_IN_SECOND_LINE =
+  "We may contact you if we need further information for your request.";
+
+/** The page heading the confirmation shows, after a submit. */
+async function submittedHeading(screen: Screen, name: string) {
+  await fillAndSubmit(screen);
+  const heading = screen.getByRole("heading", { level: 1, name });
+  await expect.element(heading).toBeVisible();
+  return heading;
+}
+
+test("shows the configured confirmation with the reference number in place, focused, without the submission ID", async () => {
+  stubApi(accepted, currentSpecV1, {}, published(configuredMessage));
+  const screen = await renderForm();
+
+  const heading = await submittedHeading(screen, configuredMessage.heading);
+
+  await expect.element(heading).toHaveFocus();
+  const alert = screen.getByRole("note", { name: configuredMessage.title });
+  await expect
+    .element(alert.getByText("Thank you. Your reference number is 1-TEST-0001."))
+    .toBeVisible();
+  // No extra reference line, since the message shows the placeholder.
+  expect(alert.element().textContent?.split("1-TEST-0001")).toHaveLength(2);
+  const text = document.body.textContent ?? "";
+  expect(text).not.toContain("Submission ID");
+  expect(text).not.toContain("11111111-2222-3333-4444-555555555555");
+  expect(text).not.toContain(BUS_PASS_CONFIRMATION.heading);
+});
+
+test("renders bold text, a link and a bulleted list from the configured message", async () => {
+  stubApi(
+    accepted,
+    currentSpecV1,
+    {},
+    published({
+      ...configuredMessage,
+      body:
+        "Your reference number is **{referenceNumber}**.\n\n" +
+        "Next:\n- We check your details\n" +
+        "- [Contact the program](https://www2.gov.bc.ca/buspass) if anything changes",
+    }),
+  );
+  const screen = await renderForm();
+
+  await submittedHeading(screen, configuredMessage.heading);
+
+  const alert = screen.getByRole("note", { name: configuredMessage.title });
+  expect(alert.element().querySelector("strong")?.textContent).toBe(
+    "1-TEST-0001",
+  );
+  expect(alert.getByRole("listitem").elements()).toHaveLength(2);
+  const link = alert.getByRole("link", {
+    name: "Contact the program (opens in a new tab)",
+  });
+  await expect
+    .element(link)
+    .toHaveAttribute("href", "https://www2.gov.bc.ca/buspass");
+  await expect.element(link).toHaveAttribute("target", "_blank");
+});
+
+// A failed read is tried once more, so it has ended after two reads.
+test.each([
+  ["no message is published", { status: 404 }, 1],
+  ["the message cannot be read", { status: 502, body: { status: 502 } }, 2],
+  ["the message is malformed", { status: 200, body: { payload: { heading: "Only" } } }, 2],
+  ["the message read never finishes", "never", 1],
+] as const)(
+  "shows the built-in confirmation when %s, and the request is still sent",
+  async (_case, message, reads) => {
+    const posts = stubApi(accepted, currentSpecV1, {}, message);
+    const screen = await renderForm();
+    await expect.poll(() => messageReads).toBe(reads);
+
+    const heading = await submittedHeading(screen, BUS_PASS_CONFIRMATION.heading);
+
+    await expect.element(heading).toHaveFocus();
+    const alert = screen.getByRole("note", { name: "Request submitted" });
+    await expect.element(alert.getByText(BUILT_IN_FIRST_LINE)).toBeVisible();
+    await expect.element(alert.getByText(BUILT_IN_SECOND_LINE)).toBeVisible();
+    expect(posts).toHaveLength(1);
+  },
+);
+
+test("adds the reference number on a line of its own when the message does not show it", async () => {
+  stubApi(
+    accepted,
+    currentSpecV1,
+    {},
+    published({ ...configuredMessage, body: "Thank you for your request." }),
+  );
+  const screen = await renderForm();
+
+  await submittedHeading(screen, configuredMessage.heading);
+
+  await expect
+    .element(screen.getByText("Your reference number is 1-TEST-0001."))
+    .toBeVisible();
+});
+
+test("shows the submission ID in place of a reference number the ministry did not return", async () => {
+  const withoutReference: Answer = {
+    status: 200,
+    body: {
+      payload: {
+        ...(accepted.body as { payload: object }).payload,
+        referenceNumber: null,
+      },
+    },
+  };
+  stubApi(withoutReference, currentSpecV1, {}, published(configuredMessage));
+  const screen = await renderForm();
+
+  await submittedHeading(screen, configuredMessage.heading);
+
+  await expect
+    .element(
+      screen.getByText(
+        "Thank you. Your reference number is 11111111-2222-3333-4444-555555555555.",
+      ),
+    )
+    .toBeVisible();
+});
+
+test("asks for the message when the form opens, not at submit, and again when the form opens again", async () => {
+  stubApi(accepted, currentSpecV1, {}, published(configuredMessage));
+  const queryClient = newQueryClient();
+  const first = await renderForm(queryClient);
+  await expect.poll(() => messageReads).toBe(1);
+
+  await submittedHeading(first, configuredMessage.heading);
+  expect(messageReads).toBe(1);
+
+  await first.unmount();
+  const second = await renderForm(queryClient);
+  await expect
+    .element(second.getByRole("textbox", { name: "First name" }))
+    .toBeVisible();
+  await expect.poll(() => messageReads).toBe(2);
+});
+
+describe("confirmation layout", () => {
+  let initial = { width: 0, height: 0 };
+
+  beforeAll(loadPageStyles);
+
+  beforeEach(() => {
+    initial = { width: window.innerWidth, height: window.innerHeight };
+  });
+
+  afterEach(async () => {
+    await page.viewport(initial.width, initial.height);
+  });
+
+  /** The pixel size a font-size value resolves to on this page. */
+  function resolvedFontSize(value: string): string {
+    const probe = document.createElement("span");
+    probe.style.fontSize = value;
+    document.body.append(probe);
+    const size = getComputedStyle(probe).fontSize;
+    probe.remove();
+    return size;
+  }
+
+  test("fits a 320-pixel phone, its heading at the phone heading size", async () => {
+    await page.viewport(320, 640);
+    // An email address typed as plain text has no break opportunity.
+    stubApi(
+      accepted,
+      currentSpecV1,
+      {},
+      published({
+        ...configuredMessage,
+        body: "Your reference number is {referenceNumber}. Questions: SDPR.BusPassProgramEnquiries@gov.bc.ca",
+      }),
+    );
+    const screen = await renderForm();
+
+    const heading = await submittedHeading(screen, configuredMessage.heading);
+
+    const root = document.documentElement;
+    expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+    const alert = screen.getByRole("note").element().closest(".bcds-Inline-Alert");
+    expect(alert?.getBoundingClientRect().right).toBeLessThanOrEqual(
+      root.clientWidth,
+    );
+    expect(getComputedStyle(heading.element()).fontSize).toBe(
+      resolvedFontSize("var(--typography-font-size-h2)"),
+    );
+  });
+});
 
 function contactGroup(screen: Screen) {
   return screen.getByRole("radiogroup", {

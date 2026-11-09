@@ -90,3 +90,16 @@ export function parseMessageText(message: string): MessageBlock[] {
   }
   return blocks;
 }
+
+function partsShow(parts: readonly InlinePart[], name: string): boolean {
+  return parts.some((part) =>
+    part.kind === "bold" ? partsShow(part.parts, name) : part.kind === "placeholder" && part.name === name,
+  );
+}
+
+/** Whether a message shows the value of placeholder `name`; one inside a link is never replaced, so it does not count. */
+export function messageShowsPlaceholder(message: string, name: string): boolean {
+  return parseMessageText(message).some((block) =>
+    (block.kind === "list" ? block.items : block.lines).some((line) => partsShow(line.parts, name)),
+  );
+}
