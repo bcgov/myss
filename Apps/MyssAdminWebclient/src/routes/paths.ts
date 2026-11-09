@@ -15,6 +15,9 @@ export const paths = {
     // Worker override (MYSS-321): start an Application for Assistance for a
     // client, and one opened by its link. Workers only.
     workerOverride: "/worker-override",
+    // Every worker's unsubmitted worker override drafts (MYSS-322). A static
+    // segment, so it ranks above the :id route beside it.
+    workerOverrideDrafts: "/worker-override/drafts",
     workerOverrideApplication: "/worker-override/:id",
     // The OIDC redirect target.
     authCallback: "/auth/callback",

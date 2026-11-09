@@ -1,6 +1,7 @@
 namespace Myss.AdminApi.Intake
 {
     using System;
+    using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -16,6 +17,14 @@ namespace Myss.AdminApi.Intake
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The draft, with the spec that renders it.</returns>
         Task<WorkerOverrideResultModel> CreateAsync(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Lists the worker override applications not yet submitted (MYSS-322):
+        /// every worker's drafts, most recently saved first.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The drafts.</returns>
+        Task<IReadOnlyList<WorkerOverrideDraftSummaryModel>> ListDraftsAsync(CancellationToken cancellationToken);
 
         /// <summary>Reads a worker override application, with the spec that renders it.</summary>
         /// <param name="id">The application identifier.</param>

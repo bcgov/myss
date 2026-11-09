@@ -6,6 +6,7 @@ import {
 
 import {
   getWorkerOverride,
+  listWorkerOverrideDrafts,
   saveWorkerOverrideAnswers,
   startWorkerOverride,
   submitWorkerOverride,
@@ -21,9 +22,16 @@ export { WORKER_OVERRIDE_KEYWORDS } from "@/api/workerOverride";
 export type {
   WorkerOverrideAnswersInput,
   WorkerOverrideApplicationPayload,
+  WorkerOverrideDraftSummaryPayload,
 } from "@/api/workerOverride";
 
 export const WORKER_OVERRIDE_QUERY_KEY = ["intake", "worker-override"] as const;
+
+/** The draft list; beside the per-application keys, never one of them. */
+export const WORKER_OVERRIDE_DRAFTS_KEY = [
+  ...WORKER_OVERRIDE_QUERY_KEY,
+  "drafts",
+] as const;
 
 export function workerOverrideKey(
   id: string,
@@ -49,6 +57,15 @@ function shouldRetry(failureCount: number, error: Error): boolean {
   return failureCount < 2;
 }
 
+/** Every worker's unsubmitted drafts (MYSS-322), most recently saved first. */
+export function useWorkerOverrideDrafts() {
+  return useQuery({
+    queryKey: WORKER_OVERRIDE_DRAFTS_KEY,
+    queryFn: listWorkerOverrideDrafts,
+    retry: shouldRetry,
+  });
+}
+
 /** Starts a draft. The caller navigates to it. */
 export function useStartWorkerOverride() {
   const queryClient = useQueryClient();
@@ -56,6 +73,9 @@ export function useStartWorkerOverride() {
     mutationFn: startWorkerOverride,
     onSuccess: (started) => {
       queryClient.setQueryData(workerOverrideKey(started.id), started);
+      void queryClient.invalidateQueries({
+        queryKey: WORKER_OVERRIDE_DRAFTS_KEY,
+      });
     },
   });
 }
@@ -73,8 +93,9 @@ export function useWorkerOverride(id: string) {
  * Folds a save or submit response into the cached application straight away
  * (status and the new row version, so a second click cannot go out with the
  * old one), keeping the spec the read carried, which these responses do not
- * repeat. On a 409 the application is refetched so the worker sees where it
- * is now.
+ * repeat, and refreshes the draft list (a save moves the draft up it; a submit
+ * takes it off). On a 409 the application is refetched so the worker sees
+ * where it is now.
  */
 function useWorkerOverrideWrite(
   id: string,
@@ -94,6 +115,9 @@ function useWorkerOverrideWrite(
             ? { ...old, ...updated, spec: updated.spec ?? old.spec }
             : updated,
       );
+      void queryClient.invalidateQueries({
+        queryKey: WORKER_OVERRIDE_DRAFTS_KEY,
+      });
       afterSuccess?.();
     },
     onError: (error) => {

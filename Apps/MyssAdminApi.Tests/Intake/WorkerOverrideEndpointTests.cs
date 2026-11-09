@@ -20,6 +20,7 @@ namespace Myss.AdminApi.Tests.Intake
     {
         private const string Route = "/v1/intake/worker-override/applications";
         private const string QueueRoute = "/v1/intake/review/applications";
+        private const string DraftsRoute = "/v1/intake/worker-override/applications/drafts";
 
         private const string Spec = """
         {
@@ -320,6 +321,69 @@ namespace Myss.AdminApi.Tests.Intake
             Assert.Equal(HttpStatusCode.NotFound, save.StatusCode);
         }
 
+        [Fact]
+        public async Task TheDraftList_HoldsEveryWorkersDrafts_WithWhoStartedThem()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid workers = await Start(host, "worker");
+            Guid admins = await Start(host, "admin");
+            await Ok(host.Send(
+                "worker", HttpMethod.Put, $"{Route}/{admins}/answers", Answers(1, new { firstName = " Ada ", lastName = "Lovelace" })));
+
+            using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, DraftsRoute);
+
+            Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+            JsonElement[] drafts = [.. (await Payload(list)).EnumerateArray()];
+            Assert.Equal([admins, workers], drafts.Select(d => d.GetProperty("id").GetGuid()));
+
+            // Most recently saved first: the one just saved names its client.
+            Assert.Equal("Ada Lovelace", drafts[0].GetProperty("clientName").GetString());
+            Assert.Equal("MADMIN", drafts[0].GetProperty("startedBy").GetString());
+            Assert.Equal(JsonValueKind.Null, drafts[1].GetProperty("clientName").ValueKind);
+            Assert.Equal("MWORKER", drafts[1].GetProperty("startedBy").GetString());
+            Assert.StartsWith("IA-", drafts[1].GetProperty("referenceNumber").GetString());
+        }
+
+        [Fact]
+        public async Task ASubmittedApplication_LeavesTheDraftList()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid submitted = await Start(host);
+            Guid draft = await Start(host);
+            await Ok(host.Send("worker", HttpMethod.Post, $"{Route}/{submitted}/submit", Answers(1, Client)));
+
+            using HttpResponseMessage list = await host.Send("admin", HttpMethod.Get, DraftsRoute);
+
+            JsonElement only = Assert.Single((await Payload(list)).EnumerateArray());
+            Assert.Equal(draft, only.GetProperty("id").GetGuid());
+        }
+
+        [Fact]
+        public async Task AReturnedApplication_StaysOutOfTheDraftList()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await Start(host);
+            await Ok(host.Send("worker", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, Client)));
+            await Ok(host.Send("admin", HttpMethod.Post, $"{QueueRoute}/{id}/review", StreamVersion(1)));
+            await Ok(host.Send("admin", HttpMethod.Post, $"{QueueRoute}/{id}/request-more-info", StreamVersion(2)));
+
+            using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, DraftsRoute);
+
+            // It was submitted; it waits in the review queue, not here.
+            Assert.Empty((await Payload(list)).EnumerateArray());
+        }
+
+        [Fact]
+        public async Task ACitizensDraft_IsNotInTheDraftList()
+        {
+            using CitizenAndStaffTestHost host = NewHost(["alice"]);
+            await host.Create("alice");
+
+            using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, DraftsRoute);
+
+            Assert.Empty((await Payload(list)).EnumerateArray());
+        }
+
         [Theory]
         [InlineData("alice")]
         [InlineData("workernoidir")]
@@ -329,10 +393,12 @@ namespace Myss.AdminApi.Tests.Intake
             Guid id = await Start(host);
 
             using HttpResponseMessage start = await host.Send(persona, HttpMethod.Post, Route);
+            using HttpResponseMessage drafts = await host.Send(persona, HttpMethod.Get, DraftsRoute);
             using HttpResponseMessage read = await host.Send(persona, HttpMethod.Get, $"{Route}/{id}");
             using HttpResponseMessage submit = await host.Send(persona, HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, Client));
 
             Assert.Equal(HttpStatusCode.Forbidden, start.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, drafts.StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, read.StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, submit.StatusCode);
             Assert.Single(await host.Profiles());
@@ -352,9 +418,9 @@ namespace Myss.AdminApi.Tests.Intake
 
         private static JsonContent StreamVersion(int streamVersion) => JsonContent.Create(new { streamVersion });
 
-        private static async Task<Guid> Start(CitizenAndStaffTestHost host)
+        private static async Task<Guid> Start(CitizenAndStaffTestHost host, string persona = "worker")
         {
-            using HttpResponseMessage response = await host.Send("worker", HttpMethod.Post, Route);
+            using HttpResponseMessage response = await host.Send(persona, HttpMethod.Post, Route);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             return (await Payload(response)).GetProperty("id").GetGuid();
         }

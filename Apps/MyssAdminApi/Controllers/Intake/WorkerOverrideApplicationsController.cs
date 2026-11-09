@@ -65,6 +65,25 @@ namespace Myss.AdminApi.Intake
                 Envelope(result.Application));
         }
 
+        /// <summary>
+        /// Lists the worker override applications not yet submitted (MYSS-322):
+        /// every worker's drafts, most recently saved first.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpGet("drafts")]
+        [Produces("application/json")]
+        [EndpointName("ListWorkerOverrideDrafts")]
+        [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<WorkerOverrideDraftSummaryModel>>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<BaseResponseModel<IReadOnlyList<WorkerOverrideDraftSummaryModel>>>> ListDrafts(
+            CancellationToken cancellationToken)
+        {
+            return new BaseResponseModel<IReadOnlyList<WorkerOverrideDraftSummaryModel>>
+            {
+                Payload = await _service.ListDraftsAsync(cancellationToken),
+                DatetimeRequested = DateTime.Now,
+            };
+        }
+
         /// <summary>Returns a worker override application with the spec that renders it.</summary>
         /// <param name="id">The application identifier.</param>
         /// <param name="cancellationToken">Cancellation token.</param>

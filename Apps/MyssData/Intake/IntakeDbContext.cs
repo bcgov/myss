@@ -34,6 +34,7 @@ namespace Myss.Data.Intake
             application.Property(a => a.Id).HasColumnName("application_id");
             application.Property(a => a.OwnerSubject).HasColumnName("owner_subject").HasMaxLength(255).IsRequired();
             application.Property(a => a.FormSpecId).HasColumnName("form_spec_id").IsRequired();
+            application.Property(a => a.StartedBy).HasColumnName("started_by").HasMaxLength(255);
             application.Property(a => a.FormSpecVersion).HasColumnName("form_spec_version");
             application.Property(a => a.Answers).HasColumnName("answers").HasColumnType("jsonb").IsRequired();
             application.Property(a => a.Version).HasColumnName("version").IsConcurrencyToken();

@@ -57,6 +57,37 @@ namespace Myss.AdminApi.Intake
         public Guid? AccountId { get; set; }
     }
 
+    /// <summary>
+    /// A worker override application not yet submitted, as the draft list
+    /// (MYSS-322) shows it: enough to recognise it and open it.
+    /// </summary>
+    public class WorkerOverrideDraftSummaryModel
+    {
+        /// <summary>Gets or sets the application identifier.</summary>
+        public required Guid Id { get; set; }
+
+        /// <summary>Gets or sets the request number.</summary>
+        public required string ReferenceNumber { get; set; }
+
+        /// <summary>
+        /// Gets or sets the client's name as the draft has it so far (first
+        /// and last name), or null while neither has been entered.
+        /// </summary>
+        public string? ClientName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the IDIR username of the worker who started it; null
+        /// for a draft started before this was recorded.
+        /// </summary>
+        public string? StartedBy { get; set; }
+
+        /// <summary>Gets or sets when the draft was started.</summary>
+        public required DateTimeOffset CreatedAt { get; set; }
+
+        /// <summary>Gets or sets when its answers were last saved.</summary>
+        public required DateTimeOffset UpdatedAt { get; set; }
+    }
+
     /// <summary>The answers a worker saves or submits, with the row version they last read.</summary>
     public class WorkerOverrideAnswersRequestModel
     {
