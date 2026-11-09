@@ -204,6 +204,19 @@ namespace Myss.AdminApi.Tests.TestSupport
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Bumps an application row's version straight in the intake store, as a
+        /// concurrent save by someone else would.
+        /// </summary>
+        public async Task BumpVersion(Guid id)
+        {
+            using IServiceScope scope = _staffFactory.Services.CreateScope();
+            IntakeDbContext db = scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
+            ApplicationAnswers row = await db.Applications.SingleAsync(a => a.Id == id);
+            row.Version++;
+            await db.SaveChangesAsync();
+        }
+
         /// <summary>The number of events on a stream.</summary>
         public async Task<int> CountEvents(Guid streamId)
         {

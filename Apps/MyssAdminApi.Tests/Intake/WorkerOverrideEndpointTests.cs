@@ -127,6 +127,57 @@ namespace Myss.AdminApi.Tests.Intake
             Assert.Equal("Ada", (await Payload(read)).GetProperty("answers").GetProperty("firstName").GetString());
         }
 
+        [Theory]
+        [InlineData("answers")]
+        [InlineData("submit")]
+        public async Task AWriteThatLandsBetweenTheCheckAndTheSave_IsAConflict(string action)
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await Start(host);
+
+            // The spec lookup sits between the version check and the save:
+            // another worker's save lands there.
+            _provider.OnNextGetVersion = () => host.BumpVersion(id);
+            HttpMethod method = action == "submit" ? HttpMethod.Post : HttpMethod.Put;
+            using HttpResponseMessage response = await host.Send("worker", method, $"{Route}/{id}/{action}", Answers(1, Client));
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal(IntakeKeywords.Conflict, await Keyword(response));
+            Assert.Empty(await host.Profiles());
+            Assert.Equal(0, await host.CountEvents(id));
+        }
+
+        [Fact]
+        public async Task AStaleSubmit_IsAConflict_AndMakesNoAccount()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await Start(host);
+            await Ok(host.Send("admin", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Ada" })));
+
+            using HttpResponseMessage submit = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, Client));
+
+            Assert.Equal(HttpStatusCode.Conflict, submit.StatusCode);
+            Assert.Equal(IntakeKeywords.Conflict, await Keyword(submit));
+            Assert.Empty(await host.Profiles());
+            Assert.Equal(0, await host.CountEvents(id));
+        }
+
+        [Fact]
+        public async Task WhenTheDraftsSpecVersionCannotBeLoaded_SaveAndSubmitAreABadGateway()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await Start(host);
+            _provider.VersionResult = null;
+
+            using HttpResponseMessage save = await host.Send("worker", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, Client));
+            using HttpResponseMessage submit = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, Client));
+
+            Assert.Equal(HttpStatusCode.BadGateway, save.StatusCode);
+            Assert.Equal(HttpStatusCode.BadGateway, submit.StatusCode);
+            Assert.Empty(await host.Profiles());
+            Assert.Equal(0, await host.CountEvents(id));
+        }
+
         [Fact]
         public async Task ASaveWithAFieldTheFormDoesNotHave_IsRefused()
         {
