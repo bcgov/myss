@@ -34,10 +34,10 @@ adds what is specific to the admin app.
 ## Layout of `src/`
 
 `pages/` (the landing page, form management, the editor, the rates panel,
-the application review queue and review page, worker override's start page and
-application page) · `hooks/` (`useForms`, `useEstimatorRates`, `useReview`,
+the application review queue and review page, worker override's start page,
+unsubmitted drafts list and application page) · `hooks/` (`useForms`, `useEstimatorRates`, `useReview`,
 `useWorkerOverride`) · `api/` (raw fetches to MyssAdminApi; no
 generated client) · `auth/` · `lib/` (rate column metadata) · `routes/` (`paths.ts`,
 every URL) · `widgets/review/` (queue, application, history, notes) ·
-`widgets/workerOverride/` (the worker override form) ·
+`widgets/workerOverride/` (the worker override form and drafts list) ·
 `constants.ts` (runtime config).

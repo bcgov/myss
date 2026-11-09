@@ -33,6 +33,13 @@ namespace Myss.AdminApi.Tests.TestDoubles
         public FormSpecModel? VersionResult { get; set; }
 
         /// <summary>
+        /// Gets or sets a step run once, on the next <see cref="GetVersionAsync"/>
+        /// call, before it returns: lets a test land a concurrent write between a
+        /// service's version check and its save.
+        /// </summary>
+        public Func<Task>? OnNextGetVersion { get; set; }
+
+        /// <summary>
         /// Builds a spec model around a supplied Form.io body, for tests that
         /// need real components to validate against.
         /// </summary>
@@ -78,10 +85,17 @@ namespace Myss.AdminApi.Tests.TestDoubles
         }
 
         /// <inheritdoc/>
-        public Task<FormSpecModel?> GetVersionAsync(string formSpecId, int version, CancellationToken cancellationToken)
+        public async Task<FormSpecModel?> GetVersionAsync(string formSpecId, int version, CancellationToken cancellationToken)
         {
             VersionCalls.Add((formSpecId, version));
-            return Task.FromResult(VersionResult);
+            Func<Task>? step = OnNextGetVersion;
+            OnNextGetVersion = null;
+            if (step is not null)
+            {
+                await step();
+            }
+
+            return VersionResult;
         }
     }
 }

@@ -83,6 +83,7 @@ namespace Myss.AdminApi.Intake
                 Id = Guid.NewGuid(),
                 OwnerSubject = ProfileOrigins.WorkerOverrideSubject(Guid.NewGuid()),
                 FormSpecId = FormSpecId,
+                StartedBy = idir,
                 FormSpecVersion = latest.Version,
                 Answers = JsonDocument.Parse("{}"),
                 Version = 1,
@@ -99,6 +100,38 @@ namespace Myss.AdminApi.Intake
                 row.FormSpecVersion);
 
             return WorkerOverrideResultModel.Ok(ToModel(row, ApplicationState.Seed, latest, accountId: null));
+        }
+
+        /// <inheritdoc/>
+        public async Task<IReadOnlyList<WorkerOverrideDraftSummaryModel>> ListDraftsAsync(CancellationToken cancellationToken)
+        {
+            RequireIdir();
+
+            // Every worker override row, then the fold keeps those never
+            // submitted, as the review queue does the other way round. A
+            // returned application is not here: it was submitted, and it waits
+            // in the review queue.
+            List<ApplicationAnswers> rows = await _dbContext.Applications
+                .AsNoTracking()
+                .Where(a => a.FormSpecId == FormSpecId)
+                .ToListAsync(cancellationToken);
+            IReadOnlyDictionary<Guid, EventStream> streams = await _eventStore.LoadManyAsync(
+                rows.Select(r => r.Id).ToList(),
+                cancellationToken);
+
+            return rows
+                .Where(row => ApplicationProjection.Fold(streams[row.Id]).Status == ApplicationStatus.Draft)
+                .OrderByDescending(row => row.UpdatedAt)
+                .Select(row => new WorkerOverrideDraftSummaryModel
+                {
+                    Id = row.Id,
+                    ReferenceNumber = ApplicationReference.From(row.Id),
+                    ClientName = ClientName(row.Answers.RootElement),
+                    StartedBy = row.StartedBy,
+                    CreatedAt = row.CreatedAt,
+                    UpdatedAt = row.UpdatedAt,
+                })
+                .ToList();
         }
 
         /// <inheritdoc/>
@@ -323,6 +356,17 @@ namespace Myss.AdminApi.Intake
                 validEmail.Value!.Value,
                 validPhone.Value!.Digits,
                 validSin.Value!.Digits);
+        }
+
+        /// <summary>The first and last name a draft has so far, or null when it has neither.</summary>
+        private static string? ClientName(JsonElement answers)
+        {
+            string name = string.Join(
+                ' ',
+                new[] { Text(answers, "firstName"), Text(answers, "lastName") }
+                    .Where(part => part is not null)
+                    .Select(part => part!.Trim()));
+            return name.Length > 0 ? name : null;
         }
 
         private static string? Text(JsonElement answers, string key) =>

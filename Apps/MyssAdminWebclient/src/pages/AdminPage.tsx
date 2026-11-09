@@ -39,6 +39,13 @@ export default function AdminPage() {
                             </Link>
                         </li>
                     )}
+                    {canReview && (
+                        <li className={styles.capabilityItem}>
+                            <Link to={paths.workerOverrideDrafts}>
+                                Unsubmitted IA applications
+                            </Link>
+                        </li>
+                    )}
                     <li className={styles.capabilityItem}>
                         <Link to={paths.formManagement}>
                             Form management

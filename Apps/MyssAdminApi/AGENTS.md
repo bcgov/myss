@@ -16,7 +16,9 @@ The API behind the admin webclient, in two parts:
   (`v1/intake/worker-override/applications...`, MYSS-321: a worker submits the
   simplified Application for Assistance for a client who cannot submit their own,
   which makes the client a worker override account through
-  `IWorkerOverrideAccountService` and puts the application in the review queue),
+  `IWorkerOverrideAccountService` and puts the application in the review queue;
+  `GET .../drafts` lists every worker's unsubmitted drafts with who started them,
+  MYSS-322),
   stored submissions (`GET v1/forms/{id}/submissions`, `GET v1/forms/submissions/{id}`)
   and the bus pass PDF (`GET v1/bus-pass/submissions/{id}/pdf`, rendered by CDOGS).
 

@@ -40,6 +40,21 @@ export interface WorkerOverrideApplicationPayload {
   accountId?: string | null;
 }
 
+/**
+ * A worker override application not yet submitted, as the draft list
+ * (MYSS-322) shows it. Mirrors WorkerOverrideDraftSummaryModel.
+ */
+export interface WorkerOverrideDraftSummaryPayload {
+  id: string;
+  referenceNumber: string;
+  /** The client's first and last name so far; null while neither is entered. */
+  clientName?: string | null;
+  /** The IDIR of the worker who started it; null for an older draft. */
+  startedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** The keywords the worker override API returns on problem-details responses. */
 export const WORKER_OVERRIDE_KEYWORDS = {
   /** No version of the worker override form is published (404). */
@@ -70,6 +85,15 @@ async function throwFor(res: Response): Promise<never> {
 /** Starts a draft on the latest published worker override form. */
 export async function startWorkerOverride(): Promise<WorkerOverrideApplicationPayload> {
   const res = await fetch(BASE_URL, { method: "POST", headers: authHeaders() });
+  if (!res.ok) await throwFor(res);
+  return (await res.json()).payload;
+}
+
+/** Every worker's unsubmitted drafts, most recently saved first. */
+export async function listWorkerOverrideDrafts(): Promise<
+  WorkerOverrideDraftSummaryPayload[]
+> {
+  const res = await fetch(`${BASE_URL}/drafts`, { headers: authHeaders() });
   if (!res.ok) await throwFor(res);
   return (await res.json()).payload;
 }
