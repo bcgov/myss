@@ -167,7 +167,7 @@ test("saves a half-filled draft with the version it was read at", async () => {
   expect(writes[0].body.answers.firstName).toBe("Ada");
 });
 
-test("submits, then shows the request number, the account and the queue link", async () => {
+test("submits, then shows the request number but not the account or a queue link", async () => {
   const writes = stubApi({ application: draft() });
   const screen = await renderForm();
 
@@ -179,10 +179,10 @@ test("submits, then shows the request number, the account and the queue link", a
     .element(screen.getByRole("heading", { name: "Application submitted" }))
     .toBeVisible();
   await expect.element(screen.getByText("IA-11111111")).toBeVisible();
-  await expect.element(screen.getByText(ACCOUNT)).toBeVisible();
+  await expect.element(screen.getByText(ACCOUNT)).not.toBeInTheDocument();
   await expect
-    .element(screen.getByRole("link", { name: "Open it in the review queue" }))
-    .toHaveAttribute("href", `/applications/${ID}`);
+    .element(screen.getByRole("link", { name: /review queue/ }))
+    .not.toBeInTheDocument();
   await expect
     .element(screen.getByRole("textbox", { name: /First name/ }))
     .toBeDisabled();
