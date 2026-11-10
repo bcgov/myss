@@ -35,14 +35,10 @@ describe("mapAnswersToEstimate", () => {
       partnerPwd: "true",
       partnerAge65: "true",
       partnerMonthlyIncome: 5000,
-      partnerVehicleValueMinusTransportation: 4000,
-      partnerVehicleValue: 3000,
       partnerAssetValue: 2000,
       // applicant values that should still flow through:
       pwd: "true",
       monthlyIncome: 100,
-      vehicleValueMinusTransportation: 10,
-      vehicleValue: 20,
       assetValue: 30,
     });
 
@@ -50,9 +46,7 @@ describe("mapAnswersToEstimate", () => {
     expect(request.spouseSenior).toBe(false);
     expect(request.spouseMonthlyIncome).toBe(0);
     // Spouse assets are NOT summed in for a Single household.
-    expect(request.primaryVehicleValue).toBe(10);
-    expect(request.otherVehicleValue).toBe(20);
-    expect(request.otherAssetValue).toBe(30);
+    expect(request.assetValue).toBe(30);
     // Applicant PWD still honoured.
     expect(request.applicantPwd).toBe(true);
   });
@@ -106,16 +100,10 @@ describe("mapAnswersToEstimate", () => {
   });
 
   it("clamps negative and blank money answers to 0", () => {
-    const request = mapAnswersToEstimate({
-      monthlyIncome: -50,
-      vehicleValueMinusTransportation: "",
-      vehicleValue: "not a number",
-      assetValue: null,
-    });
-    expect(request.monthlyIncome).toBe(0);
-    expect(request.primaryVehicleValue).toBe(0);
-    expect(request.otherVehicleValue).toBe(0);
-    expect(request.otherAssetValue).toBe(0);
+    expect(mapAnswersToEstimate({ monthlyIncome: -50 }).monthlyIncome).toBe(0);
+    for (const unusable of ["", "not a number", null, -1]) {
+      expect(mapAnswersToEstimate({ assetValue: unusable }).assetValue).toBe(0);
+    }
   });
 
   it("accepts numeric strings and truncates dependants to an integer", () => {
@@ -129,24 +117,36 @@ describe("mapAnswersToEstimate", () => {
     );
   });
 
-  it("sums applicant + spouse into each of the three combined asset fields (couple)", () => {
+  it("adds the spouse's assets to the applicant's for a couple", () => {
     const request: EligibilityRequest = mapAnswersToEstimate({
       relationshipStatus: "married",
-      vehicleValueMinusTransportation: 1000,
-      partnerVehicleValueMinusTransportation: 500,
-      vehicleValue: 200,
-      partnerVehicleValue: 300,
       assetValue: 40,
       partnerAssetValue: 60,
       monthlyIncome: 600,
       partnerMonthlyIncome: 400,
     });
 
-    expect(request.primaryVehicleValue).toBe(1500);
-    expect(request.otherVehicleValue).toBe(500);
-    expect(request.otherAssetValue).toBe(100);
+    expect(request.assetValue).toBe(100);
     expect(request.monthlyIncome).toBe(600);
     expect(request.spouseMonthlyIncome).toBe(400);
+  });
+
+  it("ignores vehicle answers from an earlier version of the form", () => {
+    const answers = {
+      relationshipStatus: "married",
+      assetValue: 40,
+      partnerAssetValue: 60,
+    };
+    const withVehicles = mapAnswersToEstimate({
+      ...answers,
+      vehicleValueMinusTransportation: 1000,
+      partnerVehicleValueMinusTransportation: 500,
+      vehicleValue: 200,
+      partnerVehicleValue: 300,
+    });
+
+    expect(withVehicles).toEqual(mapAnswersToEstimate(answers));
+    expect(withVehicles.assetValue).toBe(100);
   });
 });
 

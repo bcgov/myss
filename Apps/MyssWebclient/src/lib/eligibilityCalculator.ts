@@ -161,10 +161,7 @@ export function calculateEstimate(
 
   const totalIncomeCents =
     toCents(request.monthlyIncome) + toCents(request.spouseMonthlyIncome);
-  const totalAssetsCents =
-    toCents(request.primaryVehicleValue) +
-    toCents(request.otherVehicleValue) +
-    toCents(request.otherAssetValue);
+  const totalAssetsCents = toCents(request.assetValue);
 
   const totalIncome = fromCents(totalIncomeCents);
   const totalAssets = fromCents(totalAssetsCents);

@@ -321,20 +321,12 @@
    override) so title and body match the design. */
 .statusWarning p {
   font: var(--typography-regular-body);
-  /* The design separates the two blocks by one blank line: 27px within a
-     paragraph, 54px across them. Bootstrap's 10px default gave neither. */
+  /* The design separates paragraphs by one blank line (27px) and leaves none
+     under the last; Bootstrap's 10px default gave neither. */
   margin-bottom: 27px;
 }
 .statusWarning p:last-child {
   margin-bottom: 0;
-}
-
-/* "Not eligible but still in need?" is its own line in the design — the source string
-   carries a single `\n` after it, and the following line sits one plain 27px step below
-   with no extra gap. A block-level <strong> reproduces that; a paragraph would not, as it
-   would add the 27px margin above. */
-.statusWarning strong {
-  display: block;
 }
 
 /* Links inside the warning box are underlined in the alert's own dark text
