@@ -18,6 +18,12 @@ namespace Myss.Api.Configuration
         /// <summary>The configuration section the flags are read from.</summary>
         public const string SectionName = "FeatureManagement";
 
+        /// <summary>
+        /// The public home page (MYSS-329). When off, the webclient sends anyone who
+        /// lands on <c>/</c> to legacy MySelfServe (its <c>LEGACY_MYSS_URL</c> setting).
+        /// </summary>
+        public const string HomePage = "HomePage";
+
         /// <summary>Resetting a forgotten PIN by emailed link.</summary>
         public const string PinReset = "PinReset";
 
@@ -57,6 +63,7 @@ namespace Myss.Api.Configuration
         /// <summary>Every flag, in the order <c>GET /v1/features</c> lists them.</summary>
         public static readonly IReadOnlyList<string> All =
         [
+            HomePage,
             PinReset,
             EmailVerification,
             EligibilityEstimator,

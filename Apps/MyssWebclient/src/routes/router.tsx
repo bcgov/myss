@@ -23,6 +23,7 @@ import ServiceRequestsPage from "@/pages/ServiceRequestsPage";
 import RequireAuth from "@/auth/RequireAuth";
 import { paths } from "@/routes/paths";
 import FeatureRoute from "@/routes/FeatureRoute";
+import HomeRoute from "@/routes/HomeRoute";
 
 // App is the shared layout (header/footer + app-wide auth concerns). Child
 // routes render into its <Outlet />.
@@ -39,7 +40,14 @@ export const router = createBrowserRouter([
     element: <App />,
     children: [
       // ---- Public ----
-      { index: true, element: <HomePage /> },
+      {
+        index: true,
+        element: (
+          <HomeRoute>
+            <HomePage />
+          </HomeRoute>
+        ),
+      },
       { path: paths.register, element: <RegistrationPage /> },
       {
         path: paths.eligibilityEstimator,

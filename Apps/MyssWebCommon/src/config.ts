@@ -9,6 +9,7 @@ export interface AppConfig {
   OIDC_AUTHORITY?: string;
   OIDC_CLIENT_ID?: string;
   CANADA_POST_API_KEY?: string;
+  LEGACY_MYSS_URL?: string;
 }
 
 declare global {
@@ -19,7 +20,8 @@ declare global {
 
 /**
  * import.meta.env, from which the VITE_* keys are read: VITE_MYSS_API_URL,
- * VITE_OIDC_AUTHORITY, VITE_OIDC_CLIENT_ID and VITE_CANADA_POST_API_KEY. The
+ * VITE_OIDC_AUTHORITY, VITE_OIDC_CLIENT_ID, VITE_CANADA_POST_API_KEY and
+ * VITE_LEGACY_MYSS_URL. The
  * app passes it in, so this package never reads import.meta.env itself.
  */
 export type ViteEnv = Readonly<Record<string, unknown>>;
@@ -40,11 +42,17 @@ export interface RuntimeConfig {
    * allowed URLs and a daily usage cap. Empty disables suggestions.
    */
   canadaPostApiKey: string;
+  /**
+   * Legacy MySelfServe, where the citizen webclient sends a visitor to `/`
+   * while its HomePage flag is off (MYSS-329). Set per environment.
+   */
+  legacyMyssUrl: string;
 }
 
 export const DEFAULT_OIDC_AUTHORITY =
   "https://dev.loginproxy.gov.bc.ca/auth/realms/standard";
 export const DEFAULT_OIDC_CLIENT_ID = "sdpr-my-ss-6498";
+export const DEFAULT_LEGACY_MYSS_URL = "https://myselfserve.gov.bc.ca";
 
 /**
  * window.APP_CONFIG, or undefined where there is no `window` (the node test
@@ -81,5 +89,9 @@ export function resolveRuntimeConfig(sources: {
       appConfig?.CANADA_POST_API_KEY ||
       text(viteEnv?.VITE_CANADA_POST_API_KEY) ||
       "",
+    legacyMyssUrl:
+      appConfig?.LEGACY_MYSS_URL ||
+      text(viteEnv?.VITE_LEGACY_MYSS_URL) ||
+      DEFAULT_LEGACY_MYSS_URL,
   };
 }
