@@ -1,6 +1,7 @@
 namespace Myss.Common.Auth
 {
     using System.Collections.Generic;
+    using System.Text.Json.Serialization;
 
     /// <summary>
     /// The typed identity of the caller for the current request.
@@ -33,5 +34,13 @@ namespace Myss.Common.Auth
 
         /// <summary>Gets the IDIR username, when the caller is government staff.</summary>
         public string? IdirUsername { get; init; }
+
+        /// <summary>
+        /// Gets the BCeID user name, when the caller signed in with BCeID. MyssApi
+        /// records it on the profile so workers can search by it (MYSS-275). Not
+        /// part of either <c>/auth/me</c> answer.
+        /// </summary>
+        [JsonIgnore]
+        public string? BceidUsername { get; init; }
     }
 }

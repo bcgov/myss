@@ -22,6 +22,8 @@ export const paths = {
     // segment, so it ranks above the :id route beside it.
     workerOverrideDrafts: "/worker-override/drafts",
     workerOverrideApplication: "/worker-override/:id",
+    // Support View: search for clients (MYSS-275). Workers only.
+    clientSearch: "/support/clients",
     // The OIDC redirect target.
     authCallback: "/auth/callback",
     // Where sign-out and idle logout land. Deliberately unguarded: a guarded

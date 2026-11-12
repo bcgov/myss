@@ -46,6 +46,13 @@ export default function AdminPage() {
                             </Link>
                         </li>
                     )}
+                    {canReview && (
+                        <li className={styles.capabilityItem}>
+                            <Link to={paths.clientSearch}>
+                                Search for clients
+                            </Link>
+                        </li>
+                    )}
                     <li className={styles.capabilityItem}>
                         <Link to={paths.formManagement}>
                             Form management

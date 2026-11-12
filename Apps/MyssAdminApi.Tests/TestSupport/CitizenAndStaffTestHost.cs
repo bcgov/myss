@@ -159,7 +159,8 @@ namespace Myss.AdminApi.Tests.TestSupport
             }
 
             bool staffRoute = relativePath.StartsWith("/v1/intake/review/", StringComparison.Ordinal)
-                || relativePath.StartsWith("/v1/intake/worker-override/", StringComparison.Ordinal);
+                || relativePath.StartsWith("/v1/intake/worker-override/", StringComparison.Ordinal)
+                || relativePath.StartsWith("/v1/support/", StringComparison.Ordinal);
             return (staffRoute ? _staff : _citizen).SendAsync(request);
         }
 
@@ -193,6 +194,19 @@ namespace Myss.AdminApi.Tests.TestSupport
                 .Select(e => e.Type)
                 .ToListAsync();
         }
+
+        /// <summary>Adds profiles straight to the shared forms store.</summary>
+        public async Task AddProfiles(params MyssUserProfile[] profiles)
+        {
+            using IServiceScope scope = _staffFactory.Services.CreateScope();
+            FormsDbContext db = scope.ServiceProvider.GetRequiredService<FormsDbContext>();
+            db.MyssUserProfiles.AddRange(profiles);
+            await db.SaveChangesAsync();
+        }
+
+        /// <summary>A configuration value as this API sees it.</summary>
+        public string? StaffSetting(string key) =>
+            _staffFactory.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()[key];
 
         /// <summary>Every profile in the shared forms store, with its phone numbers.</summary>
         public async Task<IReadOnlyList<MyssUserProfile>> Profiles()

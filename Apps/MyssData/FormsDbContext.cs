@@ -111,6 +111,10 @@ namespace Myss.Data
             profile.Property(p => p.CreatedByIdir).HasColumnName("created_by_idir").HasMaxLength(64);
             profile.HasIndex(p => p.EmailVerificationTokenHash).IsUnique();
 
+            // Support View client search (MYSS-275): the BCeID user name a
+            // worker can search by, taken from the citizen's sign-in token.
+            profile.Property(p => p.BceidUsername).HasColumnName("bceid_username").HasMaxLength(255);
+
             // Registration's email proof (MYSS-295): keyed by the identity
             // subject, because no profile exists yet. The token as its hash and
             // a concurrency token, as on the profile.

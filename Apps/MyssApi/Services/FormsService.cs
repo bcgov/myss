@@ -324,6 +324,7 @@ namespace Myss.Api.Services
                     DateOfBirth = parsedDate,
                     Email = email,
                     Sin = sin,
+                    BceidUsername = NullIfBlank(currentUser.BceidUsername),
                     Phone = phone,
                     Gender = gender,
                     PinHash = pinHash,
@@ -341,6 +342,11 @@ namespace Myss.Api.Services
             profile.LastName = lastName;
             profile.DateOfBirth = parsedDate;
             profile.Sin = sin;
+            if (NullIfBlank(currentUser.BceidUsername) is { } bceidUsername)
+            {
+                profile.BceidUsername = bceidUsername;
+            }
+
             // v2 and v3 are still published and do not ask for these, so an absent
             // answer means "not on this form", not "cleared": keep what v4 stored.
             // (v1 never gets this far; SubmitAsync refuses it.)
@@ -508,6 +514,9 @@ namespace Myss.Api.Services
 
             return errors;
         }
+
+        private static string? NullIfBlank(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
         private static string? OptionalString(JsonElement answers, string key) =>
             answers.TryGetProperty(key, out JsonElement value)

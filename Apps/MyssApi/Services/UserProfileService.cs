@@ -40,5 +40,21 @@ namespace Myss.Api.Services
                 .Select(profile => profile.FirstName)
                 .SingleOrDefaultAsync(cancellationToken);
         }
+
+        /// <inheritdoc/>
+        public async Task RecordBceidUsernameAsync(string subject, string bceidUsername, CancellationToken cancellationToken)
+        {
+            MyssUserProfile? profile = await this.dbContext.MyssUserProfiles
+                .SingleOrDefaultAsync(p => p.Subject == subject, cancellationToken);
+            if (profile is null || string.Equals(profile.BceidUsername, bceidUsername, System.StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            // Not UpdatedAt: that tracks the citizen's own changes, and this is
+            // the sign-in, not an edit.
+            profile.BceidUsername = bceidUsername;
+            await this.dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }

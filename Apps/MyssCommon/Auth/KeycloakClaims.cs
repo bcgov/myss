@@ -50,6 +50,13 @@ namespace Myss.Common.Auth
         /// </summary>
         public const string BceidBusinessGuidClaimType = "bceid_business_guid";
 
+        /// <summary>
+        /// Claim type for the BCeID user name a BCeID sign-in carries (CSS mints it
+        /// beside <see cref="BceidGuidClaimType"/>). BC Services Card has no
+        /// equivalent: its <c>preferred_username</c> is a hash, not a name.
+        /// </summary>
+        public const string BceidUsernameClaimType = "bceid_username";
+
         /// <summary>Canonical claim type for the IDIR username.</summary>
         public const string IdirUsernameClaimType = "idir_username";
 

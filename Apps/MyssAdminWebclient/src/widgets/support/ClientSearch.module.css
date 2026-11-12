@@ -1,0 +1,27 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+    max-width: 40rem;
+}
+
+.fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--layout-margin-medium);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+}
+
+.error {
+    color: var(--support-border-color-danger);
+    margin: 0;
+}
+
+.results {
+    margin-top: var(--layout-margin-large);
+}

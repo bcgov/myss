@@ -12,6 +12,7 @@ namespace Myss.AdminApi
     using Myss.AdminApi.Intake;
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Services;
+    using Myss.AdminApi.Support;
     using Myss.Data;
     using Myss.Data.Intake;
     using Myss.Data.Platform;
@@ -128,6 +129,9 @@ namespace Myss.AdminApi
             // seam and puts the application in the review queue above.
             services.AddScoped<IWorkerOverrideAccountService, WorkerOverrideAccountService>();
             services.AddScoped<IWorkerOverrideService, WorkerOverrideService>();
+
+            // Support View client search (MYSS-275), over the profile table.
+            services.AddScoped<IClientSearchService, ClientSearchService>();
 
             // What follows a worker's Accept. Nothing receives applications
             // yet; the placeholder succeeds without leaving the API.
