@@ -30,7 +30,10 @@ what is specific to the webclient. Full docs:
    `MyssApi/Configuration/FeatureFlags.cs`; add or remove a flag in both
    in the same change. Gate a route with `<FeatureRoute feature="X">`,
    anything else with `useFeature("X")`, and a dashboard section with
-   its `feature` field in `routes/dashboardSections.ts`.
+   its `feature` field in `routes/dashboardSections.ts`. The home page is
+   gated by `HomeRoute` instead (MYSS-329): with `HomePage` off, `/` leaves
+   for legacy MySelfServe at `LEGACY_MYSS_URL` (runtime config, set per
+   environment; defaults to https://myselfserve.gov.bc.ca).
 
 ## Layout of `src/`
 

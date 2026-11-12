@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_LEGACY_MYSS_URL,
   DEFAULT_OIDC_AUTHORITY,
   DEFAULT_OIDC_CLIENT_ID,
   readAppConfig,
@@ -15,12 +16,14 @@ describe("resolveRuntimeConfig", () => {
         OIDC_AUTHORITY: "https://runtime/realms/standard",
         OIDC_CLIENT_ID: "runtime-client",
         CANADA_POST_API_KEY: "runtime-key",
+        LEGACY_MYSS_URL: "https://runtime-legacy",
       },
       viteEnv: {
         VITE_MYSS_API_URL: "https://vite-api",
         VITE_OIDC_AUTHORITY: "https://vite/realms/standard",
         VITE_OIDC_CLIENT_ID: "vite-client",
         VITE_CANADA_POST_API_KEY: "vite-key",
+        VITE_LEGACY_MYSS_URL: "https://vite-legacy",
       },
       defaultApiUrl: "http://localhost:5000",
     });
@@ -30,6 +33,7 @@ describe("resolveRuntimeConfig", () => {
       oidcAuthority: "https://runtime/realms/standard",
       oidcClientId: "runtime-client",
       canadaPostApiKey: "runtime-key",
+      legacyMyssUrl: "https://runtime-legacy",
     });
   });
 
@@ -40,11 +44,13 @@ describe("resolveRuntimeConfig", () => {
         VITE_MYSS_API_URL: "https://vite-api",
         VITE_OIDC_AUTHORITY: "https://vite/realms/standard",
         VITE_OIDC_CLIENT_ID: "vite-client",
+        VITE_LEGACY_MYSS_URL: "https://vite-legacy",
       },
       defaultApiUrl: "http://localhost:5000",
     });
 
     expect(config.apiUrl).toBe("https://vite-api");
+    expect(config.legacyMyssUrl).toBe("https://vite-legacy");
     expect(config.oidcAuthority).toBe("https://vite/realms/standard");
     expect(config.oidcClientId).toBe("vite-client");
   });
@@ -58,6 +64,7 @@ describe("resolveRuntimeConfig", () => {
     expect(config.oidcAuthority).toBe(DEFAULT_OIDC_AUTHORITY);
     expect(config.oidcClientId).toBe(DEFAULT_OIDC_CLIENT_ID);
     expect(config.canadaPostApiKey).toBe("");
+    expect(config.legacyMyssUrl).toBe(DEFAULT_LEGACY_MYSS_URL);
   });
 
   it("ignores Vite values that are empty or not text", () => {

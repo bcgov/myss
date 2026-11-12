@@ -20,3 +20,7 @@ export const OIDC_CLIENT_ID: string = config.oidcClientId;
 // public by design and must be protected in Canada Post with allowed URLs and
 // a daily usage cap.
 export const CANADA_POST_API_KEY: string = config.canadaPostApiKey;
+
+// Legacy MySelfServe: where `/` sends a visitor while the HomePage flag is
+// off (MYSS-329). Set per environment; defaults to production legacy.
+export const LEGACY_MYSS_URL: string = config.legacyMyssUrl;
