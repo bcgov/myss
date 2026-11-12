@@ -52,6 +52,7 @@ namespace Myss.Common.Auth
                 Roles = roles,
                 BceidGuid = principal.FindFirst(KeycloakClaims.BceidGuidClaimType)?.Value,
                 IdirUsername = principal.FindFirst(KeycloakClaims.IdirUsernameClaimType)?.Value,
+                BceidUsername = principal.FindFirst(KeycloakClaims.BceidUsernameClaimType)?.Value,
             };
         }
     }

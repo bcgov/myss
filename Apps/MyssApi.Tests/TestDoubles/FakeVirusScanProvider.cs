@@ -45,7 +45,7 @@ namespace Myss.Api.Tests.TestDoubles
     /// </summary>
     /// <param name="subject">The subject to report.</param>
     /// <param name="bceidGuid">A Basic BCeID GUID, for a BCeID caller; null for any other sign-in.</param>
-    public sealed class StubCurrentUserAccessor(string subject, string? bceidGuid = null) : Myss.Common.Auth.ICurrentUserAccessor
+    public sealed class StubCurrentUserAccessor(string subject, string? bceidGuid = null, string? bceidUsername = null) : Myss.Common.Auth.ICurrentUserAccessor
     {
         /// <inheritdoc/>
         public Myss.Common.Auth.CurrentUser User { get; } = new()
@@ -53,6 +53,7 @@ namespace Myss.Api.Tests.TestDoubles
             IsAuthenticated = true,
             Subject = subject,
             BceidGuid = bceidGuid,
+            BceidUsername = bceidUsername,
         };
     }
 }

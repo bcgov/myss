@@ -14,6 +14,7 @@ import ApplicationReviewPage from "@/pages/ApplicationReviewPage";
 import WorkerOverrideStartPage from "@/pages/WorkerOverrideStartPage";
 import WorkerOverridePage from "@/pages/WorkerOverridePage";
 import WorkerOverrideDraftsPage from "@/pages/WorkerOverrideDraftsPage";
+import ClientSearchPage from "@/pages/ClientSearchPage";
 import RequireWorker from "@/auth/RequireWorker";
 import RequireIdir from "@/auth/RequireIdir";
 import { paths } from "@/routes/paths";
@@ -126,6 +127,16 @@ export const router = createBrowserRouter([
                     <RequireIdir>
                         <RequireWorker>
                             <WorkerOverridePage />
+                        </RequireWorker>
+                    </RequireIdir>
+                ),
+            },
+            {
+                path: paths.clientSearch,
+                element: (
+                    <RequireIdir>
+                        <RequireWorker>
+                            <ClientSearchPage />
                         </RequireWorker>
                     </RequireIdir>
                 ),

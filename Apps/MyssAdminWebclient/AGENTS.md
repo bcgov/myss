@@ -35,9 +35,10 @@ adds what is specific to the admin app.
 
 `pages/` (the landing page, form management, the editor, the rates panel,
 the application review queue and review page, worker override's start page,
-unsubmitted drafts list and application page) · `hooks/` (`useForms`, `useEstimatorRates`, `useReview`,
-`useWorkerOverride`) · `api/` (raw fetches to MyssAdminApi; no
+unsubmitted drafts list and application page, Support View client search) · `hooks/` (`useForms`, `useEstimatorRates`, `useReview`,
+`useWorkerOverride`, `useClientSearch`) · `api/` (raw fetches to MyssAdminApi; no
 generated client) · `auth/` · `lib/` (rate column metadata) · `routes/` (`paths.ts`,
 every URL) · `widgets/review/` (queue, application, history, notes) ·
 `widgets/workerOverride/` (the worker override form and drafts list) ·
+`widgets/support/` (the client search) ·
 `constants.ts` (runtime config).

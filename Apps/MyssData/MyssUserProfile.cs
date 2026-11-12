@@ -31,6 +31,15 @@ namespace Myss.Data
         public required string Sin { get; set; }
 
         /// <summary>
+        /// Gets or sets the BCeID user name of a citizen who signs in with BCeID,
+        /// recorded from the sign-in token at registration and refreshed at each
+        /// sign-in, so workers can find the client by it (MYSS-275). Null for BC
+        /// Services Card and worker override accounts, and for a BCeID profile
+        /// that has not signed in since it was first recorded.
+        /// </summary>
+        public string? BceidUsername { get; set; }
+
+        /// <summary>
         /// Gets or sets the submitted phone number, ten digits with no punctuation.
         /// Null for profiles registered before registration v4 asked for it.
         /// </summary>

@@ -22,6 +22,9 @@ The API behind the admin webclient, in two parts:
   `IWorkerOverrideAccountService` and puts the application in the review queue;
   `GET .../drafts` lists every worker's unsubmitted drafts with who started them,
   MYSS-322),
+  Support View client search (`GET v1/support/clients`, MYSS-275: first name, last
+  name and BCeID user name match on any part, the SIN only in full; results show the
+  SIN's last three digits only, at most 50),
   stored submissions (`GET v1/forms/{id}/submissions`, `GET v1/forms/submissions/{id}`)
   and the bus pass PDF (`GET v1/bus-pass/submissions/{id}/pdf`, rendered by CDOGS).
 

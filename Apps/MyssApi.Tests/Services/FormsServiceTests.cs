@@ -324,6 +324,22 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task Submit_RegistrationRecordsTheBceidUsername_AndKeepsItWhenALaterTokenHasNone()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            const string answers = """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}""";
+
+            await NewService(db, new StubCurrentUserAccessor("test-subject", bceidUsername: " ADALOVE "))
+                .SubmitAsync("registration", Request(3, answers), CancellationToken.None);
+            Assert.Equal("ADALOVE", Assert.Single(await db.MyssUserProfiles.ToListAsync()).BceidUsername);
+
+            await NewService(db, new StubCurrentUserAccessor("test-subject"))
+                .SubmitAsync("registration", Request(3, answers), CancellationToken.None);
+            Assert.Equal("ADALOVE", Assert.Single(await db.MyssUserProfiles.ToListAsync()).BceidUsername);
+        }
+
+        [Fact]
         public async Task Submit_ANewRegistrationIsMatchedAgainstIcmContacts_OnTheIdentityAttributes()
         {
             using FormsDbContext db = NewDb();

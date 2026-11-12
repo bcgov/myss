@@ -17,12 +17,14 @@ namespace Myss.Common.Auth
     /// <param name="BceidGuid">Basic BCeID GUID, for citizen personas.</param>
     /// <param name="IdirUsername">IDIR username, for staff personas.</param>
     /// <param name="IdentityProvider">The <c>identity_provider</c> claim, when the persona mirrors a brokered token.</param>
+    /// <param name="BceidUsername">The BCeID user name, for BCeID citizen personas.</param>
     public sealed record MockPersona(
         string Subject,
         string[] Roles,
         string? BceidGuid = null,
         string? IdirUsername = null,
-        string? IdentityProvider = null);
+        string? IdentityProvider = null,
+        string? BceidUsername = null);
 
     /// <summary>
     /// Options for <see cref="MockAuthenticationHandler"/>.
@@ -74,7 +76,8 @@ namespace Myss.Common.Auth
                     "mock-bceid",
                     [],
                     BceidGuid: "44444444-4444-4444-4444-444444444444",
-                    IdentityProvider: IdentityProviders.BceidBasic),
+                    IdentityProvider: IdentityProviders.BceidBasic,
+                    BceidUsername: "MOCKBCEID"),
 
                 // A BC Services Card citizen: CLIENT from the calculator like
                 // "bceid", but no BCeID GUID, so no PIN (MYSS-258).
@@ -141,6 +144,11 @@ namespace Myss.Common.Auth
             if (!string.IsNullOrWhiteSpace(persona.BceidGuid))
             {
                 claims.Add(new Claim(KeycloakClaims.BceidGuidClaimType, persona.BceidGuid));
+            }
+
+            if (!string.IsNullOrWhiteSpace(persona.BceidUsername))
+            {
+                claims.Add(new Claim(KeycloakClaims.BceidUsernameClaimType, persona.BceidUsername));
             }
 
             if (!string.IsNullOrWhiteSpace(persona.IdirUsername))

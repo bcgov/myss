@@ -60,6 +60,15 @@ namespace Myss.Api.Controllers
             string? profileFirstName = hasProfile
                 ? await this.userProfileService.GetFirstNameAsync(user.Subject, cancellationToken)
                 : null;
+
+            // The webclient asks this at every sign-in, so a BCeID citizen who
+            // registered before MySS kept the user name has it recorded the next
+            // time they sign in (MYSS-275).
+            if (hasProfile && !string.IsNullOrWhiteSpace(user.BceidUsername))
+            {
+                await this.userProfileService.RecordBceidUsernameAsync(user.Subject, user.BceidUsername.Trim(), cancellationToken);
+            }
+
             return new BaseResponseModel<MeModel>
             {
                 Payload = new MeModel(user) { HasProfile = hasProfile, ProfileFirstName = profileFirstName },
