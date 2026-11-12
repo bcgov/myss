@@ -63,28 +63,8 @@ namespace Myss.AdminApi.Support
                 }
             }
 
-            IQueryable<MyssUserProfile> query = _dbContext.MyssUserProfiles.AsNoTracking();
-            if (firstName is not null)
-            {
-                query = query.Where(p => p.FirstName.ToLower().Contains(firstName));
-            }
-
-            if (lastName is not null)
-            {
-                query = query.Where(p => p.LastName.ToLower().Contains(lastName));
-            }
-
-            if (bceidUsername is not null)
-            {
-                query = query.Where(p => p.BceidUsername != null && p.BceidUsername.ToLower().Contains(bceidUsername));
-            }
-
-            if (sin is not null)
-            {
-                // A registration stores the SIN as entered, so the punctuation
-                // a citizen typed is dropped before comparing.
-                query = query.Where(p => p.Sin.Replace(" ", string.Empty).Replace("-", string.Empty) == sin);
-            }
+            IQueryable<MyssUserProfile> query = Filter(
+                _dbContext.MyssUserProfiles.AsNoTracking(), firstName, lastName, bceidUsername, sin);
 
             var rows = await query
                 .OrderBy(p => p.LastName)
@@ -121,15 +101,7 @@ namespace Myss.AdminApi.Support
             // Which fields were used and how many matched; never the values.
             _logger.LogInformation(
                 "Client search by {Fields} found {Count} client(s){More}",
-                string.Join(
-                    ',',
-                    new[]
-                    {
-                        firstName is null ? null : "firstName",
-                        lastName is null ? null : "lastName",
-                        sin is null ? null : "sin",
-                        bceidUsername is null ? null : "bceidUsername",
-                    }.Where(f => f is not null)),
+                UsedFields(firstName, lastName, sin, bceidUsername),
                 clients.Count,
                 rows.Count > MaxResults ? " (more not returned)" : string.Empty);
 
@@ -137,6 +109,51 @@ namespace Myss.AdminApi.Support
                 new ClientSearchResultModel { Clients = clients, HasMore = rows.Count > MaxResults },
                 null);
         }
+
+        /// <summary>Narrows the query by each term given; every one has to match.</summary>
+        private static IQueryable<MyssUserProfile> Filter(
+            IQueryable<MyssUserProfile> query,
+            string? firstName,
+            string? lastName,
+            string? bceidUsername,
+            string? sin)
+        {
+            if (firstName is not null)
+            {
+                query = query.Where(p => p.FirstName.ToLower().Contains(firstName));
+            }
+
+            if (lastName is not null)
+            {
+                query = query.Where(p => p.LastName.ToLower().Contains(lastName));
+            }
+
+            if (bceidUsername is not null)
+            {
+                query = query.Where(p => p.BceidUsername != null && p.BceidUsername.ToLower().Contains(bceidUsername));
+            }
+
+            if (sin is not null)
+            {
+                // A registration stores the SIN as entered, so the punctuation
+                // a citizen typed is dropped before comparing.
+                query = query.Where(p => p.Sin.Replace(" ", string.Empty).Replace("-", string.Empty) == sin);
+            }
+
+            return query;
+        }
+
+        /// <summary>The names of the fields searched by, for the log; never their values.</summary>
+        private static string UsedFields(string? firstName, string? lastName, string? sin, string? bceidUsername) =>
+            string.Join(
+                ',',
+                new[]
+                {
+                    firstName is null ? null : "firstName",
+                    lastName is null ? null : "lastName",
+                    sin is null ? null : "sin",
+                    bceidUsername is null ? null : "bceidUsername",
+                }.Where(f => f is not null));
 
         private static string? Term(string? value) =>
             string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToLowerInvariant();
