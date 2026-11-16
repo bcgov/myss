@@ -491,7 +491,9 @@ export function withBcgovField<TBase extends FormioFieldCtor>(Base: TBase) {
       }
 
       const text = String(value);
-      const rule = properties?.myssValidator ?? (isPhoneField(this.component) ? "phone" : undefined);
+      const dateRule = this.component.type === "datetime" ? "date" : undefined;
+      const rule = properties?.myssValidator ??
+        (isPhoneField(this.component) ? "phone" : dateRule);
       if (typeof rule === "string" && rule !== "") {
         const failed = checkRule(rule, text, {
           data: this.rootValue,
