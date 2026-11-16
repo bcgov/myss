@@ -21,7 +21,6 @@ import { parseDate, type CalendarDate } from "@internationalized/date";
 import {
   Accordion,
   Button,
-  DatePicker,
   Radio,
   RadioGroup,
   Select,
@@ -35,6 +34,7 @@ import {
 import { BcgovAddressAutocompleteComponent } from "./addressAutocomplete";
 import "./bcgovComponents.css";
 import CheckboxField from "./CheckboxField";
+import DateInput from "./DateInput";
 import {
   ReactMount,
   isRequired,
@@ -772,7 +772,7 @@ class BcgovDateTimeComponent extends withBcgovField(
   protected renderReact(): ReactNode {
     const props = this.bcgovFieldProps();
     return (
-      <DatePicker
+      <DateInput
         {...props}
         value={calendarDateOf(this.dataValue)}
         onChange={(next) => {

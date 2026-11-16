@@ -42,6 +42,9 @@ export {
 // The phone number input, shared with the citizen app's own forms.
 export { default as PhoneInput } from "./PhoneInput";
 
+// The date picker the datetime component draws, for the webclients' own forms.
+export { default as DateInput } from "./DateInput";
+
 // A spec drawn read-only over submitted answers: the applicant's view of their
 // application and the worker's review view.
 export { default as ReadOnlySpecForm } from "./ReadOnlySpecForm";

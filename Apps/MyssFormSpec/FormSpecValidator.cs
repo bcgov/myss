@@ -578,6 +578,7 @@ namespace Myss.FormSpec
                 "sin" => "sin",
                 "email" => "email",
                 "phoneNumber" => "phone",
+                "datetime" => "date",
                 "textfield" when ReadString(component, "inputMask") is "(999) 999-9999" or "999-999-9999" => "phone",
                 _ => null,
             };
