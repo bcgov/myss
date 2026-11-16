@@ -173,6 +173,33 @@ namespace Myss.Api.Tests.Services
             Assert.Equal([newer, older], list.Select(a => a.Id));
         }
 
+        [Fact]
+        public async Task FindReleased_ReturnsOnlyTheGivenIdsTheOwnerUploadedThatAreReleased()
+        {
+            using AttachmentsDbContext db = NewDb();
+            Guid released = await SeedAttachment(db, "user-1", AttachmentStatus.Released, DateTimeOffset.UtcNow);
+            Guid notAsked = await SeedAttachment(db, "user-1", AttachmentStatus.Released, DateTimeOffset.UtcNow);
+            Guid quarantined = await SeedAttachment(db, "user-1", AttachmentStatus.Quarantined, DateTimeOffset.UtcNow);
+            Guid rejected = await SeedAttachment(db, "user-1", AttachmentStatus.Rejected, DateTimeOffset.UtcNow);
+            Guid anotherOwners = await SeedAttachment(db, "someone-else", AttachmentStatus.Released, DateTimeOffset.UtcNow);
+            AttachmentsService service = NewService(db, subject: "user-1");
+
+            IReadOnlySet<Guid> found = await service.FindReleasedAsync(
+                [released, quarantined, rejected, anotherOwners, Guid.NewGuid()], "user-1", CancellationToken.None);
+
+            Assert.Equal([released], found);
+            Assert.DoesNotContain(notAsked, found);
+        }
+
+        [Fact]
+        public async Task FindReleased_WithNoIds_FindsNothing()
+        {
+            using AttachmentsDbContext db = NewDb();
+            await SeedAttachment(db, "user-1", AttachmentStatus.Released, DateTimeOffset.UtcNow);
+
+            Assert.Empty(await NewService(db).FindReleasedAsync([], "user-1", CancellationToken.None));
+        }
+
         private static AttachmentsDbContext NewDb()
         {
             DbContextOptions<AttachmentsDbContext> options = new DbContextOptionsBuilder<AttachmentsDbContext>()

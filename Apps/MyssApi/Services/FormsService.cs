@@ -43,6 +43,7 @@ namespace Myss.Api.Services
         private readonly IEmailVerificationService _emailVerification;
         private readonly IFeatureManager _features;
         private readonly IContactMatchProvider _contactMatch;
+        private readonly IAccountCreationService _accountCreation;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -56,6 +57,7 @@ namespace Myss.Api.Services
         /// <param name="emailVerification">Proves the email address given at registration (MYSS-305).</param>
         /// <param name="features">The feature flags; registration proves its address only with EmailVerification on.</param>
         /// <param name="contactMatch">Matches a new registrant against ICM's contacts.</param>
+        /// <param name="accountCreation">Checks and records who a registration makes the account for.</param>
         public FormsService(
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
@@ -65,7 +67,8 @@ namespace Myss.Api.Services
             IPinHasher pinHasher,
             IEmailVerificationService emailVerification,
             IFeatureManager features,
-            IContactMatchProvider contactMatch)
+            IContactMatchProvider contactMatch,
+            IAccountCreationService accountCreation)
         {
             _logger = logger;
             _dbContext = dbContext;
@@ -76,6 +79,7 @@ namespace Myss.Api.Services
             _emailVerification = emailVerification;
             _features = features;
             _contactMatch = contactMatch;
+            _accountCreation = accountCreation;
         }
 
         /// <inheritdoc/>
@@ -160,37 +164,11 @@ namespace Myss.Api.Services
             DateTimeOffset? emailVerifiedAt = null;
             if (IsRegistration(formSpecId))
             {
-                (IReadOnlyList<ValidationErrorModel> pinErrors, registrationPin) =
-                    await ValidateRegistrationPinAsync(request, cancellationToken);
-                errors = FormSpecValidator.OnePerField(
-                    [.. errors, .. ValidateRegistration(spec.Spec, request.Answers), .. pinErrors]);
-
-                // MYSS-295: with EmailVerification on, the address must have been
-                // proven in registration's Step 2 before the profile is created.
-                // Checked only when the address itself passed, so the citizen
-                // reads one reason for the field.
-                verifyEmail = await _features.IsEnabledAsync(FeatureFlags.EmailVerification);
-                if (verifyEmail
-                    && !errors.Any(e => e.Field == "email")
-                    && OptionalString(request.Answers, "email") is { } submittedEmail)
-                {
-                    emailVerifiedAt = await _emailVerification.RegistrationEmailVerifiedAtAsync(
-                        submittedEmail.Trim(),
-                        cancellationToken);
-                    if (emailVerifiedAt is null)
-                    {
-                        errors = FormSpecValidator.OnePerField(
-                        [
-                            .. errors,
-                            new ValidationErrorModel
-                            {
-                                Field = "email",
-                                Keyword = ValidationKeywords.RegistrationEmailNotVerified,
-                                Message = "Verify your email address before you complete your registration.",
-                            },
-                        ]);
-                    }
-                }
+                RegistrationCheck registration = await ValidateRegistrationAsync(spec.Spec, request, errors, cancellationToken);
+                errors = registration.Errors;
+                registrationPin = registration.Pin;
+                verifyEmail = registration.VerifyEmail;
+                emailVerifiedAt = registration.EmailVerifiedAt;
             }
 
             if (domainRules is not null)
@@ -242,6 +220,7 @@ namespace Myss.Api.Services
                     request.Answers,
                     registrationPin is null ? null : _pinHasher.Hash(registrationPin),
                     verifyEmail ? emailVerifiedAt : null,
+                    request.AccountCreation,
                     cancellationToken);
 
                 // The registration's email proof has done its job, or, with the
@@ -261,17 +240,66 @@ namespace Myss.Api.Services
             return FormSubmissionResultModel.Accepted(ToResponse(submission, spec: null));
         }
 
+        /// <summary>
+        /// The checks only registration has: the PIN, who the account is for,
+        /// the answers a profile needs, and, with EmailVerification on, the
+        /// address proven in registration's Step 2 before the profile is created.
+        /// </summary>
+        private async Task<RegistrationCheck> ValidateRegistrationAsync(
+            JsonElement spec,
+            FormSubmissionRequestModel request,
+            IReadOnlyList<ValidationErrorModel> errors,
+            CancellationToken cancellationToken)
+        {
+            (IReadOnlyList<ValidationErrorModel> pinErrors, Pin? pin) =
+                await ValidateRegistrationPinAsync(request, cancellationToken);
+            IReadOnlyList<ValidationErrorModel> accountCreationErrors =
+                await _accountCreation.ValidateAsync(request.AccountCreation, cancellationToken);
+            errors = FormSpecValidator.OnePerField(
+                [.. errors, .. ValidateRegistration(spec, request.Answers), .. pinErrors, .. accountCreationErrors]);
+
+            // Checked only when the address itself passed, so the citizen reads
+            // one reason for the field.
+            bool verifyEmail = await _features.IsEnabledAsync(FeatureFlags.EmailVerification);
+            DateTimeOffset? emailVerifiedAt = null;
+            if (verifyEmail
+                && !errors.Any(e => e.Field == "email")
+                && OptionalString(request.Answers, "email") is { } submittedEmail)
+            {
+                emailVerifiedAt = await _emailVerification.RegistrationEmailVerifiedAtAsync(
+                    submittedEmail.Trim(),
+                    cancellationToken);
+                if (emailVerifiedAt is null)
+                {
+                    errors = FormSpecValidator.OnePerField(
+                    [
+                        .. errors,
+                        new ValidationErrorModel
+                        {
+                            Field = "email",
+                            Keyword = ValidationKeywords.RegistrationEmailNotVerified,
+                            Message = "Verify your email address before you complete your registration.",
+                        },
+                    ]);
+                }
+            }
+
+            return new RegistrationCheck(errors, pin, verifyEmail, emailVerifiedAt);
+        }
+
         private static bool IsRegistration(string formSpecId) =>
             string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase);
 
         /// <param name="answers">The registration answers.</param>
         /// <param name="pinHash">The new PIN's hash, or null to keep the profile's.</param>
         /// <param name="emailVerifiedAt">When the address was proven in Step 2, or null with EmailVerification off.</param>
+        /// <param name="accountCreation">Who the account is for, recorded only on a new profile.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         private async Task AddOrUpdateProfileAsync(
             JsonElement answers,
             string? pinHash,
             DateTimeOffset? emailVerifiedAt,
+            AccountCreationRequestModel? accountCreation,
             CancellationToken cancellationToken)
         {
             CurrentUser currentUser = _currentUserAccessor.User;
@@ -335,6 +363,11 @@ namespace Myss.Api.Services
                 _dbContext.MyssUserProfiles.Add(profile);
                 AddRegistrationPhone(profile, phone);
                 ApplyEmail(profile, email, emailVerifiedAt);
+                if (accountCreation is not null)
+                {
+                    _accountCreation.Apply(profile, accountCreation);
+                }
+
                 return;
             }
 
@@ -599,5 +632,11 @@ namespace Myss.Api.Services
                 Spec = spec,
             };
         }
+
+        private sealed record RegistrationCheck(
+            IReadOnlyList<ValidationErrorModel> Errors,
+            Pin? Pin,
+            bool VerifyEmail,
+            DateTimeOffset? EmailVerifiedAt);
     }
 }

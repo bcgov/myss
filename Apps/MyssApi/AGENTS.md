@@ -55,6 +55,18 @@ row instead of an orphaned object; a flagged file keeps its row as an audit reco
 its content never reaches the store. `Attachments:MaxSizeBytes` must stay at or below
 clamd's `StreamMaxLength`.
 
+## Registration
+
+Registration is the generic `POST /v1/forms/registration/submissions`, with checks of
+its own in `FormsService`. The PIN and the account-creation data (who the account is
+for, the helper's authorization, the representative and the attachment IDs of the
+documents) travel beside the answers, not in them, so neither is stored in
+`form_submissions`. `AccountCreationRules` checks the account-creation data, and
+`AccountCreationService` checks that each document is the caller's, released and not
+linked yet, then records it all when the registration creates the profile, in the same
+save. A registration that creates a profile without that data is refused. With
+`EmailVerification` on, the address must be proven by its emailed link first.
+
 ## Feature flags
 
 Citizen features are switched on per environment under `FeatureManagement`
