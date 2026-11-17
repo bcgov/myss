@@ -21,6 +21,7 @@ import { parseDate, type CalendarDate } from "@internationalized/date";
 import {
   Accordion,
   Button,
+  DatePicker,
   Radio,
   RadioGroup,
   Select,
@@ -34,7 +35,6 @@ import {
 import { BcgovAddressAutocompleteComponent } from "./addressAutocomplete";
 import "./bcgovComponents.css";
 import CheckboxField from "./CheckboxField";
-import DateInput from "./DateInput";
 import {
   ReactMount,
   isRequired,
@@ -755,9 +755,8 @@ function calendarDateOf(value: unknown): CalendarDate | null {
   if (!match) return null;
   try {
     return parseDate(match[1]);
-  } catch (error) {
-    if (error instanceof RangeError) return null;
-    throw error;
+  } catch {
+    return null;
   }
 }
 
@@ -772,8 +771,10 @@ class BcgovDateTimeComponent extends withBcgovField(
   protected renderReact(): ReactNode {
     const props = this.bcgovFieldProps();
     return (
-      <DateInput
+      <DatePicker
         {...props}
+        // Form.io owns validation; "aria" shows its message, not the browser's.
+        validationBehavior="aria"
         value={calendarDateOf(this.dataValue)}
         onChange={(next) => {
           this.bcgovCommit(next ? next.toString() : "");

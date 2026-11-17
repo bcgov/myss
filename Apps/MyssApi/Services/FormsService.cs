@@ -162,14 +162,8 @@ namespace Myss.Api.Services
             {
                 (IReadOnlyList<ValidationErrorModel> pinErrors, registrationPin) =
                     await ValidateRegistrationPinAsync(request, cancellationToken);
-                // The generic date failure on a datetime field gives way to the
-                // registration's own date-of-birth wording.
                 errors = FormSpecValidator.OnePerField(
-                [
-                    .. errors.Where(e => e.Field != "dateOfBirth" || e.Keyword != ValidationKeywords.DateInvalid),
-                    .. ValidateRegistration(spec.Spec, request.Answers),
-                    .. pinErrors,
-                ]);
+                    [.. errors, .. ValidateRegistration(spec.Spec, request.Answers), .. pinErrors]);
 
                 // MYSS-295: with EmailVerification on, the address must have been
                 // proven in registration's Step 2 before the profile is created.
@@ -304,7 +298,7 @@ namespace Myss.Api.Services
                     : null;
             string? gender = OptionalString(answers, "gender");
 
-            _ = TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate);
+            _ = IsoDate.TryParse(dateOfBirth, out DateOnly parsedDate);
 
             MyssUserProfile? profile = await _dbContext.MyssUserProfiles
                 .Include(p => p.Phones)
@@ -483,7 +477,7 @@ namespace Myss.Api.Services
             List<ValidationErrorModel> errors = [];
             string? dateOfBirth = OptionalString(answers, "dateOfBirth");
 
-            if (!TryParseRegistrationDate(dateOfBirth ?? string.Empty, out DateOnly parsedDate))
+            if (!IsoDate.TryParse(dateOfBirth, out DateOnly parsedDate))
             {
                 errors.Add(new ValidationErrorModel
                 {
@@ -574,23 +568,6 @@ namespace Myss.Api.Services
             }
 
             return values;
-        }
-
-        private static bool TryParseRegistrationDate(string value, out DateOnly date)
-        {
-            if (DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
-            {
-                return true;
-            }
-
-            if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dateTime))
-            {
-                date = DateOnly.FromDateTime(dateTime.DateTime);
-                return true;
-            }
-
-            date = default;
-            return false;
         }
 
         private static FormSubmissionResponseModel ToResponse(FormSubmission submission, FormSpecModel? spec)

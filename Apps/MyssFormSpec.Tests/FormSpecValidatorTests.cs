@@ -463,21 +463,6 @@ namespace Myss.FormSpec.Tests
             Assert.Equal("This answer is required.", Assert.Single(requiredErrors, e => e.Field == "name").Message);
         }
 
-        [Fact]
-        public void Validate_AppliesTheDateRuleToDatetimeFieldsWithoutAnExplicitValidator()
-        {
-            const string spec = """
-            { "components": [
-                { "type": "datetime", "key": "started", "input": true }
-              ] }
-            """;
-
-            Assert.Empty(Run(spec, """{"started":"2024-02-29"}"""));
-            Assert.Equal(
-                ValidationKeywords.DateInvalid,
-                Assert.Single(Run(spec, """{"started":"2025-02-31"}""")).Keyword);
-        }
-
           [Theory]
           [InlineData("(999) 999-9999", true)]
           [InlineData("999-999-9999", true)]

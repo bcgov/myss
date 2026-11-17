@@ -202,6 +202,27 @@ namespace Myss.Api.Tests.Services
                         Assert.Empty(await db.MyssUserProfiles.ToListAsync());
                 }
 
+                [Theory]
+                [InlineData("12/31/1950")]
+                [InlineData("2025-02-31")]
+                public async Task Submit_RegistrationWithANonIsoOrImpossibleDateOfBirth_IsRefusedInRegistrationWording(string dateOfBirth)
+                {
+                        using FormsDbContext db = NewDb();
+                        _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+                        FormsService service = NewService(db);
+
+                        FormSubmissionResultModel result = await service.SubmitAsync(
+                                "registration",
+                                Request(3, $$"""{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"{{dateOfBirth}}","email":"ada@example.com","sin":"050082833"}"""),
+                                CancellationToken.None);
+
+                        ValidationErrorModel error = Assert.Single(result.Errors);
+                        Assert.Equal("dateOfBirth", error.Field);
+                        Assert.Equal(ValidationKeywords.RegistrationDateOfBirthInvalid, error.Keyword);
+                        Assert.Equal("Enter a valid date of birth.", error.Message);
+                        Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+                }
+
                 [Fact]
                 public async Task Submit_RegistrationWithFutureDateOfBirth_IsRefused_AndNothingIsPersisted()
                 {
