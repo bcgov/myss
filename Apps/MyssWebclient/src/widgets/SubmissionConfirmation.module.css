@@ -1,0 +1,37 @@
+/* No size here: below 768px wide, ui/typography.css sizes page headings and
+   gives way to any rule that sets one on a class. */
+.heading {
+    overflow-wrap: anywhere;
+}
+
+.heading:focus-visible {
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-border-active);
+    outline-offset: 2px;
+}
+
+/* The design system styles only the alert's own title and description, so
+   the formatted message gets the regular body type here. `body` outranks the
+   design system's styles, which load after these in production. */
+body .message {
+    font: var(--typography-regular-body);
+    color: var(--typography-color-primary);
+    overflow-wrap: anywhere;
+}
+
+body .message > * {
+    margin: 0;
+}
+
+body .message > * + * {
+    margin-top: var(--layout-margin-small);
+}
+
+/* Links are underlined in the alert's text colour, also when hovered or
+   focused, where the theme would turn them blue. */
+body .message a,
+body .message a:hover,
+body .message a:focus {
+    color: inherit;
+    text-decoration: underline;
+}

@@ -5,6 +5,8 @@ namespace Myss.Api.Tests.Providers
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data.Platform;
+    using Myss.Common.Hosting;
 
     /// <summary>
     /// Tests for <see cref="CorrelationIdForwardingHandler"/>.

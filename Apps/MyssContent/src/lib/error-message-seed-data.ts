@@ -49,7 +49,7 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
   {
     keyword: "IDA.PHONE.INVALID_FORMAT",
     message: "Phone number is invalid",
-    note: "A phone field (properties.myssValidator = phone) that does not match the legacy MySS phone format.",
+    note: "A phone field (phoneNumber type, properties.myssValidator = phone, or a legacy phone mask) that does not match the legacy MySS phone format after whitespace is removed.",
   },
   {
     keyword: "IDA.POSTAL_CODE.INVALID_FORMAT",
@@ -102,6 +102,11 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
     note: "Registration: the gender is not one of the options the form offered.",
   },
   {
+    keyword: "REGISTRATION.EMAIL.NOT_VERIFIED",
+    message: "Verify your email address before you complete your registration.",
+    note: "Registration: the email address has not been verified by its emailed link (MYSS-295).",
+  },
+  {
     keyword: "ACCOUNT.PHONE.TYPE_UNKNOWN",
     message: "Choose a phone type: home, cell, work or message.",
     note: "Account info: a phone number's type is not one of Home, Cell, Work or Message.",
@@ -135,6 +140,11 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
     keyword: "ACCOUNT.PIN.NOT_AVAILABLE",
     message: "A PIN is only used when you sign in with Basic BCeID.",
     note: "A PIN sent for a sign-in that does not use one (BC Services Card). The webclient never shows a PIN to those users.",
+  },
+  {
+    keyword: "ACCOUNT.EMAIL.ADDRESS_REJECTED",
+    message: "We could not send an email to that address. Check it and try again.",
+    note: "Account Info email change: the email service refused the address itself (MYSS-326). Shown on the email field.",
   },
   {
     keyword: "BUSPASS.REQUEST.TYPE_INVALID",

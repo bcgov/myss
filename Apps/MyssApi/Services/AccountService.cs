@@ -12,6 +12,10 @@ namespace Myss.Api.Services
     using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Data;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// Account Info over the registration profile, which the forms module owns.
@@ -287,7 +291,9 @@ namespace Myss.Api.Services
         }
 
         /// <summary>Only a Basic BCeID sign-in uses a PIN (MYSS-258).</summary>
-        private static bool UsesPin(CurrentUser user) => !string.IsNullOrWhiteSpace(user.BceidGuid);
+        /// <param name="user">The caller.</param>
+        /// <returns>True for a Basic BCeID sign-in.</returns>
+        internal static bool UsesPin(CurrentUser user) => !string.IsNullOrWhiteSpace(user.BceidGuid);
 
         private async Task<AccountResultModel> RecordWrongPinAsync(
             MyssUserProfile profile,
@@ -350,6 +356,8 @@ namespace Myss.Api.Services
                 ClientName = $"{profile.FirstName} {profile.LastName}",
                 FamilyMembers = caseDetails.FamilyMembers,
                 Email = profile.Email,
+                EmailVerified = profile.EmailVerifiedAt is not null,
+                PendingEmail = profile.PendingEmail,
                 Phones = profile.Phones
                     .OrderBy(p => p.Position)
                     .Select(p => new AccountPhoneModel { Number = p.Number, Type = p.Type })

@@ -8,14 +8,12 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { Link } from "react-router";
 
 import "@formio/js/dist/formio.form.min.css";
 import "./FormSpecWidget.css";
 
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
-import SubmissionErrors from "@/components/SubmissionErrors";
-import { useClientValidation } from "@/hooks/useClientValidation";
+import { SubmissionErrors, useClientValidation } from "@myss/web-common/components";
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
 
 interface FormSpecWidgetProps {
@@ -159,9 +157,6 @@ export default function FormSpecWidget({
             {submit.data.formSpecId} v{submit.data.formSpecVersion}
           </dd>
         </dl>
-        <Link to={`/techdemos/forms/submissions/${submit.data.id}`}>
-          View this submission
-        </Link>
       </section>
     );
   }

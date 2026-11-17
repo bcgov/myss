@@ -3,6 +3,8 @@ namespace Icm.Api.Tests.Contracts
     using System.Collections.Generic;
     using System.Globalization;
     using System.Text.Json;
+    using System.Text.Json.Serialization;
+    using Icm.Api;
     using Icm.Api.Contracts;
     using Icm.Api.Models;
 
@@ -47,7 +49,7 @@ namespace Icm.Api.Tests.Contracts
         {
             ServiceRequestInput input = new() { RestrictedFlag = true, Kkcfs = false };
 
-            SiebelServiceRequest siebel = ServiceRequestMapper.ToSiebel(input);
+            SiebelServiceRequestWrite siebel = ServiceRequestMapper.ToSiebel(input);
 
             Assert.Equal("Y", siebel.RestrictedFlag);
             Assert.Equal("N", siebel.Kkcfs);
@@ -281,7 +283,7 @@ namespace Icm.Api.Tests.Contracts
         [Fact]
         public void ToSiebel_WritesDatesInSiebelsFormat()
         {
-            SiebelServiceRequest siebel = ServiceRequestMapper.ToSiebel(new ServiceRequestInput
+            SiebelServiceRequestWrite siebel = ServiceRequestMapper.ToSiebel(new ServiceRequestInput
             {
                 CallDate = new DateTime(2026, 8, 27, 14, 30, 0),
                 ICMCGAResolutionDecisionDate = new DateOnly(2026, 8, 27),
@@ -294,7 +296,7 @@ namespace Icm.Api.Tests.Contracts
         [Fact]
         public void ToSiebel_LeavesUnsetDatesOffTheRequest()
         {
-            SiebelServiceRequest siebel = ServiceRequestMapper.ToSiebel(new ServiceRequestInput());
+            SiebelServiceRequestWrite siebel = ServiceRequestMapper.ToSiebel(new ServiceRequestInput());
 
             Assert.Null(siebel.CallDate);
             Assert.Null(siebel.ICMCGAResolutionDecisionDate);
@@ -406,12 +408,15 @@ namespace Icm.Api.Tests.Contracts
         [Fact]
         public void ToSiebel_NeverSendsBackFieldsItDidNotUnderstand()
         {
-            // A write builds a fresh wire record, so nothing captured on a read can leak
-            // into an update.
-            SiebelServiceRequest written = ServiceRequestMapper.ToSiebel(
+            // A write builds a fresh wire record of a type that has no extension-data
+            // bucket at all, so nothing captured on a read can leak into an update.
+            SiebelServiceRequestWrite written = ServiceRequestMapper.ToSiebel(
                 new ServiceRequestInput { Status = "Open" });
 
-            Assert.Null(written.AdditionalFields);
+            Assert.Equal("""{"Status":"Open"}""", JsonSerializer.Serialize(written, IcmRefitSettings.JsonOptions));
+            Assert.DoesNotContain(
+                typeof(SiebelServiceRequestWrite).GetProperties(),
+                property => property.GetCustomAttributes(typeof(JsonExtensionDataAttribute), false).Length > 0);
         }
 
         [Fact]

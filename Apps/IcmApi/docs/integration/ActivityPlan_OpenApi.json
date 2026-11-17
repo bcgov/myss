@@ -1,0 +1,1352 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "SblDtActivityPlanActivityPlan",
+    "description" : "OpenAPI specification for SiebelData - API : data/ActivityPlan/ActivityPlan",
+    "contact" : {
+      "email" : "sample@sample.com"
+    },
+    "version" : "1.0"
+  },
+  "externalDocs" : {
+    "description" : "OpenAPI",
+    "url" : "https://openapis.org"
+  },
+  "servers" : [ {
+    "url" : "https://sit2-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  }, {
+    "url" : "http://sit2-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  } ],
+  "tags" : [ {
+    "name" : "data/ActivityPlan/ActivityPlan/"
+  }, {
+    "name" : "data/ActivityPlan/ActivityPlan/{activityplan_key}/"
+  } ],
+  "paths" : {
+    "/data/ActivityPlan/ActivityPlan/" : {
+      "get" : {
+        "tags" : [ "data/ActivityPlan/ActivityPlan/" ],
+        "operationId" : "data_ActivityPlan_ActivityPlan__get",
+        "parameters" : [ {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "uniformresponse",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y" ]
+          }
+        }, {
+          "name" : "searchspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sortspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "PageSize",
+          "in" : "query",
+          "schema" : {
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "StartRowNum",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "default" : 0
+          }
+        }, {
+          "name" : "pagination",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y", "N" ]
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "recordcountneeded",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "ExecutionMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "BiDirectional"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_get_all_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_get_all_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/ActivityPlan/ActivityPlan/" ],
+        "operationId" : "data_ActivityPlan_ActivityPlan__put",
+        "parameters" : [ {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      },
+      "post" : {
+        "tags" : [ "data/ActivityPlan/ActivityPlan/" ],
+        "operationId" : "data_ActivityPlan_ActivityPlan__post",
+        "parameters" : [ {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      }
+    },
+    "/data/ActivityPlan/ActivityPlan/{activityplan_key}/" : {
+      "get" : {
+        "tags" : [ "data/ActivityPlan/ActivityPlan/{activityplan_key}/" ],
+        "operationId" : "data_ActivityPlan_ActivityPlan_{activityplan_key}__get",
+        "parameters" : [ {
+          "name" : "activityplan_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_get_one_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_get_one_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/ActivityPlan/ActivityPlan/{activityplan_key}/" ],
+        "operationId" : "data_ActivityPlan_ActivityPlan_{activityplan_key}__put",
+        "parameters" : [ {
+          "name" : "activityplan_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      },
+      "delete" : {
+        "tags" : [ "data/ActivityPlan/ActivityPlan/{activityplan_key}/" ],
+        "operationId" : "data_ActivityPlan_ActivityPlan_{activityplan_key}__delete",
+        "parameters" : [ {
+          "name" : "activityplan_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_del_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_del_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "data_ActivityPlan_ActivityPlan_" : {
+        "required" : [ "Id", "Status", "Template" ],
+        "type" : "object",
+        "properties" : {
+          "Activity SR Id" : {
+            "title" : "Activity SR Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Activity UID" : {
+            "title" : "Activity UID",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case #" : {
+            "title" : "Case #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Id" : {
+            "title" : "Case Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Case Type" : {
+            "title" : "Case Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Comments" : {
+            "title" : "Comments",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "1500",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Completed Date" : {
+            "title" : "Completed Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By First Name" : {
+            "title" : "Created By First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Last Name" : {
+            "title" : "Created By Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Login" : {
+            "title" : "Created By Login",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Middle Name" : {
+            "title" : "Created By Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Name" : {
+            "title" : "Created By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "150",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Created By Office" : {
+            "title" : "ICM Created By Office",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Created By Office Id" : {
+            "title" : "ICM Created By Office Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICP #" : {
+            "title" : "ICP #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICP Id" : {
+            "title" : "ICP Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Incident #" : {
+            "title" : "Incident #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Incident Id" : {
+            "title" : "Incident Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Numero" : {
+            "title" : "Numero",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Opportunity Id" : {
+            "title" : "Opportunity Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Order Id" : {
+            "title" : "Order Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Program Id" : {
+            "title" : "Program Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Project Id" : {
+            "title" : "Project Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Restricted Flag" : {
+            "title" : "Restricted Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "SR Number" : {
+            "title" : "SR Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "64",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Sub Type" : {
+            "title" : "SR Sub Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Type" : {
+            "title" : "SR Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Shared Flag" : {
+            "title" : "Shared Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Status" : {
+            "title" : "Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Template" : {
+            "title" : "Template",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Template Flag" : {
+            "title" : "Template Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Template Id" : {
+            "title" : "Template Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Id" : {
+            "title" : "Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          }
+        }
+      },
+      "data_ActivityPlan_ActivityPlan_get_one_response" : {
+        "type" : "object",
+        "properties" : {
+          "Activity SR Id" : {
+            "title" : "Activity SR Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Activity UID" : {
+            "title" : "Activity UID",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case #" : {
+            "title" : "Case #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Case Id" : {
+            "title" : "Case Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Case Type" : {
+            "title" : "Case Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Comments" : {
+            "title" : "Comments",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "1500",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Completed Date" : {
+            "title" : "Completed Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By First Name" : {
+            "title" : "Created By First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Last Name" : {
+            "title" : "Created By Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Login" : {
+            "title" : "Created By Login",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Middle Name" : {
+            "title" : "Created By Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Created By Name" : {
+            "title" : "Created By Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "150",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Created By Office" : {
+            "title" : "ICM Created By Office",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Created By Office Id" : {
+            "title" : "ICM Created By Office Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICP #" : {
+            "title" : "ICP #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICP Id" : {
+            "title" : "ICP Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Incident #" : {
+            "title" : "Incident #",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Incident Id" : {
+            "title" : "Incident Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Numero" : {
+            "title" : "Numero",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Opportunity Id" : {
+            "title" : "Opportunity Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Order Id" : {
+            "title" : "Order Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Program Id" : {
+            "title" : "Program Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Project Id" : {
+            "title" : "Project Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Restricted Flag" : {
+            "title" : "Restricted Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "SR Number" : {
+            "title" : "SR Number",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "64",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Sub Type" : {
+            "title" : "SR Sub Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Type" : {
+            "title" : "SR Type",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Shared Flag" : {
+            "title" : "Shared Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Status" : {
+            "title" : "Status",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Template" : {
+            "title" : "Template",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "100",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Template Flag" : {
+            "title" : "Template Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Template Id" : {
+            "title" : "Template Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Id" : {
+            "title" : "Id",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_ActivityPlan_ActivityPlan_put_post_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "Activity SR Id" : {
+                "title" : "Activity SR Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Activity UID" : {
+                "title" : "Activity UID",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Case #" : {
+                "title" : "Case #",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Case Id" : {
+                "title" : "Case Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Case Type" : {
+                "title" : "Case Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Comments" : {
+                "title" : "Comments",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "1500",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Completed Date" : {
+                "title" : "Completed Date",
+                "type" : "string",
+                "x-maxLength" : "32",
+                "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+              },
+              "Created By First Name" : {
+                "title" : "Created By First Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Created By Last Name" : {
+                "title" : "Created By Last Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Created By Login" : {
+                "title" : "Created By Login",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Created By Middle Name" : {
+                "title" : "Created By Middle Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "50",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Created By Name" : {
+                "title" : "Created By Name",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "150",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "ICM Created By Office" : {
+                "title" : "ICM Created By Office",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "ICM Created By Office Id" : {
+                "title" : "ICM Created By Office Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "ICP #" : {
+                "title" : "ICP #",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "ICP Id" : {
+                "title" : "ICP Id",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Incident #" : {
+                "title" : "Incident #",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Incident Id" : {
+                "title" : "Incident Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Numero" : {
+                "title" : "Numero",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Opportunity Id" : {
+                "title" : "Opportunity Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Order Id" : {
+                "title" : "Order Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Program Id" : {
+                "title" : "Program Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Project Id" : {
+                "title" : "Project Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Restricted Flag" : {
+                "title" : "Restricted Flag",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "SR Number" : {
+                "title" : "SR Number",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "64",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "SR Sub Type" : {
+                "title" : "SR Sub Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "SR Type" : {
+                "title" : "SR Type",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Shared Flag" : {
+                "title" : "Shared Flag",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Status" : {
+                "title" : "Status",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "30",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Template" : {
+                "title" : "Template",
+                "type" : "string",
+                "x-siebel-precision" : "0",
+                "x-maxLength" : "100",
+                "x-siebel-scale" : "0",
+                "x-siebel-datatype" : "DTYPE_TEXT"
+              },
+              "Template Flag" : {
+                "title" : "Template Flag",
+                "type" : "string",
+                "x-maxLength" : "1",
+                "x-siebel-datatype" : "DTYPE_BOOL"
+              },
+              "Template Id" : {
+                "title" : "Template Id",
+                "type" : "string",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Id" : {
+                "title" : "Id",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Link" : {
+                "type" : "object",
+                "properties" : {
+                  "rel" : {
+                    "title" : "rel",
+                    "type" : "string"
+                  },
+                  "href" : {
+                    "title" : "href",
+                    "type" : "string"
+                  },
+                  "name" : {
+                    "title" : "name",
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_ActivityPlan_ActivityPlan_get_all_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/data_ActivityPlan_ActivityPlan_get_one_response"
+            }
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_ActivityPlan_ActivityPlan_del_response" : {
+        "type" : "object"
+      }
+    },
+    "securitySchemes" : {
+      "basicAuth" : {
+        "type" : "http",
+        "scheme" : "basic"
+      },
+      "oAuth2.0" : {
+        "type" : "oauth2",
+        "flows" : {
+          "implicit" : {
+            "authorizationUrl" : "http://openAPI.io/",
+            "scopes" : {
+              "write:" : "modify",
+              "read:" : "read only"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-original-swagger-version" : "3.0"
+}

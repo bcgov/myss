@@ -2,7 +2,8 @@ namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
     using Myss.Api.Intake;
-    using Myss.Api.Platform;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// The fold is a table: same events, same state. Nothing here touches a
@@ -262,6 +263,46 @@ namespace Myss.Api.Tests.Services
         private static StoredEvent Marker(int version, string type, string actor = "worker:MWORKER")
         {
             return new StoredEvent(version, type, new MarkerPayload().ToEvent(type).Payload, actor, When);
+        }
+
+        [Fact]
+        public void Withdrawal_IsAllowedOnlyInTheThreeApplicantStatuses()
+        {
+            foreach (ApplicationStatus status in Enum.GetValues<ApplicationStatus>())
+            {
+                ApplicationState state = ApplicationState.Seed with { Status = status };
+                Assert.Equal(
+                    status is ApplicationStatus.Draft or ApplicationStatus.Submitted or ApplicationStatus.Returned,
+                    ApplicationProjection.CanWithdraw(state));
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Withdrawal_IsTerminalAndKeepsTheSubmissionAndAuditTrail(bool wasSubmitted)
+        {
+            StoredEvent[] previous = wasSubmitted ? [Ada(1)] : [];
+            ApplicationState state = ApplicationProjection.Fold(new(
+                [.. previous, Marker(previous.Length + 1, ApplicationEventTypes.Withdrawn, "applicant:mock-alice")]));
+
+            Assert.Equal(ApplicationStatus.Withdrawn, state.Status);
+            Assert.Equal(ApplicationStatusCodes.Withdrawn, state.StatusCode);
+            Assert.Equal(previous.Length + 1, state.Version);
+            Assert.Equal(wasSubmitted ? When : (DateTimeOffset?)null, state.SubmittedAt);
+            if (wasSubmitted)
+            {
+                Assert.Equal("Ada", state.Submitted!.Answers.GetProperty("firstName").GetString());
+            }
+
+            Assert.False(ApplicationProjection.CanSave(state));
+            Assert.False(ApplicationProjection.CanSubmit(state));
+            Assert.False(ApplicationProjection.CanWithdraw(state));
+            Assert.False(ApplicationProjection.IsInQueue(state));
+            Assert.False(ApplicationProjection.CanAddNote(state, "MWORKER"));
+            Assert.Empty(ApplicationProjection.AvailableWorkerActions(state, "MWORKER"));
+            Assert.Equal(ApplicationHistoryCodes.Withdraw, state.History[^1].Code);
+            Assert.Equal("applicant:mock-alice", state.History[^1].Actor);
         }
 
         private static StoredEvent Note(int version, string text)

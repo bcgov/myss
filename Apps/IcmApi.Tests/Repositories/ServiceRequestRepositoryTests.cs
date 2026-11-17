@@ -155,8 +155,10 @@ namespace Icm.Api.Tests.Repositories
                 "t",
                 new ServiceRequestInput { Type = "Application", RestrictedFlag = true });
 
+            // The gateway's names both ways, plus the two things a create must carry: a
+            // placeholder Id (the user key) and the child container (MEASURED 2026-09-29).
             Assert.Equal(
-                """{"Restricted Flag":"Y","Type":"Application"}""",
+                """{"Id":"1-MYSS","ListOfSRProspects":{},"Restricted Flag":"Y","Type":"Application"}""",
                 handler.RequestBody);
             Assert.Equal("1-NEW", created.Id);
             Assert.Equal("1-99", created.ServiceRequestNumber);
@@ -202,8 +204,35 @@ namespace Icm.Api.Tests.Repositories
                 });
 
             Assert.Equal(
-                """{"Call Date":"08/27/2026 14:30:00","ICM CGA Resolution Decision Date":"09/01/2026","Restricted Flag":"N","Type":"Application"}""",
+                """{"Call Date":"08/27/2026 14:30:00","ICM CGA Resolution Decision Date":"09/01/2026","Id":"1-MYSS","ListOfSRProspects":{},"Restricted Flag":"N","Type":"Application"}""",
                 handler.RequestBody);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ReadsTheRecordAWriteReturns_WhoseLinkIsOneObject()
+        {
+            // The live shape of a create's answer, MEASURED SIT2 2026-09-29 (SR 1-53MU3XD):
+            // items a single record, its Link a single object rather than a read's array.
+            (ServiceRequestRepository repository, _) = Create(
+                responseJson: """
+                    {
+                      "items": {
+                        "Type": "Bus Pass",
+                        "Comm Method": "Web",
+                        "Id": "1-53MU3XD",
+                        "Status": "Ready",
+                        "SR Sub Type": "Application",
+                        "Link": { "rel": "self", "href": "https://icm/x/1-53MU3XD", "name": "ServiceRequest" }
+                      }
+                    }
+                    """);
+
+            ServiceRequest created = await repository.CreateAsync("t", new ServiceRequestInput { Type = "Bus Pass" });
+
+            Assert.Equal("1-53MU3XD", created.Id);
+            Assert.Equal("Application", created.SRSubType);
+            Assert.Equal("self", Assert.Single(created.Links).Rel);
+            Assert.Empty(created.AdditionalFields);
         }
 
         [Fact]

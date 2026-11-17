@@ -1,0 +1,255 @@
+.description,
+.intro {
+    color: var(--typography-color-secondary);
+    max-width: 46rem;
+}
+
+.description {
+    margin: var(--layout-margin-medium) 0 0;
+}
+
+.intro {
+    margin: 0;
+}
+
+.status {
+    color: var(--typography-color-secondary);
+    margin: 0;
+}
+
+.error {
+    color: var(--typography-color-danger);
+    font-weight: 600;
+    margin: 0;
+}
+
+.editor,
+.view,
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+}
+
+.editor {
+    gap: var(--layout-margin-large);
+}
+
+.lastChanged {
+    margin: 0;
+}
+
+/* Kept in the accessibility tree while empty, so the message is announced
+   when it appears; it takes no room until then. */
+.saved {
+    color: var(--support-border-color-success);
+    font-weight: 700;
+    margin: 0;
+}
+
+.editor > .saved:empty {
+    margin-bottom: calc(-1 * var(--layout-margin-large));
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+}
+
+/* The fields beside the preview, or above it on a narrow screen. */
+.editGrid {
+    align-items: start;
+    display: grid;
+    gap: var(--layout-margin-large);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+@media (max-width: 767px) {
+    .editGrid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* The preview frame, in the applicant page's colours. */
+.preview {
+    background-color: var(--surface-color-background-white);
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    border-radius: var(--layout-border-radius-medium);
+    margin: 0;
+    min-width: 0;
+}
+
+.previewCaption {
+    background-color: var(--surface-color-background-light-gray);
+    border-bottom: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    color: var(--typography-color-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    font: var(--typography-regular-small-body);
+    gap: var(--layout-margin-xsmall) var(--layout-margin-medium);
+    justify-content: space-between;
+    padding: var(--layout-padding-xsmall) var(--layout-padding-medium);
+}
+
+.previewCaption strong {
+    color: var(--typography-color-primary);
+}
+
+.previewBody {
+    padding: var(--layout-padding-medium);
+}
+
+.previewHeading {
+    font: var(--typography-bold-h3);
+    margin: 0 0 var(--layout-margin-medium);
+    overflow-wrap: anywhere;
+}
+
+/* The message under the alert's title, as the applicant's page sets it. */
+.previewMessage {
+    color: var(--typography-color-primary);
+    font: var(--typography-regular-body);
+    overflow-wrap: anywhere;
+}
+
+.previewMessage > * {
+    margin: 0;
+}
+
+.previewMessage > * + * {
+    margin-top: var(--layout-margin-small);
+}
+
+.previewMessage a,
+.previewMessage a:hover,
+.previewMessage a:focus {
+    color: inherit;
+    text-decoration: underline;
+}
+
+.help {
+    font: var(--typography-regular-small-body);
+}
+
+.help p {
+    margin: 0 0 var(--layout-margin-small);
+}
+
+.help .helpLabel {
+    font-weight: 700;
+    margin-top: var(--layout-margin-medium);
+}
+
+.help dl {
+    display: grid;
+    gap: var(--layout-margin-xsmall) var(--layout-margin-medium);
+    grid-template-columns: max-content 1fr;
+    margin: 0;
+}
+
+.help dt {
+    font-family: monospace;
+}
+
+.help dd {
+    color: var(--typography-color-secondary);
+    margin: 0;
+}
+
+.help pre,
+.detail pre {
+    font-family: monospace;
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.help pre {
+    background-color: var(--surface-color-background-light-gray);
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    border-radius: var(--layout-border-radius-medium);
+    padding: var(--layout-padding-small);
+}
+
+@media (max-width: 767px) {
+    .help dl {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.sectionHeading {
+    font: var(--typography-bold-large-body);
+    margin: 0 0 var(--layout-margin-small);
+}
+
+/* The table can be wider than the page on a phone. */
+.tableWrap {
+    overflow-x: auto;
+}
+
+.table {
+    background-color: var(--surface-color-background-white);
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.table th,
+.table td {
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    text-align: left;
+    vertical-align: top;
+}
+
+.table thead th {
+    background-color: var(--surface-color-primary-button-default);
+    color: var(--typography-color-primary-invert);
+}
+
+.live {
+    border: var(--layout-border-width-small) solid
+        var(--support-border-color-success);
+    border-radius: var(--layout-border-radius-large);
+    color: var(--support-border-color-success);
+    font: var(--typography-bold-small-body);
+    margin-left: var(--layout-margin-small);
+    padding: 0 var(--layout-padding-small);
+}
+
+/* Show text and Hide text: a button in a link's look. */
+.textButton {
+    background: none;
+    border: none;
+    color: var(--typography-color-link);
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.textButton:focus-visible {
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-small);
+}
+
+.detail dl {
+    display: grid;
+    gap: var(--layout-margin-xsmall) var(--layout-margin-medium);
+    grid-template-columns: max-content 1fr;
+    margin: 0;
+}
+
+.detail dt {
+    font-weight: 700;
+}
+
+.detail dd {
+    margin: 0;
+    min-width: 0;
+}

@@ -12,9 +12,9 @@
 
 import { useEffect } from "react";
 import { useAuth } from "react-oidc-context";
+import { getAccessToken, setAccessToken } from "@myss/web-common/auth";
 
 import { client } from "@/api/generated/client.gen";
-import { getAccessToken, setAccessToken } from "@/auth/accessToken";
 
 // Exported for unit testing. Returns a hey-api request interceptor that adds
 // `Authorization: Bearer <token>` when a token is available, reading it lazily

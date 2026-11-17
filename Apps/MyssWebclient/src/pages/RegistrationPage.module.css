@@ -42,6 +42,14 @@
     outline-offset: var(--layout-border-width-small);
 }
 
+/* The phone size of a page heading. */
+@media (max-width: 767px) {
+    .title {
+        font-size: var(--typography-font-size-h2);
+        line-height: 1.3;
+    }
+}
+
 /* BCDS 0.6.0 misspells the success surface token (`--suport-surface-color-success`),
    so its success InlineAlert renders with no background. Supply the real token
    until the library is fixed; drop this rule after upgrading. */

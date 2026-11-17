@@ -3,6 +3,7 @@ namespace Myss.Api.Providers
     using System.Threading;
     using System.Threading.Tasks;
     using Myss.Api.Models;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Provides the eligibility rate table from the content engine, with a
@@ -18,11 +19,5 @@ namespace Myss.Api.Providers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The rate table; never null.</returns>
         Task<EligibilityRatesModel> GetRatesAsync(CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Drops this instance's cached table, so the next read fetches the table
-        /// just saved. Other MyssApi instances keep theirs until it expires.
-        /// </summary>
-        void InvalidateCache();
     }
 }

@@ -25,18 +25,40 @@ what is specific to the webclient. Full docs:
    `div`-with-`onClick`, no dropped ARIA, no contrast-breaking
    overrides, focus styles stay token-driven. Drive tests by accessible
    role, not DOM name (Form.io randomizes names).
+6. **Feature flags have two lists:** `FEATURE_NAMES` in
+   `src/api/features.ts` mirrors `FeatureFlags.All` in
+   `MyssApi/Configuration/FeatureFlags.cs`; add or remove a flag in both
+   in the same change. Gate a route with `<FeatureRoute feature="X">`,
+   anything else with `useFeature("X")`, and a dashboard section with
+   its `feature` field in `routes/dashboardSections.ts`. The home page is
+   gated by `HomeRoute` instead (MYSS-329): with `HomePage` off, `/` leaves
+   for legacy MySelfServe at `LEGACY_MYSS_URL` (runtime config, set per
+   environment; defaults to https://myselfserve.gov.bc.ca).
 
 ## Layout of `src/`
 
 `pages/` (routed screens + page-scoped logic) · `widgets/` (composed
-sections; `widgets/formio/` is the Form.io bridge: every stock input type
-is re-registered with a design system wrapper on the shared `bcgovField`
-base, plus the client half of the validation rule registry) ·
+sections) ·
 `components/` (shared presentational leaves) · `hooks/` (`useX` naming)
 · `routes/paths.ts` (every URL) · `ui/` (global CSS layers) · `api/`
 (generated — regenerate with `npm run generate:schema`, never
-hand-edit) · `auth/` · `lib/` · `constants.ts` (config + external
-links, the only registry).
+hand-edit) · `auth/` · `lib/` · `testing/` (helpers for browser tests,
+such as the page-wide styles a layout check needs) · `constants.ts`
+(config + external links, the only registry).
+
+The Form.io bridge (every stock input type re-registered with a design
+system wrapper on the shared `bcgovField` base, plus the client half of
+the validation rule registry) is the `@myss/formio` workspace in
+`Apps/MyssFormio`, shared with the admin webclient so the editor's
+preview renders a spec exactly as citizens see it. Change it there, and
+run its own test suites. The sign-in plumbing (access token, OIDC
+settings, SiteMinder sign-out, idle timeout, `/auth/me` query, callback
+page), the runtime settings resolver and a few components (`StatusPill`,
+`AnnouncementBanner`) are the `@myss/web-common` workspace in
+`Apps/MyssWebCommon`, also shared with the admin webclient; the modules
+left in `auth/` bind it to this app. Install from `Apps/` (npm workspace
+root, one lockfile). The admin pages (form management, form editor,
+rates) live in `Apps/MyssAdminWebclient`.
 
 Migration status and the current→target mapping are in
 [Docs/frontend-architecture.md](Docs/frontend-architecture.md) — new

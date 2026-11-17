@@ -59,7 +59,7 @@ export type MyssApiIntakeApplicationModel = MyssApiIntakeApplicationSummaryModel
      * submitted copy afterwards.
      */
     answers: unknown;
-    spec?: MyssApiModelsFormSpecModel;
+    spec?: MyssFormSpecFormSpecModel;
 };
 
 /**
@@ -72,11 +72,11 @@ export type MyssApiIntakeApplicationSummaryModel = {
     id: string;
     /**
      * Gets or sets the request number shown to the applicant and to
-     * workers (Myss.Api.Intake.ApplicationReference).
+     * workers (Myss.Data.Intake.ApplicationReference).
      */
     referenceNumber: string | null;
     /**
-     * Gets or sets the status code (Myss.Api.Intake.ApplicationStatusCodes).
+     * Gets or sets the status code (Myss.Data.Intake.ApplicationStatusCodes).
      */
     status: string | null;
     /**
@@ -108,71 +108,6 @@ export type MyssApiIntakeApplicationSummaryModel = {
 };
 
 /**
- * The body of a worker action: the stream version the worker last saw.
- */
-export type MyssApiIntakeReviewActionRequestModel = {
-    /**
-     * Gets or sets the stream version the worker last saw.
-     */
-    streamVersion: number;
-};
-
-/**
- * An application as a worker reads it: the summary plus what the applicant
- * submitted, the spec that renders it, and the actions open right now.
- */
-export type MyssApiIntakeReviewApplicationModel = MyssApiIntakeReviewApplicationSummaryModel & {
-    /**
-     * Gets or sets the submitted answers, from the Submitted event.
-     */
-    answers: unknown;
-    /**
-     * Gets or sets the logical form identifier.
-     */
-    formSpecId: string | null;
-    /**
-     * Gets or sets the pinned spec version.
-     */
-    formSpecVersion: number;
-    spec?: MyssApiModelsFormSpecModel;
-    /**
-     * IReadOnlyList<String>
-     *
-     * Gets or sets the worker actions available in the current state
-     * (Myss.Api.Intake.WorkerActions). The buttons render from this list.
-     */
-    availableActions: Array<string> | null;
-};
-
-/**
- * An application as a worker's list shows it.
- */
-export type MyssApiIntakeReviewApplicationSummaryModel = {
-    /**
-     * Gets or sets the application identifier.
-     */
-    id: string;
-    /**
-     * Gets or sets the request number, the same one the applicant was shown.
-     */
-    referenceNumber: string | null;
-    /**
-     * Gets or sets the status code (Myss.Api.Intake.ApplicationStatusCodes).
-     */
-    status: string | null;
-    /**
-     * Gets or sets when the application was submitted.
-     */
-    submittedAt: string;
-    /**
-     * Gets or sets the stream version a worker must send back with an
-     * action. Worker actions are events, so this is the event log's
-     * version, not the applicant's row version.
-     */
-    streamVersion: number;
-};
-
-/**
  * What Account Info shows the citizen (MYSS-271): case details, which come
  * from ICM and MIS, beside the contact details MySS holds itself.
  */
@@ -192,9 +127,21 @@ export type MyssApiModelsAccountModel = {
      */
     familyMembers: Array<string> | null;
     /**
-     * Gets or sets the email address from registration. Read-only here.
+     * Gets or sets the email address in use: from registration, or the last
+     * change the citizen verified (MYSS-305).
      */
     email: string | null;
+    /**
+     * Gets or sets a value indicating whether Myss.Api.Models.AccountModel.Email has been
+     * proven by its emailed link. False only for an address from
+     * registration whose link has not been followed yet.
+     */
+    emailVerified?: boolean;
+    /**
+     * Gets or sets an address the citizen is changing to that is waiting for
+     * its link, or null. Myss.Api.Models.AccountModel.Email stays in use until then.
+     */
+    pendingEmail?: string | null;
     /**
      * IReadOnlyList<AccountPhoneModel>
      *
@@ -211,6 +158,7 @@ export type MyssApiModelsAccountModel = {
      * Gets or sets a value indicating whether the citizen wants the monthly report reminder.
      */
     monthlyReportReminder?: boolean;
+    pinStatus?: MyssApiModelsAccountPinStatus;
 };
 
 /**
@@ -221,13 +169,13 @@ export type MyssApiModelsAccountPhoneModel = {
      * Gets or sets the ten digits, formatting stripped.
      */
     number: string | null;
-    type?: MyssApiModelsAccountPhoneType;
+    type?: MyssDataAccountPhoneType;
 };
 
 /**
- * The kinds of phone number ICM keeps for a contact.
+ * Where the citizen stands with the PIN, which decides what Account Info offers.
  */
-export type MyssApiModelsAccountPhoneType = 'Home' | 'Cell' | 'Work' | 'Message';
+export type MyssApiModelsAccountPinStatus = 'NotApplicable' | 'NotSet' | 'Set';
 
 /**
  * A stored attachment's metadata. The API doesn't return file content in
@@ -262,277 +210,6 @@ export type MyssApiModelsAttachmentResponseModel = {
      * Gets or sets the upload timestamp.
      */
     uploadedAt: string;
-};
-
-/**
- * BaseResponseModel<ApplicationModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel = {
-    payload: MyssApiIntakeApplicationModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<ReviewApplicationModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel = {
-    payload: MyssApiIntakeReviewApplicationModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<AccountModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsAccountModel = {
-    payload: MyssApiModelsAccountModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<AttachmentResponseModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsAttachmentResponseModel = {
-    payload: MyssApiModelsAttachmentResponseModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<BusPassSubmissionResponseModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsBusPassSubmissionResponseModel = {
-    payload: MyssApiModelsBusPassSubmissionResponseModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<CurrentUser>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsCurrentUser = {
-    payload: MyssApiModelsCurrentUser;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<DemoModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsDemoModel = {
-    payload: MyssApiModelsDemoModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<EligibilityRatesModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsEligibilityRatesModel = {
-    payload: MyssApiModelsEligibilityRatesModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<FormSpecModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsFormSpecModel = {
-    payload: MyssApiModelsFormSpecModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<FormSubmissionResponseModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel = {
-    payload: MyssApiModelsFormSubmissionResponseModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<PublishResultModel>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelMyssApiModelsPublishResultModel = {
-    payload: MyssApiModelsPublishResultModel;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyDictionary`2>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString = {
-    /**
-     * IReadOnlyDictionary<String>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: {
-        [key: string]: string;
-    } | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeApplicationSummaryModel = {
-    /**
-     * IReadOnlyList<ApplicationSummaryModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiIntakeApplicationSummaryModel | MyssApiIntakeApplicationModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeReviewApplicationSummaryModel = {
-    /**
-     * IReadOnlyList<ReviewApplicationSummaryModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiIntakeReviewApplicationSummaryModel | MyssApiIntakeReviewApplicationModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsAttachmentResponseModel = {
-    /**
-     * IReadOnlyList<AttachmentResponseModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiModelsAttachmentResponseModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsFormSubmissionSummaryModel = {
-    /**
-     * IReadOnlyList<FormSubmissionSummaryModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiModelsFormSubmissionSummaryModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsFormSummaryModel = {
-    /**
-     * IReadOnlyList<FormSummaryModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiModelsFormSummaryModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
-};
-
-/**
- * BaseResponseModel<IReadOnlyList`1>
- *
- * Represents the result of a request.
- */
-export type MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel = {
-    /**
-     * IReadOnlyList<ValidationErrorModel>
-     *
-     * Gets or sets the payload information.
-     */
-    payload: Array<MyssApiModelsValidationErrorModel> | null;
-    /**
-     * Gets or sets the payload information.
-     */
-    datetimeRequested: string;
 };
 
 /**
@@ -583,43 +260,14 @@ export type MyssApiModelsBusPassSubmissionResponseModel = {
 };
 
 /**
- * The typed identity of the caller for the current request.
- *
- * PERMANENT core: identical under Option 1 (bearer token) and Option 2 (session cookie).
- * Services depend on this rather than on `HttpContext.User` so they stay unaware of
- * how the caller was authenticated.
+ * The body of an email change on Account Info (MYSS-305). Checked by the
+ * service, so a mistake comes back as a field error on `email`.
  */
-export type MyssApiModelsCurrentUser = {
+export type MyssApiModelsChangeEmailRequestModel = {
     /**
-     * Gets a value indicating whether the caller is authenticated.
+     * Gets or sets the new address as typed.
      */
-    isAuthenticated?: boolean;
-    /**
-     * Gets the Keycloak subject identifier (`sub`).
-     */
-    subject?: string | null;
-    /**
-     * IReadOnlyList<String>
-     *
-     * Gets the caller's roles, flattened by Myss.Api.Configuration.KeycloakClaims.
-     */
-    roles?: Array<string> | null;
-    /**
-     * Gets a value indicating whether the caller has completed MySS registration.
-     */
-    hasProfile?: boolean;
-    /**
-     * Gets the caller's first name as stored in their MySS profile.
-     */
-    profileFirstName?: string | null;
-    /**
-     * Gets the Basic BCeID user GUID, when the caller signed in with BCeID.
-     */
-    bceidGuid?: string | null;
-    /**
-     * Gets the IDIR username, when the caller is government staff.
-     */
-    idirUsername?: string | null;
+    email?: string | null;
 };
 
 /**
@@ -637,9 +285,212 @@ export type MyssApiModelsDemoModel = {
 };
 
 /**
+ * A form submission request from the SPA.
+ */
+export type MyssApiModelsFormSubmissionRequestModel = {
+    /**
+     * Gets or sets the spec version the form was rendered with.
+     */
+    formSpecVersion: number;
+    /**
+     * Gets or sets the submitted answers, keyed by component key.
+     */
+    answers: unknown;
+    /**
+     * Gets or sets the 4-digit PIN a Basic BCeID citizen creates at
+     * registration (MYSS-258). Registration only. Deliberately outside
+     * Myss.Api.Models.FormSubmissionRequestModel.Answers, which are stored as submitted: only the PIN's
+     * salted hash is kept, on the profile.
+     */
+    pin?: string | null;
+    /**
+     * Gets or sets the PIN typed a second time, which must match Myss.Api.Models.FormSubmissionRequestModel.Pin.
+     */
+    pinConfirmation?: string | null;
+};
+
+/**
+ * A stored submission, returned together with the spec version it was
+ * submitted under.
+ */
+export type MyssApiModelsFormSubmissionResponseModel = {
+    /**
+     * Gets or sets the submission identifier.
+     */
+    id: string;
+    /**
+     * Gets or sets the logical form identifier.
+     */
+    formSpecId: string | null;
+    /**
+     * Gets or sets the spec version in force at submit time.
+     */
+    formSpecVersion: number;
+    /**
+     * Gets or sets the submitted answers.
+     */
+    answers: unknown;
+    /**
+     * Gets or sets the submission timestamp.
+     */
+    submittedAt: string;
+    spec?: MyssFormSpecFormSpecModel;
+};
+
+/**
+ * The citizen API's answer to `GET /v1/auth/me`: the caller's identity and
+ * whether they have completed MySS registration.
+ */
+export type MyssApiModelsMeModel = {
+    /**
+     * Gets a value indicating whether the caller is authenticated.
+     */
+    isAuthenticated?: boolean;
+    /**
+     * Gets the Keycloak subject identifier (`sub`).
+     */
+    subject?: string | null;
+    /**
+     * IReadOnlyList<String>
+     *
+     * Gets the caller's roles, flattened by Myss.Common.Auth.KeycloakClaims.
+     */
+    roles?: Array<string> | null;
+    /**
+     * Gets the Basic BCeID user GUID, when the caller signed in with BCeID.
+     */
+    bceidGuid?: string | null;
+    /**
+     * Gets the IDIR username, when the caller is government staff.
+     */
+    idirUsername?: string | null;
+    /**
+     * Gets a value indicating whether the caller has completed MySS registration.
+     */
+    hasProfile?: boolean;
+    /**
+     * Gets the caller's first name as stored in their MySS profile.
+     */
+    profileFirstName?: string | null;
+};
+
+/**
+ * A phone number as entered. Both values are checked by the service, so a
+ * mistake comes back as a field error rather than a binding failure.
+ */
+export type MyssApiModelsPhoneInputModel = {
+    /**
+     * Gets or sets the number as typed, punctuation allowed.
+     */
+    number?: string | null;
+    /**
+     * Gets or sets the type: Home, Cell, Work or Message.
+     */
+    type?: string | null;
+};
+
+/**
+ * The answer to a PIN reset request (MYSS-36): the email is on its way.
+ */
+export type MyssApiModelsPinResetRequestedModel = {
+    /**
+     * Gets or sets when the emailed link stops working.
+     */
+    expiresAt?: string;
+};
+
+/**
+ * The address a registration is proving (MYSS-295), and whether it has been.
+ */
+export type MyssApiModelsRegistrationEmailModel = {
+    /**
+     * Gets or sets the address a link was sent to, or null when none has been.
+     */
+    email?: string | null;
+    /**
+     * Gets or sets a value indicating whether the link has been followed.
+     */
+    verified?: boolean;
+};
+
+/**
+ * The body of a PIN reset from the emailed link. All three are checked by
+ * the service, so a mistake comes back as a refusal or a field error.
+ */
+export type MyssApiModelsResetPinRequestModel = {
+    /**
+     * Gets or sets the token from the link.
+     */
+    token?: string | null;
+    /**
+     * Gets or sets the new 4-digit PIN.
+     */
+    newPin?: string | null;
+    /**
+     * Gets or sets the new PIN typed a second time.
+     */
+    confirmPin?: string | null;
+};
+
+/**
+ * The body of a PIN save: a change when a PIN is set, otherwise its
+ * creation, in which case Myss.Api.Models.SavePinRequestModel.CurrentPin is ignored. All three are
+ * checked by the service, so a mistake comes back as a field error.
+ */
+export type MyssApiModelsSavePinRequestModel = {
+    /**
+     * Gets or sets the PIN the citizen has now. Required to change one.
+     */
+    currentPin?: string | null;
+    /**
+     * Gets or sets the new 4-digit PIN.
+     */
+    newPin?: string | null;
+    /**
+     * Gets or sets the new PIN typed a second time.
+     */
+    confirmPin?: string | null;
+};
+
+/**
+ * The body of a notification preference update.
+ */
+export type MyssApiModelsUpdateNotificationPreferencesRequestModel = {
+    /**
+     * Gets or sets a value indicating whether the citizen wants the monthly report reminder.
+     * Required: a body without it is refused instead of read as false, which would turn the
+     * reminder off without the citizen asking.
+     */
+    monthlyReportReminder: boolean;
+};
+
+/**
+ * The body of a phone update: the whole list as the citizen left it, which
+ * replaces the stored one. An empty list removes every number.
+ */
+export type MyssApiModelsUpdatePhonesRequestModel = {
+    /**
+     * IReadOnlyList<PhoneInputModel>
+     *
+     * Gets or sets the phone numbers, in order.
+     */
+    phones: Array<MyssApiModelsPhoneInputModel> | null;
+};
+
+/**
+ * The body of a verification from the emailed link.
+ */
+export type MyssApiModelsVerifyEmailRequestModel = {
+    /**
+     * Gets or sets the token from the link.
+     */
+    token?: string | null;
+};
+
+/**
  * The asset ceilings by category A-D (a separate axis from the income types).
  */
-export type MyssApiModelsEligibilityAssetLimitsModel = {
+export type MyssCommonContentEligibilityAssetLimitsModel = {
     /**
      * Gets the asset ceiling for category A.
      */
@@ -663,7 +514,7 @@ export type MyssApiModelsEligibilityAssetLimitsModel = {
  * Dependants affect the family size only; PWD takes priority over 65+.
  * The couple columns (A, C, D, F, H, I) hold 0 at family size 1.
  */
-export type MyssApiModelsEligibilityRateRowModel = {
+export type MyssCommonContentEligibilityRateRowModel = {
     /**
      * Gets the family unit size (1-7; 7 is the cap).
      */
@@ -711,7 +562,7 @@ export type MyssApiModelsEligibilityRateRowModel = {
  * (Option B — the estimate is not calculated on the server). Served by
  * GET /v{version}/EligibilityEstimator/rates.
  */
-export type MyssApiModelsEligibilityRatesModel = {
+export type MyssCommonContentEligibilityRatesModel = {
     /**
      * Gets the date these values take effect (ISO yyyy-MM-dd).
      */
@@ -721,14 +572,257 @@ export type MyssApiModelsEligibilityRatesModel = {
      *
      * Gets the monthly income-limit rows, one per family size.
      */
-    incomeRows: Array<MyssApiModelsEligibilityRateRowModel> | null;
-    assetLimits: MyssApiModelsEligibilityAssetLimitsModel;
+    incomeRows: Array<MyssCommonContentEligibilityRateRowModel> | null;
+    assetLimits: MyssCommonContentEligibilityAssetLimitsModel;
 };
+
+/**
+ * BaseResponseModel<ApplicationModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel = {
+    payload: MyssApiIntakeApplicationModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<AccountModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel = {
+    payload: MyssApiModelsAccountModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<AttachmentResponseModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsAttachmentResponseModel = {
+    payload: MyssApiModelsAttachmentResponseModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<BusPassSubmissionResponseModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsBusPassSubmissionResponseModel = {
+    payload: MyssApiModelsBusPassSubmissionResponseModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<DemoModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsDemoModel = {
+    payload: MyssApiModelsDemoModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<FormSubmissionResponseModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel = {
+    payload: MyssApiModelsFormSubmissionResponseModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<MeModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsMeModel = {
+    payload: MyssApiModelsMeModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<PinResetRequestedModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsPinResetRequestedModel = {
+    payload: MyssApiModelsPinResetRequestedModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<RegistrationEmailModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsRegistrationEmailModel = {
+    payload: MyssApiModelsRegistrationEmailModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<EligibilityRatesModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssCommonContentEligibilityRatesModel = {
+    payload: MyssCommonContentEligibilityRatesModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<FormSpecModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssFormSpecFormSpecModel = {
+    payload: MyssFormSpecFormSpecModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyDictionary`2>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemBoolean = {
+    /**
+     * IReadOnlyDictionary<String>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: {
+        [key: string]: boolean;
+    } | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyDictionary`2>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString = {
+    /**
+     * IReadOnlyDictionary<String>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: {
+        [key: string]: string;
+    } | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyList`1>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeApplicationSummaryModel = {
+    /**
+     * IReadOnlyList<ApplicationSummaryModel>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: Array<MyssApiIntakeApplicationSummaryModel | MyssApiIntakeApplicationModel> | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyList`1>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsAttachmentResponseModel = {
+    /**
+     * IReadOnlyList<AttachmentResponseModel>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: Array<MyssApiModelsAttachmentResponseModel> | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<IReadOnlyList`1>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel = {
+    /**
+     * IReadOnlyList<ValidationErrorModel>
+     *
+     * Gets or sets the payload information.
+     */
+    payload: Array<MyssFormSpecValidationErrorModel> | null;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * The kinds of phone number ICM keeps for a contact. Stored by name on
+ * Myss.Data.MyssUserPhone, and returned as is by MyssApi's Account Info.
+ */
+export type MyssDataAccountPhoneType = 'Home' | 'Cell' | 'Work' | 'Message';
 
 /**
  * A versioned Form.io specification served from the content engine.
  */
-export type MyssApiModelsFormSpecModel = {
+export type MyssFormSpecFormSpecModel = {
     /**
      * Gets or sets the logical form identifier.
      */
@@ -748,186 +842,9 @@ export type MyssApiModelsFormSpecModel = {
 };
 
 /**
- * A form submission request from the SPA.
- */
-export type MyssApiModelsFormSubmissionRequestModel = {
-    /**
-     * Gets or sets the spec version the form was rendered with.
-     */
-    formSpecVersion: number;
-    /**
-     * Gets or sets the submitted answers, keyed by component key.
-     */
-    answers: unknown;
-};
-
-/**
- * A stored submission, returned together with the spec version it was
- * submitted under.
- */
-export type MyssApiModelsFormSubmissionResponseModel = {
-    /**
-     * Gets or sets the submission identifier.
-     */
-    id: string;
-    /**
-     * Gets or sets the logical form identifier.
-     */
-    formSpecId: string | null;
-    /**
-     * Gets or sets the spec version in force at submit time.
-     */
-    formSpecVersion: number;
-    /**
-     * Gets or sets the submitted answers.
-     */
-    answers: unknown;
-    /**
-     * Gets or sets the submission timestamp.
-     */
-    submittedAt: string;
-    spec?: MyssApiModelsFormSpecModel;
-};
-
-/**
- * A submission summary for list views. Does not include the answers.
- */
-export type MyssApiModelsFormSubmissionSummaryModel = {
-    /**
-     * Gets or sets the submission identifier.
-     */
-    id: string;
-    /**
-     * Gets or sets the logical form identifier.
-     */
-    formSpecId: string | null;
-    /**
-     * Gets or sets the spec version in force at submit time.
-     */
-    formSpecVersion: number;
-    /**
-     * Gets or sets the submission timestamp.
-     */
-    submittedAt: string;
-};
-
-/**
- * One logical form and its versions, for the admin editor's forms list.
- */
-export type MyssApiModelsFormSummaryModel = {
-    /**
-     * Gets or sets the logical form identifier.
-     */
-    formSpecId: string | null;
-    /**
-     * Gets or sets the human-readable title, or null when unset.
-     */
-    title?: string | null;
-    /**
-     * IReadOnlyList<FormVersionSummaryModel>
-     *
-     * Gets or sets the versions of this form, oldest first.
-     */
-    versions: Array<MyssApiModelsFormVersionSummaryModel> | null;
-};
-
-/**
- * One version of a form and whether it is published or a draft only.
- */
-export type MyssApiModelsFormVersionSummaryModel = {
-    /**
-     * Gets or sets the version number.
-     */
-    version: number;
-    /**
-     * Gets or sets a value indicating whether this version has been
-     * published. False means the version exists only as an in-progress draft.
-     */
-    isPublished: boolean;
-};
-
-/**
- * A phone number as entered. Both values are checked by the service, so a
- * mistake comes back as a field error rather than a binding failure.
- */
-export type MyssApiModelsPhoneInputModel = {
-    /**
-     * Gets or sets the number as typed, punctuation allowed.
-     */
-    number?: string | null;
-    /**
-     * Gets or sets the type: Home, Cell, Work or Message.
-     */
-    type?: string | null;
-};
-
-/**
- * The result of publishing a form: the version number that went live.
- */
-export type MyssApiModelsPublishResultModel = {
-    /**
-     * Gets or sets the version number that was published.
-     */
-    version: number;
-};
-
-/**
- * The body of a save-draft request: the edited spec and its title.
- */
-export type MyssApiModelsSaveDraftRequestModel = {
-    /**
-     * Gets or sets the edited Form.io specification JSON.
-     */
-    spec: unknown;
-    /**
-     * Gets or sets the human-readable title, or null to leave it unset.
-     */
-    title?: string | null;
-};
-
-/**
- * An admin's save of the complete rate table. The server assigns the effective
- * date (today in British Columbia), so the request carries none.
- */
-export type MyssApiModelsSaveEligibilityRatesRequestModel = {
-    /**
-     * IReadOnlyList<EligibilityRateRowModel>
-     *
-     * Gets the monthly income-limit rows, one for each family size 1-7.
-     */
-    incomeRows: Array<MyssApiModelsEligibilityRateRowModel> | null;
-    assetLimits: MyssApiModelsEligibilityAssetLimitsModel;
-};
-
-/**
- * The body of a notification preference update.
- */
-export type MyssApiModelsUpdateNotificationPreferencesRequestModel = {
-    /**
-     * Gets or sets a value indicating whether the citizen wants the monthly report reminder.
-     * Required: a body without it is refused instead of read as false, which would turn the
-     * reminder off without the citizen asking.
-     */
-    monthlyReportReminder: boolean;
-};
-
-/**
- * The body of a phone update: the whole list as the citizen left it, which
- * replaces the stored one. An empty list removes every number.
- */
-export type MyssApiModelsUpdatePhonesRequestModel = {
-    /**
-     * IReadOnlyList<PhoneInputModel>
-     *
-     * Gets or sets the phone numbers, in order.
-     */
-    phones: Array<MyssApiModelsPhoneInputModel> | null;
-};
-
-/**
  * One rejected value: which field, why, and what to tell the citizen.
  */
-export type MyssApiModelsValidationErrorModel = {
+export type MyssFormSpecValidationErrorModel = {
     /**
      * Gets or sets the component key the failure belongs to.
      */
@@ -962,7 +879,7 @@ export type GetAccountResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
 };
 
 export type GetAccountResponse = GetAccountResponses[keyof GetAccountResponses];
@@ -985,7 +902,7 @@ export type UpdateAccountPhonesErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
 };
 
 export type UpdateAccountPhonesError = UpdateAccountPhonesErrors[keyof UpdateAccountPhonesErrors];
@@ -994,7 +911,7 @@ export type UpdateAccountPhonesResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
 };
 
 export type UpdateAccountPhonesResponse = UpdateAccountPhonesResponses[keyof UpdateAccountPhonesResponses];
@@ -1022,10 +939,46 @@ export type UpdateAccountNotificationPreferencesResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsAccountModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
 };
 
 export type UpdateAccountNotificationPreferencesResponse = UpdateAccountNotificationPreferencesResponses[keyof UpdateAccountNotificationPreferencesResponses];
+
+export type SaveAccountPinData = {
+    /**
+     * The current PIN, when there is one, and the new one twice.
+     */
+    body?: MyssApiModelsSavePinRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/account/pin';
+};
+
+export type SaveAccountPinErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Unprocessable Content
+     */
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
+    /**
+     * Too Many Requests
+     */
+    429: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type SaveAccountPinError = SaveAccountPinErrors[keyof SaveAccountPinErrors];
+
+export type SaveAccountPinResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
+};
+
+export type SaveAccountPinResponse = SaveAccountPinResponses[keyof SaveAccountPinResponses];
 
 export type ListAttachmentsData = {
     body?: never;
@@ -1038,7 +991,7 @@ export type ListAttachmentsResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsAttachmentResponseModel;
+    200: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsAttachmentResponseModel;
 };
 
 export type ListAttachmentsResponse = ListAttachmentsResponses[keyof ListAttachmentsResponses];
@@ -1076,7 +1029,7 @@ export type UploadAttachmentResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsAttachmentResponseModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAttachmentResponseModel;
 };
 
 export type UploadAttachmentResponse = UploadAttachmentResponses[keyof UploadAttachmentResponses];
@@ -1101,7 +1054,7 @@ export type GetMeResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsCurrentUser;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsMeModel;
 };
 
 export type GetMeResponse = GetMeResponses[keyof GetMeResponses];
@@ -1120,7 +1073,7 @@ export type SubmitBusPassErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
     /**
      * Too Many Requests
      */
@@ -1137,46 +1090,10 @@ export type SubmitBusPassResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsBusPassSubmissionResponseModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsBusPassSubmissionResponseModel;
 };
 
 export type SubmitBusPassResponse = SubmitBusPassResponses[keyof SubmitBusPassResponses];
-
-export type GetBusPassSubmissionPdfData = {
-    body?: never;
-    path: {
-        /**
-         * The submission identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/bus-pass/submissions/{id}/pdf';
-};
-
-export type GetBusPassSubmissionPdfErrors = {
-    /**
-     * Unauthorized
-     */
-    401: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Forbidden
-     */
-    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type GetBusPassSubmissionPdfError = GetBusPassSubmissionPdfErrors[keyof GetBusPassSubmissionPdfErrors];
-
-export type GetBusPassSubmissionPdfResponses = {
-    /**
-     * OK
-     */
-    200: unknown;
-};
 
 export type GetPlaceholderData = {
     body?: never;
@@ -1189,7 +1106,7 @@ export type GetPlaceholderResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsDemoModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsDemoModel;
 };
 
 export type GetPlaceholderResponse = GetPlaceholderResponses[keyof GetPlaceholderResponses];
@@ -1214,7 +1131,7 @@ export type GetEstimatorSpecResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsFormSpecModel;
+    200: MyssCommonModelsBaseResponseModelMyssFormSpecFormSpecModel;
 };
 
 export type GetEstimatorSpecResponse = GetEstimatorSpecResponses[keyof GetEstimatorSpecResponses];
@@ -1230,42 +1147,208 @@ export type GetEstimatorRatesResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsEligibilityRatesModel;
+    200: MyssCommonModelsBaseResponseModelMyssCommonContentEligibilityRatesModel;
 };
 
 export type GetEstimatorRatesResponse = GetEstimatorRatesResponses[keyof GetEstimatorRatesResponses];
 
-export type SaveEligibilityRatesData = {
+export type ChangeAccountEmailData = {
     /**
-     * The complete table: seven income rows and the four asset limits.
+     * The new address.
      */
-    body?: MyssApiModelsSaveEligibilityRatesRequestModel;
+    body?: MyssApiModelsChangeEmailRequestModel;
     path?: never;
     query?: never;
-    url: '/v1/EligibilityRates';
+    url: '/v1/account/email';
 };
 
-export type SaveEligibilityRatesErrors = {
+export type ChangeAccountEmailErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
     /**
-     * Bad Gateway
+     * Too Many Requests
      */
-    502: unknown;
+    429: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Service Unavailable
+     */
+    503: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
 };
 
-export type SaveEligibilityRatesError = SaveEligibilityRatesErrors[keyof SaveEligibilityRatesErrors];
+export type ChangeAccountEmailError = ChangeAccountEmailErrors[keyof ChangeAccountEmailErrors];
 
-export type SaveEligibilityRatesResponses = {
+export type ChangeAccountEmailResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsEligibilityRatesModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
 };
 
-export type SaveEligibilityRatesResponse = SaveEligibilityRatesResponses[keyof SaveEligibilityRatesResponses];
+export type ChangeAccountEmailResponse = ChangeAccountEmailResponses[keyof ChangeAccountEmailResponses];
+
+export type ResendAccountEmailVerificationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/account/email/verification-requests';
+};
+
+export type ResendAccountEmailVerificationErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Too Many Requests
+     */
+    429: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Service Unavailable
+     */
+    503: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type ResendAccountEmailVerificationError = ResendAccountEmailVerificationErrors[keyof ResendAccountEmailVerificationErrors];
+
+export type ResendAccountEmailVerificationResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
+};
+
+export type ResendAccountEmailVerificationResponse = ResendAccountEmailVerificationResponses[keyof ResendAccountEmailVerificationResponses];
+
+export type CancelAccountEmailChangeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/account/email/pending';
+};
+
+export type CancelAccountEmailChangeErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type CancelAccountEmailChangeError = CancelAccountEmailChangeErrors[keyof CancelAccountEmailChangeErrors];
+
+export type CancelAccountEmailChangeResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsAccountModel;
+};
+
+export type CancelAccountEmailChangeResponse = CancelAccountEmailChangeResponses[keyof CancelAccountEmailChangeResponses];
+
+export type RequestRegistrationEmailVerificationData = {
+    /**
+     * The address from Step 1.
+     */
+    body?: MyssApiModelsChangeEmailRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/registration/email-verification-requests';
+};
+
+export type RequestRegistrationEmailVerificationErrors = {
+    /**
+     * Unprocessable Content
+     */
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
+    /**
+     * Too Many Requests
+     */
+    429: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Service Unavailable
+     */
+    503: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type RequestRegistrationEmailVerificationError = RequestRegistrationEmailVerificationErrors[keyof RequestRegistrationEmailVerificationErrors];
+
+export type RequestRegistrationEmailVerificationResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsRegistrationEmailModel;
+};
+
+export type RequestRegistrationEmailVerificationResponse = RequestRegistrationEmailVerificationResponses[keyof RequestRegistrationEmailVerificationResponses];
+
+export type GetRegistrationEmailVerificationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/registration/email-verification';
+};
+
+export type GetRegistrationEmailVerificationResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsRegistrationEmailModel;
+};
+
+export type GetRegistrationEmailVerificationResponse = GetRegistrationEmailVerificationResponses[keyof GetRegistrationEmailVerificationResponses];
+
+export type VerifyEmailData = {
+    /**
+     * The token from the link.
+     */
+    body?: MyssApiModelsVerifyEmailRequestModel;
+    path?: never;
+    query?: never;
+    url: '/v1/email-verification';
+};
+
+export type VerifyEmailErrors = {
+    /**
+     * Gone
+     */
+    410: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type VerifyEmailError = VerifyEmailErrors[keyof VerifyEmailErrors];
+
+export type VerifyEmailResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type VerifyEmailResponse = VerifyEmailResponses[keyof VerifyEmailResponses];
+
+export type GetFeaturesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/features';
+};
+
+export type GetFeaturesResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemBoolean;
+};
+
+export type GetFeaturesResponse = GetFeaturesResponses[keyof GetFeaturesResponses];
 
 export type GetFormSpecData = {
     body?: never;
@@ -1292,7 +1375,7 @@ export type GetFormSpecResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsFormSpecModel;
+    200: MyssCommonModelsBaseResponseModelMyssFormSpecFormSpecModel;
 };
 
 export type GetFormSpecResponse = GetFormSpecResponses[keyof GetFormSpecResponses];
@@ -1308,31 +1391,10 @@ export type GetErrorMessagesResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString;
+    200: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyDictionary2SystemString_SystemString;
 };
 
 export type GetErrorMessagesResponse = GetErrorMessagesResponses[keyof GetErrorMessagesResponses];
-
-export type ListFormSubmissionsData = {
-    body?: never;
-    path: {
-        /**
-         * The logical form identifier.
-         */
-        formSpecId: string;
-    };
-    query?: never;
-    url: '/v1/forms/{formSpecId}/submissions';
-};
-
-export type ListFormSubmissionsResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsFormSubmissionSummaryModel;
-};
-
-export type ListFormSubmissionsResponse = ListFormSubmissionsResponses[keyof ListFormSubmissionsResponses];
 
 export type SubmitFormData = {
     /**
@@ -1353,7 +1415,7 @@ export type SubmitFormErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
 };
 
 export type SubmitFormError = SubmitFormErrors[keyof SubmitFormErrors];
@@ -1362,168 +1424,10 @@ export type SubmitFormResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel;
 };
 
 export type SubmitFormResponse = SubmitFormResponses[keyof SubmitFormResponses];
-
-export type GetFormSubmissionData = {
-    body?: never;
-    path: {
-        /**
-         * The submission identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/forms/submissions/{id}';
-};
-
-export type GetFormSubmissionErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type GetFormSubmissionError = GetFormSubmissionErrors[keyof GetFormSubmissionErrors];
-
-export type GetFormSubmissionResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsFormSubmissionResponseModel;
-};
-
-export type GetFormSubmissionResponse = GetFormSubmissionResponses[keyof GetFormSubmissionResponses];
-
-export type ListFormsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/v1/forms';
-};
-
-export type ListFormsErrors = {
-    /**
-     * Bad Gateway
-     */
-    502: unknown;
-};
-
-export type ListFormsResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsFormSummaryModel;
-};
-
-export type ListFormsResponse = ListFormsResponses[keyof ListFormsResponses];
-
-export type GetFormDraftData = {
-    body?: never;
-    path: {
-        /**
-         * The logical form identifier.
-         */
-        formSpecId: string;
-    };
-    query?: never;
-    url: '/v1/forms/{formSpecId}/draft';
-};
-
-export type GetFormDraftErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Bad Gateway
-     */
-    502: unknown;
-};
-
-export type GetFormDraftError = GetFormDraftErrors[keyof GetFormDraftErrors];
-
-export type GetFormDraftResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsFormSpecModel;
-};
-
-export type GetFormDraftResponse = GetFormDraftResponses[keyof GetFormDraftResponses];
-
-export type SaveFormDraftData = {
-    /**
-     * The edited spec and title.
-     */
-    body?: MyssApiModelsSaveDraftRequestModel;
-    path: {
-        /**
-         * The logical form identifier.
-         */
-        formSpecId: string;
-    };
-    query?: never;
-    url: '/v1/forms/{formSpecId}/draft';
-};
-
-export type SaveFormDraftErrors = {
-    /**
-     * Unprocessable Content
-     */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
-    /**
-     * Bad Gateway
-     */
-    502: unknown;
-};
-
-export type SaveFormDraftError = SaveFormDraftErrors[keyof SaveFormDraftErrors];
-
-export type SaveFormDraftResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsFormSpecModel;
-};
-
-export type SaveFormDraftResponse = SaveFormDraftResponses[keyof SaveFormDraftResponses];
-
-export type PublishFormData = {
-    body?: never;
-    path: {
-        /**
-         * The logical form identifier.
-         */
-        formSpecId: string;
-    };
-    query?: never;
-    url: '/v1/forms/{formSpecId}/publish';
-};
-
-export type PublishFormErrors = {
-    /**
-     * Unprocessable Content
-     */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
-    /**
-     * Bad Gateway
-     */
-    502: unknown;
-};
-
-export type PublishFormError = PublishFormErrors[keyof PublishFormErrors];
-
-export type PublishFormResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiModelsPublishResultModel;
-};
-
-export type PublishFormResponse = PublishFormResponses[keyof PublishFormResponses];
 
 export type ListApplicationsData = {
     body?: never;
@@ -1536,7 +1440,7 @@ export type ListApplicationsResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeApplicationSummaryModel;
+    200: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeApplicationSummaryModel;
 };
 
 export type ListApplicationsResponse = ListApplicationsResponses[keyof ListApplicationsResponses];
@@ -1565,10 +1469,59 @@ export type CreateApplicationResponses = {
     /**
      * Created
      */
-    201: MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel;
+    201: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
 };
 
 export type CreateApplicationResponse = CreateApplicationResponses[keyof CreateApplicationResponses];
+
+export type ListAfaApplicationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/intake/applications/afa';
+};
+
+export type ListAfaApplicationsResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeApplicationSummaryModel;
+};
+
+export type ListAfaApplicationsResponse = ListAfaApplicationsResponses[keyof ListAfaApplicationsResponses];
+
+export type CreateAfaApplicationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/intake/applications/afa';
+};
+
+export type CreateAfaApplicationErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Bad Gateway
+     */
+    502: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type CreateAfaApplicationError = CreateAfaApplicationErrors[keyof CreateAfaApplicationErrors];
+
+export type CreateAfaApplicationResponses = {
+    /**
+     * Created
+     */
+    201: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
+};
+
+export type CreateAfaApplicationResponse = CreateAfaApplicationResponses[keyof CreateAfaApplicationResponses];
 
 export type GetApplicationData = {
     body?: never;
@@ -1595,10 +1548,40 @@ export type GetApplicationResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
 };
 
 export type GetApplicationResponse = GetApplicationResponses[keyof GetApplicationResponses];
+
+export type GetAfaApplicationData = {
+    body?: never;
+    path: {
+        /**
+         * The AFA request identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/applications/afa/{id}';
+};
+
+export type GetAfaApplicationErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type GetAfaApplicationError = GetAfaApplicationErrors[keyof GetAfaApplicationErrors];
+
+export type GetAfaApplicationResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
+};
+
+export type GetAfaApplicationResponse = GetAfaApplicationResponses[keyof GetAfaApplicationResponses];
 
 export type SaveApplicationAnswersData = {
     /**
@@ -1627,7 +1610,7 @@ export type SaveApplicationAnswersErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
     /**
      * Bad Gateway
      */
@@ -1640,7 +1623,7 @@ export type SaveApplicationAnswersResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
 };
 
 export type SaveApplicationAnswersResponse = SaveApplicationAnswersResponses[keyof SaveApplicationAnswersResponses];
@@ -1672,7 +1655,7 @@ export type SubmitApplicationErrors = {
     /**
      * Unprocessable Content
      */
-    422: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiModelsValidationErrorModel;
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
     /**
      * Bad Gateway
      */
@@ -1685,164 +1668,72 @@ export type SubmitApplicationResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeApplicationModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
 };
 
 export type SubmitApplicationResponse = SubmitApplicationResponses[keyof SubmitApplicationResponses];
 
-export type ListReviewApplicationsData = {
+export type RequestPinResetData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/v1/intake/review/applications';
+    url: '/v1/pin-reset/requests';
 };
 
-export type ListReviewApplicationsResponses = {
+export type RequestPinResetErrors = {
+    /**
+     * Forbidden
+     */
+    403: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Too Many Requests
+     */
+    429: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Service Unavailable
+     */
+    503: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type RequestPinResetError = RequestPinResetErrors[keyof RequestPinResetErrors];
+
+export type RequestPinResetResponses = {
     /**
      * OK
      */
-    200: MyssApiModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssApiIntakeReviewApplicationSummaryModel;
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsPinResetRequestedModel;
 };
 
-export type ListReviewApplicationsResponse = ListReviewApplicationsResponses[keyof ListReviewApplicationsResponses];
+export type RequestPinResetResponse = RequestPinResetResponses[keyof RequestPinResetResponses];
 
-export type GetReviewApplicationData = {
-    body?: never;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
+export type ResetPinData = {
+    /**
+     * The token from the link and the new PIN twice.
+     */
+    body?: MyssApiModelsResetPinRequestModel;
+    path?: never;
     query?: never;
-    url: '/v1/intake/review/applications/{id}';
+    url: '/v1/pin-reset';
 };
 
-export type GetReviewApplicationErrors = {
+export type ResetPinErrors = {
     /**
-     * Not Found
+     * Gone
      */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    410: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Unprocessable Content
+     */
+    422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
 };
 
-export type GetReviewApplicationError = GetReviewApplicationErrors[keyof GetReviewApplicationErrors];
+export type ResetPinError = ResetPinErrors[keyof ResetPinErrors];
 
-export type GetReviewApplicationResponses = {
+export type ResetPinResponses = {
     /**
-     * OK
+     * No Content
      */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
+    204: void;
 };
 
-export type GetReviewApplicationResponse = GetReviewApplicationResponses[keyof GetReviewApplicationResponses];
-
-export type StartApplicationReviewData = {
-    /**
-     * The stream version last seen.
-     */
-    body?: MyssApiIntakeReviewActionRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/review';
-};
-
-export type StartApplicationReviewErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type StartApplicationReviewError = StartApplicationReviewErrors[keyof StartApplicationReviewErrors];
-
-export type StartApplicationReviewResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type StartApplicationReviewResponse = StartApplicationReviewResponses[keyof StartApplicationReviewResponses];
-
-export type AcceptApplicationData = {
-    /**
-     * The stream version last seen.
-     */
-    body?: MyssApiIntakeReviewActionRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/accept';
-};
-
-export type AcceptApplicationErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type AcceptApplicationError = AcceptApplicationErrors[keyof AcceptApplicationErrors];
-
-export type AcceptApplicationResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type AcceptApplicationResponse = AcceptApplicationResponses[keyof AcceptApplicationResponses];
-
-export type DenyApplicationData = {
-    /**
-     * The stream version last seen.
-     */
-    body?: MyssApiIntakeReviewActionRequestModel;
-    path: {
-        /**
-         * The application identifier.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/v1/intake/review/applications/{id}/deny';
-};
-
-export type DenyApplicationErrors = {
-    /**
-     * Not Found
-     */
-    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-    /**
-     * Conflict
-     */
-    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
-};
-
-export type DenyApplicationError = DenyApplicationErrors[keyof DenyApplicationErrors];
-
-export type DenyApplicationResponses = {
-    /**
-     * OK
-     */
-    200: MyssApiModelsBaseResponseModelMyssApiIntakeReviewApplicationModel;
-};
-
-export type DenyApplicationResponse = DenyApplicationResponses[keyof DenyApplicationResponses];
+export type ResetPinResponse = ResetPinResponses[keyof ResetPinResponses];

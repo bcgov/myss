@@ -1,0 +1,16 @@
+/* Fills the screen below the header while the page is hidden. */
+.menu {
+    background-color: var(--surface-color-primary-default);
+    flex: 1 1 auto;
+    width: 100%;
+}
+
+.signOut {
+    padding: 0 var(--layout-padding-large) var(--layout-padding-large);
+}
+
+/* The standard blue focus ring is too close to the menu's dark blue to see,
+   so it is white here, as on the menu's links. */
+.signOut :global(.bcds-react-aria-Button[data-focus-visible]) {
+    outline-color: var(--surface-color-secondary-default);
+}

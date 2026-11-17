@@ -6,8 +6,10 @@ namespace Myss.Api.Tests.Configuration
     using Myss.Api.Configuration;
     using Myss.Api.Data;
     using Myss.Api.Intake;
-    using Myss.Api.Platform;
     using Myss.Api.Tests.TestSupport;
+    using Myss.Data;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
     using Npgsql;
 
     /// <summary>
@@ -72,13 +74,14 @@ namespace Myss.Api.Tests.Configuration
 
             Assert.Equal(0, first);
             Assert.Equal(0, second);
-            await AssertUpToDate(new FormsDbContext(new DbContextOptionsBuilder<FormsDbContext>().UseNpgsql(connectionString).Options));
+            await AssertUpToDate(new FormsDbContext(new DbContextOptionsBuilder<FormsDbContext>()
+                .UseNpgsql(connectionString, o => MyssMigrations.Configure(o, historySchema: null)).Options));
             await AssertUpToDate(new AttachmentsDbContext(new DbContextOptionsBuilder<AttachmentsDbContext>()
                 .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "attachments")).Options));
             await AssertUpToDate(new PlatformDbContext(new DbContextOptionsBuilder<PlatformDbContext>()
-                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "platform")).Options));
+                .UseNpgsql(connectionString, o => MyssMigrations.Configure(o, "platform")).Options));
             await AssertUpToDate(new IntakeDbContext(new DbContextOptionsBuilder<IntakeDbContext>()
-                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "intake")).Options));
+                .UseNpgsql(connectionString, o => MyssMigrations.Configure(o, "intake")).Options));
         }
 
         [PostgresFact]
@@ -105,6 +108,10 @@ namespace Myss.Api.Tests.Configuration
         {
             await using (context)
             {
+                // The shared-model contexts live in MyssData and their migrations
+                // here: a context pointed at the wrong assembly finds none, and
+                // "nothing pending" would then pass without proving anything.
+                Assert.NotEmpty(context.Database.GetMigrations());
                 Assert.Empty(await context.Database.GetPendingMigrationsAsync());
                 Assert.NotEmpty(await context.Database.GetAppliedMigrationsAsync());
             }

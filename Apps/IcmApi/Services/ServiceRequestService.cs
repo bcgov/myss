@@ -99,6 +99,38 @@ namespace Icm.Api.Services
                 cancellationToken).ConfigureAwait(false);
 
         /// <inheritdoc/>
+        public async Task<System.Collections.Generic.IReadOnlyList<ServiceRequestContact>> GetContactsAsync(
+            string serviceRequestKey,
+            ServiceRequestReadOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(serviceRequestKey);
+
+            return await _repository.GetContactsAsync(
+                await TokenAsync(cancellationToken).ConfigureAwait(false),
+                serviceRequestKey,
+                options,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc/>
+        public async Task<string> LinkContactAsync(
+            string serviceRequestKey,
+            ServiceRequestContactLink link,
+            CancellationToken cancellationToken = default)
+        {
+            // The mapper's whole judgement before the token, as the other services do.
+            ArgumentException.ThrowIfNullOrWhiteSpace(serviceRequestKey);
+            _ = Contracts.ServiceRequestMapper.ToSiebel(link);
+
+            return await _repository.LinkContactAsync(
+                await TokenAsync(cancellationToken).ConfigureAwait(false),
+                serviceRequestKey,
+                link,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc/>
         public async Task<bool> DeleteAsync(
             string serviceRequestKey,
             CancellationToken cancellationToken = default) =>

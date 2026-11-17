@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import { Callout as BcdsCallout } from "@bcgov/design-system-react-components";
 
-import styles from "./Callout.module.css";
+import styles from "@myss/formio/Callout.module.css";
 
 // A tinted box that sets content apart from the page: a heading and any
 // content nested under it. Wraps the design system's Callout, which drops its

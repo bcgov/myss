@@ -20,9 +20,11 @@ suite runs against canned responses, on purpose.
 
 | Upstream API | Spec | Published as |
 | --- | --- | --- |
-| Service Request (`data/ServiceRequest/ServiceRequest`) | [`docs/integration/SR_OpenApi.json`](docs/integration/SR_OpenApi.json) | `IServiceRequestService` / `IServiceRequestRepository` |
+| Service Request (`data/ServiceRequest/ServiceRequest`, and its `ICMContact` child for linking contacts) | [`docs/integration/SR_OpenApi.json`](docs/integration/SR_OpenApi.json), [`SRContactLink_OpenApi.json`](docs/integration/SRContactLink_OpenApi.json) | `IServiceRequestService` / `IServiceRequestRepository` |
 | Contact (`data/ICMContact/ICMContact`) — search only | [`docs/integration/Contact_OpenApi.json`](docs/integration/Contact_OpenApi.json) | `IContactService` / `IContactRepository` |
 | Case (`data/Cases/Case`, and its `Contact` child) — reads only | [`docs/integration/Case_OpenApi.json`](docs/integration/Case_OpenApi.json) | `ICaseService` / `ICaseRepository` |
+| Prospect (`data/Prospects/SRProspects`, and a service request's `SRProspects` child) — reads and create | [`docs/integration/SRProspects_OpenApi.json`](docs/integration/SRProspects_OpenApi.json) | `IProspectService` / `IProspectRepository` |
+| Activity (`data/Activities/Activities`, and a service request's `Activities` child) — reads and create; activity plan (`data/ActivityPlan/ActivityPlan`, and the `ActivityPlan` child) — reads | [`docs/integration/Activities_OpenApi.json`](docs/integration/Activities_OpenApi.json), [`ActivityPlan_OpenApi.json`](docs/integration/ActivityPlan_OpenApi.json) | `IActivityService` / `IActivityRepository` |
 | Bus pass workflow (`workflow/ICM Receive Bus Pass Online Request Wrapper WF`) | [`docs/integration/BusPassWorkflow_OpenApi.json`](docs/integration/BusPassWorkflow_OpenApi.json) | `IBusPassService` / `IBusPassRepository` |
 | OAuth 2.0 token endpoint (client credentials) | RFC 6749 §4.4 | `IOAuthTokenService` |
 
@@ -37,7 +39,11 @@ the repository so a change upstream shows up in the same diff as the change here
 `Contact_OpenApi.json` (SIT1, fetched 2026-09-17) is the contact business component's,
 and `Case_OpenApi.json` (SIT1, fetched 2026-09-24) the case's — the component is
 `Cases/Case`, although ICM's own business-object describe names it `ICM REST HLS Case`,
-a name that then answers `SBL-EAI-50257`. These come from ICM itself — every `data/` resource answers
+a name that then answers `SBL-EAI-50257`. `SRProspects_OpenApi.json`, `Activities_OpenApi.json` and `ActivityPlan_OpenApi.json`
+(SIT2, fetched 2026-09-29) are the prospect, activity and activity plan components'; the `icmdev`
+gateway's copy differs only in its server URL and in six `x-siebel-readOnly` flags SIT2
+declares and dev does not, and the direct development host
+(`development.icm.gov.bc.ca`) does not answer from outside its network. These come from ICM itself — every `data/` resource answers
 `GET …/data/{Resource}/{Resource}/describe` — and `IcmApi.Console --Mode=describe`
 fetches one with the tool's own token and writes it as ICM sent it (see
 [Functional test](#functional-test)).
@@ -432,6 +438,240 @@ services.AddScoped<ICaseService>(provider => new CaseService(
     credentials));
 ```
 
+## Prospects
+
+A prospect is the applicant row a service request carries before, or instead of, a
+matched contact — what the bus pass workflow writes from a submission, and what the
+"Validate Address and Promote Prospect" step of the SR's activity plan turns into a
+contact. `IProspectService` reads them and, for the experiment of filing a bus pass
+application *without* the workflow, creates one directly.
+
+```csharp
+// The rows the workflow filed on a bus pass SR (the child path — MEASURED).
+IReadOnlyList<Prospect> rows = await prospectService.GetForServiceRequestAsync("1-53CJXK6", null, ct);
+
+// One row by its id, on the standalone path (MEASURED), or a search there.
+Prospect? row = await prospectService.GetAsync("1-53CJXKH", null, ct);
+ProspectPage page = await prospectService.SearchAsync(new ProspectQuery { ProspectiveContactUId = "1-53CJXKH" }, ct);
+
+// Create one on a service request (MEASURED): the four required fields plus the SR.
+Prospect created = await prospectService.CreateAsync(
+    new ProspectInput
+    {
+        ServiceRequestId = sr.Id, FirstName = "…", LastName = "…", BirthDate = dob, Gender = "Woman/Girl",
+        Purpose = "Residence/Mailing", StreetAddress = "…", City = "…", Province = "BC", PostalCode = "…",
+    },
+    ct);
+```
+
+**One component, two paths.** The document describes `data/Prospects/SRProspects`, the
+standalone path. Every row this library had read before 2026-09-29 came from
+`data/ServiceRequest/ServiceRequest/{key}/SRProspects/`, the child path, which no
+document describes. MEASURED on SIT2 on 2026-09-29: both read the same row (`1-53CJXKH`
+on SR `1-53CJXK6`), and the standalone path sends six fields the child view leaves out —
+`Alias`, `Comment`, `Prospective Contact UId` (equal to the row id), `Source`,
+`Source Name` (`SIEBEL_EAI`) and `Source Type` (`Manual Entry`). A standalone search
+works too (same day: `[Prospective Contact UId] = "1-53CJXKH"` returns the row, with
+`Total-Record-Count`). So the library asks for **no `fields` list** on either path: a name one view lacks is `SBL-EAI-50258`, and every
+field comes back anyway — the 42 the document declares plus `Id`, all modelled.
+
+**The document's names are the live names**, unlike the service request's and the
+case's: `First Name`, `Birth Date`, `Home Phone #`, `Social Security Number` (the SIN),
+`State` (the province), `M/F` (the gender, empty on every workflow-created row) — and
+`Id`, which no document declares. `ProspectMapperTests` pins the wire contract to the
+document's 42 names plus `Id`.
+
+**`ViewMode` defaults to `Organization`**, the mode every prospect read so far was made
+under; ICM's default, `Sales Rep`, hides service requests outright.
+
+**Dates.** `Birth Date` is a `DTYPE_DATE`, written `MM/DD/YYYY` (MEASURED 2026-09-14:
+`01/25/2000` stored as `01/25/2000`). `Created` and `Last Updated` are typed
+`DTYPE_UTCDATETIME` by the document but carry the same wall clock as the parent SR's
+zone-less `Created Date` (prospect `12:11:08` on an SR created `12:11:06`, local time),
+so `Prospect` keeps them zone-less rather than calling them UTC.
+
+**Creating a prospect is a `PUT`, not a `POST`.** ICM's REST Data API guidance for
+"Adding Prospects to a Service Request" (ADO user story 8249, with its field list
+`Prospects_8249_Fields.xlsx`) shows the body — `"Id": "NULL"`, `Service Request Id`, the
+person's fields — but not the verb, and the story's title says POST. MEASURED on
+2026-09-29: that body by `POST data/Prospects/SRProspects/` is "Invalid input"
+(`SBL-EAI-50243`) on icmdev and SIT2 alike, and by **`PUT`** on the same path it creates
+the row — icmdev `1-5M16MO8` on the guidance's own example SR `1-5D7C2PD`, then SIT2
+`1-53MU3XZ` and `1-53MU3Y0` on the directly created bus pass SRs, each listed under its
+SR's `SRProspects` child at once. Siebel replaces the placeholder id with the row id it
+allocates. `CreateAsync` is that PUT; `ProspectMapper.CreatePlaceholderId` supplies the
+`NULL`. A PUT to the collection is an upsert, so `ProspectInput` has no `Id`: a caller's
+row id would rewrite an existing applicant row through a create-only API. Experiments
+with other keys belong in the console's `raw` mode.
+
+**Required fields** (ICM's field list): `First Name`, `Last Name`, `Birth Date`
+(`MM/DD/YYYY`) and `M/F` (`Man/Boy`, `Woman/Girl`, `Non-Binary`, `Unknown`). The library
+insists on those four and on `ServiceRequestId`; the list also gives the picklists for
+`Purpose` (`Residence/Mailing`, `Residence`, `Mailing`, `Work`, `Temporary`, `School`,
+`EFT`), `M/M` (`Dr`, `Miss`, `Mr.`, `Mrs.`, `Ms.`, `Sir`), `Portal Role` (the family
+relationships, `Key player`, `Other`…) and `Preferred Communication Method`. `Source`,
+`Source Name` and `Source Type` are not on the list; the workflow's rows read
+`SIEBEL_EAI` / `Manual Entry` there, set by ICM.
+
+**What does not work, so nobody tries it again** (eleven refusals on 2026-09-29): the
+same body by POST; a POST to the child path `…/ServiceRequest/{key}/SRProspects/`, which
+Siebel reads as a **new service request** (the parent key in the path is ignored); and
+nesting the row inside a service request write as `ListOfSRProspects`, where the row
+passes the user-key check only with `Service Request Id` and Siebel then tries to
+*associate* an existing prospect through an association list the applet does not have
+(`SBL-DAT-00276`). `ServiceRequestInput.Prospects` keeps that nested shape for the day
+ICM's integration object allows it; no child-path write is declared at all. No update
+by key and no delete are declared.
+
+**Reference rows** (test data): SIT2 `1-53CJXKH` on SR `1-53CJXK6` (our REST client's
+clean Application of 2026-09-14), `1-53CJUNM` on `1-53CJUNB` (the old form's).
+
+Wiring is the same shape as the case's: `AddHttpClient<IProspectRepository, ProspectRepository>`
+and a scoped `ProspectService` over `IOAuthTokenService` and the credentials.
+
+## Linking a contact to a service request
+
+For a matched applicant the direct path does what the bus pass workflow does when the
+SIN matches: it puts the contact on the service request instead of relying on a prospect
+row. `IServiceRequestService.LinkContactAsync` links an existing contact — found with
+`IContactService` first — and `GetContactsAsync` reads the contacts on an SR with their
+relationship.
+
+```csharp
+// The matched contact, as the primary key player (the workflow's shape).
+await serviceRequestService.LinkContactAsync(sr.Id!, new ServiceRequestContactLink { ContactId = contact.Id }, ct);
+
+// Someone else on the request, in another relationship.
+await serviceRequestService.LinkContactAsync(
+    sr.Id!, new ServiceRequestContactLink { ContactId = spouse.Id, Relationship = "Spouse", IsPrimary = false }, ct);
+
+IReadOnlyList<ServiceRequestContact> people = await serviceRequestService.GetContactsAsync(sr.Id!, null, ct);
+```
+
+**What the link does** (MEASURED SIT2 2026-09-29 on the directly created SRs
+`1-53MU3X7` and `1-53MU3XD`): a PUT on the SR's `ICMContact` child — the
+`S_SR_CONTACT` intersection, ICM's "PUT Contact to Service Request" guidance (ADO 8628)
+— with the contact's `Id`, `SR Relationship` and `SSA Primary Field`. A primary link
+also sets the SR's `Primary Contact Id` and fills the header's `Given Names` and
+`Last Name` from the contact, which is exactly what the workflow's matched SR
+`1-53CJXK6` reads back: after the link, the direct SR is field-for-field identical to it
+on every contact field. ICM answers with the SR and the link nested under it.
+
+**The names that work are the child view's, not the guidance's.** The guidance's payload
+carries `Relationship` and `Subject`; on SIT2 both are accepted and silently ignored,
+leaving a link with no relationship. `SR Relationship`, `SSA Primary Field` and
+`SR Subject Flag` are honoured, on a create and on a PUT by contact key
+(`…/ICMContact/{contactId}/`), which is how a mis-named row was repaired. The guidance
+also PUTs the whole SR with `Primary Contact Id` and a nested `ICMContact` array; that
+links too, but nesting contacts on the SR *create* is "Invalid input" in both the bare
+and the `ListOf` shape, so the link is always a second call after the create.
+
+`docs/integration/SRContactLink_OpenApi.json` is the child's describe document: 20
+fields plus `Id`, where `Id` is the contact's own row id and the audit fields are the
+contact's, not the link's. `SR Start` reads as the SR's creation time whenever the link
+was made.
+
+## Activities
+
+The events on a service request are activities: the steps of the activity plan the bus
+pass workflow applies ("Bus Pass - New Intake" on an Application, "Bus Pass – Address
+Change" on a Change of Circumstance), each a row with an `Action Code` (the step's
+name), an `Action By` of `Staff` or `System`, a `Sequence` (`01`, `01-01`, …) and, once
+done, a `Result Code`. `IActivityService` reads them, reads the plan instances they hang
+off, and creates an activity.
+
+```csharp
+IReadOnlyList<ActivityPlan> plans = await activityService.GetPlansForServiceRequestAsync(sr.Id!, null, ct);
+IReadOnlyList<Activity> events = await activityService.GetForServiceRequestAsync(sr.Id!, null, ct);
+ActivityPage open = await activityService.SearchAsync(new ActivityQuery { PlanName = "Bus Pass - New Intake", Status = "Open" }, ct);
+
+// Create one on a service request (MEASURED): ICM's "GET-PUT-POST Activities" guidance.
+Activity step = await activityService.CreateAsync(
+    new ActivityInput
+    {
+        ServiceRequestId = sr.Id, Type = "Task", ActionBy = "Staff",
+        ActionCode = "Validate Address and Promote Prospect", Status = "Open", Priority = "3-Standard",
+        Planned = DateTime.Now, Due = DateTime.Today.AddDays(30),
+    },
+    ct);
+```
+
+**Two resources, two child links.** `Activities/Activities` (84 document fields) and
+`ActivityPlan/ActivityPlan` (33) both answer on the standalone path and as a service
+request's `Activities` / `ActivityPlan` children (all four MEASURED SIT2 2026-09-29). The
+document names are the live names on both, plus `Id`. A plan step's
+`Activity Template Id` is the plan *instance*'s row id — the `ActivityPlan` row on the same
+SR — and the plan's `Template Id` (`1-30LDVGD` for "Bus Pass - New Intake") is the
+template. The child `Activities` view rejects a `fields` list (`500`) where the standalone
+path accepts one, so neither read sends one; the ~30 document fields `SiebelActivity`
+does not declare arrive in `Activity.AdditionalFields`.
+
+**Creating an activity is a PUT with `"Id": "NULL"`**, per ICM's REST API guidance
+("GET-PUT-POST Activities (Stand Alone or Profiled to Memo, SR, Incident and Case)",
+ADO 8646): the same body by POST needs the user key `Activity UID` and, the guidance
+warns, gives undesirable results. The PUT is an upsert, so `ActivityInput` has no `Id` —
+the placeholder is always sent, and a worker's activity cannot be overwritten by a create. Profiling is by `Activity SR Id` (or `Case Id`,
+`Incident Id`, `ICM Memo Id`). The document requires `Type`, `Action By`, `Category` and
+`Display`; the library insists on the first two, defaults the others to `General` and
+`Calendar and Activities` (what every bus pass step carries), and refuses an activity
+profiled to nothing. MEASURED 2026-09-29: `1-53MU3Y4` on the directly created SR
+`1-53MU3X7` and `1-53MU3Y6` on `1-53MU3XD`, each listed under its SR at once, each
+matching the workflow's step 01 field for field — except that it has no `Plan Name` and
+no `Activity Template Id`, and ICM assigns it to the trusted user (`Owned By`,
+`Primary Owned By` SIEBEL_EAI) where the workflow's step is unassigned.
+
+**A plan instance cannot be created through the REST API as it stands.** A PUT on
+`ActivityPlan/ActivityPlan` with the bus pass template answers `SBL-EAI-04401`, "Cannot
+find entry 'Bus Pass - New Intake' in the bounded picklist for the field 'Template'",
+with or without `Template Id` and whatever the body order; without `Template` it is a
+required field. The picklist the write validates against does not contain the template,
+so a directly created activity is a stand-alone task rather than a plan step, and ICM's
+chaining (completing step 01 spawns 01-01) has no plan to drive it. Whether an activity
+created with `Activity Template Id` pointing at a *workflow-created* plan would chain is
+untested. No plan write is declared; no activity update or delete is declared.
+
+## Creating a service request directly
+
+`IServiceRequestService.CreateAsync` files a service request through `POST
+data/ServiceRequest/ServiceRequest/` — MEASURED on SIT2 on 2026-09-29, when it created
+the bus pass SRs `1-53MU3X7` (row `1-11103666523`) and `1-53MU3XD` without the workflow.
+What it took, each point measured against a refusal:
+
+- **The write vocabulary is the read vocabulary.** `Type` is understood; the document's
+  `SR Type` is silently ignored, after which `SR Sub Type`'s bounded picklist has no parent
+  (`SBL-EAI-04401`) and a type-only body says `SR Type` is required. Siebel's own field
+  names (`SR Type`, `ICMCPU Aborginal`) appear only in its error messages.
+  `SiebelServiceRequestWrite` therefore uses the gateway's names, and a test holds it to the
+  read contract's.
+- **A create needs an `Id`** — the integration component's only user key; `Integration Id`
+  and `SR Number`/`Service Request Number` are not. Without one: `SBL-EAI-04397`. Siebel
+  replaces whatever is sent with the row id it allocates (`1-53MU3WL` → `1-53MU3X7`,
+  `1-MYSS` → `1-53MU3XD`); an *existing* id is refused as a duplicate (`SBL-EAI-04383`),
+  so a POST is a strict insert. `ServiceRequestMapper.CreatePlaceholderId` supplies it.
+- **A create needs the `ListOfSRProspects` container**, even empty (`{}`). Without it the
+  body is "Invalid input" (`SBL-EAI-50243`); with an empty *array* inside it, an empty
+  prospect instance with no user key. The mapper supplies the empty container.
+- `Type` goes before the sub types in the body; `TBD`, which every workflow SR reads for
+  `Are Any Of The Family Members Indigenous`, is not a value the write picklist accepts
+  (`SBL-DAT-00225`); `Primary Organization Id` is accepted and echoed, and the stored SR
+  reads back with the trusted user's default organization (`0-R9NH`) regardless.
+- **The write's answer carries `Link` as one object**, not a read's array;
+  `SiebelLinkListConverter` reads both.
+
+**A directly created SR gets no activity plan, with or without its prospect.** The
+workflow's Application SRs receive "Bus Pass - New Intake" one to two seconds after
+creation (see the bus pass section); `1-53MU3X7` and `1-53MU3XD`, identical in type, sub
+types, status, priority, comm method and office, had no `Activities` and no
+`ActivityPlan` minutes later, and adding their prospects (`1-53MU3XZ`, `1-53MU3Y0`)
+changed nothing. The plan is applied by `ICM Receive Bus Pass Online Request Wrapper WF`,
+not by anything that fires on the SR or the prospect — so replacing the workflow call
+means MySS, or ICM, would have to apply the plan some other way.
+`IcmApi.Console --Mode=direct` creates the SR; `--Mode=srcontact --SrContact:ContactId=…`
+links the matched contact (see [Linking a contact](#linking-a-contact-to-a-service-request));
+`--Mode=prospect --Prospect:Create:Enabled=true` adds the prospect;
+`--Mode=activity --Activity:Create:Enabled=true` adds the workflow's step 01 as a
+stand-alone activity (see [Activities](#activities) for why not as a plan step).
+
 ## The bus pass integration (INT-316)
 
 Two names, two things: **INT-316 is MySS's integration** — the only MySS integration
@@ -697,7 +937,34 @@ set but never their values. `--Mode=case` looks a case up through `ICaseService`
 and `--Case:Type=…` search, ANDed — and prints each case found in full, then the people
 on it with their relationship (`--Case:IncludeContacts=false` skips that;
 `--Case:ShowValues=false` reduces values to presence — SIT is test data, so they print
-by default).
+by default). `--Mode=prospect` reads prospects through `IProspectService`:
+`--Prospect:ServiceRequestId=1-53CJXK6` lists the rows on that SR (the child path),
+`--Prospect:Id=1-53CJXKH` reads one on the standalone path, and
+`--Prospect:ProspectiveContactUId=…` / `--Prospect:Source=…` search there. With
+`--Prospect:Create:Enabled=true --Prospect:Create:ServiceRequestId=<an SR you own>` it
+instead **creates a row** from the committed synthetic `Prospect:Create` values (the PUT
+of [Prospects](#prospects)) and reads the SR's prospects back to say whether the new row
+is listed. `--Mode=srcontact --SrContact:ServiceRequestId=1-53MU3XD` prints the contacts on an SR
+with their relationship and the SR header's contact fields; add
+`--SrContact:ContactId=<a contact's Id>` (with `--SrContact:Relationship=` and
+`--SrContact:IsPrimary=` to override Key player, primary) to **link that contact
+first**. `--Mode=activity --Activity:ServiceRequestId=1-53CJXO6` prints the plans and
+activities on an SR (the events on it), one line per activity, or every field with
+`--Activity:ShowValues=true`; `--Activity:Id=…` reads one, and `--Activity:PlanName=…`
+/ `--Activity:Status=…` / `--Activity:CaseId=…` search. With
+`--Activity:Create:Enabled=true --Activity:Create:ServiceRequestId=<an SR you own>` it
+**creates an activity** from the committed `Activity:Create` values — the workflow's
+step 01, field for field — and reads the SR's plans and activities back.
+`--Mode=raw --Raw:Method=PUT --Raw:Path=data/Prospects/SRProspects/
+--Raw:BodyFile=…` sends any body to any path, which is how the verbs were found. `--Mode=direct` **creates a bus pass service
+request without the workflow** from the committed `Direct` settings, waits
+`Direct:SettleSeconds`, and reads the new SR, its `SRProspects`, `Activities` and
+`ActivityPlan` back beside those of `Direct:ReferenceServiceRequestId`, a workflow-created
+SR — the comparison in [Creating a service request directly](#creating-a-service-request-directly).
+`--Direct:RawBody=true` posts a hand-built body instead, with `--Direct:ChildName`,
+`--Direct:Vocabulary`, `--Direct:ChildId`, `--Direct:ChildServiceRequestId`,
+`--Direct:EmptyChildList` and `--Direct:AttachTo` (a PUT on an existing SR) for varying
+its shape — how the measurements above were made.
 `--Mode=describe --Describe:Resource=ICMContact/ICMContact
 --Describe:OutputFile=…` fetches a business component's OpenAPI document from ICM's
 `describe` endpoint, which is how the files under `docs/integration/` are refreshed. Add
@@ -787,6 +1054,13 @@ things worth watching in the output:
 - No DI extension method (`AddIcmServiceRequestApi`) — that needs
   `Refit.HttpClientFactory`, and the registration shape will be clearer once `MyssApi`
   actually consumes this. The wiring above works in the meantime.
+- A prospect's `Purpose`, `M/M`, `Portal Role` and communication-method picklists are
+  from ICM's field list, not measured value by value; only `Residence/Mailing`,
+  `Man/Boy`, `Dr.`, `Cousin` and `Home Phone` have been written.
+- **A directly created SR gets no activity plan** (see [Creating a service request
+  directly](#creating-a-service-request-directly)); dropping the workflow call needs an
+  answer for that. The SR update path (`UpdateAsync`) is still untested live, as are the
+  SR date fields on a write.
 - Lookup by **BCeID**: the only BCeID field found is on a case's `Contact` child (see
   [Case lookup](#case-lookup)), which cannot be searched — so a BCeID can be *confirmed*
   once the case is known, but not used to *find* it. Needs an ICM-side answer.

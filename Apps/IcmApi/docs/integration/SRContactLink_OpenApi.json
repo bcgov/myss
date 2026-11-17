@@ -1,0 +1,1068 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "SblDtServiceRequestICMContact",
+    "description" : "OpenAPI specification for SiebelData - API : data/ServiceRequest/ServiceRequest/1-53CJXK6/ICMContact",
+    "contact" : {
+      "email" : "sample@sample.com"
+    },
+    "version" : "1.0"
+  },
+  "externalDocs" : {
+    "description" : "OpenAPI",
+    "url" : "https://openapis.org"
+  },
+  "servers" : [ {
+    "url" : "https://sit2-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  }, {
+    "url" : "http://sit2-ai2.icm.gov.bc.ca:8443/gov/v1.0"
+  } ],
+  "tags" : [ {
+    "name" : "data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/"
+  }, {
+    "name" : "data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/{icmcontact_key}/"
+  } ],
+  "paths" : {
+    "/data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/" : {
+      "get" : {
+        "tags" : [ "data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/" ],
+        "operationId" : "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact__get",
+        "parameters" : [ {
+          "name" : "servicerequest_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "uniformresponse",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y" ]
+          }
+        }, {
+          "name" : "searchspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sortspec",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "PageSize",
+          "in" : "query",
+          "schema" : {
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "StartRowNum",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "default" : 0
+          }
+        }, {
+          "name" : "pagination",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Y",
+            "enum" : [ "Y", "N" ]
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "recordcountneeded",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "ExecutionMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "BiDirectional"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_get_all_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_get_all_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/" ],
+        "operationId" : "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact__put",
+        "parameters" : [ {
+          "name" : "servicerequest_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      }
+    },
+    "/data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/{icmcontact_key}/" : {
+      "get" : {
+        "tags" : [ "data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/{icmcontact_key}/" ],
+        "operationId" : "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_{icmcontact_key}__get",
+        "parameters" : [ {
+          "name" : "servicerequest_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "icmcontact_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "childlinks",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "fields",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "ViewMode",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "Sales Rep"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_get_one_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_get_one_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      },
+      "put" : {
+        "tags" : [ "data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/{icmcontact_key}/" ],
+        "operationId" : "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_{icmcontact_key}__put",
+        "parameters" : [ {
+          "name" : "servicerequest_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "icmcontact_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "excludeEmptyFieldsInResponse",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : "false"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_"
+              }
+            },
+            "application/xml" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_put_post_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_put_post_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ],
+        "x-codegen-request-body-name" : "body"
+      },
+      "delete" : {
+        "tags" : [ "data/ServiceRequest/ServiceRequest/{servicerequest_key}/ICMContact/{icmcontact_key}/" ],
+        "operationId" : "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_{icmcontact_key}__delete",
+        "parameters" : [ {
+          "name" : "servicerequest_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "icmcontact_key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful Operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_del_response"
+                }
+              },
+              "application/xml" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_del_response"
+                }
+              }
+            }
+          },
+          "204" : {
+            "description" : "No Resource Found",
+            "content" : { }
+          },
+          "304" : {
+            "description" : "Not Modified",
+            "content" : { }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : { }
+          },
+          "404" : {
+            "description" : "There is no data for the requested resource",
+            "content" : { }
+          },
+          "500" : {
+            "description" : "Internal Server Error",
+            "content" : { }
+          }
+        },
+        "security" : [ {
+          "basicAuth" : [ ],
+          "oAuth2.0" : [ ]
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_" : {
+        "required" : [ "Created", "Created By", "Updated", "Updated By" ],
+        "type" : "object",
+        "properties" : {
+          "Created" : {
+            "title" : "Created",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By" : {
+            "title" : "Created By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Updated" : {
+            "title" : "Updated",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Updated By" : {
+            "title" : "Updated By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICM Created By" : {
+            "title" : "ICM Created By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Updated By" : {
+            "title" : "ICM Updated By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Id" : {
+            "title" : "SR Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "SSA Primary Field" : {
+            "title" : "SSA Primary Field",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "SR Subject Flag" : {
+            "title" : "SR Subject Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Aboriginal Calc" : {
+            "title" : "Aboriginal Calc",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Last Name" : {
+            "title" : "Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "First Name" : {
+            "title" : "First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Middle Name" : {
+            "title" : "Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Relationship" : {
+            "title" : "SR Relationship",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Birth Date" : {
+            "title" : "Birth Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Age" : {
+            "title" : "Age",
+            "type" : "string",
+            "x-siebel-precision" : "16",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "16",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_INTEGER"
+          },
+          "M/F" : {
+            "title" : "M/F",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Start" : {
+            "title" : "SR Start",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "SR End" : {
+            "title" : "SR End",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "ICM BCSC DID" : {
+            "title" : "ICM BCSC DID",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          }
+        }
+      },
+      "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_get_one_response" : {
+        "type" : "object",
+        "properties" : {
+          "Created" : {
+            "title" : "Created",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Created By" : {
+            "title" : "Created By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "Updated" : {
+            "title" : "Updated",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "Updated By" : {
+            "title" : "Updated By",
+            "type" : "string",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "ICM Created By" : {
+            "title" : "ICM Created By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "ICM Updated By" : {
+            "title" : "ICM Updated By",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Id" : {
+            "title" : "SR Id",
+            "type" : "string",
+            "x-maxLength" : "15",
+            "x-siebel-datatype" : "DTYPE_ID"
+          },
+          "SSA Primary Field" : {
+            "title" : "SSA Primary Field",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "SR Subject Flag" : {
+            "title" : "SR Subject Flag",
+            "type" : "string",
+            "x-maxLength" : "1",
+            "x-siebel-datatype" : "DTYPE_BOOL"
+          },
+          "Aboriginal Calc" : {
+            "title" : "Aboriginal Calc",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Last Name" : {
+            "title" : "Last Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "First Name" : {
+            "title" : "First Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Middle Name" : {
+            "title" : "Middle Name",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "50",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Relationship" : {
+            "title" : "SR Relationship",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Birth Date" : {
+            "title" : "Birth Date",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_DATE"
+          },
+          "Age" : {
+            "title" : "Age",
+            "type" : "string",
+            "x-siebel-precision" : "16",
+            "x-siebel-readOnly" : "true",
+            "x-maxLength" : "16",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_INTEGER"
+          },
+          "M/F" : {
+            "title" : "M/F",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "30",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "SR Start" : {
+            "title" : "SR Start",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "SR End" : {
+            "title" : "SR End",
+            "type" : "string",
+            "x-maxLength" : "32",
+            "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+          },
+          "ICM BCSC DID" : {
+            "title" : "ICM BCSC DID",
+            "type" : "string",
+            "x-siebel-precision" : "0",
+            "x-maxLength" : "255",
+            "x-siebel-scale" : "0",
+            "x-siebel-datatype" : "DTYPE_TEXT"
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_put_post_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "Id" : {
+                "title" : "Id",
+                "type" : "string",
+                "x-siebel-readOnly" : "true",
+                "x-maxLength" : "15",
+                "x-siebel-datatype" : "DTYPE_ID"
+              },
+              "Icmcontact" : {
+                "type" : "object",
+                "properties" : {
+                  "Id" : {
+                    "type" : "object"
+                  },
+                  "Created" : {
+                    "title" : "Created",
+                    "type" : "string",
+                    "x-siebel-readOnly" : "true",
+                    "x-maxLength" : "32",
+                    "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+                  },
+                  "Created By" : {
+                    "title" : "Created By",
+                    "type" : "string",
+                    "x-siebel-readOnly" : "true",
+                    "x-maxLength" : "15",
+                    "x-siebel-datatype" : "DTYPE_ID"
+                  },
+                  "Updated" : {
+                    "title" : "Updated",
+                    "type" : "string",
+                    "x-siebel-readOnly" : "true",
+                    "x-maxLength" : "32",
+                    "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+                  },
+                  "Updated By" : {
+                    "title" : "Updated By",
+                    "type" : "string",
+                    "x-siebel-readOnly" : "true",
+                    "x-maxLength" : "15",
+                    "x-siebel-datatype" : "DTYPE_ID"
+                  },
+                  "ICM Created By" : {
+                    "title" : "ICM Created By",
+                    "type" : "string",
+                    "x-siebel-precision" : "0",
+                    "x-siebel-readOnly" : "true",
+                    "x-maxLength" : "50",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_TEXT"
+                  },
+                  "ICM Updated By" : {
+                    "title" : "ICM Updated By",
+                    "type" : "string",
+                    "x-siebel-precision" : "0",
+                    "x-siebel-readOnly" : "true",
+                    "x-maxLength" : "50",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_TEXT"
+                  },
+                  "SR Id" : {
+                    "title" : "SR Id",
+                    "type" : "string",
+                    "x-maxLength" : "15",
+                    "x-siebel-datatype" : "DTYPE_ID"
+                  },
+                  "SSA Primary Field" : {
+                    "title" : "SSA Primary Field",
+                    "type" : "string",
+                    "x-maxLength" : "1",
+                    "x-siebel-datatype" : "DTYPE_BOOL"
+                  },
+                  "SR Subject Flag" : {
+                    "title" : "SR Subject Flag",
+                    "type" : "string",
+                    "x-maxLength" : "1",
+                    "x-siebel-datatype" : "DTYPE_BOOL"
+                  },
+                  "Aboriginal Calc" : {
+                    "title" : "Aboriginal Calc",
+                    "type" : "string",
+                    "x-siebel-precision" : "0",
+                    "x-maxLength" : "255",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_TEXT"
+                  },
+                  "Last Name" : {
+                    "title" : "Last Name",
+                    "type" : "string",
+                    "x-siebel-precision" : "0",
+                    "x-maxLength" : "50",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_TEXT"
+                  },
+                  "First Name" : {
+                    "title" : "First Name",
+                    "type" : "string",
+                    "x-siebel-precision" : "0",
+                    "x-maxLength" : "50",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_TEXT"
+                  },
+                  "Middle Name" : {
+                    "title" : "Middle Name",
+                    "type" : "string",
+                    "x-siebel-precision" : "0",
+                    "x-maxLength" : "50",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_TEXT"
+                  },
+                  "SR Relationship" : {
+                    "title" : "SR Relationship",
+                    "type" : "string",
+                    "x-siebel-precision" : "0",
+                    "x-maxLength" : "30",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_TEXT"
+                  },
+                  "Birth Date" : {
+                    "title" : "Birth Date",
+                    "type" : "string",
+                    "x-maxLength" : "32",
+                    "x-siebel-datatype" : "DTYPE_DATE"
+                  },
+                  "Age" : {
+                    "title" : "Age",
+                    "type" : "string",
+                    "x-siebel-precision" : "16",
+                    "x-siebel-readOnly" : "true",
+                    "x-maxLength" : "16",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_INTEGER"
+                  },
+                  "M/F" : {
+                    "title" : "M/F",
+                    "type" : "string",
+                    "x-siebel-precision" : "0",
+                    "x-maxLength" : "30",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_TEXT"
+                  },
+                  "SR Start" : {
+                    "title" : "SR Start",
+                    "type" : "string",
+                    "x-maxLength" : "32",
+                    "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+                  },
+                  "SR End" : {
+                    "title" : "SR End",
+                    "type" : "string",
+                    "x-maxLength" : "32",
+                    "x-siebel-datatype" : "DTYPE_UTCDATETIME"
+                  },
+                  "ICM BCSC DID" : {
+                    "title" : "ICM BCSC DID",
+                    "type" : "string",
+                    "x-siebel-precision" : "0",
+                    "x-maxLength" : "255",
+                    "x-siebel-scale" : "0",
+                    "x-siebel-datatype" : "DTYPE_TEXT"
+                  },
+                  "Link" : {
+                    "type" : "object",
+                    "properties" : {
+                      "rel" : {
+                        "title" : "rel",
+                        "type" : "string"
+                      },
+                      "href" : {
+                        "title" : "href",
+                        "type" : "string"
+                      },
+                      "name" : {
+                        "title" : "name",
+                        "type" : "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "Link" : {
+                "type" : "object",
+                "properties" : {
+                  "rel" : {
+                    "title" : "rel",
+                    "type" : "string"
+                  },
+                  "href" : {
+                    "title" : "href",
+                    "type" : "string"
+                  },
+                  "name" : {
+                    "title" : "name",
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_get_all_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_get_one_response"
+            }
+          },
+          "Link" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "rel" : {
+                  "title" : "rel",
+                  "type" : "string"
+                },
+                "href" : {
+                  "title" : "href",
+                  "type" : "string"
+                },
+                "name" : {
+                  "title" : "name",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "data_ServiceRequest_ServiceRequest__servicerequest_key__ICMContact_del_response" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "Id" : {
+                "title" : "Id",
+                "type" : "string"
+              },
+              "operation" : {
+                "title" : "operation",
+                "type" : "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "basicAuth" : {
+        "type" : "http",
+        "scheme" : "basic"
+      },
+      "oAuth2.0" : {
+        "type" : "oauth2",
+        "flows" : {
+          "implicit" : {
+            "authorizationUrl" : "http://openAPI.io/",
+            "scopes" : {
+              "write:" : "modify",
+              "read:" : "read only"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-original-swagger-version" : "3.0"
+}

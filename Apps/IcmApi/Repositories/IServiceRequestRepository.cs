@@ -102,13 +102,43 @@ namespace Icm.Api.Repositories
             ServiceRequestInput input,
             CancellationToken cancellationToken = default);
 
+        /// <summary>Reads the contacts on a service request, with their relationship to it.</summary>
+        /// <param name="bearerToken">The caller's access token.</param>
+        /// <param name="serviceRequestKey">The Siebel row id of the service request.</param>
+        /// <param name="options">Visibility, or null for the defaults. Service requests need <c>Organization</c>.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Every contact on the request, ICM's pages followed; empty when there are none the caller can see.</returns>
+        /// <exception cref="Refit.ApiException">ICM answered with a failure status.</exception>
+        /// <exception cref="IcmResponseException">ICM reported success without a usable body, or never reported a last page.</exception>
+        Task<System.Collections.Generic.IReadOnlyList<ServiceRequestContact>> GetContactsAsync(
+            string bearerToken,
+            string serviceRequestKey,
+            ServiceRequestReadOptions? options = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Links an existing contact to a service request. A primary link also sets the
+        /// request's <c>Primary Contact Id</c> and fills its header's names (MEASURED 2026-09-29).
+        /// </summary>
+        /// <param name="bearerToken">The caller's access token.</param>
+        /// <param name="serviceRequestKey">The Siebel row id of the service request.</param>
+        /// <param name="link">The contact, and the relationship.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The service request's row id, as ICM echoed it.</returns>
+        /// <exception cref="System.ArgumentException">The contact id or the key is blank. Thrown before anything is sent.</exception>
+        /// <exception cref="Refit.ApiException">ICM answered with a failure status.</exception>
+        /// <exception cref="IcmResponseException">ICM reported success without a usable body.</exception>
+        Task<string> LinkContactAsync(
+            string bearerToken,
+            string serviceRequestKey,
+            ServiceRequestContactLink link,
+            CancellationToken cancellationToken = default);
+
         /// <summary>Deletes the service request identified by key.</summary>
         /// <param name="bearerToken">The caller's access token.</param>
-        /// <param name="serviceRequestKey">The ICM row id of the service request.</param>
+        /// <param name="serviceRequestKey">The Siebel row id of the service request.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>
-        /// True when a record was deleted; false when there was nothing to delete.
-        /// </returns>
+        /// <returns>True when a record was deleted; false when there was nothing to delete.</returns>
         Task<bool> DeleteAsync(
             string bearerToken,
             string serviceRequestKey,

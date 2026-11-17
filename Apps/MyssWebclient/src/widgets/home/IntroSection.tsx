@@ -1,8 +1,10 @@
 // Introductory copy describing what My Self Serve is (lifted from prod home).
 import { Link } from "@bcgov/design-system-react-components";
+import { useFeature } from "@/hooks/useFeatures";
 import { paths } from "@/routes/paths";
 
 export default function IntroSection() {
+    const estimator = useFeature("EligibilityEstimator");
     return (
         <div>
             <p>
@@ -14,19 +16,23 @@ export default function IntroSection() {
                 Call us at <a href="tel:+18668660800">1-866-866-0800</a> {" "}
                 if you need help applying for or accessing My Self Serve.
             </p>
-            <p>
-                <b>Not sure if you're eligible for assistance?</b><br />
-                Check your eligibility without logging in.
-            </p>
-            <p>
-                <Link
-                    href={paths.eligibilityEstimator}
-                    isButton
-                    buttonVariant="secondary"
-                >
-                    Check your eligibility
-                </Link>
-            </p>
+            {estimator && (
+                <>
+                    <p>
+                        <b>Not sure if you're eligible for assistance?</b><br />
+                        Check your eligibility without logging in.
+                    </p>
+                    <p>
+                        <Link
+                            href={paths.eligibilityEstimator}
+                            isButton
+                            buttonVariant="secondary"
+                        >
+                            Check your eligibility
+                        </Link>
+                    </p>
+                </>
+            )}
         </div>
     );
 }

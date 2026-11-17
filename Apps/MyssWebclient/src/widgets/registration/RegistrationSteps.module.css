@@ -1,0 +1,74 @@
+/* The account creation steps: a marker per step joined by a thin line, as in
+   the design. Colours are the design system's: success for a step done, the
+   link blue for the current one. */
+.steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.step {
+    align-items: center;
+    display: flex;
+    gap: var(--layout-margin-small);
+    position: relative;
+}
+
+/* The line from one marker down to the next. */
+.step:not(:last-child)::after {
+    border-left: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    content: "";
+    height: var(--layout-margin-medium);
+    left: calc(var(--icons-size-medium) / 2);
+    position: absolute;
+    top: 100%;
+}
+
+.marker {
+    flex: none;
+    height: var(--icons-size-medium);
+    width: var(--icons-size-medium);
+}
+
+.completeRing {
+    fill: none;
+    stroke: var(--icons-color-success);
+    stroke-width: 2;
+}
+
+.check {
+    fill: none;
+    stroke: var(--icons-color-success);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.5;
+}
+
+.currentRing {
+    fill: none;
+    stroke: var(--icons-color-link);
+    stroke-width: 2;
+}
+
+.currentDot {
+    fill: var(--icons-color-link);
+}
+
+.upcomingRing {
+    fill: none;
+    stroke: var(--surface-color-border-default);
+    stroke-width: 2;
+}
+
+.visuallyHidden {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}

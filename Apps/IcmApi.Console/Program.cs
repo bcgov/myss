@@ -144,25 +144,42 @@ namespace Icm.Api.ConsoleApp
 
             if (settings.IsContactMode)
             {
-                IContactService contacts = new ContactService(
-                    new ContactRepository(icmClient, settings.Icm.TrustedUserName),
-                    tokenService,
-                    credentials);
-                return await SearchContactsAsync(contacts, settings);
+                return await ContactSearch.RunAsync(icmClient, tokenService, credentials, settings);
             }
 
             if (settings.IsCaseMode)
             {
-                ICaseService cases = new CaseService(
-                    new CaseRepository(icmClient, settings.Icm.TrustedUserName),
-                    tokenService,
-                    credentials);
-                return await CaseLookup.RunAsync(cases, settings);
+                return await CaseLookup.RunAsync(icmClient, tokenService, credentials, settings);
             }
 
             if (settings.IsDescribeMode)
             {
                 return await RawIcmReader.DescribeAsync(icmClient, tokenService, credentials, settings);
+            }
+
+            if (settings.IsProspectMode)
+            {
+                return await ProspectLookup.RunAsync(icmClient, tokenService, credentials, settings);
+            }
+
+            if (settings.IsDirectMode)
+            {
+                return await DirectBusPass.RunAsync(icmClient, tokenService, credentials, serviceRequests, settings);
+            }
+
+            if (settings.IsRawMode)
+            {
+                return await RawRequest.RunAsync(icmClient, tokenService, credentials, settings);
+            }
+
+            if (settings.IsActivityMode)
+            {
+                return await ActivityLookup.RunAsync(icmClient, tokenService, credentials, settings);
+            }
+
+            if (settings.IsSrContactMode)
+            {
+                return await ServiceRequestContactLookup.RunAsync(icmClient, tokenService, credentials, settings);
             }
 
             int searchResult = await SearchAsync(serviceRequests, settings);
@@ -202,28 +219,11 @@ namespace Icm.Api.ConsoleApp
             Console.WriteLine(new string('-', 60));
             Console.WriteLine();
 
-            string query = "uniformresponse=Y";
-            if (!string.IsNullOrWhiteSpace(settings.Query.ViewMode))
-            {
-                query += $"&ViewMode={Uri.EscapeDataString(settings.Query.ViewMode)}";
-            }
-
-            if (settings.Query.ExcludeEmptyFields is { } exclude)
-            {
-                query += $"&excludeEmptyFieldsInResponse={(exclude ? "true" : "false")}";
-            }
-
-            // Absolute, appended to the configured base URL the way Refit appends its
-            // routes — HttpClient's relative-URI resolution would drop the base's last
-            // segment (/gov/v1.0 → /gov/). The key and child name are path segments, not
-            // one encoded value: the gateway answers 400 to %2F.
-            string path = $"{settings.Icm.BaseUrl!.TrimEnd('/')}/data/ServiceRequest/ServiceRequest/{Uri.EscapeDataString(key)}/{Uri.EscapeDataString(child)}?{query}";
-
             Stopwatch stopwatch = Stopwatch.StartNew();
             try
             {
-                (System.Net.HttpStatusCode status, string body) =
-                    await RawIcmReader.GetAsync(icmClient, tokenService, credentials, settings, path);
+                (System.Net.HttpStatusCode status, string body) = await RawIcmReader.ReadChildAsync(
+                    icmClient, tokenService, credentials, settings, key, child, settings.Query.ViewMode, settings.Query.ExcludeEmptyFields);
                 stopwatch.Stop();
 
                 if ((int)status is < 200 or > 299)
@@ -262,69 +262,6 @@ namespace Icm.Api.ConsoleApp
         /// Contact mode: search contacts through the library — the hand-run check that the
         /// search expression, the field list and the mapping hold against a real ICM.
         /// </summary>
-        private static async Task<int> SearchContactsAsync(IContactService contacts, ConsoleSettings settings)
-        {
-            // Which criteria, never their values: every one of them identifies a person.
-            Console.WriteLine($"Searching contacts on {string.Join(", ", settings.Contact.CriteriaSet)}...");
-            Console.WriteLine();
-
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            try
-            {
-                ContactPage page = await contacts.SearchAsync(settings.Contact.ToQuery());
-                stopwatch.Stop();
-
-                Console.WriteLine(
-                    $"{page.Items.Count} contact(s) on this page, "
-                    + $"{page.TotalCount?.ToString(CultureInfo.InvariantCulture) ?? "unknown"} in total, "
-                    + $"in {stopwatch.ElapsedMilliseconds} ms.");
-                if (page.Items.Count == 0)
-                {
-                    Console.WriteLine();
-                    Console.WriteLine(
-                        "ICM reports \"no such contact\" and \"not yours to see\" the same way, so this is "
-                        + "either no match or a visibility question — try "
-                        + "--Contact:ViewMode=Organization before assuming the former.");
-                }
-
-                foreach (Contact contact in page.Items)
-                {
-                    Console.WriteLine();
-                    ContactPrinter.Write(contact, settings.Contact.ShowValues);
-                }
-
-                return 0;
-            }
-            catch (ArgumentException exception)
-            {
-                // The library refused the query before sending anything. Its message
-                // names the criterion and never the value.
-                stopwatch.Stop();
-                Console.Error.WriteLine($"The contact search is not usable: {exception.Message}");
-                return 1;
-            }
-            catch (ApiException exception)
-            {
-                stopwatch.Stop();
-                return Fail(
-                    stopwatch,
-                    $"ICM returned {(int)exception.StatusCode} {exception.StatusCode}.",
-                    Explain(exception),
-                    responseBody: exception.Content);
-            }
-            catch (ApiRequestException exception)
-            {
-                stopwatch.Stop();
-                return FailUnreachable(stopwatch, exception, "ICM");
-            }
-            catch (IcmResponseException exception)
-            {
-                stopwatch.Stop();
-                return Fail(
-                    stopwatch, "ICM reported success but the response was not usable.", exception.Message);
-            }
-        }
-
         private static readonly System.Text.Json.JsonSerializerOptions PrettyJsonOptions = new() { WriteIndented = true };
 
         internal static string PrettyJson(string body)
@@ -697,15 +634,7 @@ namespace Icm.Api.ConsoleApp
 
         private static void WriteHeader(ConsoleSettings settings, OAuthClientCredentials credentials)
         {
-            Console.WriteLine(settings.IsBusPassMode
-                ? "ICM bus pass submission (transaction INT-316) + read-back"
-                : settings.IsContactMode
-                    ? "ICM contact search"
-                    : settings.IsCaseMode
-                        ? "ICM case lookup"
-                        : settings.IsDescribeMode
-                            ? "ICM describe"
-                            : "ICM Service Request query");
+            Console.WriteLine(Title(settings));
             Console.WriteLine(new string('-', 60));
             Console.WriteLine($"  Mode         {settings.Mode}");
             Console.WriteLine($"  ICM          {settings.Icm.BaseUrl}");
@@ -739,6 +668,26 @@ namespace Icm.Api.ConsoleApp
                 Console.WriteLine($"  Resource     {settings.Describe.Resource}");
                 Console.WriteLine($"  Output file  {settings.Describe.OutputFile ?? "(none - printed)"}");
             }
+            else if (settings.IsProspectMode)
+            {
+                ProspectLookup.WriteHeader(settings);
+            }
+            else if (settings.IsDirectMode)
+            {
+                DirectBusPass.WriteHeader(settings);
+            }
+            else if (settings.IsRawMode)
+            {
+                RawRequest.WriteHeader(settings);
+            }
+            else if (settings.IsActivityMode)
+            {
+                ActivityLookup.WriteHeader(settings);
+            }
+            else if (settings.IsSrContactMode)
+            {
+                ServiceRequestContactLookup.WriteHeader(settings);
+            }
             else
             {
                 // The query settings, which a bus pass run's read-back uses too.
@@ -759,6 +708,56 @@ namespace Icm.Api.ConsoleApp
 
             // The secret is never printed, not even partially. There is nothing this tool
             // could tell you with it that is worth it appearing in a terminal scrollback.
+        }
+
+        private static string Title(ConsoleSettings settings)
+        {
+            if (settings.IsBusPassMode)
+            {
+                return "ICM bus pass submission (transaction INT-316) + read-back";
+            }
+
+            if (settings.IsContactMode)
+            {
+                return "ICM contact search";
+            }
+
+            if (settings.IsCaseMode)
+            {
+                return "ICM case lookup";
+            }
+
+            if (settings.IsDescribeMode)
+            {
+                return "ICM describe";
+            }
+
+            if (settings.IsProspectMode)
+            {
+                return ProspectLookup.Title(settings);
+            }
+
+            if (settings.IsDirectMode)
+            {
+                return DirectBusPass.Title(settings);
+            }
+
+            if (settings.IsRawMode)
+            {
+                return "ICM raw request";
+            }
+
+            if (settings.IsActivityMode)
+            {
+                return ActivityLookup.Title(settings);
+            }
+
+            if (settings.IsSrContactMode)
+            {
+                return ServiceRequestContactLookup.Title(settings);
+            }
+
+            return "ICM Service Request query";
         }
 
         /// <summary>Turns a status code into the thing most likely to have caused it.</summary>

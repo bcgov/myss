@@ -1,6 +1,7 @@
 namespace Myss.Api.Tests.TestDoubles
 {
     using Myss.Api.Services;
+    using Myss.Data.Platform;
 
     /// <summary>
     /// Fake <see cref="ICorrelationIdAccessor"/> with a scripted id.

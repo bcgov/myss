@@ -1,11 +1,12 @@
 import { API_URL } from "@/constants";
-import { authHeaders } from "@/auth/accessToken";
+import { authHeaders } from "@myss/web-common/auth";
 import { readValidationErrors, type FormValidationError } from "@/api/forms";
-import type { PhoneType } from "@/lib/phone";
+import type { PhoneType } from "@myss/formio/phone";
 
 // Calls to the account API (/v1/account): the citizen's Account Info
 // (MYSS-271) and PIN (MYSS-258). Always the caller's own account. Responses come wrapped in the
-// API's payload envelope.
+// API's payload envelope. The PIN reset by email (MYSS-36) lives under
+// /v1/pin-reset: asking for the link is signed in, using it is anonymous.
 //
 // Not in the generated client yet, hence the raw fetches with authHeaders().
 // Swap for the SDK after regenerating the schema.
@@ -29,8 +30,12 @@ export interface AccountPayload {
   clientName: string;
   /** Other people on the case; a placeholder until MIS is connected. */
   familyMembers: string[];
-  /** From registration. Read-only on this page. */
+  /** The address in use: from registration, or the last verified change. */
   email: string;
+  /** False only while the address from registration awaits its link (MYSS-305). */
+  emailVerified: boolean;
+  /** A change waiting for its link; `email` stays in use until then. */
+  pendingEmail?: string | null;
   phones: AccountPhone[];
   /** One line per entry; a placeholder until MIS is connected. */
   mailingAddressLines: string[];
@@ -82,6 +87,18 @@ export class AccountRequestError extends Error {
 /** The keyword of a 429 while Change PIN is locked after wrong PINs. */
 export const PIN_LOCKED_KEYWORD = "ACCOUNT.PIN.LOCKED";
 
+/** The keyword of a 410 for a reset link that is unknown, used, or expired. */
+export const PIN_RESET_LINK_INVALID_KEYWORD = "ACCOUNT.PIN_RESET.LINK_INVALID";
+
+/** The keyword of a 429 when a reset email went out too recently to send another. */
+export const PIN_RESET_TOO_SOON_KEYWORD = "ACCOUNT.PIN_RESET.TOO_SOON";
+
+/** The keyword of a 429 when a verification email went out too recently (MYSS-305). */
+export const EMAIL_TOO_SOON_KEYWORD = "ACCOUNT.EMAIL.TOO_SOON";
+
+/** The keyword of a 410 for a verification link that is unknown, used, replaced, or expired. */
+export const EMAIL_LINK_INVALID_KEYWORD = "ACCOUNT.EMAIL.LINK_INVALID";
+
 async function readProblem(res: Response): Promise<AccountProblem> {
   try {
     const body = (await res.json()) as AccountProblem;
@@ -95,6 +112,15 @@ async function readProblem(res: Response): Promise<AccountProblem> {
   }
 }
 
+/** Throws an AccountRequestError for anything but a 2xx. */
+async function ensureOk(res: Response): Promise<void> {
+  if (res.ok) return;
+  if (res.status === 422) {
+    throw new AccountRequestError(422, await readValidationErrors(res));
+  }
+  throw new AccountRequestError(res.status, [], await readProblem(res));
+}
+
 async function send(path: string, init?: RequestInit): Promise<AccountPayload> {
   const res = await fetch(`${API_URL}/v1/account${path}`, {
     ...init,
@@ -103,12 +129,7 @@ async function send(path: string, init?: RequestInit): Promise<AccountPayload> {
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
     },
   });
-  if (!res.ok) {
-    if (res.status === 422) {
-      throw new AccountRequestError(422, await readValidationErrors(res));
-    }
-    throw new AccountRequestError(res.status, [], await readProblem(res));
-  }
+  await ensureOk(res);
   const body = (await res.json()) as { payload: AccountPayload };
   return body.payload;
 }
@@ -147,4 +168,114 @@ export function updateNotificationPreferences(
     method: "PUT",
     body: JSON.stringify({ monthlyReportReminder }),
   });
+}
+
+/** Mirrors PinResetRequestedModel: when the emailed link stops working. */
+export interface PinResetRequested {
+  expiresAt: string;
+}
+
+/**
+ * Emails the caller a single-use link to reset their PIN (MYSS-36), at the
+ * address they registered with. Basic BCeID only; a new request replaces any
+ * earlier link.
+ */
+export async function requestPinReset(): Promise<PinResetRequested> {
+  const res = await fetch(`${API_URL}/v1/pin-reset/requests`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  await ensureOk(res);
+  const body = (await res.json()) as { payload: PinResetRequested };
+  return body.payload;
+}
+
+/** The body of a reset from the emailed link. */
+export interface ResetPinInput {
+  token: string;
+  newPin: string;
+  confirmPin: string;
+}
+
+/**
+ * Sets a new PIN from the emailed link and uses the link up. Anonymous: the
+ * token is the credential, so no sign-in token is sent.
+ */
+export async function resetPin(input: ResetPinInput): Promise<void> {
+  const res = await fetch(`${API_URL}/v1/pin-reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  await ensureOk(res);
+}
+
+/**
+ * Changes the email address (MYSS-305). The new one waits as `pendingEmail`
+ * and is emailed a link; `email` stays in use until the link is followed.
+ */
+export function changeEmail(email: string): Promise<AccountPayload> {
+  return send("/email", {
+    method: "PUT",
+    body: JSON.stringify({ email }),
+  });
+}
+
+/** Emails a new link for the address waiting to be verified. */
+export function resendEmailVerification(): Promise<AccountPayload> {
+  return send("/email/verification-requests", { method: "POST" });
+}
+
+/** Drops a pending email change; the address in use stays. */
+export function cancelEmailChange(): Promise<AccountPayload> {
+  return send("/email/pending", { method: "DELETE" });
+}
+
+/**
+ * Follows an emailed verification link. Anonymous: the token is the
+ * credential, so no sign-in token is sent.
+ */
+export async function verifyEmail(token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/v1/email-verification`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  await ensureOk(res);
+}
+
+/** Mirrors RegistrationEmailModel: the address registration is proving (MYSS-295). */
+export interface RegistrationEmail {
+  /** The address a link was sent to; null before Step 2 has asked for one. */
+  email?: string | null;
+  verified: boolean;
+}
+
+/**
+ * Registration's Step 2 (MYSS-295): emails a link to prove `email` before the
+ * account exists. An address already proven in this registration is not sent
+ * another. Needs the sign-in, not a profile.
+ */
+export async function requestRegistrationEmail(
+  email: string,
+): Promise<RegistrationEmail> {
+  const res = await fetch(
+    `${API_URL}/v1/registration/email-verification-requests`,
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    },
+  );
+  await ensureOk(res);
+  return ((await res.json()) as { payload: RegistrationEmail }).payload;
+}
+
+/** Whether the address registration is proving has been verified yet. */
+export async function getRegistrationEmail(): Promise<RegistrationEmail> {
+  const res = await fetch(`${API_URL}/v1/registration/email-verification`, {
+    headers: authHeaders(),
+  });
+  await ensureOk(res);
+  return ((await res.json()) as { payload: RegistrationEmail }).payload;
 }

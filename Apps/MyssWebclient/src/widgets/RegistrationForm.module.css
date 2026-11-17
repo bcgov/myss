@@ -1,8 +1,32 @@
 .actions {
-  border-top: var(--layout-border-width-small) solid var(--surface-color-border-default);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--layout-margin-small);
-  margin-top: var(--layout-margin-medium);
-  padding-top: var(--layout-padding-medium);
+    border-top: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+    margin-top: var(--layout-margin-medium);
+    padding-top: var(--layout-padding-medium);
+}
+
+/* The steps above the current step, as in the design (MYSS-295). */
+.registration {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-large);
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+}
+
+.step h2,
+.step h3 {
+    margin: 0;
+}
+
+/* Hidden steps stay mounted (Step 1 keeps its answers) but take no space. */
+.step[hidden] {
+    display: none;
 }

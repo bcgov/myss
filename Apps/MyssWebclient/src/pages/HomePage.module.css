@@ -108,9 +108,16 @@
 @media (max-width: 576px) {
     .introBandContent,
     .calendarCol,
-    .faqRow,
-    .aboutSection {
+    .faqRow {
         padding-left: var(--layout-padding-medium);
         padding-right: var(--layout-padding-medium);
+    }
+
+    /* These sit inside main, whose padding is already the gutter. */
+    .resourcesSection h2,
+    .resourcesRow,
+    .aboutSection {
+        padding-left: 0;
+        padding-right: 0;
     }
 }

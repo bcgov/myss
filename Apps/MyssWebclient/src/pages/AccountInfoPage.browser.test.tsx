@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { userEvent } from "@vitest/browser/context";
+import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccountPayload, PhoneInput } from "@/api/account";
-import { phoneDigits } from "@/lib/phone";
+import { loadPageStyles } from "@/testing/pageStyles";
+import { phoneDigits } from "@myss/formio/phone";
 import AccountInfoPage from "./AccountInfoPage";
 
 // Account Info (MYSS-271, PIN management MYSS-258) against a stand-in for the
@@ -19,6 +21,8 @@ function account(overrides: Partial<AccountPayload> = {}): AccountPayload {
     clientName: "Alex Deer",
     familyMembers: ["FAMILY_MEMBERS_PLACEHOLDER"],
     email: "alex@example.com",
+    emailVerified: true,
+    pendingEmail: null,
     phones: [{ number: "2505550123", type: "Home" }],
     mailingAddressLines: ["MAILING_ADDRESS_PLACEHOLDER"],
     monthlyReportReminder: false,
@@ -35,6 +39,15 @@ interface Stub {
   nextWrite?: Answer;
   /** A canned answer for the read. */
   read?: Answer;
+  /** The answer to a PIN reset request (MYSS-36); a sent email by default. */
+  resetRequest?: Answer;
+  /** A canned answer for the next email call (MYSS-305); consumed once. */
+  nextEmail?: Answer;
+  /**
+   * The feature flags `GET /v1/features` answers with. Unset, the call fails,
+   * and a flag that cannot be read counts as on.
+   */
+  features?: Record<string, boolean>;
 }
 
 function json(status: number, body: unknown) {
@@ -50,6 +63,40 @@ function stubApi(stub: Stub) {
     const url = String(input);
     const method = init?.method ?? "GET";
 
+    if (url.endsWith("/v1/pin-reset/requests") && method === "POST") {
+      writes.push({ route: "pin-reset", body: null });
+      const answer = stub.resetRequest ?? {
+        status: 200,
+        body: { payload: { expiresAt: "2026-10-20T23:45:00Z" } },
+      };
+      return json(answer.status, answer.body);
+    }
+    if (url.endsWith("/v1/features") && stub.features) {
+      return json(200, { payload: stub.features });
+    }
+    // The email change, resend and cancel (MYSS-305), behaving as the API
+    // does: a verified address waits as pending, an unverified one is replaced.
+    const emailRoute =
+      /\/v1\/account\/(email(?:\/verification-requests|\/pending)?)$/.exec(
+        url,
+      )?.[1];
+    if (emailRoute) {
+      const body = init?.body ? JSON.parse(String(init.body)) : null;
+      writes.push({ route: `${method} ${emailRoute}`, body });
+      if (stub.nextEmail) {
+        const answer = stub.nextEmail;
+        stub.nextEmail = undefined;
+        return json(answer.status, answer.body);
+      }
+      if (emailRoute === "email") {
+        stub.account = stub.account.emailVerified
+          ? { ...stub.account, pendingEmail: body.email }
+          : { ...stub.account, email: body.email };
+      } else if (emailRoute === "email/pending") {
+        stub.account = { ...stub.account, pendingEmail: null };
+      }
+      return json(200, { payload: stub.account });
+    }
     if (url.endsWith("/v1/account") && method === "GET") {
       return stub.read
         ? json(stub.read.status, stub.read.body)
@@ -87,13 +134,13 @@ function stubApi(stub: Stub) {
   return writes;
 }
 
-function renderPage() {
+function renderPage(at = "/account") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[at]}>
         <AccountInfoPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -182,12 +229,15 @@ describe("AccountInfoPage", () => {
     const first = screen.getByRole("group", { name: "Phone number 1" });
     await first
       .getByRole("textbox", { name: "Phone Number" })
-      .fill("604 555 0199");
+      .fill(" 604 555 0199 ");
     await screen.getByRole("button", { name: "Add phone number" }).click();
     const second = screen.getByRole("group", { name: "Phone number 2" });
     await second
       .getByRole("textbox", { name: "Phone Number" })
       .fill("250-555-0124");
+    await expect
+      .element(second.getByRole("textbox", { name: "Phone Number" }))
+      .toHaveValue("(250) 555-0124");
     // A new row offers the first free type; choose another.
     await second.getByRole("button", { name: /Type/ }).click();
     await screen.getByRole("option", { name: "Work Phone" }).click();
@@ -201,8 +251,8 @@ describe("AccountInfoPage", () => {
         route: "phones",
         body: {
           phones: [
-            { number: "604 555 0199", type: "Home" },
-            { number: "250-555-0124", type: "Work" },
+            { number: "(604) 555-0199", type: "Home" },
+            { number: "(250) 555-0124", type: "Work" },
           ],
         },
       },
@@ -389,6 +439,80 @@ describe("AccountInfoPage", () => {
   });
 });
 
+describe("Contact information layout", () => {
+  let initial = { width: 0, height: 0 };
+
+  beforeAll(loadPageStyles);
+
+  beforeEach(() => {
+    initial = { width: window.innerWidth, height: window.innerHeight };
+  });
+
+  afterEach(async () => {
+    await page.viewport(initial.width, initial.height);
+  });
+
+  /** Where the first number's two fields sit, read-only or in edit mode. */
+  function phoneFields(screen: Awaited<ReturnType<typeof renderPage>>) {
+    const phone = screen.getByRole("group", { name: "Phone number 1" });
+    const number = phone
+      .getByRole("textbox", { name: "Phone Number" })
+      .element();
+    const type =
+      phone.getByRole("button", { name: /Type/ }).query() ??
+      phone.getByRole("textbox", { name: "Type" }).element();
+    const field = (control: Element) =>
+      control
+        .closest(".bcds-react-aria-TextField, .bcds-react-aria-Select")!
+        .getBoundingClientRect();
+    return { number: field(number), type: field(type) };
+  }
+
+  // 320 less the dashboard frame's 16-pixel gutters: what the page gets on
+  // the narrowest phone.
+  it("puts the phone type under the number, both full width, on a phone", async () => {
+    await page.viewport(288, 640);
+    stubApi({ account: account() });
+    const screen = await renderPage();
+    const section = screen.getByRole("region", { name: "Contact Information" });
+    await expect.element(section).toBeVisible();
+
+    for (const mode of ["read-only", "edit"]) {
+      if (mode === "edit") {
+        await screen
+          .getByRole("button", { name: "Edit contact information" })
+          .click();
+        await expect
+          .element(screen.getByRole("button", { name: "Save" }))
+          .toBeVisible();
+      }
+      const { number, type } = phoneFields(screen);
+      const width = section.element().getBoundingClientRect().width;
+      expect(type.top, mode).toBeGreaterThanOrEqual(number.bottom);
+      expect(number.width, mode).toBeCloseTo(width, 0);
+      expect(type.width, mode).toBeCloseTo(width, 0);
+      const root = document.documentElement;
+      expect(root.scrollWidth, mode).toBeLessThanOrEqual(root.clientWidth);
+    }
+  });
+
+  it("keeps the phone type beside the number on a desktop", async () => {
+    await page.viewport(1280, 800);
+    stubApi({ account: account() });
+    const screen = await renderPage();
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
+    await expect
+      .element(screen.getByRole("button", { name: "Save" }))
+      .toBeVisible();
+
+    const { number, type } = phoneFields(screen);
+    expect(type.left).toBeGreaterThanOrEqual(number.right);
+    expect(type.top).toBeCloseTo(number.top, 0);
+  });
+});
+
 describe("PIN management", () => {
   // Masked inputs have no textbox role; their labels end in "(required)".
   const pinInput = (
@@ -439,7 +563,9 @@ describe("PIN management", () => {
     const writes = stubApi({ account: account({ pinStatus: "NotSet" }) });
     const screen = await renderPage();
 
-    expect(screen.getByRole("button", { name: "Reset PIN" }).query()).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Reset PIN" }).query(),
+    ).toBeNull();
     await screen.getByRole("button", { name: "Create a PIN" }).click();
     expect(pinInput(screen, "Current PIN").query()).toBeNull();
     await userEvent.fill(pinInput(screen, "New PIN"), "4821");
@@ -581,5 +707,272 @@ describe("PIN management", () => {
       .element(screen.getByRole("button", { name: "Change my PIN" }))
       .toBeVisible();
     expect(writes).toEqual([]);
+  });
+
+  it("emails a reset link on Reset PIN and says where it went", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Reset PIN" }).click();
+
+    await expect
+      .element(
+        screen.getByText(
+          /^We sent a link to reset your PIN to alex@example\.com\. It works once and expires at /,
+        ),
+      )
+      .toBeVisible();
+    expect(writes).toEqual([{ route: "pin-reset", body: null }]);
+  });
+
+  it("says an email already went out when asked again too soon", async () => {
+    stubApi({
+      account: account(),
+      resetRequest: {
+        status: 429,
+        body: {
+          title: "A reset email was sent recently.",
+          detail:
+            "We just sent you a reset email. Check your inbox, or try again in 45 seconds.",
+          keyword: "ACCOUNT.PIN_RESET.TOO_SOON",
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Reset PIN" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(
+        "We just sent you a reset email. Check your inbox, or try again in 45 seconds.",
+      );
+    expect(screen.getByText(/We could not send the email/).query()).toBeNull();
+  });
+
+  it("says so when the reset email could not be sent", async () => {
+    stubApi({
+      account: account(),
+      resetRequest: {
+        status: 503,
+        body: {
+          title: "The reset email could not be sent.",
+          detail: "Try again in a few minutes.",
+          keyword: "ACCOUNT.PIN_RESET.EMAIL_NOT_SENT",
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Reset PIN" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(
+        "We could not send the email. Try again in a few minutes.",
+      );
+  });
+});
+
+describe("Email address", () => {
+  it("changes the address to pending and says the current one stays in use", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "alex.new@example.com",
+    );
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByText("Verification pending"))
+      .toBeVisible();
+    await expect
+      .element(
+        screen.getByText(
+          "We sent a link to alex.new@example.com. Until you follow it, we will keep using alex@example.com.",
+        ),
+      )
+      .toBeVisible();
+    expect(writes).toEqual([
+      { route: "PUT email", body: { email: "alex.new@example.com" } },
+    ]);
+    await expect
+      .element(screen.getByRole("button", { name: "Edit Email Address" }))
+      .toHaveFocus();
+  });
+
+  it("refuses an invalid address before sending it", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "not-an-address",
+    );
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(
+        screen.getByText(
+          "Enter an email address in the format name@example.com.",
+        ),
+      )
+      .toBeVisible();
+    expect(writes).toEqual([]);
+  });
+
+  // MYSS-326: symbols after the domain were let through to the email service,
+  // whose refusal read as "try again in a few minutes".
+  it("refuses symbols in the domain as an invalid address, before sending", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "alex@gov.bc.ca&&&&",
+    );
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(
+        screen.getByText(
+          "Enter an email address in the format name@example.com.",
+        ),
+      )
+      .toBeVisible();
+    expect(writes).toEqual([]);
+  });
+
+  it("shows the API's field error", async () => {
+    stubApi({
+      account: account(),
+      nextEmail: {
+        status: 422,
+        body: {
+          payload: [
+            {
+              field: "email",
+              keyword: "IDA.EMAIL.INVALID_FORMAT",
+              message: "That address cannot be used.",
+            },
+          ],
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "alex.new@example.com",
+    );
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByText("That address cannot be used."))
+      .toBeVisible();
+  });
+
+  it("resends the link and cancels a pending change", async () => {
+    const writes = stubApi({
+      account: account({ pendingEmail: "alex.new@example.com" }),
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Resend link" }).click();
+    await expect
+      .element(
+        screen.getByText("We sent a new link. Earlier links no longer work."),
+      )
+      .toBeVisible();
+
+    await screen.getByRole("button", { name: "Cancel change" }).click();
+    await expect
+      .element(screen.getByText("Verification pending"))
+      .not.toBeInTheDocument();
+    expect(writes).toEqual([
+      { route: "POST email/verification-requests", body: null },
+      { route: "DELETE email/pending", body: null },
+    ]);
+  });
+
+  it("says when a link went out too recently to send another", async () => {
+    stubApi({
+      account: account({ pendingEmail: "alex.new@example.com" }),
+      nextEmail: {
+        status: 429,
+        body: {
+          detail:
+            "We just sent you a verification email. Check your inbox, or try again in 45 seconds.",
+          keyword: "ACCOUNT.EMAIL.TOO_SOON",
+        },
+      },
+    });
+    const screen = await renderPage();
+
+    await screen.getByRole("button", { name: "Resend link" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent(
+        "We just sent you a verification email. Check your inbox, or try again in 45 seconds.",
+      );
+  });
+
+  it("shows the address read-only while EmailVerification is off", async () => {
+    stubApi({
+      account: account({ emailVerified: false }),
+      features: { EmailVerification: false, PinReset: true, AccountInfo: true },
+    });
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByRole("textbox", { name: "Email Address" }))
+      .toHaveValue("alex@example.com");
+    expect(
+      screen.getByRole("button", { name: "Edit Email Address" }).query(),
+    ).toBeNull();
+    expect(screen.getByText("Email address not verified").query()).toBeNull();
+  });
+
+  it("shows an unverified address from registration with Resend but no Cancel", async () => {
+    stubApi({ account: account({ emailVerified: false }) });
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByText("Email address not verified"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("button", { name: "Resend link" }))
+      .toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Cancel change" }).query(),
+    ).toBeNull();
+  });
+});
+
+describe("After a PIN reset", () => {
+  it("says the PIN was reset when reached from the reset", async () => {
+    stubApi({ account: account() });
+    const screen = await renderPage("/account?pinReset=done");
+
+    await expect
+      .element(screen.getByText("Your PIN has been reset."))
+      .toBeVisible();
+  });
+
+  it("says nothing of it otherwise", async () => {
+    stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByRole("heading", { name: "Contact Information" }))
+      .toBeVisible();
+    expect(screen.getByText("Your PIN has been reset.").query()).toBeNull();
   });
 });

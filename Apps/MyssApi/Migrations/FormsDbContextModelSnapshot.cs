@@ -4,7 +4,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Myss.Api.Data;
+using Myss.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -24,7 +24,7 @@ namespace Myss.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Myss.Api.Data.BusPassDispatchEvent", b =>
+            modelBuilder.Entity("Myss.Data.BusPassDispatchEvent", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -82,7 +82,7 @@ namespace Myss.Api.Migrations
                     b.ToTable("bus_pass_dispatch_events", "forms");
                 });
 
-            modelBuilder.Entity("Myss.Api.Data.FormSubmission", b =>
+            modelBuilder.Entity("Myss.Data.FormSubmission", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -114,7 +114,7 @@ namespace Myss.Api.Migrations
                     b.ToTable("form_submissions", "forms");
                 });
 
-            modelBuilder.Entity("Myss.Api.Data.MyssUserPhone", b =>
+            modelBuilder.Entity("Myss.Data.MyssUserPhone", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -149,16 +149,26 @@ namespace Myss.Api.Migrations
                     b.ToTable("myss_user_phones", "forms");
                 });
 
-            modelBuilder.Entity("Myss.Api.Data.MyssUserProfile", b =>
+            modelBuilder.Entity("Myss.Data.MyssUserProfile", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("BceidUsername")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("bceid_username");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByIdir")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("created_by_idir");
 
                     b.Property<DateOnly>("DateOfBirth")
                         .HasColumnType("date")
@@ -169,6 +179,20 @@ namespace Myss.Api.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
+
+                    b.Property<DateTimeOffset?>("EmailVerificationRequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verification_requested_at");
+
+                    b.Property<string>("EmailVerificationTokenHash")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("email_verification_token_hash");
+
+                    b.Property<DateTimeOffset?>("EmailVerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verified_at");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -181,6 +205,10 @@ namespace Myss.Api.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("gender");
 
+                    b.Property<DateTimeOffset?>("IcmContactMatchedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("icm_contact_matched_at");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -192,6 +220,19 @@ namespace Myss.Api.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("monthly_report_reminder");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("registration")
+                        .HasColumnName("origin");
+
+                    b.Property<string>("PendingEmail")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("pending_email");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(10)
@@ -214,6 +255,16 @@ namespace Myss.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("pin_locked_until");
 
+                    b.Property<DateTimeOffset?>("PinResetRequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pin_reset_requested_at");
+
+                    b.Property<string>("PinResetTokenHash")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("pin_reset_token_hash");
+
                     b.Property<string>("Sin")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -232,31 +283,72 @@ namespace Myss.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EmailVerificationTokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("PinResetTokenHash")
+                        .IsUnique();
+
                     b.HasIndex("Subject")
                         .IsUnique();
 
                     b.ToTable("myss_user_profiles", "forms");
                 });
 
-            modelBuilder.Entity("Myss.Api.Data.BusPassDispatchEvent", b =>
+            modelBuilder.Entity("Myss.Data.RegistrationEmailVerification", b =>
                 {
-                    b.HasOne("Myss.Api.Data.FormSubmission", null)
+                    b.Property<string>("Subject")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.HasKey("Subject");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("registration_email_verifications", "forms");
+                });
+
+            modelBuilder.Entity("Myss.Data.BusPassDispatchEvent", b =>
+                {
+                    b.HasOne("Myss.Data.FormSubmission", null)
                         .WithMany()
                         .HasForeignKey("SubmissionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Myss.Api.Data.MyssUserPhone", b =>
+            modelBuilder.Entity("Myss.Data.MyssUserPhone", b =>
                 {
-                    b.HasOne("Myss.Api.Data.MyssUserProfile", null)
+                    b.HasOne("Myss.Data.MyssUserProfile", null)
                         .WithMany("Phones")
                         .HasForeignKey("ProfileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Myss.Api.Data.MyssUserProfile", b =>
+            modelBuilder.Entity("Myss.Data.MyssUserProfile", b =>
                 {
                     b.Navigation("Phones");
                 });

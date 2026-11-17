@@ -1,0 +1,29 @@
+.errorSummary {
+    border: var(--layout-border-width-medium) solid
+        var(--typography-color-danger);
+    border-radius: var(--layout-border-radius-medium);
+    margin-top: var(--layout-margin-large);
+    padding: var(--layout-padding-medium);
+}
+
+.errorTitle {
+    color: var(--typography-color-danger);
+    font-size: var(--typography-font-size-large-body);
+    margin: 0 0 var(--layout-margin-small);
+}
+
+.errorList {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.errorLink {
+    background: none;
+    border: none;
+    color: var(--surface-color-primary-button-default);
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-align: left;
+    text-decoration: underline;
+}

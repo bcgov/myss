@@ -20,6 +20,7 @@ import busPassFormSpecV5Json from "./bus-pass-specs/bus-pass-form-v5.json";
 import busPassFormSpecV6Json from "./bus-pass-specs/bus-pass-form-v6.json";
 import busPassFormSpecV7Json from "./bus-pass-specs/bus-pass-form-v7.json";
 import busPassFormSpecV8Json from "./bus-pass-specs/bus-pass-form-v8.json";
+import busPassFormSpecV9Json from "./bus-pass-specs/bus-pass-form-v9.json";
 
 export type Json =
   | string
@@ -77,6 +78,13 @@ export const busPassFormSpecV7 = busPassFormSpecV7Json as unknown as Json;
  * - The social insurance number is required.
  */
 export const busPassFormSpecV8 = busPassFormSpecV8Json as unknown as Json;
+
+/**
+ * Bus pass v9: the preferred method of communication as radio buttons, with
+ * the dropdown's key and values, and the registration form's SIN help in place
+ * of the note that an account number can stand in for the SIN.
+ */
+export const busPassFormSpecV9 = busPassFormSpecV9Json as unknown as Json;
 
 /** The logical identifier every seeded version shares. */
 export const POC_FORM_SPEC_ID = "poc-test-form";
@@ -418,6 +426,88 @@ registrationPhoneV5.properties = {
   myssValidator: "phone",
 };
 
+/**
+ * The ID of the worker override Application for Assistance (MYSS-321). Must
+ * match MyssData's `IntakeFormSpecIds.WorkerOverrideAfa`.
+ */
+export const WORKER_OVERRIDE_AFA_FORM_SPEC_ID = "worker-override-afa";
+
+/** The human-readable title for the worker override AFA. */
+export const WORKER_OVERRIDE_AFA_FORM_SPEC_TITLE =
+  "Worker override: Application for Assistance";
+
+/**
+ * The simplified Application for Assistance a worker submits for a client who
+ * cannot submit their own (MYSS-321): the six details the client's account is
+ * made from. The keys are a contract with MyssAdminApi's WorkerOverrideService,
+ * which reads them to make the account, and match registration's. Every field
+ * is required and carries its domain rule, so FormSpecValidator checks it on
+ * submit and the browser shows the same errors first. Its own Submit button
+ * runs the browser's checks first; the worker portal draws Save beside it.
+ */
+export const workerOverrideAfaFormSpecV1: Json = {
+  display: "form",
+  components: [
+    {
+      type: "textfield",
+      key: "firstName",
+      label: "First name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "lastName",
+      label: "Last name",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "email",
+      key: "email",
+      label: "Email",
+      input: true,
+      validate: { required: true },
+    },
+    {
+      type: "textfield",
+      key: "phone",
+      label: "Phone number",
+      placeholder: "(250) 555-0199",
+      input: true,
+      validateOn: "blur",
+      validate: { required: true, customMessage: "Phone number is invalid" },
+      properties: { myssValidator: "phone" },
+    },
+    {
+      type: "datetime",
+      key: "dateOfBirth",
+      label: "Date of birth",
+      input: true,
+      format: "yyyy-MM-dd",
+      enableDate: true,
+      enableTime: false,
+      validate: { required: true },
+      properties: { myssValidator: "date" },
+    },
+    {
+      type: "textfield",
+      key: "sin",
+      label: "Social Insurance Number (SIN)",
+      input: true,
+      validate: { required: true },
+      properties: { myssValidator: "sin" },
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Submit",
+      input: true,
+    },
+  ],
+};
+
 // POC test form. v1 is seeded so a fresh database has a working form;
 // later versions are authored through the admin panel as new entries.
 export const testFormSpecV1: Json = {
@@ -664,10 +754,11 @@ export const seededFormSpecs: readonly SeededFormSpec[] = [
 //
 // Two things about this spec are deliberate and must not be "tidied":
 //
-//   1. The spouse fields (partnerPwd + the four partner financial fields) use an
-//      ADVANCED conditional (`conditional.json`, JSON-logic) because they must
-//      reveal for TWO relationship values — `married` OR `marriagelike`. Form.io's
-//      simple `{ when, eq }` conditional matches only one value.
+//   1. The spouse fields (partnerPwd, partnerAge65 and the partner financial
+//      fields) use an ADVANCED conditional (`conditional.json`, JSON-logic)
+//      because they must reveal for TWO relationship values — `married` OR
+//      `marriagelike`. Form.io's simple `{ when, eq }` conditional matches only
+//      one value.
 //
 //   2. Those same spouse fields carry NO `validate.required`. MyssApi's
 //      FormSpecValidator only recognises the SIMPLE `conditional.when` string when
@@ -1776,6 +1867,188 @@ export const eligibilityEstimatorSpecV6: Json = withMoneyAsCurrency(
 );
 
 // ---------------------------------------------------------------------------
+// Estimator spec v7
+// ---------------------------------------------------------------------------
+//
+// v6 with the status question asked as the ministry's citizenship requirements
+// and its help rewritten, the first relationship option renamed "Single", and no
+// vehicle questions: a primary vehicle is an exempt asset, so the applicant's
+// and the spouse's additional vehicles move into their assets questions. Every
+// remaining key, value and conditional is v6's.
+export const eligibilityEstimatorSpecV7: Json = {
+  display: "form",
+  components: [
+    {
+      type: "bcgovRadio",
+      key: "residesInBc",
+      label: "Do you currently reside in British Columbia?",
+      input: true,
+      values: yesNoValues,
+      // The gates match the literal "true"/"false".
+      dataType: "string",
+      validate: { required: true },
+    },
+    {
+      type: "bcgovRadio",
+      key: "hasEligibleStatus",
+      label: "Do you meet the ministry's citizenship requirements?",
+      input: true,
+      values: yesNoValues,
+      dataType: "string",
+      validate: { required: true },
+      conditional: q1YesConditional,
+    },
+    {
+      type: "bcgovAccordion",
+      key: "statusHelp",
+      input: false,
+      accordionLabel: 'What does "the ministry\'s citizenship requirements" mean?',
+      accordionBody: [
+        "<p>To be eligible for assistance, your status must meet the citizenship and residency requirements.</p>",
+        "<p>This includes:</p>",
+        "<ul>",
+        "<li>Canadian citizen</li>",
+        "<li>Permanent Resident</li>",
+        "<li>Convention Refugee</li>",
+        "<li>Temporary Resident Permit</li>",
+        "<li>Refugee Claimant</li>",
+        "<li>Temporary Resident Visa issued through an emergency authorization</li>",
+        "</ul>",
+        '<p>If you do not meet the citizenship requirements, you may qualify for an exemption. Learn more about <a href="https://www2.gov.bc.ca/gov/content/governments/policies-for-government/bcea-policy-and-procedure-manual/eligibility/citizenship-requirements" target="_blank" rel="noopener noreferrer">residence requirements for income assistance</a></p>',
+      ].join(""),
+      conditional: q1YesConditional,
+    },
+    {
+      type: "bcgovRadio",
+      key: "age65",
+      label: "Are you 65 years of age or older?",
+      input: true,
+      values: yesNoValues,
+      validate: { required: true },
+      errors: { required: "Please select an option." },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "bcgovRadio",
+      key: "relationshipStatus",
+      label: "What is your relationship status?",
+      input: true,
+      values: [
+        { label: "Single", value: "single" },
+        { label: "Married", value: "married" },
+        { label: "Marriage-Like Relationship", value: "marriagelike" },
+        { label: "Divorced", value: "divorced" },
+        { label: "Separated", value: "separated" },
+        { label: "Widowed", value: "widowed" },
+      ],
+      validate: { required: true },
+      errors: { required: "Please select your relationship status." },
+      conditional: hasStatusConditional,
+    },
+    {
+      // The spouse questions are advanced-conditional, so never server-required.
+      type: "bcgovRadio",
+      key: "partnerAge65",
+      label: "Is your spouse 65 years of age or older?",
+      input: true,
+      values: yesNoValues,
+      conditional: partneredConditional,
+    },
+    {
+      type: "number",
+      key: "dependentChildren",
+      label: "How many dependent children under the age of 19 live with you?",
+      description:
+        "The estimate is based on a maximum family size of 7 people. Adding more than 7 family members will not change the estimated benefit amount.",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "bcgovRadio",
+      key: "pwd",
+      label:
+        "Do you plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      validate: { required: true },
+      errors: { required: "Please select an option." },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "bcgovRadio",
+      key: "partnerPwd",
+      label:
+        "Does your spouse plan to apply for the Persons with Disabilities (PWD) designation?",
+      input: true,
+      values: yesNoValues,
+      conditional: partneredConditional,
+    },
+    {
+      type: "content",
+      key: "assetsSectionHeading",
+      input: false,
+      html: "<h2>Do you have assets or receive income?</h2>",
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "currency",
+      key: "monthlyIncome",
+      label: "Your Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "currency",
+      key: "assetValue",
+      label:
+        "What is the total value of your assets not listed above (additional vehicles, property, investments, cash or savings)?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: hasStatusConditional,
+    },
+    {
+      type: "content",
+      key: "spouseSectionHeading",
+      input: false,
+      html: "<h2>Does your spouse have assets or receive income?</h2>",
+      conditional: partneredConditional,
+    },
+    {
+      type: "currency",
+      key: "partnerMonthlyIncome",
+      label: "Spouse's Monthly Income",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "currency",
+      key: "partnerAssetValue",
+      label:
+        "What is the total value of your spouse's assets not listed above (additional vehicles, property, investments, cash or savings)?",
+      input: true,
+      defaultValue: 0,
+      validate: { min: 0 },
+      conditional: partneredConditional,
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Get Estimate",
+      input: true,
+      conditional: hasStatusConditional,
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Everything the bootstrap hook seeds
 // ---------------------------------------------------------------------------
 
@@ -1813,6 +2086,11 @@ export const seededForms: readonly SeededForm[] = [
     versions: [{ version: 1, spec: incomeAssistanceFormSpecV1 }],
   },
   {
+    formSpecId: WORKER_OVERRIDE_AFA_FORM_SPEC_ID,
+    title: WORKER_OVERRIDE_AFA_FORM_SPEC_TITLE,
+    versions: [{ version: 1, spec: workerOverrideAfaFormSpecV1 }],
+  },
+  {
     formSpecId: ELIGIBILITY_ESTIMATOR_FORM_SPEC_ID,
     title: ELIGIBILITY_ESTIMATOR_FORM_SPEC_TITLE,
     versions: [
@@ -1822,6 +2100,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 4, spec: eligibilityEstimatorSpecV4 },
       { version: 5, spec: eligibilityEstimatorSpecV5 },
       { version: 6, spec: eligibilityEstimatorSpecV6 },
+      { version: 7, spec: eligibilityEstimatorSpecV7 },
     ],
   },
   {
@@ -1836,6 +2115,7 @@ export const seededForms: readonly SeededForm[] = [
       { version: 6, spec: busPassFormSpecV6 },
       { version: 7, spec: busPassFormSpecV7 },
       { version: 8, spec: busPassFormSpecV8 },
+      { version: 9, spec: busPassFormSpecV9 },
     ],
   },
 ];

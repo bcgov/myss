@@ -8,11 +8,14 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.FeatureManagement.Mvc;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.Logging;
+    using Myss.Api.Configuration;
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The attachments controller: virus-scanned file uploads into object
@@ -24,6 +27,7 @@ namespace Myss.Api.Controllers
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/attachments")]
     [ApiController]
+    [FeatureGate(FeatureFlags.Attachments)]
     [Authorize]
     public class AttachmentsController : Controller
     {

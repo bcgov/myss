@@ -13,7 +13,10 @@ namespace Myss.Api.Tests
     using Myss.Api.Configuration;
     using Myss.Api.Data;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data;
+    using Myss.FormSpec.Domain;
     using Xunit;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// <c>GET /v1/auth/me</c> is the SPA's single source of effective roles (ADR-0007): the
@@ -98,6 +101,36 @@ namespace Myss.Api.Tests
         }
 
         [Fact]
+        public async Task RecordsTheBceidUsernameOnARegisteredCallersProfile_WithoutReturningIt()
+        {
+            string dbName = Guid.NewGuid().ToString();
+            using JsonDocument body = await this.GetMe(
+                "bceid",
+                db =>
+                {
+                    db.MyssUserProfiles.Add(new MyssUserProfile
+                    {
+                        Id = Guid.NewGuid(),
+                        Subject = "mock-bceid",
+                        FirstName = "Ada",
+                        LastName = "Lovelace",
+                        DateOfBirth = new DateOnly(1815, 12, 10),
+                        Email = "ada@example.com",
+                        Sin = "050082833",
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow,
+                    });
+                    db.SaveChanges();
+                },
+                dbName);
+
+            Assert.False(body.RootElement.GetProperty("payload").TryGetProperty("bceidUsername", out _));
+            using var read = new InMemoryFormsDbContext(
+                new DbContextOptionsBuilder<FormsDbContext>().UseInMemoryDatabase(dbName).Options);
+            Assert.Equal("MOCKBCEID", (await read.MyssUserProfiles.SingleAsync()).BceidUsername);
+        }
+
+        [Fact]
         public async Task ReturnsWorkerIdentityForAWorkerPersona()
         {
             using JsonDocument body = await this.GetMe("worker");
@@ -123,9 +156,10 @@ namespace Myss.Api.Tests
 
         private async Task<JsonDocument> GetMe(
             string persona,
-            Action<FormsDbContext>? seed = null)
+            Action<FormsDbContext>? seed = null,
+            string? dbName = null)
         {
-            HttpClient client = this.CreateClient(allowMockAuth: true, seed);
+            HttpClient client = this.CreateClient(allowMockAuth: true, seed, dbName);
 
             var request = new HttpRequestMessage(HttpMethod.Get, "/v1/auth/me");
             request.Headers.Add(MockAuthenticationHandler.PersonaHeader, persona);
@@ -138,9 +172,10 @@ namespace Myss.Api.Tests
 
         private HttpClient CreateClient(
             bool allowMockAuth,
-            Action<FormsDbContext>? seed = null)
+            Action<FormsDbContext>? seed = null,
+            string? dbName = null)
         {
-            string dbName = Guid.NewGuid().ToString();
+            dbName ??= Guid.NewGuid().ToString();
             return this.factory
                 .WithWebHostBuilder(builder =>
                 {

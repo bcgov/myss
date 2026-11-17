@@ -44,6 +44,9 @@ test("submits the bus pass page through the public bus-pass endpoint", async () 
         headers: { "Content-Type": "application/json" },
       });
     }
+    if (url.endsWith("/v1/forms/bc-bus-pass/messages/confirmation")) {
+      return new Response("", { status: 404 });
+    }
     if (url.endsWith("/v1/forms/bc-bus-pass/submissions")) {
       return new Response(JSON.stringify({ payload: [] }), {
         status: 200,
@@ -84,7 +87,12 @@ test("submits the bus pass page through the public bus-pass endpoint", async () 
   await screen.getByRole("button", { name: "Submit" }).click();
 
   await expect
-    .element(screen.getByRole("heading", { name: "Request submitted" }))
+    .element(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Bus Pass Request is complete",
+      }),
+    )
     .toBeVisible();
   expect(posts).toHaveLength(1);
   expect(posts[0].url).toContain("/v1/bus-pass/submissions");

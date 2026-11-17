@@ -2,28 +2,32 @@ namespace Myss.Api.Services
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
     using System.Linq;
-        using System.Globalization;
-    using System.Net;
     using System.Reflection;
     using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging;
+    using Microsoft.FeatureManagement;
+    using Myss.Api.Configuration;
     using Myss.Api.Data;
     using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.Data;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Forms module service backed by the forms schema and the content engine.
     /// </summary>
     public class FormsService : IFormsService
     {
-        private const string BusPassTemplateName = "bus-pass.odt";
-
         /// <summary>
         /// The oldest registration version a submission may claim. v1 predates the
         /// fields a profile needs; see <see cref="SubmitAsync(string, FormSubmissionRequestModel, Func{JsonElement, IReadOnlyList{ValidationErrorModel}}?, CancellationToken)"/>.
@@ -33,12 +37,12 @@ namespace Myss.Api.Services
         private readonly ILogger<FormsService> _logger;
         private readonly FormsDbContext _dbContext;
         private readonly IFormSpecProvider _formSpecProvider;
-        private readonly IPdfProvider _pdfProvider;
-        private readonly ITemplateProvider _templateProvider;
-        private readonly IFormSpecAdminProvider _formSpecAdminProvider;
         private readonly ICurrentUserAccessor _currentUserAccessor;
         private readonly IErrorMessageProvider _errorMessageProvider;
         private readonly IPinHasher _pinHasher;
+        private readonly IEmailVerificationService _emailVerification;
+        private readonly IFeatureManager _features;
+        private readonly IContactMatchProvider _contactMatch;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FormsService"/> class.
@@ -46,32 +50,32 @@ namespace Myss.Api.Services
         /// <param name="logger">Injected Logger Provider.</param>
         /// <param name="dbContext">Injected forms db context.</param>
         /// <param name="formSpecProvider">Injected form spec provider.</param>
-        /// <param name="pdfProvider">Injected PDF provider.</param>
-        /// <param name="templateProvider">Injected template provider.</param>
-        /// <param name="formSpecAdminProvider">Injected form-spec admin (write) provider.</param>
         /// <param name="currentUserAccessor">Injected current user accessor.</param>
         /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
         /// <param name="pinHasher">Injected PIN hasher, for the PIN set at registration.</param>
+        /// <param name="emailVerification">Proves the email address given at registration (MYSS-305).</param>
+        /// <param name="features">The feature flags; registration proves its address only with EmailVerification on.</param>
+        /// <param name="contactMatch">Matches a new registrant against ICM's contacts.</param>
         public FormsService(
             ILogger<FormsService> logger,
             FormsDbContext dbContext,
             IFormSpecProvider formSpecProvider,
-            IPdfProvider pdfProvider,
-            ITemplateProvider templateProvider,
-            IFormSpecAdminProvider formSpecAdminProvider,
             ICurrentUserAccessor currentUserAccessor,
             IErrorMessageProvider errorMessageProvider,
-            IPinHasher pinHasher)
+            IPinHasher pinHasher,
+            IEmailVerificationService emailVerification,
+            IFeatureManager features,
+            IContactMatchProvider contactMatch)
         {
             _logger = logger;
             _dbContext = dbContext;
             _formSpecProvider = formSpecProvider;
-            _pdfProvider = pdfProvider;
-            _templateProvider = templateProvider;
-            _formSpecAdminProvider = formSpecAdminProvider;
             _currentUserAccessor = currentUserAccessor;
             _errorMessageProvider = errorMessageProvider;
             _pinHasher = pinHasher;
+            _emailVerification = emailVerification;
+            _features = features;
+            _contactMatch = contactMatch;
         }
 
         /// <inheritdoc/>
@@ -84,211 +88,6 @@ namespace Myss.Api.Services
         public Task<IReadOnlyDictionary<string, string>> GetErrorMessagesAsync(CancellationToken cancellationToken)
         {
             return _errorMessageProvider.GetMessagesAsync(cancellationToken);
-        }
-
-        /// <inheritdoc/>
-        public Task<IReadOnlyList<FormSummaryModel>> ListFormsAsync(CancellationToken cancellationToken)
-        {
-            return _formSpecAdminProvider.ListFormsAsync(cancellationToken);
-        }
-
-        /// <inheritdoc/>
-        public Task<FormSpecModel?> GetDraftOrLatestPublishedAsync(string formSpecId, CancellationToken cancellationToken)
-        {
-            return _formSpecAdminProvider.GetDraftOrLatestPublishedAsync(formSpecId, cancellationToken);
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSpecWriteResultModel<FormSpecModel>> SaveDraftAsync(
-            string formSpecId, JsonElement spec, string? title, CancellationToken cancellationToken)
-        {
-            // Validate, THEN write. This is the one place a spec can be written,
-            // so the fast structural check cannot be bypassed by another caller.
-            IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.ValidateSpecStructure(spec);
-            if (errors.Count > 0)
-            {
-                _logger.LogInformation(
-                    "Rejected draft save for {FormSpecId}: {ErrorCount} structural error(s)",
-                    formSpecId,
-                    errors.Count);
-                return FormSpecWriteResultModel<FormSpecModel>.Refused(errors);
-            }
-
-            try
-            {
-                FormSpecModel saved = await _formSpecAdminProvider.SaveDraftAsync(formSpecId, spec, title, cancellationToken);
-                return FormSpecWriteResultModel<FormSpecModel>.Accepted(saved);
-            }
-            catch (StrapiWriteException ex) when (IsLifecycleRefusal(ex))
-            {
-                // A 400 is the Strapi lifecycle refusing the spec on a business rule
-                // (duplicate key, version sequence, immutability) - a validation outcome.
-                // Any other status (401/403/5xx) is an infrastructure fault and is left to
-                // propagate; the controller maps it to 502, not a 422 "invalid form".
-                return FormSpecWriteResultModel<FormSpecModel>.Refused(TranslateStrapiRefusal(ex));
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSpecWriteResultModel<PublishResultModel>> PublishAsync(
-            string formSpecId, CancellationToken cancellationToken)
-        {
-            // Fast structural re-check on the draft about to go live; the Strapi
-            // lifecycle stays the authoritative gate for version + immutability.
-            FormSpecModel? draft = await _formSpecAdminProvider.GetDraftOrLatestPublishedAsync(formSpecId, cancellationToken);
-            if (draft is not null)
-            {
-                IReadOnlyList<ValidationErrorModel> errors = FormSpecValidator.ValidateSpecStructure(draft.Spec);
-                if (errors.Count > 0)
-                {
-                    return FormSpecWriteResultModel<PublishResultModel>.Refused(errors);
-                }
-            }
-
-            try
-            {
-                int version = await _formSpecAdminProvider.PublishAsync(formSpecId, cancellationToken);
-                return FormSpecWriteResultModel<PublishResultModel>.Accepted(new PublishResultModel { Version = version });
-            }
-            catch (NoDraftToPublishException ex)
-            {
-                // No in-progress draft to publish - an expected outcome, not a fault.
-                return FormSpecWriteResultModel<PublishResultModel>.Refused(
-                [
-                    new ValidationErrorModel
-                    {
-                        Field = "formSpecId",
-                        Keyword = FormSpecStructureKeywords.NothingToPublish,
-                        Message = ex.Message,
-                    },
-                ]);
-            }
-            catch (StrapiWriteException ex) when (IsLifecycleRefusal(ex))
-            {
-                return FormSpecWriteResultModel<PublishResultModel>.Refused(TranslateStrapiRefusal(ex));
-            }
-        }
-
-        /// <summary>
-        /// True only when a Strapi write refusal is the documented lifecycle contract:
-        /// an HTTP 400 whose body is the <c>ApplicationError</c> envelope AND carries at
-        /// least one keyword from the authoritative vocabulary
-        /// (<see cref="FormSpecStructureKeywords.LifecycleKeywords"/>). Any other 400 - a
-        /// generic REST/proxy/plugin error, a name-only or keywords-only body, or one whose
-        /// keywords are all unrecognized - is treated as an upstream failure, not a form
-        /// validation outcome, so its message is never surfaced. Shape-guarded throughout.
-        /// </summary>
-        /// <param name="ex">The refusal from the admin provider.</param>
-        /// <returns>True when this is a trusted lifecycle refusal.</returns>
-        private static bool IsLifecycleRefusal(StrapiWriteException ex)
-        {
-            if (ex.StatusCode != HttpStatusCode.BadRequest || string.IsNullOrWhiteSpace(ex.Body))
-            {
-                return false;
-            }
-
-            try
-            {
-                using JsonDocument doc = JsonDocument.Parse(ex.Body);
-                JsonElement root = doc.RootElement;
-                if (root.ValueKind != JsonValueKind.Object
-                    || !root.TryGetProperty("error", out JsonElement error)
-                    || error.ValueKind != JsonValueKind.Object)
-                {
-                    return false;
-                }
-
-                bool isApplicationError = error.TryGetProperty("name", out JsonElement name)
-                    && name.ValueKind == JsonValueKind.String
-                    && string.Equals(name.GetString(), "ApplicationError", StringComparison.Ordinal);
-
-                return isApplicationError && ExtractRecognizedKeywords(error).Count > 0;
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Pulls the recognized lifecycle keywords out of a Strapi <c>error</c> object:
-        /// only strings in <see cref="FormSpecStructureKeywords.LifecycleKeywords"/>,
-        /// deduplicated in first-seen order. Unknown keywords are dropped; any
-        /// non-conforming shape yields an empty list.
-        /// </summary>
-        /// <param name="error">The Strapi <c>error</c> element.</param>
-        /// <returns>The recognized keywords, deduped, first-seen order.</returns>
-        private static List<string> ExtractRecognizedKeywords(JsonElement error)
-        {
-            List<string> recognized = [];
-            if (error.ValueKind == JsonValueKind.Object
-                && error.TryGetProperty("details", out JsonElement details)
-                && details.ValueKind == JsonValueKind.Object
-                && details.TryGetProperty("keywords", out JsonElement kws)
-                && kws.ValueKind == JsonValueKind.Array)
-            {
-                foreach (JsonElement kw in kws.EnumerateArray())
-                {
-                    if (kw.ValueKind == JsonValueKind.String
-                        && kw.GetString() is { Length: > 0 } value
-                        && FormSpecStructureKeywords.LifecycleKeywords.Contains(value)
-                        && !recognized.Contains(value))
-                    {
-                        recognized.Add(value);
-                    }
-                }
-            }
-
-            return recognized;
-        }
-
-        /// <summary>
-        /// Turns a trusted Strapi lifecycle refusal into validation errors the client can
-        /// show: one error per recognized keyword, deduplicated, carrying Strapi's own
-        /// message. Unknown keywords are dropped. It is called only after
-        /// <see cref="IsLifecycleRefusal"/> has confirmed that at least one recognized
-        /// lifecycle keyword is present.
-        /// </summary>
-        /// <param name="ex">The refusal from the admin provider (already logged by it).</param>
-        /// <returns>One validation error per recognized keyword.</returns>
-        private static IReadOnlyList<ValidationErrorModel> TranslateStrapiRefusal(StrapiWriteException ex)
-        {
-            string? message = null;
-            List<string> keywords = [];
-
-            // No JsonException handling here: the only callers reach this after
-            // IsLifecycleRefusal, which has already parsed this same body as JSON
-            // (and returns false, never this path, for one that is not).
-            if (!string.IsNullOrWhiteSpace(ex.Body))
-            {
-                using JsonDocument doc = JsonDocument.Parse(ex.Body);
-                JsonElement root = doc.RootElement;
-                if (root.ValueKind == JsonValueKind.Object
-                    && root.TryGetProperty("error", out JsonElement error)
-                    && error.ValueKind == JsonValueKind.Object)
-                {
-                    if (error.TryGetProperty("message", out JsonElement msg)
-                        && msg.ValueKind == JsonValueKind.String)
-                    {
-                        message = msg.GetString();
-                    }
-
-                    keywords = ExtractRecognizedKeywords(error);
-                }
-            }
-
-            string safeMessage = string.IsNullOrWhiteSpace(message)
-                ? "The content engine refused the change."
-                : message!;
-
-            return keywords
-                .Select(keyword => new ValidationErrorModel
-                {
-                    Field = "spec",
-                    Keyword = keyword,
-                    Message = safeMessage,
-                })
-                .ToList();
         }
 
         /// <inheritdoc/>
@@ -357,12 +156,41 @@ namespace Myss.Api.Services
                 FormSpecValidator.Validate(spec.Spec, request.Answers);
 
             Pin? registrationPin = null;
+            bool verifyEmail = false;
+            DateTimeOffset? emailVerifiedAt = null;
             if (IsRegistration(formSpecId))
             {
                 (IReadOnlyList<ValidationErrorModel> pinErrors, registrationPin) =
                     await ValidateRegistrationPinAsync(request, cancellationToken);
                 errors = FormSpecValidator.OnePerField(
                     [.. errors, .. ValidateRegistration(spec.Spec, request.Answers), .. pinErrors]);
+
+                // MYSS-295: with EmailVerification on, the address must have been
+                // proven in registration's Step 2 before the profile is created.
+                // Checked only when the address itself passed, so the citizen
+                // reads one reason for the field.
+                verifyEmail = await _features.IsEnabledAsync(FeatureFlags.EmailVerification);
+                if (verifyEmail
+                    && !errors.Any(e => e.Field == "email")
+                    && OptionalString(request.Answers, "email") is { } submittedEmail)
+                {
+                    emailVerifiedAt = await _emailVerification.RegistrationEmailVerifiedAtAsync(
+                        submittedEmail.Trim(),
+                        cancellationToken);
+                    if (emailVerifiedAt is null)
+                    {
+                        errors = FormSpecValidator.OnePerField(
+                        [
+                            .. errors,
+                            new ValidationErrorModel
+                            {
+                                Field = "email",
+                                Keyword = ValidationKeywords.RegistrationEmailNotVerified,
+                                Message = "Verify your email address before you complete your registration.",
+                            },
+                        ]);
+                    }
+                }
             }
 
             if (domainRules is not null)
@@ -410,7 +238,16 @@ namespace Myss.Api.Services
             _dbContext.FormSubmissions.Add(submission);
             if (IsRegistration(formSpecId))
             {
-                AddOrUpdateProfile(request.Answers, registrationPin is null ? null : _pinHasher.Hash(registrationPin));
+                await AddOrUpdateProfileAsync(
+                    request.Answers,
+                    registrationPin is null ? null : _pinHasher.Hash(registrationPin),
+                    verifyEmail ? emailVerifiedAt : null,
+                    cancellationToken);
+
+                // The registration's email proof has done its job, or, with the
+                // flag switched off mid-registration, never will: it goes with
+                // this save either way (MYSS-295).
+                await _emailVerification.ForgetRegistrationEmailAsync(cancellationToken);
             }
             await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -427,7 +264,15 @@ namespace Myss.Api.Services
         private static bool IsRegistration(string formSpecId) =>
             string.Equals(formSpecId, "registration", StringComparison.OrdinalIgnoreCase);
 
-        private void AddOrUpdateProfile(JsonElement answers, string? pinHash)
+        /// <param name="answers">The registration answers.</param>
+        /// <param name="pinHash">The new PIN's hash, or null to keep the profile's.</param>
+        /// <param name="emailVerifiedAt">When the address was proven in Step 2, or null with EmailVerification off.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        private async Task AddOrUpdateProfileAsync(
+            JsonElement answers,
+            string? pinHash,
+            DateTimeOffset? emailVerifiedAt,
+            CancellationToken cancellationToken)
         {
             CurrentUser currentUser = _currentUserAccessor.User;
             if (!currentUser.IsAuthenticated || string.IsNullOrWhiteSpace(currentUser.Subject))
@@ -438,7 +283,9 @@ namespace Myss.Api.Services
             string firstName = answers.GetProperty("firstName").GetString()!;
             string lastName = answers.GetProperty("lastName").GetString()!;
             string dateOfBirth = answers.GetProperty("dateOfBirth").GetString()!;
-            string email = answers.GetProperty("email").GetString()!;
+            // Trimmed as FormSpecValidator checked it, so no stray whitespace is
+            // stored or used as a recipient (MYSS-305).
+            string email = answers.GetProperty("email").GetString()!.Trim();
             string sin = answers.GetProperty("sin").GetString()!;
 
             // Optional at this layer: registration v2 and v3 did not ask for them,
@@ -451,13 +298,23 @@ namespace Myss.Api.Services
                     : null;
             string? gender = OptionalString(answers, "gender");
 
-            _ = TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate);
+            _ = IsoDate.TryParse(dateOfBirth, out DateOnly parsedDate);
 
-            MyssUserProfile? profile = _dbContext.MyssUserProfiles
+            MyssUserProfile? profile = await _dbContext.MyssUserProfiles
                 .Include(p => p.Phones)
-                .SingleOrDefault(p => p.Subject == currentUser.Subject);
+                .SingleOrDefaultAsync(p => p.Subject == currentUser.Subject, cancellationToken);
             if (profile is null)
             {
+                // A new registrant is matched against ICM's contacts. For the
+                // MVP the match is hardcoded to succeed: the citizen is taken to
+                // be known to ICM, so no ICM contact is created here.
+                ContactMatchResult match = await _contactMatch.MatchAsync(
+                    new ContactMatchCriteria(firstName, lastName, parsedDate, email, sin),
+                    cancellationToken);
+
+                // The outcome only; the criteria are PII.
+                _logger.LogInformation("ICM contact match for a new registration: {IsMatch}", match.IsMatch);
+
                 profile = new MyssUserProfile
                 {
                     Id = Guid.NewGuid(),
@@ -467,22 +324,29 @@ namespace Myss.Api.Services
                     DateOfBirth = parsedDate,
                     Email = email,
                     Sin = sin,
+                    BceidUsername = NullIfBlank(currentUser.BceidUsername),
                     Phone = phone,
                     Gender = gender,
                     PinHash = pinHash,
+                    IcmContactMatchedAt = match.IsMatch ? DateTimeOffset.UtcNow : null,
                     CreatedAt = DateTimeOffset.UtcNow,
                     UpdatedAt = DateTimeOffset.UtcNow,
                 };
                 _dbContext.MyssUserProfiles.Add(profile);
                 AddRegistrationPhone(profile, phone);
+                ApplyEmail(profile, email, emailVerifiedAt);
                 return;
             }
 
             profile.FirstName = firstName;
             profile.LastName = lastName;
             profile.DateOfBirth = parsedDate;
-            profile.Email = email;
             profile.Sin = sin;
+            if (NullIfBlank(currentUser.BceidUsername) is { } bceidUsername)
+            {
+                profile.BceidUsername = bceidUsername;
+            }
+
             // v2 and v3 are still published and do not ask for these, so an absent
             // answer means "not on this form", not "cleared": keep what v4 stored.
             // (v1 never gets this far; SubmitAsync refuses it.)
@@ -506,6 +370,35 @@ namespace Myss.Api.Services
             }
 
             profile.UpdatedAt = DateTimeOffset.UtcNow;
+
+            // With EmailVerification on, an existing account's address is only
+            // ever its own verified one here (checked before saving), so there
+            // is nothing to change; Account Info changes it. Off, as before.
+            if (emailVerifiedAt is null)
+            {
+                ApplyEmail(profile, email, emailVerifiedAt: null);
+            }
+        }
+
+        /// <summary>
+        /// With EmailVerification on, the address was proven in Step 2
+        /// (MYSS-295) and goes on the profile as verified. Off, it is stored as
+        /// given, as before the feature; a different address is not verified.
+        /// </summary>
+        private void ApplyEmail(MyssUserProfile profile, string email, DateTimeOffset? emailVerifiedAt)
+        {
+            if (emailVerifiedAt is { } verifiedAt)
+            {
+                _emailVerification.ApplyVerifiedRegistrationEmail(profile, email, verifiedAt);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(profile.Email) && !EmailAddress.ConfirmationMatches(profile.Email, email))
+            {
+                profile.EmailVerifiedAt = null;
+            }
+
+            profile.Email = email;
         }
 
         /// <summary>
@@ -584,7 +477,7 @@ namespace Myss.Api.Services
             List<ValidationErrorModel> errors = [];
             string? dateOfBirth = OptionalString(answers, "dateOfBirth");
 
-            if (!TryParseRegistrationDate(dateOfBirth ?? string.Empty, out DateOnly parsedDate))
+            if (!IsoDate.TryParse(dateOfBirth, out DateOnly parsedDate))
             {
                 errors.Add(new ValidationErrorModel
                 {
@@ -621,6 +514,9 @@ namespace Myss.Api.Services
 
             return errors;
         }
+
+        private static string? NullIfBlank(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
         private static string? OptionalString(JsonElement answers, string key) =>
             answers.TryGetProperty(key, out JsonElement value)
@@ -672,122 +568,6 @@ namespace Myss.Api.Services
             }
 
             return values;
-        }
-
-        private static bool TryParseRegistrationDate(string value, out DateOnly date)
-        {
-            if (DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
-            {
-                return true;
-            }
-
-            if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dateTime))
-            {
-                date = DateOnly.FromDateTime(dateTime.DateTime);
-                return true;
-            }
-
-            date = default;
-            return false;
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSubmissionResponseModel?> GetSubmissionAsync(Guid id, CancellationToken cancellationToken)
-        {
-            FormSubmission? submission = await _dbContext.FormSubmissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-            if (submission is null)
-            {
-                return null;
-            }
-
-            // Fetch the version stamped on the submission, not the latest.
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(
-                submission.FormSpecId, submission.FormSpecVersion, cancellationToken);
-            if (spec is null)
-            {
-                // The content engine no longer has a version that a stored
-                // submission still references.
-                _logger.LogWarning(
-                    "Archived spec {FormSpecId} v{FormSpecVersion} not found for submission {SubmissionId}",
-                    submission.FormSpecId,
-                    submission.FormSpecVersion,
-                    submission.Id);
-            }
-
-            return ToResponse(submission, spec);
-        }
-
-        /// <inheritdoc/>
-        public async Task<FormSubmissionResponseModel?> GetBusPassSubmissionForPdfAsync(
-            Guid id,
-            CancellationToken cancellationToken)
-        {
-            FormSubmission? submission = await _dbContext.FormSubmissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-
-            if (submission is null || submission.FormSpecId != BusPassPdfFieldMap.FormSpecId)
-            {
-                return null;
-            }
-
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(
-                submission.FormSpecId,
-                submission.FormSpecVersion,
-                cancellationToken);
-            if (spec is null)
-            {
-                _logger.LogWarning(
-                    "Archived spec {FormSpecId} v{FormSpecVersion} not found for submission {SubmissionId}",
-                    submission.FormSpecId,
-                    submission.FormSpecVersion,
-                    submission.Id);
-            }
-
-            return ToResponse(submission, spec);
-        }
-
-        /// <inheritdoc/>
-        public async Task<byte[]?> GetBusPassSubmissionPdfAsync(Guid id, CancellationToken cancellationToken)
-        {
-            FormSubmissionResponseModel? submission = await GetBusPassSubmissionForPdfAsync(id, cancellationToken);
-            if (submission is null)
-            {
-                return null;
-            }
-
-            byte[] template = await _templateProvider.GetTemplateAsync(BusPassTemplateName, cancellationToken);
-            Dictionary<string, object?> data = BusPassPdfDataBuilder.Build(submission.Answers);
-            byte[] pdf = await _pdfProvider.GenerateFromOdtAsync(template, data, cancellationToken);
-
-            _logger.LogInformation(
-                "Generated bus pass PDF for submission {SubmissionId} ({Bytes} bytes)",
-                id,
-                pdf.Length);
-
-            return pdf;
-        }
-
-        /// <inheritdoc/>
-        public async Task<IReadOnlyList<FormSubmissionSummaryModel>> ListSubmissionsAsync(
-            string formSpecId,
-            CancellationToken cancellationToken
-        )
-        {
-            return await _dbContext
-                .FormSubmissions.AsNoTracking()
-                .Where(s => s.FormSpecId == formSpecId)
-                .OrderByDescending(s => s.SubmittedAt)
-                .Select(s => new FormSubmissionSummaryModel
-                {
-                    Id = s.Id,
-                    FormSpecId = s.FormSpecId,
-                    FormSpecVersion = s.FormSpecVersion,
-                    SubmittedAt = s.SubmittedAt,
-                })
-                .ToListAsync(cancellationToken);
         }
 
         private static FormSubmissionResponseModel ToResponse(FormSubmission submission, FormSpecModel? spec)

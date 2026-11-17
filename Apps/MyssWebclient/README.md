@@ -10,7 +10,11 @@ generated from the MySS API's OpenAPI document.
 ## Developer setup
 
 - Install [Node.js](https://nodejs.org) (see `package.json` `engines`/Dockerfile for the version).
-- Run `npm install` to install dependencies.
+- Run `npm install` from `Apps/`, the npm workspace root. The webclient shares
+  its Form.io components with the admin webclient through the `@myss/formio`
+  workspace (`Apps/MyssFormio`), and there is one lockfile for all three, at
+  `Apps/package-lock.json`. Scripts run here as before, or from `Apps/` with
+  `npm run <script> -w myss-webclient`.
 - Copy `.env.sample` to `.env`, set `VITE_MYSS_API_URL` to the MySS API base URL,
   and set `VITE_CANADA_POST_API_KEY` to a URL-restricted Canada Post
   AddressComplete browser key.
@@ -39,6 +43,15 @@ Configuration lives in `openapi-ts.config.ts`.
 | `npm run format`             | Format with Prettier                     |
 | `npm run test:unit`          | Run unit tests (Vitest)                  |
 | `npm run test:browser`       | Run browser tests (Vitest + Playwright)  |
+
+## Container image
+
+The image builds from the workspace root, not this directory:
+
+```bash
+# from Apps/
+docker build -f MyssWebclient/Dockerfile -t myss-webclient .
+```
 
 ## Runtime configuration
 

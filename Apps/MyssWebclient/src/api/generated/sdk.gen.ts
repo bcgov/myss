@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptApplicationData, AcceptApplicationErrors, AcceptApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, DenyApplicationData, DenyApplicationErrors, DenyApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfErrors, GetBusPassSubmissionPdfResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFormDraftData, GetFormDraftErrors, GetFormDraftResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetFormSubmissionData, GetFormSubmissionErrors, GetFormSubmissionResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetReviewApplicationData, GetReviewApplicationErrors, GetReviewApplicationResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, ListFormsData, ListFormsErrors, ListFormsResponses, ListFormSubmissionsData, ListFormSubmissionsResponses, ListReviewApplicationsData, ListReviewApplicationsResponses, PublishFormData, PublishFormErrors, PublishFormResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SaveEligibilityRatesData, SaveEligibilityRatesErrors, SaveEligibilityRatesResponses, SaveFormDraftData, SaveFormDraftErrors, SaveFormDraftResponses, StartApplicationReviewData, StartApplicationReviewErrors, StartApplicationReviewResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses } from './types.gen';
+import type { CancelAccountEmailChangeData, CancelAccountEmailChangeErrors, CancelAccountEmailChangeResponses, ChangeAccountEmailData, ChangeAccountEmailErrors, ChangeAccountEmailResponses, CreateAfaApplicationData, CreateAfaApplicationErrors, CreateAfaApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetAfaApplicationData, GetAfaApplicationErrors, GetAfaApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFeaturesData, GetFeaturesResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetRegistrationEmailVerificationData, GetRegistrationEmailVerificationResponses, ListAfaApplicationsData, ListAfaApplicationsResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, RequestPinResetData, RequestPinResetErrors, RequestPinResetResponses, RequestRegistrationEmailVerificationData, RequestRegistrationEmailVerificationErrors, RequestRegistrationEmailVerificationResponses, ResendAccountEmailVerificationData, ResendAccountEmailVerificationErrors, ResendAccountEmailVerificationResponses, ResetPinData, ResetPinErrors, ResetPinResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -48,6 +48,20 @@ export const updateAccountNotificationPreferences = <ThrowOnError extends boolea
 });
 
 /**
+ * Changes the caller's PIN, or creates it when they have none (MYSS-258).
+ * Basic BCeID only. The PIN is never returned or logged, and is not sent
+ * to ICM (RULE-IDA-04).
+ */
+export const saveAccountPin = <ThrowOnError extends boolean = false>(options?: Options<SaveAccountPinData, ThrowOnError>): RequestResult<SaveAccountPinResponses, SaveAccountPinErrors, ThrowOnError> => (options?.client ?? client).put<SaveAccountPinResponses, SaveAccountPinErrors, ThrowOnError>({
+    url: '/v1/account/pin',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
  * Lists the caller's released attachments, newest first. Never
  * returns anyone else's.
  */
@@ -70,8 +84,9 @@ export const uploadAttachment = <ThrowOnError extends boolean = false>(options?:
 });
 
 /**
- * Returns the caller's effective identity: subject, effective roles, and the
- * keystone identifiers (BCeID GUID / IDIR username).
+ * Returns the caller's effective identity: subject, effective roles, the
+ * keystone identifiers (BCeID GUID / IDIR username), and whether they have
+ * registered.
  */
 export const getMe = <ThrowOnError extends boolean = false>(options?: Options<GetMeData, ThrowOnError>): RequestResult<GetMeResponses, GetMeErrors, ThrowOnError> => (options?.client ?? client).get<GetMeResponses, GetMeErrors, ThrowOnError>({ url: '/v1/auth/me', ...options });
 
@@ -94,12 +109,6 @@ export const submitBusPass = <ThrowOnError extends boolean = false>(options?: Op
 });
 
 /**
- * Generates the BC Bus Pass request PDF for a stored submission. Staff only:
- * a signed-in worker with an IDIR identity.
- */
-export const getBusPassSubmissionPdf = <ThrowOnError extends boolean = false>(options: Options<GetBusPassSubmissionPdfData, ThrowOnError>): RequestResult<GetBusPassSubmissionPdfResponses, GetBusPassSubmissionPdfErrors, ThrowOnError> => (options.client ?? client).get<GetBusPassSubmissionPdfResponses, GetBusPassSubmissionPdfErrors, ThrowOnError>({ url: '/v1/bus-pass/submissions/{id}/pdf', ...options });
-
-/**
  * Returns a placeholder.
  */
 export const getPlaceholder = <ThrowOnError extends boolean = false>(options?: Options<GetPlaceholderData, ThrowOnError>): RequestResult<GetPlaceholderResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetPlaceholderResponses, unknown, ThrowOnError>({ url: '/v1/Demo', ...options });
@@ -115,16 +124,69 @@ export const getEstimatorSpec = <ThrowOnError extends boolean = false>(options?:
 export const getEstimatorRates = <ThrowOnError extends boolean = false>(options?: Options<GetEstimatorRatesData, ThrowOnError>): RequestResult<GetEstimatorRatesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetEstimatorRatesResponses, unknown, ThrowOnError>({ url: '/v1/EligibilityEstimator/rates', ...options });
 
 /**
- * Saves a complete rate table as the table effective today, and publishes it.
+ * Changes the caller's email address. The new address waits as pending,
+ * and is emailed a link; the current one stays in use until the link is
+ * followed. Nothing is saved unless the address passes.
  */
-export const saveEligibilityRates = <ThrowOnError extends boolean = false>(options?: Options<SaveEligibilityRatesData, ThrowOnError>): RequestResult<SaveEligibilityRatesResponses, SaveEligibilityRatesErrors, ThrowOnError> => (options?.client ?? client).post<SaveEligibilityRatesResponses, SaveEligibilityRatesErrors, ThrowOnError>({
-    url: '/v1/EligibilityRates',
+export const changeAccountEmail = <ThrowOnError extends boolean = false>(options?: Options<ChangeAccountEmailData, ThrowOnError>): RequestResult<ChangeAccountEmailResponses, ChangeAccountEmailErrors, ThrowOnError> => (options?.client ?? client).put<ChangeAccountEmailResponses, ChangeAccountEmailErrors, ThrowOnError>({
+    url: '/v1/account/email',
     ...options,
     headers: {
         'Content-Type': 'application/json',
         ...options?.headers
     }
 });
+
+/**
+ * Emails a new link for the address waiting to be verified. One email
+ * per cooldown (`Account:EmailVerification:RequestCooldownSeconds`).
+ */
+export const resendAccountEmailVerification = <ThrowOnError extends boolean = false>(options?: Options<ResendAccountEmailVerificationData, ThrowOnError>): RequestResult<ResendAccountEmailVerificationResponses, ResendAccountEmailVerificationErrors, ThrowOnError> => (options?.client ?? client).post<ResendAccountEmailVerificationResponses, ResendAccountEmailVerificationErrors, ThrowOnError>({ url: '/v1/account/email/verification-requests', ...options });
+
+/**
+ * Drops a pending email change and its link; the address in use stays.
+ */
+export const cancelAccountEmailChange = <ThrowOnError extends boolean = false>(options?: Options<CancelAccountEmailChangeData, ThrowOnError>): RequestResult<CancelAccountEmailChangeResponses, CancelAccountEmailChangeErrors, ThrowOnError> => (options?.client ?? client).delete<CancelAccountEmailChangeResponses, CancelAccountEmailChangeErrors, ThrowOnError>({ url: '/v1/account/email/pending', ...options });
+
+/**
+ * Registration's Step 2 (MYSS-295): emails a link to prove the address
+ * from Step 1, before the profile exists. Any signed-in caller, as the
+ * registration submit is. An address already proven in this
+ * registration is not sent another link.
+ */
+export const requestRegistrationEmailVerification = <ThrowOnError extends boolean = false>(options?: Options<RequestRegistrationEmailVerificationData, ThrowOnError>): RequestResult<RequestRegistrationEmailVerificationResponses, RequestRegistrationEmailVerificationErrors, ThrowOnError> => (options?.client ?? client).post<RequestRegistrationEmailVerificationResponses, RequestRegistrationEmailVerificationErrors, ThrowOnError>({
+    url: '/v1/registration/email-verification-requests',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * The address the caller's registration is proving, and whether its
+ * link has been followed: what Step 2's Continue checks (MYSS-295).
+ */
+export const getRegistrationEmailVerification = <ThrowOnError extends boolean = false>(options?: Options<GetRegistrationEmailVerificationData, ThrowOnError>): RequestResult<GetRegistrationEmailVerificationResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetRegistrationEmailVerificationResponses, unknown, ThrowOnError>({ url: '/v1/registration/email-verification', ...options });
+
+/**
+ * Follows an emailed verification link: a pending address becomes the
+ * one in use, or the address from registration is marked verified.
+ * Anonymous: the token in the body is the credential.
+ */
+export const verifyEmail = <ThrowOnError extends boolean = false>(options?: Options<VerifyEmailData, ThrowOnError>): RequestResult<VerifyEmailResponses, VerifyEmailErrors, ThrowOnError> => (options?.client ?? client).post<VerifyEmailResponses, VerifyEmailErrors, ThrowOnError>({
+    url: '/v1/email-verification',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Returns every feature flag and whether it is on.
+ */
+export const getFeatures = <ThrowOnError extends boolean = false>(options?: Options<GetFeaturesData, ThrowOnError>): RequestResult<GetFeaturesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetFeaturesResponses, unknown, ThrowOnError>({ url: '/v1/features', ...options });
 
 /**
  * Returns the latest published spec for a form (content-engine proxy).
@@ -141,11 +203,6 @@ export const getFormSpec = <ThrowOnError extends boolean = false>(options: Optio
 export const getErrorMessages = <ThrowOnError extends boolean = false>(options?: Options<GetErrorMessagesData, ThrowOnError>): RequestResult<GetErrorMessagesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetErrorMessagesResponses, unknown, ThrowOnError>({ url: '/v1/forms/error-messages', ...options });
 
 /**
- * Lists a form's submissions, newest first (metadata only).
- */
-export const listFormSubmissions = <ThrowOnError extends boolean = false>(options: Options<ListFormSubmissionsData, ThrowOnError>): RequestResult<ListFormSubmissionsResponses, unknown, ThrowOnError> => (options.client ?? client).get<ListFormSubmissionsResponses, unknown, ThrowOnError>({ url: '/v1/forms/{formSpecId}/submissions', ...options });
-
-/**
  * Stores a submission stamped with the spec version it was rendered with.
  */
 export const submitForm = <ThrowOnError extends boolean = false>(options: Options<SubmitFormData, ThrowOnError>): RequestResult<SubmitFormResponses, SubmitFormErrors, ThrowOnError> => (options.client ?? client).post<SubmitFormResponses, SubmitFormErrors, ThrowOnError>({
@@ -158,39 +215,6 @@ export const submitForm = <ThrowOnError extends boolean = false>(options: Option
 });
 
 /**
- * Returns a submission with the archived spec version that rendered it.
- */
-export const getFormSubmission = <ThrowOnError extends boolean = false>(options: Options<GetFormSubmissionData, ThrowOnError>): RequestResult<GetFormSubmissionResponses, GetFormSubmissionErrors, ThrowOnError> => (options.client ?? client).get<GetFormSubmissionResponses, GetFormSubmissionErrors, ThrowOnError>({ url: '/v1/forms/submissions/{id}', ...options });
-
-/**
- * Lists every form and its versions (admin form editor).
- */
-export const listForms = <ThrowOnError extends boolean = false>(options?: Options<ListFormsData, ThrowOnError>): RequestResult<ListFormsResponses, ListFormsErrors, ThrowOnError> => (options?.client ?? client).get<ListFormsResponses, ListFormsErrors, ThrowOnError>({ url: '/v1/forms', ...options });
-
-/**
- * Returns the spec to open in the editor: the in-progress draft, or the
- * latest published version as the starting point for a new draft.
- */
-export const getFormDraft = <ThrowOnError extends boolean = false>(options: Options<GetFormDraftData, ThrowOnError>): RequestResult<GetFormDraftResponses, GetFormDraftErrors, ThrowOnError> => (options.client ?? client).get<GetFormDraftResponses, GetFormDraftErrors, ThrowOnError>({ url: '/v1/forms/{formSpecId}/draft', ...options });
-
-/**
- * Validates and saves an edited spec as a draft (not published).
- */
-export const saveFormDraft = <ThrowOnError extends boolean = false>(options: Options<SaveFormDraftData, ThrowOnError>): RequestResult<SaveFormDraftResponses, SaveFormDraftErrors, ThrowOnError> => (options.client ?? client).put<SaveFormDraftResponses, SaveFormDraftErrors, ThrowOnError>({
-    url: '/v1/forms/{formSpecId}/draft',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Publishes the current draft as the next version.
- */
-export const publishForm = <ThrowOnError extends boolean = false>(options: Options<PublishFormData, ThrowOnError>): RequestResult<PublishFormResponses, PublishFormErrors, ThrowOnError> => (options.client ?? client).post<PublishFormResponses, PublishFormErrors, ThrowOnError>({ url: '/v1/forms/{formSpecId}/publish', ...options });
-
-/**
  * Lists the caller's applications, newest first.
  */
 export const listApplications = <ThrowOnError extends boolean = false>(options?: Options<ListApplicationsData, ThrowOnError>): RequestResult<ListApplicationsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListApplicationsResponses, unknown, ThrowOnError>({ url: '/v1/intake/applications', ...options });
@@ -201,13 +225,28 @@ export const listApplications = <ThrowOnError extends boolean = false>(options?:
 export const createApplication = <ThrowOnError extends boolean = false>(options?: Options<CreateApplicationData, ThrowOnError>): RequestResult<CreateApplicationResponses, CreateApplicationErrors, ThrowOnError> => (options?.client ?? client).post<CreateApplicationResponses, CreateApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications', ...options });
 
 /**
+ * Lists the caller's AFA service requests, excluding other applications.
+ */
+export const listAfaApplications = <ThrowOnError extends boolean = false>(options?: Options<ListAfaApplicationsData, ThrowOnError>): RequestResult<ListAfaApplicationsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListAfaApplicationsResponses, unknown, ThrowOnError>({ url: '/v1/intake/applications/afa', ...options });
+
+/**
+ * Starts an AFA draft only when the product-authored form is published.
+ */
+export const createAfaApplication = <ThrowOnError extends boolean = false>(options?: Options<CreateAfaApplicationData, ThrowOnError>): RequestResult<CreateAfaApplicationResponses, CreateAfaApplicationErrors, ThrowOnError> => (options?.client ?? client).post<CreateAfaApplicationResponses, CreateAfaApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications/afa', ...options });
+
+/**
  * Returns one of the caller's applications with the archived spec that renders it.
  */
 export const getApplication = <ThrowOnError extends boolean = false>(options: Options<GetApplicationData, ThrowOnError>): RequestResult<GetApplicationResponses, GetApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetApplicationResponses, GetApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications/{id}', ...options });
 
 /**
- * Saves the draft's answers. A draft may be incomplete; only submit
- * enforces required fields.
+ * Returns one of the caller's AFA requests, never another intake form type.
+ */
+export const getAfaApplication = <ThrowOnError extends boolean = false>(options: Options<GetAfaApplicationData, ThrowOnError>): RequestResult<GetAfaApplicationResponses, GetAfaApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetAfaApplicationResponses, GetAfaApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications/afa/{id}', ...options });
+
+/**
+ * Saves the draft's answers, or a returned application's. Either may
+ * be incomplete; only submit enforces required fields.
  */
 export const saveApplicationAnswers = <ThrowOnError extends boolean = false>(options: Options<SaveApplicationAnswersData, ThrowOnError>): RequestResult<SaveApplicationAnswersResponses, SaveApplicationAnswersErrors, ThrowOnError> => (options.client ?? client).put<SaveApplicationAnswersResponses, SaveApplicationAnswersErrors, ThrowOnError>({
     url: '/v1/intake/applications/{id}/answers',
@@ -219,7 +258,8 @@ export const saveApplicationAnswers = <ThrowOnError extends boolean = false>(opt
 });
 
 /**
- * Submits the draft. After this the application is read-only.
+ * Submits the draft, or resubmits an application returned for more
+ * information. After this the application is read-only.
  */
 export const submitApplication = <ThrowOnError extends boolean = false>(options: Options<SubmitApplicationData, ThrowOnError>): RequestResult<SubmitApplicationResponses, SubmitApplicationErrors, ThrowOnError> => (options.client ?? client).post<SubmitApplicationResponses, SubmitApplicationErrors, ThrowOnError>({
     url: '/v1/intake/applications/{id}/submit',
@@ -231,48 +271,24 @@ export const submitApplication = <ThrowOnError extends boolean = false>(options:
 });
 
 /**
- * Lists every submitted application, newest submission first.
+ * Emails the caller a single-use link to reset their PIN, at the address
+ * they registered with. Basic BCeID only. A new request replaces any
+ * earlier link. One email per cooldown
+ * (`Account:PinReset:RequestCooldownSeconds`); a request inside it
+ * is a 429 with Retry-After.
  */
-export const listReviewApplications = <ThrowOnError extends boolean = false>(options?: Options<ListReviewApplicationsData, ThrowOnError>): RequestResult<ListReviewApplicationsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListReviewApplicationsResponses, unknown, ThrowOnError>({ url: '/v1/intake/review/applications', ...options });
+export const requestPinReset = <ThrowOnError extends boolean = false>(options?: Options<RequestPinResetData, ThrowOnError>): RequestResult<RequestPinResetResponses, RequestPinResetErrors, ThrowOnError> => (options?.client ?? client).post<RequestPinResetResponses, RequestPinResetErrors, ThrowOnError>({ url: '/v1/pin-reset/requests', ...options });
 
 /**
- * Returns a submitted application with the archived spec that renders it
- * and the actions available right now.
+ * Sets a new PIN from an emailed link and uses the link up. Anonymous:
+ * the token in the body is the credential. The PIN is never returned or
+ * logged, and is not sent to ICM (RULE-IDA-04).
  */
-export const getReviewApplication = <ThrowOnError extends boolean = false>(options: Options<GetReviewApplicationData, ThrowOnError>): RequestResult<GetReviewApplicationResponses, GetReviewApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetReviewApplicationResponses, GetReviewApplicationErrors, ThrowOnError>({ url: '/v1/intake/review/applications/{id}', ...options });
-
-/**
- * Marks the application Under Review.
- */
-export const startApplicationReview = <ThrowOnError extends boolean = false>(options: Options<StartApplicationReviewData, ThrowOnError>): RequestResult<StartApplicationReviewResponses, StartApplicationReviewErrors, ThrowOnError> => (options.client ?? client).post<StartApplicationReviewResponses, StartApplicationReviewErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/review',
+export const resetPin = <ThrowOnError extends boolean = false>(options?: Options<ResetPinData, ThrowOnError>): RequestResult<ResetPinResponses, ResetPinErrors, ThrowOnError> => (options?.client ?? client).post<ResetPinResponses, ResetPinErrors, ThrowOnError>({
+    url: '/v1/pin-reset',
     ...options,
     headers: {
         'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Accepts the application.
- */
-export const acceptApplication = <ThrowOnError extends boolean = false>(options: Options<AcceptApplicationData, ThrowOnError>): RequestResult<AcceptApplicationResponses, AcceptApplicationErrors, ThrowOnError> => (options.client ?? client).post<AcceptApplicationResponses, AcceptApplicationErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/accept',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Denies the application.
- */
-export const denyApplication = <ThrowOnError extends boolean = false>(options: Options<DenyApplicationData, ThrowOnError>): RequestResult<DenyApplicationResponses, DenyApplicationErrors, ThrowOnError> => (options.client ?? client).post<DenyApplicationResponses, DenyApplicationErrors, ThrowOnError>({
-    url: '/v1/intake/review/applications/{id}/deny',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
+        ...options?.headers
     }
 });

@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { acceptApplication, createApplication, denyApplication, getAccount, getApplication, getBusPassSubmissionPdf, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFormDraft, getFormSpec, getFormSubmission, getMe, getPlaceholder, getReviewApplication, listApplications, listAttachments, listForms, listFormSubmissions, listReviewApplications, type Options, publishForm, saveApplicationAnswers, saveEligibilityRates, saveFormDraft, startApplicationReview, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment } from '../sdk.gen';
-import type { AcceptApplicationData, AcceptApplicationError, AcceptApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, DenyApplicationData, DenyApplicationError, DenyApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetBusPassSubmissionPdfData, GetBusPassSubmissionPdfError, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFormDraftData, GetFormDraftError, GetFormDraftResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetFormSubmissionData, GetFormSubmissionError, GetFormSubmissionResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetReviewApplicationData, GetReviewApplicationError, GetReviewApplicationResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, ListFormsData, ListFormsResponse, ListFormSubmissionsData, ListFormSubmissionsResponse, ListReviewApplicationsData, ListReviewApplicationsResponse, PublishFormData, PublishFormError, PublishFormResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SaveEligibilityRatesData, SaveEligibilityRatesError, SaveEligibilityRatesResponse, SaveFormDraftData, SaveFormDraftError, SaveFormDraftResponse, StartApplicationReviewData, StartApplicationReviewError, StartApplicationReviewResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse } from '../types.gen';
+import { cancelAccountEmailChange, changeAccountEmail, createAfaApplication, createApplication, getAccount, getAfaApplication, getApplication, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFeatures, getFormSpec, getMe, getPlaceholder, getRegistrationEmailVerification, listAfaApplications, listApplications, listAttachments, type Options, requestPinReset, requestRegistrationEmailVerification, resendAccountEmailVerification, resetPin, saveAccountPin, saveApplicationAnswers, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment, verifyEmail } from '../sdk.gen';
+import type { CancelAccountEmailChangeData, CancelAccountEmailChangeError, CancelAccountEmailChangeResponse, ChangeAccountEmailData, ChangeAccountEmailError, ChangeAccountEmailResponse, CreateAfaApplicationData, CreateAfaApplicationError, CreateAfaApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetAfaApplicationData, GetAfaApplicationError, GetAfaApplicationResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFeaturesData, GetFeaturesResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetRegistrationEmailVerificationData, GetRegistrationEmailVerificationResponse, ListAfaApplicationsData, ListAfaApplicationsResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, RequestPinResetData, RequestPinResetError, RequestPinResetResponse, RequestRegistrationEmailVerificationData, RequestRegistrationEmailVerificationError, RequestRegistrationEmailVerificationResponse, ResendAccountEmailVerificationData, ResendAccountEmailVerificationError, ResendAccountEmailVerificationResponse, ResetPinData, ResetPinError, ResetPinResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -91,6 +91,25 @@ export const updateAccountNotificationPreferencesMutation = (options?: Partial<O
     return mutationOptions;
 };
 
+/**
+ * Changes the caller's PIN, or creates it when they have none (MYSS-258).
+ * Basic BCeID only. The PIN is never returned or logged, and is not sent
+ * to ICM (RULE-IDA-04).
+ */
+export const saveAccountPinMutation = (options?: Partial<Options<SaveAccountPinData>>): UseMutationOptions<SaveAccountPinResponse, SaveAccountPinError, Options<SaveAccountPinData>> => {
+    const mutationOptions: UseMutationOptions<SaveAccountPinResponse, SaveAccountPinError, Options<SaveAccountPinData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await saveAccountPin({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const listAttachmentsQueryKey = (options?: Options<ListAttachmentsData>) => createQueryKey('listAttachments', options);
 
 /**
@@ -133,8 +152,9 @@ export const uploadAttachmentMutation = (options?: Partial<Options<UploadAttachm
 export const getMeQueryKey = (options?: Options<GetMeData>) => createQueryKey('getMe', options);
 
 /**
- * Returns the caller's effective identity: subject, effective roles, and the
- * keystone identifiers (BCeID GUID / IDIR username).
+ * Returns the caller's effective identity: subject, effective roles, the
+ * keystone identifiers (BCeID GUID / IDIR username), and whether they have
+ * registered.
  */
 export const getMeOptions = (options?: Options<GetMeData>) => queryOptions<GetMeResponse, GetMeError, GetMeResponse, ReturnType<typeof getMeQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {
@@ -171,25 +191,6 @@ export const submitBusPassMutation = (options?: Partial<Options<SubmitBusPassDat
     };
     return mutationOptions;
 };
-
-export const getBusPassSubmissionPdfQueryKey = (options: Options<GetBusPassSubmissionPdfData>) => createQueryKey('getBusPassSubmissionPdf', options);
-
-/**
- * Generates the BC Bus Pass request PDF for a stored submission. Staff only:
- * a signed-in worker with an IDIR identity.
- */
-export const getBusPassSubmissionPdfOptions = (options: Options<GetBusPassSubmissionPdfData>) => queryOptions<unknown, GetBusPassSubmissionPdfError, unknown, ReturnType<typeof getBusPassSubmissionPdfQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await getBusPassSubmissionPdf({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getBusPassSubmissionPdfQueryKey(options)
-});
 
 export const getPlaceholderQueryKey = (options?: Options<GetPlaceholderData>) => createQueryKey('getPlaceholder', options);
 
@@ -246,12 +247,14 @@ export const getEstimatorRatesOptions = (options?: Options<GetEstimatorRatesData
 });
 
 /**
- * Saves a complete rate table as the table effective today, and publishes it.
+ * Changes the caller's email address. The new address waits as pending,
+ * and is emailed a link; the current one stays in use until the link is
+ * followed. Nothing is saved unless the address passes.
  */
-export const saveEligibilityRatesMutation = (options?: Partial<Options<SaveEligibilityRatesData>>): UseMutationOptions<SaveEligibilityRatesResponse, SaveEligibilityRatesError, Options<SaveEligibilityRatesData>> => {
-    const mutationOptions: UseMutationOptions<SaveEligibilityRatesResponse, SaveEligibilityRatesError, Options<SaveEligibilityRatesData>> = {
+export const changeAccountEmailMutation = (options?: Partial<Options<ChangeAccountEmailData>>): UseMutationOptions<ChangeAccountEmailResponse, ChangeAccountEmailError, Options<ChangeAccountEmailData>> => {
+    const mutationOptions: UseMutationOptions<ChangeAccountEmailResponse, ChangeAccountEmailError, Options<ChangeAccountEmailData>> = {
         mutationFn: async (fnOptions) => {
-            const { data } = await saveEligibilityRates({
+            const { data } = await changeAccountEmail({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -261,6 +264,117 @@ export const saveEligibilityRatesMutation = (options?: Partial<Options<SaveEligi
     };
     return mutationOptions;
 };
+
+/**
+ * Emails a new link for the address waiting to be verified. One email
+ * per cooldown (`Account:EmailVerification:RequestCooldownSeconds`).
+ */
+export const resendAccountEmailVerificationMutation = (options?: Partial<Options<ResendAccountEmailVerificationData>>): UseMutationOptions<ResendAccountEmailVerificationResponse, ResendAccountEmailVerificationError, Options<ResendAccountEmailVerificationData>> => {
+    const mutationOptions: UseMutationOptions<ResendAccountEmailVerificationResponse, ResendAccountEmailVerificationError, Options<ResendAccountEmailVerificationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await resendAccountEmailVerification({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Drops a pending email change and its link; the address in use stays.
+ */
+export const cancelAccountEmailChangeMutation = (options?: Partial<Options<CancelAccountEmailChangeData>>): UseMutationOptions<CancelAccountEmailChangeResponse, CancelAccountEmailChangeError, Options<CancelAccountEmailChangeData>> => {
+    const mutationOptions: UseMutationOptions<CancelAccountEmailChangeResponse, CancelAccountEmailChangeError, Options<CancelAccountEmailChangeData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await cancelAccountEmailChange({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Registration's Step 2 (MYSS-295): emails a link to prove the address
+ * from Step 1, before the profile exists. Any signed-in caller, as the
+ * registration submit is. An address already proven in this
+ * registration is not sent another link.
+ */
+export const requestRegistrationEmailVerificationMutation = (options?: Partial<Options<RequestRegistrationEmailVerificationData>>): UseMutationOptions<RequestRegistrationEmailVerificationResponse, RequestRegistrationEmailVerificationError, Options<RequestRegistrationEmailVerificationData>> => {
+    const mutationOptions: UseMutationOptions<RequestRegistrationEmailVerificationResponse, RequestRegistrationEmailVerificationError, Options<RequestRegistrationEmailVerificationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await requestRegistrationEmailVerification({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getRegistrationEmailVerificationQueryKey = (options?: Options<GetRegistrationEmailVerificationData>) => createQueryKey('getRegistrationEmailVerification', options);
+
+/**
+ * The address the caller's registration is proving, and whether its
+ * link has been followed: what Step 2's Continue checks (MYSS-295).
+ */
+export const getRegistrationEmailVerificationOptions = (options?: Options<GetRegistrationEmailVerificationData>) => queryOptions<GetRegistrationEmailVerificationResponse, DefaultError, GetRegistrationEmailVerificationResponse, ReturnType<typeof getRegistrationEmailVerificationQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getRegistrationEmailVerification({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getRegistrationEmailVerificationQueryKey(options)
+});
+
+/**
+ * Follows an emailed verification link: a pending address becomes the
+ * one in use, or the address from registration is marked verified.
+ * Anonymous: the token in the body is the credential.
+ */
+export const verifyEmailMutation = (options?: Partial<Options<VerifyEmailData>>): UseMutationOptions<VerifyEmailResponse, VerifyEmailError, Options<VerifyEmailData>> => {
+    const mutationOptions: UseMutationOptions<VerifyEmailResponse, VerifyEmailError, Options<VerifyEmailData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await verifyEmail({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getFeaturesQueryKey = (options?: Options<GetFeaturesData>) => createQueryKey('getFeatures', options);
+
+/**
+ * Returns every feature flag and whether it is on.
+ */
+export const getFeaturesOptions = (options?: Options<GetFeaturesData>) => queryOptions<GetFeaturesResponse, DefaultError, GetFeaturesResponse, ReturnType<typeof getFeaturesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getFeatures({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getFeaturesQueryKey(options)
+});
 
 export const getFormSpecQueryKey = (options: Options<GetFormSpecData>) => createQueryKey('getFormSpec', options);
 
@@ -302,24 +416,6 @@ export const getErrorMessagesOptions = (options?: Options<GetErrorMessagesData>)
     queryKey: getErrorMessagesQueryKey(options)
 });
 
-export const listFormSubmissionsQueryKey = (options: Options<ListFormSubmissionsData>) => createQueryKey('listFormSubmissions', options);
-
-/**
- * Lists a form's submissions, newest first (metadata only).
- */
-export const listFormSubmissionsOptions = (options: Options<ListFormSubmissionsData>) => queryOptions<ListFormSubmissionsResponse, DefaultError, ListFormSubmissionsResponse, ReturnType<typeof listFormSubmissionsQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await listFormSubmissions({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: listFormSubmissionsQueryKey(options)
-});
-
 /**
  * Stores a submission stamped with the spec version it was rendered with.
  */
@@ -327,95 +423,6 @@ export const submitFormMutation = (options?: Partial<Options<SubmitFormData>>): 
     const mutationOptions: UseMutationOptions<SubmitFormResponse, SubmitFormError, Options<SubmitFormData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await submitForm({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-export const getFormSubmissionQueryKey = (options: Options<GetFormSubmissionData>) => createQueryKey('getFormSubmission', options);
-
-/**
- * Returns a submission with the archived spec version that rendered it.
- */
-export const getFormSubmissionOptions = (options: Options<GetFormSubmissionData>) => queryOptions<GetFormSubmissionResponse, GetFormSubmissionError, GetFormSubmissionResponse, ReturnType<typeof getFormSubmissionQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await getFormSubmission({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getFormSubmissionQueryKey(options)
-});
-
-export const listFormsQueryKey = (options?: Options<ListFormsData>) => createQueryKey('listForms', options);
-
-/**
- * Lists every form and its versions (admin form editor).
- */
-export const listFormsOptions = (options?: Options<ListFormsData>) => queryOptions<ListFormsResponse, DefaultError, ListFormsResponse, ReturnType<typeof listFormsQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await listForms({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: listFormsQueryKey(options)
-});
-
-export const getFormDraftQueryKey = (options: Options<GetFormDraftData>) => createQueryKey('getFormDraft', options);
-
-/**
- * Returns the spec to open in the editor: the in-progress draft, or the
- * latest published version as the starting point for a new draft.
- */
-export const getFormDraftOptions = (options: Options<GetFormDraftData>) => queryOptions<GetFormDraftResponse, GetFormDraftError, GetFormDraftResponse, ReturnType<typeof getFormDraftQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await getFormDraft({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getFormDraftQueryKey(options)
-});
-
-/**
- * Validates and saves an edited spec as a draft (not published).
- */
-export const saveFormDraftMutation = (options?: Partial<Options<SaveFormDraftData>>): UseMutationOptions<SaveFormDraftResponse, SaveFormDraftError, Options<SaveFormDraftData>> => {
-    const mutationOptions: UseMutationOptions<SaveFormDraftResponse, SaveFormDraftError, Options<SaveFormDraftData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await saveFormDraft({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-/**
- * Publishes the current draft as the next version.
- */
-export const publishFormMutation = (options?: Partial<Options<PublishFormData>>): UseMutationOptions<PublishFormResponse, PublishFormError, Options<PublishFormData>> => {
-    const mutationOptions: UseMutationOptions<PublishFormResponse, PublishFormError, Options<PublishFormData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await publishForm({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -461,6 +468,41 @@ export const createApplicationMutation = (options?: Partial<Options<CreateApplic
     return mutationOptions;
 };
 
+export const listAfaApplicationsQueryKey = (options?: Options<ListAfaApplicationsData>) => createQueryKey('listAfaApplications', options);
+
+/**
+ * Lists the caller's AFA service requests, excluding other applications.
+ */
+export const listAfaApplicationsOptions = (options?: Options<ListAfaApplicationsData>) => queryOptions<ListAfaApplicationsResponse, DefaultError, ListAfaApplicationsResponse, ReturnType<typeof listAfaApplicationsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listAfaApplications({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listAfaApplicationsQueryKey(options)
+});
+
+/**
+ * Starts an AFA draft only when the product-authored form is published.
+ */
+export const createAfaApplicationMutation = (options?: Partial<Options<CreateAfaApplicationData>>): UseMutationOptions<CreateAfaApplicationResponse, CreateAfaApplicationError, Options<CreateAfaApplicationData>> => {
+    const mutationOptions: UseMutationOptions<CreateAfaApplicationResponse, CreateAfaApplicationError, Options<CreateAfaApplicationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await createAfaApplication({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const getApplicationQueryKey = (options: Options<GetApplicationData>) => createQueryKey('getApplication', options);
 
 /**
@@ -479,9 +521,27 @@ export const getApplicationOptions = (options: Options<GetApplicationData>) => q
     queryKey: getApplicationQueryKey(options)
 });
 
+export const getAfaApplicationQueryKey = (options: Options<GetAfaApplicationData>) => createQueryKey('getAfaApplication', options);
+
 /**
- * Saves the draft's answers. A draft may be incomplete; only submit
- * enforces required fields.
+ * Returns one of the caller's AFA requests, never another intake form type.
+ */
+export const getAfaApplicationOptions = (options: Options<GetAfaApplicationData>) => queryOptions<GetAfaApplicationResponse, GetAfaApplicationError, GetAfaApplicationResponse, ReturnType<typeof getAfaApplicationQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getAfaApplication({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getAfaApplicationQueryKey(options)
+});
+
+/**
+ * Saves the draft's answers, or a returned application's. Either may
+ * be incomplete; only submit enforces required fields.
  */
 export const saveApplicationAnswersMutation = (options?: Partial<Options<SaveApplicationAnswersData>>): UseMutationOptions<SaveApplicationAnswersResponse, SaveApplicationAnswersError, Options<SaveApplicationAnswersData>> => {
     const mutationOptions: UseMutationOptions<SaveApplicationAnswersResponse, SaveApplicationAnswersError, Options<SaveApplicationAnswersData>> = {
@@ -498,7 +558,8 @@ export const saveApplicationAnswersMutation = (options?: Partial<Options<SaveApp
 };
 
 /**
- * Submits the draft. After this the application is read-only.
+ * Submits the draft, or resubmits an application returned for more
+ * information. After this the application is read-only.
  */
 export const submitApplicationMutation = (options?: Partial<Options<SubmitApplicationData>>): UseMutationOptions<SubmitApplicationResponse, SubmitApplicationError, Options<SubmitApplicationData>> => {
     const mutationOptions: UseMutationOptions<SubmitApplicationResponse, SubmitApplicationError, Options<SubmitApplicationData>> = {
@@ -514,50 +575,17 @@ export const submitApplicationMutation = (options?: Partial<Options<SubmitApplic
     return mutationOptions;
 };
 
-export const listReviewApplicationsQueryKey = (options?: Options<ListReviewApplicationsData>) => createQueryKey('listReviewApplications', options);
-
 /**
- * Lists every submitted application, newest submission first.
+ * Emails the caller a single-use link to reset their PIN, at the address
+ * they registered with. Basic BCeID only. A new request replaces any
+ * earlier link. One email per cooldown
+ * (`Account:PinReset:RequestCooldownSeconds`); a request inside it
+ * is a 429 with Retry-After.
  */
-export const listReviewApplicationsOptions = (options?: Options<ListReviewApplicationsData>) => queryOptions<ListReviewApplicationsResponse, DefaultError, ListReviewApplicationsResponse, ReturnType<typeof listReviewApplicationsQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await listReviewApplications({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: listReviewApplicationsQueryKey(options)
-});
-
-export const getReviewApplicationQueryKey = (options: Options<GetReviewApplicationData>) => createQueryKey('getReviewApplication', options);
-
-/**
- * Returns a submitted application with the archived spec that renders it
- * and the actions available right now.
- */
-export const getReviewApplicationOptions = (options: Options<GetReviewApplicationData>) => queryOptions<GetReviewApplicationResponse, GetReviewApplicationError, GetReviewApplicationResponse, ReturnType<typeof getReviewApplicationQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await getReviewApplication({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getReviewApplicationQueryKey(options)
-});
-
-/**
- * Marks the application Under Review.
- */
-export const startApplicationReviewMutation = (options?: Partial<Options<StartApplicationReviewData>>): UseMutationOptions<StartApplicationReviewResponse, StartApplicationReviewError, Options<StartApplicationReviewData>> => {
-    const mutationOptions: UseMutationOptions<StartApplicationReviewResponse, StartApplicationReviewError, Options<StartApplicationReviewData>> = {
+export const requestPinResetMutation = (options?: Partial<Options<RequestPinResetData>>): UseMutationOptions<RequestPinResetResponse, RequestPinResetError, Options<RequestPinResetData>> => {
+    const mutationOptions: UseMutationOptions<RequestPinResetResponse, RequestPinResetError, Options<RequestPinResetData>> = {
         mutationFn: async (fnOptions) => {
-            const { data } = await startApplicationReview({
+            const { data } = await requestPinReset({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -569,29 +597,14 @@ export const startApplicationReviewMutation = (options?: Partial<Options<StartAp
 };
 
 /**
- * Accepts the application.
+ * Sets a new PIN from an emailed link and uses the link up. Anonymous:
+ * the token in the body is the credential. The PIN is never returned or
+ * logged, and is not sent to ICM (RULE-IDA-04).
  */
-export const acceptApplicationMutation = (options?: Partial<Options<AcceptApplicationData>>): UseMutationOptions<AcceptApplicationResponse, AcceptApplicationError, Options<AcceptApplicationData>> => {
-    const mutationOptions: UseMutationOptions<AcceptApplicationResponse, AcceptApplicationError, Options<AcceptApplicationData>> = {
+export const resetPinMutation = (options?: Partial<Options<ResetPinData>>): UseMutationOptions<ResetPinResponse, ResetPinError, Options<ResetPinData>> => {
+    const mutationOptions: UseMutationOptions<ResetPinResponse, ResetPinError, Options<ResetPinData>> = {
         mutationFn: async (fnOptions) => {
-            const { data } = await acceptApplication({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-/**
- * Denies the application.
- */
-export const denyApplicationMutation = (options?: Partial<Options<DenyApplicationData>>): UseMutationOptions<DenyApplicationResponse, DenyApplicationError, Options<DenyApplicationData>> => {
-    const mutationOptions: UseMutationOptions<DenyApplicationResponse, DenyApplicationError, Options<DenyApplicationData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await denyApplication({
+            const { data } = await resetPin({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

@@ -3,7 +3,11 @@
     padding: var(--layout-padding-large) 0;
 }
 
+/* Row sizes from the design; it has no tokens for 10px and 12px. */
 .list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -11,12 +15,27 @@
 
 .link {
     align-items: center;
-    color: var(--typography-color-primary-invert);
+    color: var(--typography-color-secondary-invert);
     display: flex;
-    font: var(--typography-regular-body);
+    font: var(--typography-regular-large-body);
     gap: var(--layout-margin-medium);
-    padding: var(--layout-padding-small) var(--layout-padding-large);
+    padding: 12px var(--layout-padding-large);
     text-decoration: none;
+}
+
+/* Bootstrap's `a:focus` would turn a focused label dark blue on the blue
+   menu. The hover and current-section rules below still win over this. */
+.link:focus {
+    color: var(--typography-color-secondary-invert);
+}
+
+/* The phone menu spans the screen, so it takes the design's full inset; the
+   side menu's narrower column keeps every label on one line. */
+@media (max-width: 767px) {
+    .link {
+        padding-left: var(--layout-padding-xlarge);
+        padding-right: var(--layout-padding-xlarge);
+    }
 }
 
 .link:hover {
@@ -46,6 +65,6 @@
 
 .icon {
     flex: none;
-    height: 1.25rem;
-    width: 1.25rem;
+    height: 25px;
+    width: 25px;
 }

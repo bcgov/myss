@@ -44,6 +44,20 @@ property is easy to destroy downstream:
 Using accessible primitives correctly is still our job — the library
 only makes it _possible_ to be accessible cheaply.
 
+### Date entry
+
+Form.io date fields draw the BC Gov Design System `DatePicker` (through
+`@myss/formio`), with its calendar button enabled.
+Users can type into the Year, Month and Day segments or choose a date from the
+calendar. The design system owns the labels, format instructions, keyboard
+behavior and accessible error associations. No custom date-entry markup or
+calendar navigation is required to type a date. Both webclients use the
+same component. Existing ISO date and datetime answers remain readable
+without time-zone conversion, and completed answers retain the single
+`yyyy-MM-dd` API value. Form.io's required, date-bound and custom rules still
+run, as do a field's `myssValidator: "date"` rule and the server-side business
+rules (such as a date of birth that cannot be in the future).
+
 ## How this shows up in code and tests
 
 - **Drive tests by accessible role, never DOM name.** Form.io

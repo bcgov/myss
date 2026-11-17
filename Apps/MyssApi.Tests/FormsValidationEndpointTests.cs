@@ -12,11 +12,14 @@ namespace Myss.Api.Tests
     using Microsoft.Extensions.DependencyInjection.Extensions;
     using Myss.Api.Configuration;
     using Myss.Api.Data;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data;
+    using Myss.FormSpec.Domain;
     using Xunit;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// The test that proves the server is authoritative.

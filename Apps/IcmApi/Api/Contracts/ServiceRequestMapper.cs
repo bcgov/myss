@@ -125,10 +125,31 @@ namespace Icm.Api.Contracts
 
         /// <summary>Converts the fields a caller wants written to a wire record.</summary>
         /// <param name="input">The fields to write.</param>
+        /// <param name="forCreate">
+        /// True for a POST, which then carries the placeholder <see cref="CreatePlaceholderId"/>
+        /// unless the input names an id, and an (empty) <c>ListOfSRProspects</c> container;
+        /// false for a PUT, which carries only what was set.
+        /// </param>
         /// <returns>The wire record. Unset properties stay null and are not serialized.</returns>
-        public static SiebelServiceRequest ToSiebel(ServiceRequestInput input) =>
-            new()
+        public static SiebelServiceRequestWrite ToSiebel(ServiceRequestInput input, bool forCreate = false)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+
+            SiebelProspectList? prospects = null;
+            if (input.Prospects is { Count: > 0 } rows)
             {
+                prospects = new SiebelProspectList { SRProspects = [.. rows.Select(ProspectMapper.ToNestedSiebel)] };
+            }
+            else if (forCreate)
+            {
+                prospects = new SiebelProspectList();
+            }
+
+            return new SiebelServiceRequestWrite
+            {
+                // A create needs a user key and a child container whatever the caller set:
+                // see SiebelServiceRequestWrite and CreatePlaceholderId.
+                Id = input.Id ?? (forCreate ? CreatePlaceholderId : null),
                 AreAnyOfTheFamilyMembersIndigenous = input.AreAnyOfTheFamilyMembersIndigenous,
                 CallDate = SiebelDate.FromDateTime(input.CallDate),
                 CallerAddress = input.CallerAddress,
@@ -145,6 +166,7 @@ namespace Icm.Api.Contracts
                 IntegrationId = input.IntegrationId,
                 Kkcfs = SiebelFlag.FromBoolean(input.Kkcfs),
                 LastName = input.LastName,
+                ListOfSRProspects = prospects,
                 Memo = input.Memo,
                 Method = input.Method,
                 NatureOfCall = input.NatureOfCall,
@@ -155,14 +177,24 @@ namespace Icm.Api.Contracts
                 Priority = input.Priority,
                 Resolution = input.Resolution,
                 RestrictedFlag = SiebelFlag.FromBoolean(input.RestrictedFlag),
-                SRSubSubType = input.SRSubSubType,
+                Type = input.Type,
                 SRSubType = input.SRSubType,
+                SRSubSubType = input.SRSubSubType,
                 ServiceOffice = input.ServiceOffice,
                 ServiceRequestNumber = input.ServiceRequestNumber,
                 Status = input.Status,
-                Type = input.Type,
                 TypeOfCaller = input.TypeOfCaller,
             };
+        }
+
+        /// <summary>
+        /// The <c>Id</c> a create sends when the caller gave none: the integration
+        /// component's user key, which Siebel replaces with the row id it allocates
+        /// (MEASURED SIT2 2026-09-29 with <c>1-53MU3WL</c>). Any value in Siebel's row-id
+        /// shape that names no existing record will do; an existing one is refused as a
+        /// duplicate (<c>SBL-EAI-04383</c>).
+        /// </summary>
+        public const string CreatePlaceholderId = "1-MYSS";
 
         /// <summary>Converts published search parameters to the wire query.</summary>
         /// <param name="query">The search parameters, or null for a bare search.</param>
@@ -203,6 +235,95 @@ namespace Icm.Api.Contracts
         /// <c>SR Number</c> are load-bearing — but stray whitespace around a name would
         /// travel to ICM as part of it, so entries are trimmed.
         /// </summary>
+        /// <summary>The <c>SR Relationship</c> a contact link sends when the caller gave none: what the workflow files for the matched applicant.</summary>
+        public const string DefaultContactRelationship = "Key player";
+
+        /// <summary>Converts a contact link to the row the SR's <c>ICMContact</c> child takes.</summary>
+        /// <param name="link">Who to link, and how.</param>
+        /// <returns>The wire row: the contact's id and the link fields, in the child view's names.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="link"/> is null.</exception>
+        /// <exception cref="ArgumentException"><see cref="ServiceRequestContactLink.ContactId"/> is blank.</exception>
+        public static SiebelServiceRequestContact ToSiebel(ServiceRequestContactLink link)
+        {
+            ArgumentNullException.ThrowIfNull(link);
+            if (string.IsNullOrWhiteSpace(link.ContactId))
+            {
+                throw new ArgumentException("A contact link needs the contact's row id.", nameof(link));
+            }
+
+            // The child view's names, not the guidance's "Relationship"/"Subject", which
+            // ICM accepts and ignores (MEASURED 2026-09-29).
+            return new SiebelServiceRequestContact
+            {
+                Id = link.ContactId,
+                SRRelationship = link.Relationship ?? DefaultContactRelationship,
+                SSAPrimaryField = SiebelFlag.FromBoolean(link.IsPrimary ?? true),
+                SRSubjectFlag = SiebelFlag.FromBoolean(link.IsSubject),
+            };
+        }
+
+        /// <summary>Converts the options of an SR's contact read to the wire query.</summary>
+        /// <param name="options">The read options, or null for the defaults.</param>
+        /// <param name="startRowNum">The zero-based row the page starts at.</param>
+        /// <returns>The wire query: a full page, no search, the caller's visibility mode.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="startRowNum"/> is negative.</exception>
+        public static SiebelListQuery ToContactsSiebel(ServiceRequestReadOptions? options, int startRowNum = 0)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(startRowNum);
+
+            return new SiebelListQuery
+            {
+                UniformResponse = SiebelFlag.Yes,
+                ChildLinks = "None",
+                PageSize = 100,
+                StartRowNum = startRowNum,
+                ViewMode = options?.ViewMode,
+                ExcludeEmptyFieldsInResponse = options?.ExcludeEmptyFields,
+            };
+        }
+
+        /// <summary>Converts the rows of an SR's contact read to the published models.</summary>
+        /// <param name="siebel">The list response, or null when ICM sent no body.</param>
+        /// <returns>The contacts on the SR; empty when there was nothing to convert.</returns>
+        public static IReadOnlyList<ServiceRequestContact> ToModel(SiebelServiceRequestContactListResponse? siebel) =>
+            siebel?.Items is null ? [] : [.. siebel.Items.Select(ToModel)];
+
+        /// <summary>Converts a wire contact-link row to the published model.</summary>
+        /// <param name="siebel">The row ICM returned.</param>
+        /// <returns>The published model.</returns>
+        public static ServiceRequestContact ToModel(SiebelServiceRequestContact siebel)
+        {
+            ArgumentNullException.ThrowIfNull(siebel);
+            Dictionary<string, string> unparsed = [];
+
+            return new ServiceRequestContact
+            {
+                Id = siebel.Id,
+                ServiceRequestId = siebel.SRId,
+                Relationship = siebel.SRRelationship,
+                IsPrimary = SiebelFlag.ToBoolean(siebel.SSAPrimaryField, "SSA Primary Field", unparsed),
+                IsSubject = SiebelFlag.ToBoolean(siebel.SRSubjectFlag, "SR Subject Flag", unparsed),
+                Start = SiebelDate.ToDateTime(siebel.SRStart, "SR Start", unparsed),
+                End = SiebelDate.ToDateTime(siebel.SREnd, "SR End", unparsed),
+                FirstName = siebel.FirstName,
+                MiddleName = siebel.MiddleName,
+                LastName = siebel.LastName,
+                BirthDate = SiebelDate.ToDate(siebel.BirthDate, "Birth Date", unparsed),
+                Age = siebel.Age,
+                Gender = siebel.MF,
+                BcServicesCardDid = siebel.ICMBCSCDID,
+                Indigenous = siebel.AboriginalCalc,
+                ContactCreated = SiebelDate.ToDateTime(siebel.Created, "Created", unparsed),
+                ContactCreatedBy = siebel.ICMCreatedBy,
+                ContactUpdated = SiebelDate.ToDateTime(siebel.Updated, "Updated", unparsed),
+                ContactUpdatedBy = siebel.ICMUpdatedBy,
+                AdditionalFields = siebel.AdditionalFields is null
+                    ? []
+                    : new Dictionary<string, System.Text.Json.JsonElement>(siebel.AdditionalFields),
+                UnparsedValues = unparsed,
+            };
+        }
+
         private static string? ToFieldList(IEnumerable<string>? fields)
         {
             if (fields is null)

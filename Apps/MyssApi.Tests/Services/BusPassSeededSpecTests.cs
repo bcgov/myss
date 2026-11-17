@@ -1,9 +1,10 @@
 namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// The bus pass validation as a citizen meets it: the spec validator and the
@@ -17,14 +18,14 @@ namespace Myss.Api.Tests.Services
     {
         private static readonly DateOnly Today = new(2026, 9, 10);
 
-        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 8).Select(v => new object[] { v });
+        public static IEnumerable<object[]> EveryVersion => Enumerable.Range(1, 9).Select(v => new object[] { v });
 
         /// <summary>The versions that ask for the date of birth as day, month and year.</summary>
         public static IEnumerable<object[]> VersionsWithDateOfBirthParts =>
             Enumerable.Range(1, BusPassRules.SingleDateOfBirthVersion - 1).Select(v => new object[] { v });
 
         public static IEnumerable<object[]> VersionsWithTheReplacementAcknowledgement =>
-            Enumerable.Range(4, 5).Select(v => new object[] { v });
+            Enumerable.Range(4, 6).Select(v => new object[] { v });
 
         [Theory]
         [MemberData(nameof(EveryVersion))]
@@ -150,15 +151,17 @@ namespace Myss.Api.Tests.Services
         }
 
         [Theory]
-        [InlineData("2010-02-31")]
-        [InlineData("2027-01-01")]
-        public void V8_ABadDateOfBirth_IsRefusedOnceOnTheDateFieldABadDateOfBirth_IsRefusedOnceOnTheDateField(string dateOfBirth)
+        [InlineData("2010-02-31", BusPassErrorKeywords.DateOfBirthInvalid)]
+        [InlineData("12/31/1950", BusPassErrorKeywords.DateOfBirthInvalid)]
+        [InlineData("2027-01-01", BusPassErrorKeywords.DateOfBirthInFuture)]
+        public void V8_ABadDateOfBirth_IsRefusedOnceOnTheDateFieldABadDateOfBirth_IsRefusedOnceOnTheDateField(string dateOfBirth, string keyword)
         {
             var answers = NewApplicant(8);
             answers["dateOfBirth"] = dateOfBirth;
 
             ValidationErrorModel error = Assert.Single(Run(8, answers));
             Assert.Equal("dateOfBirth", error.Field);
+            Assert.Equal(keyword, error.Keyword);
         }
 
         [Theory]
@@ -196,6 +199,28 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public void V9_AMissingPreferredMethod_IsRefusedOnce()
+        {
+            var answers = NewApplicant(9);
+            answers.Remove("preferredCommunication");
+
+            ValidationErrorModel error = Assert.Single(Run(9, answers));
+            Assert.Equal("preferredCommunication", error.Field);
+            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
+        }
+
+        [Fact]
+        public void V9_PreferringEmailWithoutOne_IsRefusedOnTheEmailField()
+        {
+            var answers = NewApplicant(9);
+            answers["preferredCommunication"] = "email";
+            answers.Remove("email");
+            answers.Remove("emailVerification");
+
+            Assert.Contains(Run(9, answers), e => e.Field == "email" && e.Keyword == BusPassErrorKeywords.EmailRequiredForEmailContact);
+        }
+
+        [Fact]
         public void V6_AnEmptyEmailVerification_IsRefusedOnTheVerificationField()
         {
             var answers = NewApplicant(6);
@@ -219,7 +244,7 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
-        public void V6ToV8_UseTheSharedPhoneRuleBeforeDispatch()
+        public void EveryVersion_UsesTheSharedPhoneRuleBeforeDispatch()
         {
             var earlierVersion = NewApplicant(6);
             earlierVersion["phoneNumber"] = "1 (250) 555-0199";
@@ -227,16 +252,16 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(ValidationKeywords.PhoneInvalidFormat, earlierError.Keyword);
             Assert.Equal("Phone number is invalid", earlierError.Message);
 
-            foreach (int version in new[] { 7, 8 })
+            foreach (int version in Enumerable.Range(1, 9))
             {
-                foreach (string accepted in new[] { "2501550199", "(250) 055-0199" })
+                foreach (string accepted in new[] { "2501550199", "(250) 055-0199", "  250 555-0199 \n" })
                 {
                     var answers = NewApplicant(version);
                     answers["phoneNumber"] = accepted;
                     Assert.Empty(Run(version, answers));
                 }
 
-                foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12", "25055501999", "" })
+                foreach (string refused in new[] { "(123) 456-7890", "1 (250) 555-0199", "(250) 555-0199 x12", "250555019", "25055501999", "" })
                 {
                     var answers = NewApplicant(version);
                     answers["phoneNumber"] = refused;
@@ -245,6 +270,27 @@ namespace Myss.Api.Tests.Services
                     Assert.Equal(refused == "" ? ValidationKeywords.FieldRequired : ValidationKeywords.PhoneInvalidFormat, error.Keyword);
                     Assert.Equal("Phone number is invalid", error.Message);
                 }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(EveryVersion))]
+        public void EveryContactChoice_MapsToAContactMethod(int version)
+        {
+            // ICM receives the preference only while the form keeps the key and values the mapper reads.
+            string[] choices = ContactChoices(version);
+            Assert.NotEmpty(choices);
+
+            foreach (string choice in choices)
+            {
+                var answers = NewApplicant(version);
+                answers["preferredCommunication"] = choice;
+                Assert.Empty(Run(version, answers));
+                using JsonDocument doc = JsonSerializer.SerializeToDocument(answers);
+
+                BusPassApplicationModel application = BusPassApplicationMapper.Build(Guid.NewGuid(), doc.RootElement.Clone());
+
+                Assert.NotNull(application.PreferredContactMethod);
             }
         }
 
@@ -273,6 +319,50 @@ namespace Myss.Api.Tests.Services
             }
 
             return path;
+        }
+
+        /// <summary>
+        /// The option values of the version's preferred-method question: a dropdown's
+        /// <c>data.values</c> or a radio's <c>values</c>. Empty when no field has the key.
+        /// </summary>
+        private static string[] ContactChoices(int version)
+        {
+            using JsonDocument spec = JsonDocument.Parse(File.ReadAllText(SpecPath(version)));
+            if (FindComponent(spec.RootElement, "preferredCommunication") is not JsonElement question)
+            {
+                return [];
+            }
+
+            JsonElement options = question.TryGetProperty("data", out JsonElement data)
+                ? data.GetProperty("values")
+                : question.GetProperty("values");
+            return [.. options.EnumerateArray().Select(option => option.GetProperty("value").GetString()!)];
+        }
+
+        private static JsonElement? FindComponent(JsonElement container, string key)
+        {
+            foreach (string property in new[] { "components", "columns" })
+            {
+                if (!container.TryGetProperty(property, out JsonElement list))
+                {
+                    continue;
+                }
+
+                foreach (JsonElement child in list.EnumerateArray())
+                {
+                    if (child.TryGetProperty("key", out JsonElement childKey) && childKey.GetString() == key)
+                    {
+                        return child;
+                    }
+
+                    if (FindComponent(child, key) is JsonElement nested)
+                    {
+                        return nested;
+                    }
+                }
+            }
+
+            return null;
         }
 
         /// <summary>Everything every version asks of an applicant, in the version's own shape.</summary>

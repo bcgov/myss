@@ -1,0 +1,10 @@
+{
+    "name": "myss-apps",
+    "private": true,
+    "workspaces": [
+        "MyssFormio",
+        "MyssWebCommon",
+        "MyssWebclient",
+        "MyssAdminWebclient"
+    ]
+}

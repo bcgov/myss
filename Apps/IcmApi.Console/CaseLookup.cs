@@ -17,8 +17,15 @@ namespace Icm.Api.ConsoleApp
         /// — the hand-run check that the case field lists, the child-collection path and
         /// the visibility default hold against a real ICM.
         /// </summary>
-        public static async Task<int> RunAsync(ICaseService cases, ConsoleSettings settings)
+        public static async Task<int> RunAsync(
+            HttpClient icmClient,
+            IOAuthTokenService tokenService,
+            OAuthClientCredentials credentials,
+            ConsoleSettings settings)
         {
+            // Built here rather than in Program, which is at the analyzer's coupling limit.
+            ICaseService cases = new CaseService(
+                new CaseRepository(icmClient, settings.Icm.TrustedUserName), tokenService, credentials);
             CaseSettings wanted = settings.Case;
             Console.WriteLine(wanted.Id is not null
                 ? $"Reading case {wanted.Id}..."

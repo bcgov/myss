@@ -1,0 +1,92 @@
+// Central place for the admin app's route paths so links and the router stay
+// in sync. The app has its own origin, so these carry no /admin prefix.
+export const paths = {
+    // The admin landing page: the list of admin capabilities.
+    home: "/",
+    formManagement: "/form-management",
+    // Editor for one form, opened from the form-management list.
+    formEditor: "/form-management/:formSpecId",
+    // Creates a form, or a new version of one, from pasted JSON.
+    formFromJson: "/form-management/:formSpecId/from-json",
+    // One form's messages, and the editor for one of them.
+    formMessages: "/form-management/:formSpecId/messages",
+    formMessage: "/form-management/:formSpecId/messages/:messageKey",
+    // The application review queue (MYSS-226), and one application opened
+    // from it. Ministry workers only (WORKER or ADMIN role).
+    applications: "/applications",
+    application: "/applications/:id",
+    // Worker override (MYSS-321): start an Application for Assistance for a
+    // client, and one opened by its link. Workers only.
+    workerOverride: "/worker-override",
+    // Every worker's unsubmitted worker override drafts (MYSS-322). A static
+    // segment, so it ranks above the :id route beside it.
+    workerOverrideDrafts: "/worker-override/drafts",
+    workerOverrideApplication: "/worker-override/:id",
+    // Support View: search for clients (MYSS-275). Workers only.
+    clientSearch: "/support/clients",
+    // The OIDC redirect target.
+    authCallback: "/auth/callback",
+    // Where sign-out and idle logout land. Deliberately unguarded: a guarded
+    // page would start IDIR sign-in at once and, with the IDIR session still
+    // alive upstream, sign the user straight back in.
+    signedOut: "/signed-out",
+} as const;
+
+export type AppPath = (typeof paths)[keyof typeof paths];
+
+/** Concrete editor URL for one form, kept beside the `formEditor` pattern. */
+export function formEditorPath(formSpecId: string): string {
+    return `/form-management/${encodeURIComponent(formSpecId)}`;
+}
+
+/**
+ * Editor URL for a form that does not exist yet. The editor starts from a
+ * local template and nothing is stored until the first Save draft.
+ */
+export function newFormPath(formSpecId: string, title: string): string {
+    const params = new URLSearchParams({ new: "1" });
+    if (title.trim()) {
+        params.set("title", title.trim());
+    }
+    return `${formEditorPath(formSpecId)}?${params.toString()}`;
+}
+
+/**
+ * URL of the page that saves pasted JSON as a new form or a new version of
+ * one. `confirm` records the save target accepted in the existing-form warning.
+ */
+export function formFromJsonPath(
+    formSpecId: string,
+    title: string,
+    confirm?: string | null,
+): string {
+    const params = new URLSearchParams();
+    if (title.trim()) {
+        params.set("title", title.trim());
+    }
+    if (confirm) {
+        params.set("confirm", confirm);
+    }
+    const query = params.toString();
+    return `${formEditorPath(formSpecId)}/from-json${query ? `?${query}` : ""}`;
+}
+
+/** The page of one form's messages, kept beside the `formMessages` pattern. */
+export function formMessagesPath(formSpecId: string): string {
+    return `${formEditorPath(formSpecId)}/messages`;
+}
+
+/** The editor of one form message, kept beside the `formMessage` pattern. */
+export function formMessagePath(formSpecId: string, messageKey: string): string {
+    return `${formMessagesPath(formSpecId)}/${encodeURIComponent(messageKey)}`;
+}
+
+/** Concrete URL of one worker override application, beside its pattern. */
+export function workerOverridePath(id: string): string {
+    return `/worker-override/${encodeURIComponent(id)}`;
+}
+
+/** Concrete review URL for one application, kept beside the `application` pattern. */
+export function applicationPath(id: string): string {
+    return `/applications/${encodeURIComponent(id)}`;
+}

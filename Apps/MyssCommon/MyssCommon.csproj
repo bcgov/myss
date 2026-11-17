@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Code shared by the citizen API (MyssApi) and the admin API (MyssAdminApi):
+  the web host setup (logging, tracing, Swagger, CORS, forwarded headers),
+  sign-in and roles (Keycloak claims, RoleCalculator, the mock sign-in for
+  local runs), the Strapi readers both APIs use, the eligibility rate table,
+  and reading bus pass answers. Both APIs must behave the same in these
+  areas, so they run this one copy. App-specific endpoints, policies and
+  services stay in each API.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Version>0.1.0</Version>
+        <RootNamespace>Myss.Common</RootNamespace>
+        <AssemblyName>Myss.Common</AssemblyName>
+        <Nullable>enable</Nullable>
+        <LangVersion>14.0</LangVersion>
+        <AnalysisMode>Recommended</AnalysisMode>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- ASP.NET Core / API -->
+        <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+
+        <!-- Observability: OpenTelemetry -->
+        <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.19.1" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.19.0" />
+
+        <!-- Observability: Serilog -->
+        <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+        <PackageReference Include="Serilog.Enrichers.ClientInfo" Version="2.9.0" />
+        <PackageReference Include="Serilog.Enrichers.CorrelationId" Version="3.0.1" />
+        <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+        <PackageReference Include="Serilog.Enrichers.Span" Version="3.1.0" />
+        <PackageReference Include="Serilog.Exceptions" Version="8.4.0" />
+        <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The form spec model (FormSpecModel) and the event store's correlation id contract -->
+        <ProjectReference Include="..\MyssFormSpec\MyssFormSpec.csproj" />
+        <ProjectReference Include="..\MyssData\MyssData.csproj" />
+    </ItemGroup>
+</Project>

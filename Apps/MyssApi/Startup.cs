@@ -9,19 +9,27 @@ namespace Myss.Api
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
     using Microsoft.Extensions.Logging;
+    using Microsoft.FeatureManagement;
     using Myss.Api.Configuration;
     using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
     using Myss.Api.Intake;
-    using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.Data;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
+    using Myss.Common.Hosting;
 
     /// <summary>
     /// Configures the application during startup.
     /// </summary>
     public class Startup
     {
+        private const string FormsDbConnection = "FormsDb";
+
         private readonly StartupConfiguration startupConfig;
 
         /// <summary>
@@ -63,16 +71,17 @@ namespace Myss.Api
 
             // Configure the forms module (POC: spec proxy + versioned submissions).
             // Protected behind authentication (see FormsController [Authorize]).
+            // The forms, platform and intake contexts are the shared model in
+            // MyssData; their migrations live here (see MyssMigrations).
             services.AddDbContext<FormsDbContext>(options =>
-                options.UseNpgsql(this.startupConfig.Configuration.GetConnectionString("FormsDb")));
+                options.UseNpgsql(
+                    this.startupConfig.Configuration.GetConnectionString(FormsDbConnection),
+                    npgsql => MyssMigrations.Configure(npgsql, historySchema: null)));
+            // The shared Strapi readers (MyssCommon) read with this API's
+            // read-only token.
+            services.AddSingleton(StrapiReadOptions.FromConfiguration(
+                this.startupConfig.Configuration, "Strapi:ApiToken"));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
-
-            // Admin form editor (MYSS-209) write path: a SEPARATE typed client bound to
-            // the write-scoped Strapi:AdminApiToken, so the citizen read path above keeps
-            // its read-only token. Brokered server-side; the token never reaches the browser.
-            services.AddHttpClient<IFormSpecAdminProvider, StrapiFormSpecAdminProvider>();
-            services.AddHttpClient<IPdfProvider, CdogsPdfProvider>();
-            services.AddSingleton<ITemplateProvider, EmbeddedTemplateProvider>();
             services.AddScoped<IFormsService, FormsService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
 
@@ -80,6 +89,7 @@ namespace Myss.Api
             // ICM and MIS PORTALSERVICES are connected; swap the provider then.
             services.AddScoped<IAccountService, AccountService>();
             services.AddSingleton<ICaseAccountProvider, PlaceholderCaseAccountProvider>();
+            services.AddSingleton<IContactMatchProvider, HardcodedContactMatchProvider>();
 
             // The PIN (MYSS-258): set at registration, changed on Account Info.
             // Only its salted hash is stored. The lockout is bound below.
@@ -91,14 +101,11 @@ namespace Myss.Api
             // falls back to the compiled table; the result is cached so the
             // public endpoint does not hit Strapi on every request.
             services.AddMemoryCache();
-            services.AddHttpClient<IEligibilityRateProvider, StrapiEligibilityRateProvider>(
+            // The admin form and rates editors live in MyssAdminApi, which holds the
+            // write-scoped Strapi token; this API only ever reads.
+            services.AddHttpClient<EligibilityRateTableReader>(
                 client => client.Timeout = TimeSpan.FromSeconds(5));
-
-            // The admin rates editor writes through its own typed client, so the
-            // write token never reaches the anonymous read path above.
-            services.AddHttpClient<IEligibilityRateAdminProvider, StrapiEligibilityRateAdminProvider>(
-                client => client.Timeout = TimeSpan.FromSeconds(10));
-            services.AddScoped<IEligibilityRatesService, EligibilityRatesService>();
+            services.AddTransient<IEligibilityRateProvider, StrapiEligibilityRateProvider>();
 
             // The error message catalogue: the wording a refused submission carries,
             // published in Strapi and overlaid on the compiled defaults. Same
@@ -107,6 +114,12 @@ namespace Myss.Api
             // authored wording and nothing more.
             services.AddHttpClient<IErrorMessageProvider, StrapiErrorMessageProvider>(
                 client => client.Timeout = TimeSpan.FromSeconds(5));
+
+            // The texts of form messages, such as a form's confirmation, with the same
+            // read-only token, cache and short timeout.
+            services.AddHttpClient<FormMessageReader>(
+                client => client.Timeout = TimeSpan.FromSeconds(5));
+            services.AddTransient<IFormMessageProvider, StrapiFormMessageProvider>();
 
             // Configure the attachments module: validate -> quarantined row ->
             // ClamAV scan -> object store -> release. Protected behind
@@ -118,7 +131,7 @@ namespace Myss.Api
             services.AddDbContext<AttachmentsDbContext>(options =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("AttachmentsDb")
-                        ?? configuration.GetConnectionString("FormsDb"),
+                        ?? configuration.GetConnectionString(FormsDbConnection),
                     npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "attachments")));
             services.AddSingleton<IVirusScanProvider, ClamAvScanProvider>();
 
@@ -144,8 +157,8 @@ namespace Myss.Api
             services.AddDbContext<PlatformDbContext>(options =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("PlatformDb")
-                        ?? configuration.GetConnectionString("FormsDb"),
-                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "platform")));
+                        ?? configuration.GetConnectionString(FormsDbConnection),
+                    npgsql => MyssMigrations.Configure(npgsql, "platform")));
             services.AddScoped<IEventStore, EventStore>();
 
             // Application Intake, applicant slice: the citizen's own Income
@@ -155,14 +168,13 @@ namespace Myss.Api
             services.AddDbContext<IntakeDbContext>(options =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("IntakeDb")
-                        ?? configuration.GetConnectionString("FormsDb"),
-                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "intake")));
+                        ?? configuration.GetConnectionString(FormsDbConnection),
+                    npgsql => MyssMigrations.Configure(npgsql, "intake")));
             services.AddScoped<IIntakeService, IntakeService>();
-            services.AddScoped<IReviewService, ReviewService>();
 
-            // What follows a worker's Accept. Nothing receives applications
-            // yet; the placeholder succeeds without leaving the API.
-            services.AddSingleton<IApplicationPromotionProvider, PlaceholderApplicationPromotionProvider>();
+            // The worker side of intake (review, decisions, promotion) and the
+            // staff reads of stored submissions are served by MyssAdminApi over
+            // the same schemas (MyssData). This API owns those schemas' migrations.
 
             // Bus pass hand-off to ICM. MyssApi never calls Siebel: everything
             // ICM-bound goes to the IcmApi middleware over REST, which owns the
@@ -223,7 +235,7 @@ namespace Myss.Api
 
             // The submit route is anonymous and every accepted call files a service
             // request in ICM, so it is throttled per client address (see
-            // BusPassRateLimit; UseRateLimiter is in StartupConfiguration.UseHttp).
+            // BusPassRateLimit; UseHttp adds UseRateLimiter when asked, below).
             BusPassRateLimitConfig rateLimit = new();
             configuration.GetSection("BusPass:SubmitRateLimit").Bind(rateLimit);
             BusPassRateLimit.Validate(rateLimit);
@@ -235,6 +247,38 @@ namespace Myss.Api
             configuration.GetSection("Account:PinLockout").Bind(pinLockout);
             PinLockoutConfig.Validate(pinLockout);
             services.AddSingleton(pinLockout);
+
+            // Forgotten PIN (MYSS-36): a single-use link emailed through BC Gov
+            // Notify. The link lifetime is validated here; the Notify key and the
+            // link's base URL are checked at the first request, as the service
+            // account's credentials are, so a checkout without secrets still boots.
+            PinResetConfig pinReset = new();
+            configuration.GetSection("Account:PinReset").Bind(pinReset);
+            PinResetConfig.Validate(pinReset);
+            services.AddSingleton(pinReset);
+            services.Configure<NotifyConfig>(configuration.GetSection(NotifyConfig.SectionName));
+            NotifyConfig notify = new();
+            configuration.GetSection(NotifyConfig.SectionName).Bind(notify);
+            services.AddHttpClient<IEmailProvider, NotifyEmailProvider>(
+                client => client.Timeout = TimeSpan.FromSeconds(notify.TimeoutSeconds));
+            services.AddScoped<IPinResetService, PinResetService>();
+
+            // Email verification (MYSS-305): the registration address and any
+            // change on Account Info are proven by an emailed link, sent the same
+            // way and pointing at the same webclient URL as the PIN reset's.
+            EmailVerificationConfig emailVerification = new();
+            configuration.GetSection("Account:EmailVerification").Bind(emailVerification);
+            EmailVerificationConfig.Validate(emailVerification);
+            services.AddSingleton(emailVerification);
+            services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+
+            // Registration's email proofs (MYSS-295) are useless once older than a
+            // link's lifetime; this deletes them, so an abandoned registration does
+            // not keep an address (PII inventory retention).
+            services.AddHostedService<RegistrationEmailPurge>();
+
+            // Feature flags (handbook §2.7). A flag that is not set is off.
+            services.AddFeatureManagement(configuration.GetSection(FeatureFlags.SectionName));
 
             // CORS services are required by the inline UseCors policy in
             // StartupConfiguration.UseHttp, which is driven by the AllowOrigins config.
@@ -248,7 +292,7 @@ namespace Myss.Api
         public void Configure(IApplicationBuilder app)
         {
             this.startupConfig.UseForwardHeaders(app);
-            this.startupConfig.UseHttp(app);
+            this.startupConfig.UseHttp(app, useRateLimiter: true);
             this.startupConfig.UseResponseCaching(app);
             this.startupConfig.UseEnrichTracing(app);
             this.startupConfig.UseRest(app);

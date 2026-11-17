@@ -8,11 +8,15 @@ namespace Myss.Api.Intake
     using System.Threading.Tasks;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging;
-    using Myss.Api.Domain;
     using Myss.Api.Models;
-    using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Services;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// Applicant-side intake over the intake schema and the platform event
@@ -23,7 +27,10 @@ namespace Myss.Api.Intake
     public class IntakeService : IIntakeService
     {
         /// <summary>The only form this slice serves.</summary>
-        public const string FormSpecId = "income-assistance-poc";
+        public const string FormSpecId = IntakeFormSpecIds.IncomeAssistance;
+
+        /// <summary>The ID the product team publishes for Application for Assistance.</summary>
+        public const string AfaFormSpecId = IntakeFormSpecIds.ApplicationForAssistance;
 
         private readonly ILogger<IntakeService> _logger;
         private readonly IntakeDbContext _dbContext;
@@ -66,7 +73,18 @@ namespace Myss.Api.Intake
         }
 
         /// <inheritdoc/>
-        public async Task<IntakeResultModel> CreateAsync(CancellationToken cancellationToken)
+        public Task<IntakeResultModel> CreateAsync(CancellationToken cancellationToken)
+        {
+            return CreateForFormAsync(FormSpecId, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<IntakeResultModel> CreateAfaAsync(CancellationToken cancellationToken)
+        {
+            return CreateForFormAsync(AfaFormSpecId, cancellationToken);
+        }
+
+        private async Task<IntakeResultModel> CreateForFormAsync(string formSpecId, CancellationToken cancellationToken)
         {
             string subject = RequireSubject();
             if (!await _userProfileService.HasProfileAsync(subject, cancellationToken))
@@ -74,11 +92,13 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.ProfileRequired();
             }
 
-            FormSpecModel? latest = await _formSpecProvider.GetLatestAsync(FormSpecId, cancellationToken);
+            FormSpecModel? latest = await _formSpecProvider.GetLatestAsync(formSpecId, cancellationToken);
             if (latest is null)
             {
-                _logger.LogError("No published spec for {FormSpecId}; cannot start an application", FormSpecId);
-                return IntakeResultModel.SpecUnavailable();
+                _logger.LogWarning("No published spec for {FormSpecId}; cannot start an application", formSpecId);
+                return formSpecId == AfaFormSpecId
+                    ? IntakeResultModel.SpecNotPublished()
+                    : IntakeResultModel.SpecUnavailable();
             }
 
             DateTimeOffset now = _timeProvider.GetUtcNow();
@@ -86,7 +106,7 @@ namespace Myss.Api.Intake
             {
                 Id = Guid.NewGuid(),
                 OwnerSubject = subject,
-                FormSpecId = FormSpecId,
+                FormSpecId = formSpecId,
                 FormSpecVersion = latest.Version,
                 Answers = JsonDocument.Parse("{}"),
                 Version = 1,
@@ -108,10 +128,23 @@ namespace Myss.Api.Intake
         /// <inheritdoc/>
         public async Task<IReadOnlyList<ApplicationSummaryModel>> ListMineAsync(CancellationToken cancellationToken)
         {
+            return await ListMineForFormAsync(FormSpecId, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<IReadOnlyList<ApplicationSummaryModel>> ListMyAfaAsync(CancellationToken cancellationToken)
+        {
+            return ListMineForFormAsync(AfaFormSpecId, cancellationToken);
+        }
+
+        private async Task<IReadOnlyList<ApplicationSummaryModel>> ListMineForFormAsync(
+            string? formSpecId,
+            CancellationToken cancellationToken)
+        {
             string subject = RequireSubject();
             List<ApplicationAnswers> rows = await _dbContext.Applications
                 .AsNoTracking()
-                .Where(a => a.OwnerSubject == subject)
+                .Where(a => a.OwnerSubject == subject && (formSpecId == null || a.FormSpecId == formSpecId))
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync(cancellationToken);
 
@@ -127,7 +160,21 @@ namespace Myss.Api.Intake
         /// <inheritdoc/>
         public async Task<IntakeResultModel> GetAsync(Guid id, CancellationToken cancellationToken)
         {
-            ApplicationAnswers? row = await FindOwnAsync(id, track: false, cancellationToken);
+            return await GetForFormAsync(id, formSpecId: null, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task<IntakeResultModel> GetAfaAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return GetForFormAsync(id, AfaFormSpecId, cancellationToken);
+        }
+
+        private async Task<IntakeResultModel> GetForFormAsync(
+            Guid id,
+            string? formSpecId,
+            CancellationToken cancellationToken)
+        {
+            ApplicationAnswers? row = await FindOwnAsync(id, track: false, cancellationToken, formSpecId);
             if (row is null)
             {
                 return IntakeResultModel.NotFound();
@@ -243,14 +290,15 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.Invalid(await this.WordAsync(errors, cancellationToken));
             }
 
-            // The row first: it takes the submitted answers and a new version,
-            // so any other tab still holding the old version is refused from
-            // here on, including after a return reopens the application. The
-            // answers that count stay the ones in the event's payload; the row
-            // is only the working copy a return starts from.
-            row.Answers = JsonDocument.Parse(request.Answers.GetRawText());
+            // Three writes, in this order, so the answers change only once the
+            // event has landed. First claim the row's version token, answers
+            // untouched: any other tab still holding the old version is
+            // refused from here on, including after a return reopens the
+            // application, and so is a save or withdrawal that read the row
+            // before this point. A withdrawal that landed after the status
+            // check above has already claimed the token, so this matches
+            // nothing and the submit stops with nothing changed.
             row.Version = request.Version + 1;
-            row.UpdatedAt = _timeProvider.GetUtcNow();
             try
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
@@ -261,7 +309,9 @@ namespace Myss.Api.Intake
             }
 
             // Then the event. A returned application is resubmitted rather
-            // than submitted again.
+            // than submitted again. A withdrawal that read the row after the
+            // claim and appended first makes this fail, and the answers have
+            // not been touched.
             var payload = new SubmittedPayload
             {
                 FormSpecVersion = row.FormSpecVersion,
@@ -283,6 +333,25 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.StreamConflict(row.Version);
             }
 
+            // Last the working copy a return starts from, still under the
+            // claimed token (the version stays where the claim put it). The
+            // answers that count are the event's, so if a withdrawal claimed
+            // the row since then this write matches nothing, the retained
+            // answers stay as they were, and the submit still stands.
+            row.Answers = JsonDocument.Parse(request.Answers.GetRawText());
+            row.UpdatedAt = _timeProvider.GetUtcNow();
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _logger.LogInformation(
+                    "Application {ApplicationId} was claimed after its submit landed; its working copy keeps the earlier answers",
+                    id);
+                await _dbContext.Entry(row).ReloadAsync(cancellationToken);
+            }
+
             _logger.LogInformation(
                 "{EventType} application {ApplicationId} on {FormSpecId} v{FormSpecVersion}",
                 eventType,
@@ -292,6 +361,63 @@ namespace Myss.Api.Intake
 
             ApplicationState submitted = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
             return IntakeResultModel.Ok(ToModel(row, submitted, spec: null));
+        }
+
+        /// <inheritdoc/>
+        public async Task<IntakeResultModel> WithdrawAsync(Guid id, CancellationToken cancellationToken)
+        {
+            ApplicationAnswers? row = await FindOwnAsync(id, track: true, cancellationToken);
+            if (row is null)
+            {
+                return IntakeResultModel.NotFound();
+            }
+
+            EventStream stream = await _eventStore.LoadAsync(id, cancellationToken);
+            ApplicationState state = ApplicationProjection.Fold(stream);
+            if (!ApplicationProjection.CanWithdraw(state))
+            {
+                _logger.LogInformation("Refused withdrawal of application {ApplicationId} in status {Status}", id, state.StatusCode);
+                return IntakeResultModel.NotEditable(row.Version);
+            }
+
+            // Claim the row before the event, under the same version token a
+            // save or submit writes it with. Whichever of them commits first
+            // wins: a save or submit that passed its status check before this
+            // point now matches nothing and is refused, a submit that claimed
+            // first but has not appended yet loses at its append, and a
+            // withdrawal that read the row before one of them landed is
+            // refused here, so the retained answers are never changed after
+            // the application is withdrawn. The answers and UpdatedAt are
+            // left as they were.
+            row.Version++;
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _logger.LogInformation("Withdrawal of application {ApplicationId} lost a race with a save or submit; the caller reloads", id);
+                return IntakeResultModel.StaleVersion(currentVersion: null);
+            }
+
+            try
+            {
+                await _eventStore.AppendAsync(
+                    id,
+                    stream.Version,
+                    [new MarkerPayload().ToEvent(ApplicationEventTypes.Withdrawn)],
+                    ApplicationActors.Applicant(row.OwnerSubject),
+                    cancellationToken);
+            }
+            catch (ConcurrencyException ex)
+            {
+                _logger.LogInformation(ex, "Withdrawal of application {ApplicationId} lost a race; the caller reloads", id);
+                return IntakeResultModel.StreamConflict(row.Version);
+            }
+
+            _logger.LogInformation("Withdrew application {ApplicationId}", id);
+            ApplicationState withdrawn = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
+            return IntakeResultModel.Ok(ToModel(row, withdrawn, spec: null));
         }
 
         /// <summary>
@@ -319,7 +445,11 @@ namespace Myss.Api.Intake
             return user.Subject;
         }
 
-        private Task<ApplicationAnswers?> FindOwnAsync(Guid id, bool track, CancellationToken cancellationToken)
+        private Task<ApplicationAnswers?> FindOwnAsync(
+            Guid id,
+            bool track,
+            CancellationToken cancellationToken,
+            string? formSpecId = null)
         {
             // Owner is part of the lookup, not a check after it: a row that is
             // not the caller's does not exist, so ids cannot be enumerated.
@@ -330,7 +460,9 @@ namespace Myss.Api.Intake
                 query = query.AsNoTracking();
             }
 
-            return query.SingleOrDefaultAsync(a => a.Id == id && a.OwnerSubject == subject, cancellationToken);
+            return query.SingleOrDefaultAsync(
+                a => a.Id == id && a.OwnerSubject == subject && (formSpecId == null || a.FormSpecId == formSpecId),
+                cancellationToken);
         }
 
         private static ApplicationSummaryModel ToSummary(ApplicationAnswers row, ApplicationState state)

@@ -3,7 +3,9 @@ namespace Myss.Api.Tests.Contracts
     using System.Text.Json;
     using System.Text.Json.Nodes;
     using Myss.Api.Models;
+    using Myss.FormSpec.Domain;
     using Xunit;
+    using Myss.Common.BusPass;
 
     /// <summary>
     /// The body this API posts to the ICM middleware is the shared sample in

@@ -8,11 +8,17 @@ namespace Myss.Api.Tests.TestSupport
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
     using Myss.Api.Configuration;
+    using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
     using Myss.Api.Intake;
-    using Myss.Api.Platform;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Data;
+    using Myss.Data.Intake;
+    using Myss.Data.Platform;
+    using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
+    using Myss.Common.Content;
 
     /// <summary>
     /// One in-memory host per test: the three contexts the slice touches
@@ -24,19 +30,21 @@ namespace Myss.Api.Tests.TestSupport
     {
         private readonly WebApplicationFactory<Startup> _factory;
         private readonly HttpClient _client;
+        private readonly OneShotPause _beforeAppend = new();
+        private readonly OneShotPause _afterAppend = new();
 
         /// <summary>Initializes a new instance of the <see cref="IntakeTestHost"/> class.</summary>
         /// <param name="factory">The shared host factory.</param>
         /// <param name="provider">The fake spec provider every context shares.</param>
         /// <param name="registered">Personas that get a profile row.</param>
         /// <param name="mockAuth">Whether mock auth is on; off makes every call anonymous.</param>
-        /// <param name="promotion">The promotion step, when a test needs other than the placeholder's success.</param>
+        /// <param name="email">The email provider, when a test reads what was sent; otherwise a fresh fake.</param>
         public IntakeTestHost(
             WebApplicationFactory<Startup> factory,
             FakeFormSpecProvider provider,
             IReadOnlyList<string> registered,
             bool mockAuth,
-            IApplicationPromotionProvider? promotion = null)
+            FakeEmailProvider? email = null)
         {
             string dbName = Guid.NewGuid().ToString();
             ServiceProvider efProvider = new ServiceCollection()
@@ -67,6 +75,9 @@ namespace Myss.Api.Tests.TestSupport
                         LastName = "Tester",
                         DateOfBirth = new DateOnly(1990, 1, 1),
                         Email = $"{persona}@example.com",
+
+                        // As the migration left every profile from before verification (MYSS-305).
+                        EmailVerifiedAt = DateTimeOffset.UtcNow,
                         Sin = "050082833",
                         CreatedAt = DateTimeOffset.UtcNow,
                         UpdatedAt = DateTimeOffset.UtcNow,
@@ -90,6 +101,13 @@ namespace Myss.Api.Tests.TestSupport
                     services.RemoveAll<PlatformDbContext>();
                     services.AddScoped<PlatformDbContext>(_ => new InMemoryPlatformDbContext(platform));
 
+                    // The real store, with pauses a race test can arm.
+                    services.RemoveAll<IEventStore>();
+                    services.AddScoped<IEventStore>(sp => new PausableEventStore(
+                        ActivatorUtilities.CreateInstance<EventStore>(sp),
+                        _beforeAppend,
+                        _afterAppend));
+
                     services.RemoveAll<DbContextOptions<IntakeDbContext>>();
                     services.RemoveAll<IntakeDbContext>();
                     services.AddScoped<IntakeDbContext>(_ => new InMemoryIntakeDbContext(intake));
@@ -102,11 +120,11 @@ namespace Myss.Api.Tests.TestSupport
                     services.RemoveAll<IErrorMessageProvider>();
                     services.AddSingleton<IErrorMessageProvider>(new FakeErrorMessageProvider());
 
-                    if (promotion is not null)
-                    {
-                        services.RemoveAll<IApplicationPromotionProvider>();
-                        services.AddSingleton(promotion);
-                    }
+                    // Nothing here sends real email, and the reset link needs a base URL.
+                    services.RemoveAll<IEmailProvider>();
+                    services.AddSingleton<IEmailProvider>(email ?? new FakeEmailProvider());
+                    services.RemoveAll<PinResetConfig>();
+                    services.AddSingleton(new PinResetConfig { LinkBaseUrl = new Uri("https://myss.test") });
                 });
             });
             _client = _factory.CreateClient();
@@ -124,34 +142,28 @@ namespace Myss.Api.Tests.TestSupport
             return _client.SendAsync(request);
         }
 
+        /// <summary>
+        /// Holds the next event append, before it reaches the store, until
+        /// released. Submit and withdrawal both claim the answers row before
+        /// they append, so this parks either one between those two writes.
+        /// </summary>
+        /// <returns>A task that completes once the append is held, and the source that releases it.</returns>
+        public (Task Reached, TaskCompletionSource Release) PauseNextAppend() => _beforeAppend.Arm();
+
+        /// <summary>
+        /// Holds the next event append, once it has been written, until
+        /// released: a submit parked here has its event in the log but has
+        /// not yet copied its answers into the row.
+        /// </summary>
+        /// <returns>A task that completes once the append is held, and the source that releases it.</returns>
+        public (Task Reached, TaskCompletionSource Release) PauseAfterNextAppend() => _afterAppend.Arm();
+
         public async Task<Guid> Create(string persona)
         {
             using HttpResponseMessage response = await Send(persona, HttpMethod.Post, "/v1/intake/applications");
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             return body.RootElement.GetProperty("payload").GetProperty("id").GetGuid();
-        }
-
-        /// <summary>Submits an application as a citizen persona; asserts 200.</summary>
-        public async Task Submit(string persona, Guid id, int version, object answers)
-        {
-            using HttpResponseMessage response = await Send(
-                persona,
-                HttpMethod.Post,
-                $"/v1/intake/applications/{id}/submit",
-                JsonContent.Create(new { version, answers }));
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
-
-        /// <summary>The event types on a stream, oldest first.</summary>
-        public async Task<IReadOnlyList<string>> EventTypes(Guid streamId)
-        {
-            using IServiceScope scope = _factory.Services.CreateScope();
-            return await scope.ServiceProvider.GetRequiredService<PlatformDbContext>()
-                .Events.Where(e => e.StreamId == streamId)
-                .OrderBy(e => e.Version)
-                .Select(e => e.Type)
-                .ToListAsync();
         }
 
         public async Task<int> CountEvents(Guid streamId)
@@ -161,21 +173,19 @@ namespace Myss.Api.Tests.TestSupport
                 .Events.CountAsync(e => e.StreamId == streamId);
         }
 
-        /// <summary>The actor of the newest event on a stream.</summary>
-        public async Task<string?> LastActor(Guid streamId)
-        {
-            using IServiceScope scope = _factory.Services.CreateScope();
-            return await scope.ServiceProvider.GetRequiredService<PlatformDbContext>()
-                .Events.Where(e => e.StreamId == streamId)
-                .OrderByDescending(e => e.Version)
-                .Select(e => e.Actor)
-                .FirstOrDefaultAsync();
-        }
-
         public async Task<int> CountApplications()
         {
             using IServiceScope scope = _factory.Services.CreateScope();
             return await scope.ServiceProvider.GetRequiredService<IntakeDbContext>().Applications.CountAsync();
+        }
+
+        /// <summary>Reads the row's working copy straight from the database, past the projection's choice of answers.</summary>
+        public async Task<JsonElement> RowAnswers(Guid id)
+        {
+            using IServiceScope scope = _factory.Services.CreateScope();
+            ApplicationAnswers row = await scope.ServiceProvider.GetRequiredService<IntakeDbContext>()
+                .Applications.AsNoTracking().SingleAsync(a => a.Id == id);
+            return row.Answers.RootElement.Clone();
         }
 
         public async Task OverwriteRow(Guid id, string answersJson)

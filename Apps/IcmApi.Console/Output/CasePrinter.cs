@@ -54,7 +54,15 @@ namespace Icm.Api.ConsoleApp.Output
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.Name is not (nameof(Case.UnparsedValues) or nameof(Case.AdditionalFields)))];
 
-        private static void WriteFields(
+        /// <summary>Writes a record's set fields, then its unmodelled and unparsed ones. Shared with <see cref="ProspectPrinter"/>.</summary>
+        /// <param name="record">The record.</param>
+        /// <param name="fields">Its properties, less the two dictionaries.</param>
+        /// <param name="additional">What ICM sent that the model does not declare.</param>
+        /// <param name="unparsed">What arrived in a shape the client could not read.</param>
+        /// <param name="showValues">True to print values; false to print only whether each is set.</param>
+        /// <param name="model">The model's name, for the "add them to" hint.</param>
+        /// <param name="indent">Extra indentation.</param>
+        internal static void WriteFields(
             object record,
             PropertyInfo[] fields,
             IReadOnlyDictionary<string, JsonElement> additional,

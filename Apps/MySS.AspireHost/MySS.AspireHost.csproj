@@ -25,6 +25,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\MyssApi\MyssApi.csproj" />
+        <ProjectReference Include="..\MyssAdminApi\MyssAdminApi.csproj" />
         <ProjectReference Include="..\IcmApi.Host\IcmApi.Host.csproj" />
     </ItemGroup>
 

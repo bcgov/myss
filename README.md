@@ -44,8 +44,9 @@ dotnet run --project Apps/MySS.AspireHost
 
 It starts the compose containers' equivalents (Postgres 17, ClamAV, MinIO with its
 bucket-creation one-shot), applies the four EF migration contexts once Postgres is healthy,
-then starts `MySSApi` (http://localhost:5000), `MySSContent` (Strapi,
-http://localhost:1337, run with npm on the host), `MyssWebClient` (Vite) and, when an
+then starts `MySSApi` (http://localhost:5000), `MySSAdminApi` (http://localhost:5010),
+`MySSContent` (Strapi, http://localhost:1337, run with npm on the host), `MyssWebClient`
+(Vite, http://localhost:5173), `MyssAdminWebClient` (Vite, http://localhost:5174) and, when an
 ICM base URL is configured (`Icm:BaseUrl` in the shared user-secret store), the ICM
 middleware `IcmApi` (http://localhost:5100; see `Apps/IcmApi.Host/README.md`) — with a
 dashboard (URL printed at startup) showing every resource's logs, health and telemetry.
@@ -57,11 +58,20 @@ Aspire and compose paths share one set of data in either direction — but only 
 two can be up at a time (same host ports).
 
 Still manual, because they live inside Strapi's admin UI: the first-visit admin user,
-and the API token for `Strapi:ApiToken` (goes in `Apps/MyssApi/appsettings.local.json`).
+the API token for `Strapi:ApiToken` (goes in `Apps/MyssApi/appsettings.local.json`), and
+the write-scoped token for `Strapi:AdminApiToken` (goes in
+`Apps/MyssAdminApi/appsettings.local.json`; `find`, `findOne`, `create` and `update` on
+Form Spec and Eligibility Rate, and `find`, `findOne` and `create` on Form
+Message, whose entries are never changed; never `delete`). Only the admin API
+holds the write token.
+The admin API's bus pass PDF also needs the CDOGS credentials (`Cdogs:ClientId` and
+`Cdogs:ClientSecret`) in the same file; without them only the PDF fails.
 The token is read-only and scoped: it needs `find` and `findOne` on Form Spec,
-Eligibility Rate and Error Message. A token created before the Error Message collection
-existed lacks the last grant; MyssApi then logs a warning and words refused submissions
-from its compiled defaults until the token is updated.
+Eligibility Rate, Error Message and Form Message. A token created before the
+Error Message collection existed lacks that grant; MyssApi then logs a warning and words
+refused submissions from its compiled defaults until the token is updated. Without the
+read grant on Form Message, applicants see each form's built-in message; without
+the write token's grant, saving a form message fails with 502.
 
 ## Start the stack manually (compose)
 
@@ -109,10 +119,17 @@ compose Postgres.
 ## Run the apps
 
 - API: `cd Apps/MyssApi && dotnet run` → http://localhost:5000
+- Admin API: `cd Apps/MyssAdminApi && dotnet run` → http://localhost:5010
 - ICM middleware: `dotnet run --project Apps/IcmApi.Host` → http://localhost:5100
   (needs the `Icm:*` user secrets; see `Apps/IcmApi.Host/README.md`)
-- Webclient: `cd Apps/MyssWebclient && npm install && npm run dev` →
-  http://localhost:5173 (the forms demo is under `/techdemos/forms`)
+- Webclients: the two webclients and the two packages they share (`Apps/MyssFormio`,
+  the Form.io components, and `Apps/MyssWebCommon`, sign-in and other common code) are
+  one npm workspace, so install once from `Apps/` with `cd Apps && npm install`. Then:
+  - Webclient: `cd Apps/MyssWebclient && npm run dev` → http://localhost:5173 (the
+    forms demo is under `/techdemos/forms`)
+  - Admin webclient: `cd Apps/MyssAdminWebclient && npm run dev` →
+    http://localhost:5174 (IDIR sign-in; the form and rates editors, and, for the
+    WORKER or ADMIN role, the applications to review)
 - Strapi admin: http://localhost:1337/admin — the first visit asks you to
   create the initial admin user (local account, any credentials)
 
@@ -123,9 +140,12 @@ compose Postgres.
   attachment scanning misbehaves; on a first-ever ClamAV start it will say the
   daemon is not answering until the signature download finishes.
 - API: `dotnet test Apps/MyssApi.Tests`
+- Shared libraries and admin API: `dotnet test Apps/MyssFormSpec.Tests`,
+  `dotnet test Apps/MyssCommon.Tests` and `dotnet test Apps/MyssAdminApi.Tests`
 - ICM client and middleware: `dotnet test Apps/IcmApi.Tests` and
   `dotnet test Apps/IcmApi.Host.Tests`
-- Webclient: `cd Apps/MyssWebclient && npm run test:unit` and
+- Webclients and the shared packages: in `Apps/MyssWebclient`, `Apps/MyssAdminWebclient`,
+  `Apps/MyssFormio` and `Apps/MyssWebCommon`, `npm run test:unit` and
   `npm run test:browser-headless` — the browser tests need a one-time
   `npx playwright install chromium`
 - Webclient end-to-end (Gherkin): `cd Apps/MyssWebclient && npm run test:e2e` —
@@ -147,7 +167,11 @@ cannot access the `SONAR_TOKEN` secret.
 | MySS Content    | `bcgov-sonarcloud_myss_content`   |
 | MySS ICM Client | `bcgov-sonarcloud_myss_icmapi`    |
 
-The workflow imports OpenCover reports from the .NET tests and LCOV reports from both
+The code split out of the API and the web client is analysed under its origin project
+until it has its own: MySS API also covers `MyssFormSpec`, `MyssData`, `MyssCommon` and `MyssAdminApi`, and MySS Web
+Client also covers `MyssAdminWebclient`, `MyssFormio` and `MyssWebCommon`.
+
+The workflow imports OpenCover reports from the .NET tests and LCOV reports from the
 TypeScript test suites. Configure the `SONAR_TOKEN` GitHub Actions secret for the
 `bcgov-sonarcloud` organization, and disable Automatic Analysis for all four projects
 so the CI analyses are the single source of results.
@@ -157,6 +181,35 @@ so the CI analyses are the single source of results.
 `docker compose down` keeps the data. `docker compose down -v` wipes it — the
 next `up` re-runs the init script and the Strapi seed; re-apply the EF
 migrations afterwards.
+
+# Releases
+
+A release is the set of six images deployed together, named
+`v<major>.<sprint>.<n>`. `version.json` holds major and sprint; `n` counts the
+releases published for that sprint, starting at 0.
+
+1. **Every merge to `dev`:** Tekton builds only the apps whose code changed,
+   tags each image with its 7-character commit, and deploys it to dev. The
+   folders that rebuild each app are listed in `.github/scripts/release.sh`.
+2. **Draft release:** the **Release draft** workflow keeps one draft on the
+   Releases page, already named with the next version. Its `release` block
+   lists the build each app would ship (its latest dev build) and whether it
+   changed since the last release. To ship a different build of an app, edit
+   the draft: put another commit or an earlier release (`v0.7.2`) on its
+   line, and add `# pinned` to keep it when new builds land.
+3. **Test:** a repository admin runs **Deploy release** (Actions tab) with
+   `test`. One approval. It tags the listed images `v0.7.4`, promotes them,
+   and publishes the draft as a pre-release with the exact list deployed.
+   Name a published release in the `release` field to redeploy it.
+4. **Prod:** the same workflow with `prod`. It deploys the newest
+   pre-release, which must be what test is running, needs two approvers other
+   than the requester, and marks the release as the latest.
+
+`myss-api` applies the database migrations for both APIs, so a release must
+give `myss-api` and `myss-admin-api` builds with the same `Apps/MyssData`; the
+deploy refuses otherwise. A hotfix is a normal PR to `dev`, then a release. Setup
+(environments, reviewers, the deployer token) is described at the top of
+`.github/workflows/deploy.yml`.
 
 # Previous work
 

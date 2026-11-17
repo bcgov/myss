@@ -1,0 +1,79 @@
+/* The modal lets taller content spill out of its box, so the content is held
+   to the window, less the modal's margins and border. */
+.content {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+    max-height: calc(
+        100vh - 2 *
+            (var(--layout-margin-large) + var(--layout-border-width-small))
+    );
+    overflow-wrap: anywhere;
+    overflow-y: auto;
+    padding: var(--layout-padding-medium) var(--layout-padding-large);
+    scroll-padding: var(--layout-padding-medium);
+}
+
+.title {
+    color: var(--typography-color-primary);
+    font: var(--typography-bold-h5);
+    margin: 0;
+}
+
+.formId {
+    color: var(--typography-color-secondary);
+    font: var(--typography-regular-small-body);
+    margin: 0;
+}
+
+.label {
+    font: var(--typography-bold-body);
+    margin-top: var(--layout-margin-small);
+}
+
+/* @bcgov/design-tokens defines no monospace family, so the generic one is used.
+   In a short window the box gives up height first and its JSON scrolls. */
+.json {
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-medium);
+    border-radius: var(--layout-border-radius-medium);
+    box-sizing: border-box;
+    font-family: monospace;
+    font-size: var(--typography-font-size-small-body);
+    min-height: 8rem;
+    overflow-y: auto;
+    padding: var(--layout-padding-small);
+    resize: none;
+    width: 100%;
+}
+
+.json:focus-visible {
+    outline: var(--layout-border-width-medium) solid
+        var(--surface-color-border-active);
+    outline-offset: var(--layout-border-width-small);
+}
+
+.loading {
+    color: var(--typography-color-secondary);
+    margin: 0;
+}
+
+.error {
+    color: var(--typography-color-danger);
+    font: var(--typography-bold-body);
+    margin: 0;
+}
+
+.actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+    margin-top: var(--layout-margin-small);
+}
+
+.copyStatus {
+    flex: 1 1 12rem;
+    margin: 0;
+}

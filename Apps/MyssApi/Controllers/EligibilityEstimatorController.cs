@@ -7,10 +7,15 @@ namespace Myss.Api.Controllers
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.FeatureManagement.Mvc;
     using Microsoft.AspNetCore.Routing;
     using Microsoft.Extensions.Logging;
+    using Myss.Api.Configuration;
     using Myss.Api.Models;
     using Myss.Api.Providers;
+    using Myss.FormSpec;
+    using Myss.Common.Content;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The public, anonymous Pre-Eligibility Estimator gateway. It serves the
@@ -20,6 +25,7 @@ namespace Myss.Api.Controllers
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/EligibilityEstimator")]
     [ApiController]
+    [FeatureGate(FeatureFlags.EligibilityEstimator)]
     [AllowAnonymous]
     public class EligibilityEstimatorController : Controller
     {

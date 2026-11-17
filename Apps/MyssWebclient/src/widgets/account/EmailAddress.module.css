@@ -1,0 +1,18 @@
+/* The email address and its states, in Contact Information's column. */
+.email,
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+    max-width: 36rem;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-medium);
+}
+
+.confirmation {
+    display: block;
+}

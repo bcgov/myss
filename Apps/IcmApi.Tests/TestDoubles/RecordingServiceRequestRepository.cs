@@ -61,6 +61,26 @@ namespace Icm.Api.Tests.TestDoubles
             return Task.FromResult<ServiceRequest?>(null);
         }
 
+        public Task<IReadOnlyList<ServiceRequestContact>> GetContactsAsync(
+            string bearerToken,
+            string serviceRequestKey,
+            ServiceRequestReadOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            _tokens.Add(bearerToken);
+            return Task.FromResult<IReadOnlyList<ServiceRequestContact>>([]);
+        }
+
+        public Task<string> LinkContactAsync(
+            string bearerToken,
+            string serviceRequestKey,
+            ServiceRequestContactLink link,
+            CancellationToken cancellationToken = default)
+        {
+            _tokens.Add(bearerToken);
+            return Task.FromResult(serviceRequestKey);
+        }
+
         public Task<bool> DeleteAsync(
             string bearerToken,
             string serviceRequestKey,

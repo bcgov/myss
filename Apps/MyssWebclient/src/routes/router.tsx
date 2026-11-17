@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import { AuthCallbackPage } from "@myss/web-common/components";
 
 import App from "@/App";
 import HomePage from "@/pages/HomePage";
@@ -9,30 +10,28 @@ import UnderDevelopmentPage from "@/pages/UnderDevelopmentPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import EligibilityEstimatorPage from "@/pages/EligibilityEstimatorPage";
 import SignInPage from "@/pages/SignInPage";
-import AuthCallbackPage from "@/pages/AuthCallbackPage";
+import PinResetPage from "@/pages/PinResetPage";
+import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import SimpleLoginPage from "@/pages/SimpleLoginPage";
 import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
 import BusPassPage from "@/pages/BusPassPage";
-import SubmissionView from "@/pages/SubmissionView";
 import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
-import AdminPage from "@/pages/AdminPage";
-import FormManagementPage from "@/pages/FormManagementPage";
-import FormEditorPage from "@/pages/FormEditorPage";
 import ApplicationPage from "@/pages/ApplicationPage";
-import WorkerApplicationsPage from "@/pages/WorkerApplicationsPage";
-import WorkerApplicationPage from "@/pages/WorkerApplicationPage";
+import AfaServiceRequestPage from "@/pages/AfaServiceRequestPage";
+import ServiceRequestsPage from "@/pages/ServiceRequestsPage";
 import RequireAuth from "@/auth/RequireAuth";
-import RequireIdir from "@/auth/RequireIdir";
-import RequireWorker from "@/auth/RequireWorker";
 import { paths } from "@/routes/paths";
+import FeatureRoute from "@/routes/FeatureRoute";
+import HomeRoute from "@/routes/HomeRoute";
 
 // App is the shared layout (header/footer + app-wide auth concerns). Child
 // routes render into its <Outlet />.
 //
 // Route composition (see doc/myss-vs-rebuild-merge-analysis.md §6):
-//   PUBLIC    - landing, eligibility estimator, and the sign-in / callback
-//               pages. Any anonymous user can reach these.
+//   PUBLIC    - landing, eligibility estimator, the sign-in / callback
+//               pages, and the emailed PIN reset link. Any anonymous user
+//               can reach these.
 //   PROTECTED - the Forms / Strapi tech-demo pages, wrapped in <RequireAuth>
 //               so they only render once the user has authenticated.
 export const router = createBrowserRouter([
@@ -41,63 +40,53 @@ export const router = createBrowserRouter([
     element: <App />,
     children: [
       // ---- Public ----
-      { index: true, element: <HomePage /> },
+      {
+        index: true,
+        element: (
+          <HomeRoute>
+            <HomePage />
+          </HomeRoute>
+        ),
+      },
       { path: paths.register, element: <RegistrationPage /> },
       {
         path: paths.eligibilityEstimator,
-        element: <EligibilityEstimatorPage />,
+        element: (
+          <FeatureRoute feature="EligibilityEstimator">
+            <EligibilityEstimatorPage />
+          </FeatureRoute>
+        ),
       },
       {
         path: paths.busPass,
-        element: <BusPassPage />,
+        element: (
+          <FeatureRoute feature="BusPass">
+            <BusPassPage />
+          </FeatureRoute>
+        ),
       },
       { path: paths.signIn, element: <SignInPage /> },
-      { path: paths.authCallback, element: <AuthCallbackPage /> },
+      {
+        path: paths.authCallback,
+        element: <AuthCallbackPage fallbackPath={paths.dashboard} />,
+      },
+      {
+        path: paths.pinReset,
+        element: (
+          <FeatureRoute feature="PinReset">
+            <PinResetPage />
+          </FeatureRoute>
+        ),
+      },
+      {
+        path: paths.verifyEmail,
+        element: (
+          <FeatureRoute feature="EmailVerification">
+            <VerifyEmailPage />
+          </FeatureRoute>
+        ),
+      },
       { path: paths.simpleLogin, element: <SimpleLoginPage /> },
-
-      // ---- Administration: direct URL entry for authenticated IDIR users ----
-      {
-        path: paths.admin,
-        element: (
-          <RequireIdir>
-            <AdminPage />
-          </RequireIdir>
-        ),
-      },
-      {
-        path: paths.adminFormManagement,
-        element: (
-          <RequireIdir>
-            <FormManagementPage />
-          </RequireIdir>
-        ),
-      },
-      {
-        path: paths.adminFormEditor,
-        element: (
-          <RequireIdir>
-            <FormEditorPage />
-          </RequireIdir>
-        ),
-      },
-
-      // ---- Worker operations: IDIR sign-in with the WORKER role ----
-      {
-        path: paths.workerApplications,
-        element: (
-          <RequireWorker>
-            <WorkerApplicationsPage />
-          </RequireWorker>
-        ),
-      },
-      {
-        path: paths.workerApplication,
-        element: (
-          <RequireWorker>
-            <WorkerApplicationPage />
-          </RequireWorker>
-        ),
-      },
 
       // ---- Dashboard (MYSS-194): the signed-in citizen's sections, framed
       // by the left-hand menu. A section still under development renders the
@@ -112,17 +101,44 @@ export const router = createBrowserRouter([
           { path: paths.dashboard, element: <DashboardPage /> },
           {
             path: paths.notifications,
-            element: <UnderDevelopmentPage title="Notifications" />,
+            element: (
+              <FeatureRoute feature="Notifications">
+                <UnderDevelopmentPage title="Notifications" />
+              </FeatureRoute>
+            ),
           },
           {
             path: paths.messages,
-            element: <UnderDevelopmentPage title="Messages" />,
+            element: (
+              <FeatureRoute feature="Messages">
+                <UnderDevelopmentPage title="Messages" />
+              </FeatureRoute>
+            ),
           },
           {
             path: paths.serviceRequests,
-            element: <UnderDevelopmentPage title="Service Requests" />,
+            element: (
+              <FeatureRoute feature="ServiceRequests">
+                <ServiceRequestsPage />
+              </FeatureRoute>
+            ),
           },
-          { path: paths.accountInfo, element: <AccountInfoPage /> },
+          {
+            path: paths.afaServiceRequest,
+            element: (
+              <FeatureRoute feature="ServiceRequests">
+                <AfaServiceRequestPage />
+              </FeatureRoute>
+            ),
+          },
+          {
+            path: paths.accountInfo,
+            element: (
+              <FeatureRoute feature="AccountInfo">
+                <AccountInfoPage />
+              </FeatureRoute>
+            ),
+          },
         ],
       },
 
@@ -131,7 +147,9 @@ export const router = createBrowserRouter([
         path: paths.application,
         element: (
           <RequireAuth>
-            <ApplicationPage />
+            <FeatureRoute feature="Intake">
+              <ApplicationPage />
+            </FeatureRoute>
           </RequireAuth>
         ),
       },
@@ -139,7 +157,9 @@ export const router = createBrowserRouter([
         path: "techdemos",
         element: (
           <RequireAuth>
-            <TechDemos />
+            <FeatureRoute feature="TechDemos">
+              <TechDemos />
+            </FeatureRoute>
           </RequireAuth>
         ),
       },
@@ -147,15 +167,9 @@ export const router = createBrowserRouter([
         path: "techdemos/forms",
         element: (
           <RequireAuth>
-            <FormsTechDemo />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "techdemos/forms/submissions/:id",
-        element: (
-          <RequireAuth>
-            <SubmissionView />
+            <FeatureRoute feature="TechDemos">
+              <FormsTechDemo />
+            </FeatureRoute>
           </RequireAuth>
         ),
       },
@@ -163,7 +177,9 @@ export const router = createBrowserRouter([
         path: "techdemos/attachments",
         element: (
           <RequireAuth>
-            <AttachmentsTechDemo />
+            <FeatureRoute feature="TechDemos">
+              <AttachmentsTechDemo />
+            </FeatureRoute>
           </RequireAuth>
         ),
       },

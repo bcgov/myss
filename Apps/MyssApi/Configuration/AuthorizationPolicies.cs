@@ -1,23 +1,7 @@
 namespace Myss.Api.Configuration
 {
     using Microsoft.Extensions.DependencyInjection;
-
-    /// <summary>
-    /// The role names carried in the token. NOTE: the final role set is still to be confirmed
-    /// with IDIM. The target design proposes APPLICANT, CLIENT, WORKER, REVIEWER, SUPERVISOR
-    /// and ADMIN; these mirror the original application's set.
-    /// </summary>
-    public static class MyssRoles
-    {
-        /// <summary>A citizen using their own file.</summary>
-        public const string Client = "CLIENT";
-
-        /// <summary>Ministry staff acting on client files.</summary>
-        public const string Worker = "WORKER";
-
-        /// <summary>Elevated staff; satisfies the worker policies.</summary>
-        public const string Admin = "ADMIN";
-    }
+    using Myss.Common.Auth;
 
     /// <summary>Authorization policy names used by <c>[Authorize(Policy = ...)]</c>.</summary>
     public static class MyssPolicies
@@ -30,19 +14,6 @@ namespace Myss.Api.Configuration
 
         /// <summary>Administrative endpoints.</summary>
         public const string Admin = "Admin";
-
-        /// <summary>
-        /// Staff endpoints that additionally require a government (IDIR) identity — a
-        /// deliberate hardening control, not a reproduction of the original behaviour.
-        /// </summary>
-        public const string WorkerWithIdir = "WorkerWithIdir";
-
-        /// <summary>
-        /// Admin form-editor endpoints: any authenticated caller with a
-        /// government (IDIR) identity. Narrower than [Authorize] alone, which also
-        /// admits BCeID citizens signing in; the IDIR claim is the gate.
-        /// </summary>
-        public const string AdminIdir = "AdminIdir";
     }
 
     /// <summary>
@@ -71,18 +42,7 @@ namespace Myss.Api.Configuration
                         .RequireRole(MyssRoles.Worker, MyssRoles.Admin))
                 .AddPolicy(
                     MyssPolicies.Admin,
-                    policy => policy.RequireAuthenticatedUser().RequireRole(MyssRoles.Admin))
-                .AddPolicy(
-                    MyssPolicies.WorkerWithIdir,
-                    policy => policy
-                        .RequireAuthenticatedUser()
-                        .RequireRole(MyssRoles.Worker, MyssRoles.Admin)
-                        .RequireClaim(KeycloakClaims.IdirUsernameClaimType))
-                .AddPolicy(
-                    MyssPolicies.AdminIdir,
-                    policy => policy
-                        .RequireAuthenticatedUser()
-                        .RequireClaim(KeycloakClaims.IdirUsernameClaimType));
+                    policy => policy.RequireAuthenticatedUser().RequireRole(MyssRoles.Admin));
 
             return services;
         }

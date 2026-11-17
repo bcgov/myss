@@ -2,6 +2,7 @@ namespace Myss.Api.Services
 {
     using System.Collections.Generic;
     using Myss.Api.Models;
+    using Myss.FormSpec;
 
     /// <summary>
     /// Words a set of validation failures from the error message catalogue.

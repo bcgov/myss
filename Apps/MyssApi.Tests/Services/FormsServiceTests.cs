@@ -2,6 +2,8 @@ namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
     using Microsoft.EntityFrameworkCore;
+    using Microsoft.FeatureManagement;
+    using Myss.Api.Configuration;
     using Microsoft.Extensions.Logging.Abstractions;
     using Myss.Api.Data;
     using Myss.Api.Domain;
@@ -9,6 +11,11 @@ namespace Myss.Api.Tests.Services
     using Myss.Api.Providers;
     using Myss.Api.Services;
     using Myss.Api.Tests.TestDoubles;
+    using Myss.Api.Tests.TestSupport;
+    using Myss.Data;
+    using Myss.FormSpec;
+    using Myss.FormSpec.Domain;
+    using Myss.Common.Auth;
 
     /// <summary>
     /// Tests for <see cref="FormsService"/>.
@@ -25,11 +32,13 @@ namespace Myss.Api.Tests.Services
             """;
 
         private readonly FakeFormSpecProvider _provider = new();
-        private readonly IPdfProvider _pdfProvider = new UnexpectedPdfProvider();
-        private readonly FakeFormSpecAdminProvider _adminProvider = new();
-        private readonly ITemplateProvider _templateProvider = new UnexpectedTemplateProvider();
         private readonly FakeErrorMessageProvider _errorMessages = new();
         private readonly PinHasher _pinHasher = new();
+        private readonly FakeEmailProvider _email = new();
+        private readonly FakeContactMatchProvider _contactMatch = new();
+        // Off by default: these tests are about the form, not Step 2's email proof (MYSS-295),
+        // which the tests that need it switch on.
+        private IFeatureManager _features = TestFeatures.AllOnExcept(FeatureFlags.EmailVerification);
 
         [Fact]
         public async Task Submit_RefusedAnswers_AreWordedFromTheCatalogue_KeywordByKeyword()
@@ -82,54 +91,6 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(
                 ErrorMessageDefaults.Messages[ValidationKeywords.SinWrongLength],
                 catalogue[ValidationKeywords.SinWrongLength]);
-        }
-
-        [Fact]
-        public async Task GetSubmission_FetchesArchivedVersion_NeverLatest()
-        {
-            // A submission renders from the spec version stored on it, even
-            // when a newer version exists.
-            using FormsDbContext db = NewDb();
-            Guid id = await SeedSubmission(db, "poc-test-form", version: 1);
-            _provider.VersionResult = FakeFormSpecProvider.Spec("poc-test-form", 1);
-            _provider.LatestResult = FakeFormSpecProvider.Spec("poc-test-form", 2);
-            FormsService service = NewService(db);
-
-            FormSubmissionResponseModel? result = await service.GetSubmissionAsync(id, CancellationToken.None);
-
-            Assert.NotNull(result);
-            Assert.Equal([("poc-test-form", 1)], _provider.VersionCalls);
-            Assert.Empty(_provider.LatestCalls);
-            Assert.Equal(1, result.Spec!.Version);
-        }
-
-        [Fact]
-        public async Task GetSubmission_ArchivedVersionGone_ReturnsSubmissionWithoutSpec()
-        {
-            // The submission should still come back when the content engine
-            // no longer has the spec version.
-            using FormsDbContext db = NewDb();
-            Guid id = await SeedSubmission(db, "poc-test-form", version: 1);
-            _provider.VersionResult = null;
-            FormsService service = NewService(db);
-
-            FormSubmissionResponseModel? result = await service.GetSubmissionAsync(id, CancellationToken.None);
-
-            Assert.NotNull(result);
-            Assert.Null(result.Spec);
-            Assert.Equal("Ada", result.Answers.GetProperty("firstName").GetString());
-        }
-
-        [Fact]
-        public async Task GetSubmission_UnknownId_ReturnsNull()
-        {
-            using FormsDbContext db = NewDb();
-            FormsService service = NewService(db);
-
-            FormSubmissionResponseModel? result = await service.GetSubmissionAsync(Guid.NewGuid(), CancellationToken.None);
-
-            Assert.Null(result);
-            Assert.Empty(_provider.VersionCalls);
         }
 
         [Fact]
@@ -200,21 +161,6 @@ namespace Myss.Api.Tests.Services
             Assert.Empty(await db.FormSubmissions.ToListAsync());
         }
 
-        [Fact]
-        public async Task ListSubmissions_ReturnsNewestFirst_ForTheRequestedFormOnly()
-        {
-            using FormsDbContext db = NewDb();
-            Guid older = await SeedSubmission(db, "poc-test-form", 1, DateTimeOffset.UtcNow.AddHours(-2));
-            Guid newer = await SeedSubmission(db, "poc-test-form", 2, DateTimeOffset.UtcNow.AddHours(-1));
-            await SeedSubmission(db, "other-form", 1, DateTimeOffset.UtcNow);
-            FormsService service = NewService(db);
-
-            IReadOnlyList<FormSubmissionSummaryModel> list =
-                await service.ListSubmissionsAsync("poc-test-form", CancellationToken.None);
-
-            Assert.Equal([newer, older], list.Select(s => s.Id));
-        }
-
         /// <summary>A spec with one required field, for submit-path arrangements.</summary>
         private const string SpecWithFirstName = """
         {
@@ -253,6 +199,27 @@ namespace Myss.Api.Tests.Services
                         Assert.Equal("dateOfBirth", error.Field);
                         Assert.Equal(ValidationKeywords.RegistrationDateOfBirthInvalid, error.Keyword);
                         Assert.Empty(await db.FormSubmissions.ToListAsync());
+                        Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+                }
+
+                [Theory]
+                [InlineData("12/31/1950")]
+                [InlineData("2025-02-31")]
+                public async Task Submit_RegistrationWithANonIsoOrImpossibleDateOfBirth_IsRefusedInRegistrationWording(string dateOfBirth)
+                {
+                        using FormsDbContext db = NewDb();
+                        _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+                        FormsService service = NewService(db);
+
+                        FormSubmissionResultModel result = await service.SubmitAsync(
+                                "registration",
+                                Request(3, $$"""{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"{{dateOfBirth}}","email":"ada@example.com","sin":"050082833"}"""),
+                                CancellationToken.None);
+
+                        ValidationErrorModel error = Assert.Single(result.Errors);
+                        Assert.Equal("dateOfBirth", error.Field);
+                        Assert.Equal(ValidationKeywords.RegistrationDateOfBirthInvalid, error.Keyword);
+                        Assert.Equal("Enter a valid date of birth.", error.Message);
                         Assert.Empty(await db.MyssUserProfiles.ToListAsync());
                 }
 
@@ -376,6 +343,292 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(new DateOnly(1815, 12, 10), profile.DateOfBirth);
             Assert.Equal(2, await db.FormSubmissions.CountAsync());
         }
+
+        [Fact]
+        public async Task Submit_RegistrationRecordsTheBceidUsername_AndKeepsItWhenALaterTokenHasNone()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            const string answers = """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}""";
+
+            await NewService(db, new StubCurrentUserAccessor("test-subject", bceidUsername: " ADALOVE "))
+                .SubmitAsync("registration", Request(3, answers), CancellationToken.None);
+            Assert.Equal("ADALOVE", Assert.Single(await db.MyssUserProfiles.ToListAsync()).BceidUsername);
+
+            await NewService(db, new StubCurrentUserAccessor("test-subject"))
+                .SubmitAsync("registration", Request(3, answers), CancellationToken.None);
+            Assert.Equal("ADALOVE", Assert.Single(await db.MyssUserProfiles.ToListAsync()).BceidUsername);
+        }
+
+        [Fact]
+        public async Task Submit_ANewRegistrationIsMatchedAgainstIcmContacts_OnTheIdentityAttributes()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":" ada@example.com ","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            ContactMatchCriteria criteria = Assert.Single(_contactMatch.Calls);
+            Assert.Equal(
+                new ContactMatchCriteria("Ada", "Lovelace", new DateOnly(1815, 12, 10), "ada@example.com", "050082833"),
+                criteria);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.NotNull(profile.IcmContactMatchedAt);
+        }
+
+        [Fact]
+        public async Task Submit_ANewRegistrationWithNoIcmMatchIsStillCreated_WithoutAMatchTime()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _contactMatch.Result = new ContactMatchResult(IsMatch: false);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Null(profile.IcmContactMatchedAt);
+        }
+
+        [Fact]
+        public async Task Submit_UpdatingAnExistingProfileDoesNotMatchAgain()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+            const string answers = """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}""";
+
+            await service.SubmitAsync("registration", Request(3, answers), CancellationToken.None);
+            await service.SubmitAsync("registration", Request(3, answers), CancellationToken.None);
+
+            Assert.Single(_contactMatch.Calls);
+        }
+
+        [Fact]
+        public async Task Submit_ARefusedRegistrationIsNotMatched()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"not-a-date","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            Assert.Empty(_contactMatch.Calls);
+        }
+
+        [Fact]
+        public async Task HardcodedContactMatch_AlwaysFindsAMatch()
+        {
+            ContactMatchResult result = await new HardcodedContactMatchProvider().MatchAsync(
+                new ContactMatchCriteria("Ada", "Lovelace", new DateOnly(1815, 12, 10), "ada@example.com", "050082833"),
+                CancellationToken.None);
+
+            Assert.True(result.IsMatch);
+        }
+
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AnAddressNotProvenInStep2IsRefused()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOn();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.False(result.IsValid);
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("email", error.Field);
+            Assert.Equal(ValidationKeywords.RegistrationEmailNotVerified, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AProvenAddressRegistersVerified_AndSendsNothing()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOn();
+            // Recent: a proof only counts within the registration session.
+            DateTimeOffset provenAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            db.RegistrationEmailVerifications.Add(new RegistrationEmailVerification
+            {
+                Subject = "test-subject",
+                Email = "ada@example.com",
+                RequestedAt = provenAt.AddMinutes(-5),
+                VerifiedAt = provenAt,
+            });
+            await db.SaveChangesAsync();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":" ADA@example.com ","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync();
+            Assert.Equal("ADA@example.com", profile.Email);
+            Assert.Equal(provenAt, profile.EmailVerifiedAt);
+            Assert.Null(profile.EmailVerificationTokenHash);
+            Assert.Empty(await db.RegistrationEmailVerifications.ToListAsync());
+            Assert.Empty(_email.Sent);
+        }
+
+        // Copilot review, MYSS-295: an account holder must not be able to swap
+        // their email through registration, skipping Account Info's pending
+        // change and the notice to the old address.
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AnAccountHolderCannotChangeTheirEmailThroughRegistration()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOn();
+            db.MyssUserProfiles.Add(new MyssUserProfile
+            {
+                Id = Guid.NewGuid(),
+                Subject = "test-subject",
+                FirstName = "Ada",
+                LastName = "Lovelace",
+                DateOfBirth = new DateOnly(1815, 12, 10),
+                Email = "ada@example.com",
+                Sin = "050082833",
+                EmailVerifiedAt = DateTimeOffset.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+
+            // However it got there: a row proving another address.
+            db.RegistrationEmailVerifications.Add(new RegistrationEmailVerification
+            {
+                Subject = "test-subject",
+                Email = "attacker@example.com",
+                RequestedAt = DateTimeOffset.UtcNow,
+                VerifiedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"attacker@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.Equal(ValidationKeywords.RegistrationEmailNotVerified, Assert.Single(result.Errors).Keyword);
+            Assert.Equal("ada@example.com", (await db.MyssUserProfiles.SingleAsync()).Email);
+        }
+
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AnAccountHolderMayRegisterAgainWithTheirOwnAddress()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            db.MyssUserProfiles.Add(new MyssUserProfile
+            {
+                Id = Guid.NewGuid(),
+                Subject = "test-subject",
+                FirstName = "Ada",
+                LastName = "Lovelace",
+                DateOfBirth = new DateOnly(1815, 12, 10),
+                Email = "ada@example.com",
+                Sin = "050082833",
+                EmailVerifiedAt = DateTimeOffset.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+            _features = TestFeatures.AllOn();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Augusta","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync();
+            Assert.Equal("Augusta", profile.FirstName);
+            Assert.Equal("ada@example.com", profile.Email);
+            Assert.NotNull(profile.EmailVerifiedAt);
+        }
+
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AnAddressOtherThanTheProvenOneIsRefused()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOn();
+            db.RegistrationEmailVerifications.Add(new RegistrationEmailVerification
+            {
+                Subject = "test-subject",
+                Email = "ada@example.com",
+                RequestedAt = DateTimeOffset.UtcNow,
+                VerifiedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"augusta@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.Equal(ValidationKeywords.RegistrationEmailNotVerified, Assert.Single(result.Errors).Keyword);
+        }
+
+        // Copilot review, MYSS-295: the flag switched off mid-registration must
+        // not leave the registration's email proof behind.
+        [Fact]
+        public async Task Submit_WithEmailVerificationOff_ARegistrationStillDropsItsEmailProof()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            db.RegistrationEmailVerifications.Add(new RegistrationEmailVerification
+            {
+                Subject = "test-subject",
+                Email = "ada@example.com",
+                RequestedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Empty(await db.RegistrationEmailVerifications.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_WithEmailVerificationOffRegistrationStoresTheAddressAndSendsNothing()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOnExcept(FeatureFlags.EmailVerification);
+
+            await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":" ada@example.com ","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            MyssUserProfile profile = await db.MyssUserProfiles.SingleAsync();
+            Assert.Equal("ada@example.com", profile.Email);
+            Assert.Null(profile.EmailVerificationTokenHash);
+            Assert.Empty(_email.Sent);
+        }
+
 
         private const string RegistrationSpecV4 = """
         {
@@ -766,16 +1019,17 @@ namespace Myss.Api.Tests.Services
             FormsDbContext db,
             ICurrentUserAccessor? currentUserAccessor = null)
         {
+            ICurrentUserAccessor caller = currentUserAccessor ?? new StubCurrentUserAccessor("test-subject");
             return new FormsService(
                 NullLogger<FormsService>.Instance,
                 db,
                 _provider,
-                _pdfProvider,
-                _templateProvider,
-                _adminProvider,
-                currentUserAccessor ?? new StubCurrentUserAccessor("test-subject"),
+                caller,
                 _errorMessages,
-                _pinHasher);
+                _pinHasher,
+                TestEmailVerification.NewService(db, caller, _email),
+                _features,
+                _contactMatch);
         }
 
             private sealed class AnonymousCurrentUserAccessor : ICurrentUserAccessor
@@ -789,44 +1043,6 @@ namespace Myss.Api.Tests.Services
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
             return new InMemoryFormsDbContext(options);
-        }
-
-        private static async Task<Guid> SeedSubmission(
-            FormsDbContext db,
-            string formSpecId,
-            int version,
-            DateTimeOffset? submittedAt = null)
-        {
-            var submission = new FormSubmission
-            {
-                Id = Guid.NewGuid(),
-                FormSpecId = formSpecId,
-                FormSpecVersion = version,
-                Answers = JsonDocument.Parse("""{"firstName":"Ada"}"""),
-                SubmittedAt = submittedAt ?? DateTimeOffset.UtcNow,
-            };
-            db.FormSubmissions.Add(submission);
-            await db.SaveChangesAsync();
-            return submission.Id;
-        }
-
-        private sealed class UnexpectedPdfProvider : IPdfProvider
-        {
-            public Task<byte[]> GenerateFromOdtAsync(
-                byte[] odtTemplate,
-                object data,
-                CancellationToken cancellationToken)
-            {
-                throw new InvalidOperationException("PDF generation is not expected in these tests.");
-            }
-        }
-
-        private sealed class UnexpectedTemplateProvider : ITemplateProvider
-        {
-            public Task<byte[]> GetTemplateAsync(string templateName, CancellationToken cancellationToken)
-            {
-                throw new InvalidOperationException("Template retrieval is not expected in these tests.");
-            }
         }
     }
 }

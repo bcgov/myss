@@ -2,25 +2,45 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   AccountRequestError,
+  cancelEmailChange,
+  changeEmail,
   getAccount,
+  getRegistrationEmail,
+  requestRegistrationEmail,
+  requestPinReset,
+  resendEmailVerification,
+  resetPin,
   savePin,
   updateNotificationPreferences,
   updatePhones,
+  verifyEmail,
   type AccountPayload,
   type PhoneInput,
   type PinInput,
+  type ResetPinInput,
 } from "@/api/account";
 
-// React-query hooks for the citizen's Account Info (MYSS-271) and PIN (MYSS-258). Raw fetches
-// for now (see api/account.ts), so every call carries authHeaders() itself.
+// React-query hooks for the citizen's Account Info (MYSS-271), PIN (MYSS-258),
+// PIN reset by email (MYSS-36) and email change and verification (MYSS-305). Raw fetches for now (see api/account.ts),
+// so every signed-in call carries authHeaders() itself.
 
-export { AccountRequestError, PIN_LOCKED_KEYWORD } from "@/api/account";
+export {
+  AccountRequestError,
+  EMAIL_LINK_INVALID_KEYWORD,
+  EMAIL_TOO_SOON_KEYWORD,
+  PIN_LOCKED_KEYWORD,
+  PIN_RESET_LINK_INVALID_KEYWORD,
+  PIN_RESET_TOO_SOON_KEYWORD,
+} from "@/api/account";
 export type {
   AccountPayload,
   AccountPhone,
   AccountPinStatus,
   PhoneInput,
   PinInput,
+  PinResetRequested,
+  RegistrationEmail,
+  ResetPinInput,
 } from "@/api/account";
 
 export const ACCOUNT_QUERY_KEY = ["account"] as const;
@@ -76,4 +96,71 @@ export function useUpdateNotificationPreferences() {
   return useAccountWrite((monthlyReportReminder: boolean) =>
     updateNotificationPreferences(monthlyReportReminder),
   );
+}
+
+/** Emails the caller a link to reset their PIN. Changes nothing on the account yet. */
+export function useRequestPinReset() {
+  return useMutation({ mutationFn: requestPinReset });
+}
+
+/** Sets a new PIN from the emailed link. Anonymous; nothing to cache. */
+export function useResetPin() {
+  return useMutation({ mutationFn: (input: ResetPinInput) => resetPin(input) });
+}
+
+/** Changes the caller's email address; the new one waits for its link. */
+export function useChangeEmail() {
+  return useAccountWrite((email: string) => changeEmail(email));
+}
+
+/** Emails a new link for the address waiting to be verified. */
+export function useResendEmailVerification() {
+  return useAccountWrite<void>(() => resendEmailVerification());
+}
+
+/** Drops a pending email change. */
+export function useCancelEmailChange() {
+  return useAccountWrite<void>(() => cancelEmailChange());
+}
+
+/** Follows an emailed verification link. Anonymous; nothing to cache. */
+export function useVerifyEmail() {
+  return useMutation({ mutationFn: (token: string) => verifyEmail(token) });
+}
+
+export const REGISTRATION_EMAIL_QUERY_KEY = ["registration-email"] as const;
+
+/**
+ * The Step 2 status cache key, scoped by the signed-in subject as meQueryKey
+ * is, so one sign-in never reads another's address or verification state from
+ * the app-wide cache.
+ */
+export function registrationEmailQueryKey(subject: string) {
+  return [...REGISTRATION_EMAIL_QUERY_KEY, subject] as const;
+}
+
+/**
+ * Registration's Step 2 status (MYSS-295). Read again when the citizen comes
+ * back to the tab, so it shows the address as verified once they have
+ * followed the link elsewhere; Continue still checks it afresh.
+ */
+export function useRegistrationEmail(subject: string, enabled: boolean) {
+  return useQuery({
+    queryKey: registrationEmailQueryKey(subject),
+    queryFn: getRegistrationEmail,
+    enabled,
+    refetchOnWindowFocus: true,
+    retry: shouldRetry,
+  });
+}
+
+/** Emails the registration link; the status it answers with goes in the cache. */
+export function useRequestRegistrationEmail(subject: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (email: string) => requestRegistrationEmail(email),
+    onSuccess: (status) => {
+      queryClient.setQueryData(registrationEmailQueryKey(subject), status);
+    },
+  });
 }

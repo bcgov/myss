@@ -4,9 +4,12 @@ namespace Myss.Api.Controllers
     using System.Collections.Generic;
     using Asp.Versioning;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.FeatureManagement.Mvc;
     using Microsoft.AspNetCore.Routing;
+    using Myss.Api.Configuration;
     using Myss.Api.Models;
     using Myss.Api.Services;
+    using Myss.Common.Models;
 
     /// <summary>
     /// The DemoController controller.
@@ -14,6 +17,7 @@ namespace Myss.Api.Controllers
     [ApiVersion("1.0")]
     [Route("v{version:apiVersion}/[controller]")]
     [ApiController]
+    [FeatureGate(FeatureFlags.TechDemos)]
     public class DemoController : Controller
     {
         private readonly IDemoService _demoService;

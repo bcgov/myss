@@ -46,7 +46,7 @@ export type { IncomeLimit } from "@/lib/eligibilityCalculator";
 /** Content changes rarely and is not per-user, so keep it fresh for an hour. */
 const CONTENT_STALE_TIME = 60 * 60 * 1000;
 
-/** The cache key of the rate table; the rates editor's save updates it. */
+/** The cache key of the rate table. */
 export const ESTIMATOR_RATES_QUERY_KEY = ["estimator-rates"] as const;
 
 /** The latest published estimator form spec (anonymous read). */

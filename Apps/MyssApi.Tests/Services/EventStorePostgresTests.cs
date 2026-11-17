@@ -2,9 +2,10 @@ namespace Myss.Api.Tests.Services
 {
     using System.Text.Json;
     using Microsoft.EntityFrameworkCore;
-    using Myss.Api.Platform;
+    using Myss.Api.Configuration;
     using Myss.Api.Tests.TestDoubles;
     using Myss.Api.Tests.TestSupport;
+    using Myss.Data.Platform;
     using Npgsql;
 
     /// <summary>
@@ -56,7 +57,7 @@ namespace Myss.Api.Tests.Services
             return new DbContextOptionsBuilder<PlatformDbContext>()
                 .UseNpgsql(
                     PostgresFactAttribute.ConnectionString,
-                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "platform"))
+                    npgsql => MyssMigrations.Configure(npgsql, "platform"))
                 .Options;
         }
 

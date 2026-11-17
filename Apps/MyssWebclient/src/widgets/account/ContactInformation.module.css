@@ -43,6 +43,14 @@
     flex: 0 0 auto;
 }
 
+/* On a phone the type goes under the number, both full width. */
+@media (max-width: 767px) {
+    .phoneRow {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
 .actions {
     display: flex;
     flex-wrap: wrap;

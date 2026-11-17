@@ -44,7 +44,7 @@ const PENDING = {
   preCheckFailLede:
     "Based on your answers, you may not be eligible for assistance from this ministry.",
   preCheckFailBody:
-    "To receive assistance you must live in British Columbia and have a status that allows you to live in Canada.",
+    "To receive assistance you must live in British Columbia and meet the ministry's citizenship requirements.",
 } as const;
 
 // Announced when a submit is blocked and no invalid field could take focus.
@@ -75,7 +75,7 @@ const moneyWhole = new Intl.NumberFormat("en-CA", {
 });
 
 /**
- * The "might not be eligible" state: either question answered "No". Both are
+ * The "may not be eligible" state: either question answered "No". Both are
  * terminal in the spec — a "No" to the first never reveals the second — so the
  * warning has to fire off whichever was answered. The seed pins
  * `dataType: "string"`, but the boolean form is accepted too. Mirrors
@@ -164,20 +164,7 @@ function EstimateOutcome({
           <p className={styles.estimateLede}>{PENDING.preCheckFailLede}</p>
         </div>
 
-        <h2 className={styles.subHeading}>Not eligible but still in need?</h2>
         <p className={styles.prose}>{PENDING.preCheckFailBody}</p>
-        <p className={styles.prose}>
-          You may be able to receive hardship assistance, depending on your
-          circumstances.{" "}
-          <a
-            className={styles.inlineLink}
-            href={PENDING.hardshipUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Contact us to find out more about this kind of support.
-          </a>
-        </p>
       </>
     );
   }
@@ -502,10 +489,10 @@ export default function EligibilityEstimatorPage() {
                 children using the component's own title markup (class "title",
                 id "alert-title" — the target of the container's aria-labelledby). */}
             <span className="title" id="alert-title">
-              You might not be eligible for assistance
+              You may not be eligible for assistance
             </span>
             <p>
-              Based on your answer, you might not meet the{" "}
+              Based on your answer, you may not meet the{" "}
               <a
                 className={styles.inlineLink}
                 href={PENDING.residenceReqUrl}
@@ -515,18 +502,6 @@ export default function EligibilityEstimatorPage() {
                 residency requirements
               </a>{" "}
               for assistance in British Columbia.
-            </p>
-            <p>
-              <strong>Not eligible but still in need?</strong> You may be able to
-              receive hardship assistance, depending on your circumstances.{" "}
-              <a
-                className={styles.inlineLink}
-                href={PENDING.hardshipUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Contact us to find out more about this kind of support.
-              </a>
             </p>
           </InlineAlert>
         )}

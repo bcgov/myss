@@ -1,6 +1,7 @@
 namespace Myss.Api.Domain
 {
     using System.Linq;
+    using Myss.FormSpec.Domain;
 
     /// <summary>
     /// A citizen's 4-digit Personal Identification Number: the electronic
