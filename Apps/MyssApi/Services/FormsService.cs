@@ -326,7 +326,7 @@ namespace Myss.Api.Services
                     : null;
             string? gender = OptionalString(answers, "gender");
 
-            _ = TryParseRegistrationDate(dateOfBirth, out DateOnly parsedDate);
+            _ = IsoDate.TryParse(dateOfBirth, out DateOnly parsedDate);
 
             MyssUserProfile? profile = await _dbContext.MyssUserProfiles
                 .Include(p => p.Phones)
@@ -510,7 +510,7 @@ namespace Myss.Api.Services
             List<ValidationErrorModel> errors = [];
             string? dateOfBirth = OptionalString(answers, "dateOfBirth");
 
-            if (!TryParseRegistrationDate(dateOfBirth ?? string.Empty, out DateOnly parsedDate))
+            if (!IsoDate.TryParse(dateOfBirth, out DateOnly parsedDate))
             {
                 errors.Add(new ValidationErrorModel
                 {
@@ -601,23 +601,6 @@ namespace Myss.Api.Services
             }
 
             return values;
-        }
-
-        private static bool TryParseRegistrationDate(string value, out DateOnly date)
-        {
-            if (DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
-            {
-                return true;
-            }
-
-            if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dateTime))
-            {
-                date = DateOnly.FromDateTime(dateTime.DateTime);
-                return true;
-            }
-
-            date = default;
-            return false;
         }
 
         private static FormSubmissionResponseModel ToResponse(FormSubmission submission, FormSpecModel? spec)

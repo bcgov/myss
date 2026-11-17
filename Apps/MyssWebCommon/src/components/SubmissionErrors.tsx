@@ -30,8 +30,9 @@ function byId(field: string): HTMLElement | undefined {
  * component key, so the two line up without the client needing to know
  * anything about Form.io's generated element ids (which are random per render
  * and therefore useless as anchor targets). A design system select keeps that
- * name on a hidden element and takes focus on its button, so when the named
- * element cannot be focused the field's wrapper is searched for what can.
+ * name on a hidden element and takes focus on its button; date inputs focus
+ * their editable segments. When the named element cannot be focused the
+ * field's wrapper is searched for what can.
  *
  * A field outside Form.io is found by its id instead: the element itself, or
  * the first focusable control inside it, as for a radio group.
@@ -48,7 +49,7 @@ function focusField(field: string) {
             ? named
             : (Array.from(
                   document.querySelectorAll<HTMLElement>(
-                      `.formio-component-${key} :is(input, select, textarea, button)`,
+                      `.formio-component-${key} :is(input, select, textarea, button, [tabindex])`,
                   ),
               ).find(isFocusable) ?? byId(field));
     if (!target) return;
