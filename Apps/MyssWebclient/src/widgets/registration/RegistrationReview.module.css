@@ -26,6 +26,17 @@
     width: 50%;
 }
 
+/* A group's heading row, tinted as the column headings are. */
+.review .group th {
+    background: var(--surface-color-background-light-blue);
+    font-weight: var(--typography-font-weights-bold);
+}
+
+.values {
+    margin: 0;
+    padding-left: var(--layout-padding-medium);
+}
+
 .visuallyHidden {
     clip-path: inset(50%);
     height: 1px;

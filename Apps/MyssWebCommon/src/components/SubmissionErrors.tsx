@@ -13,6 +13,16 @@ function isFocusable(element: HTMLElement): boolean {
     );
 }
 
+/** The element with the field's id, or the first focusable control inside it. */
+function byId(field: string): HTMLElement | undefined {
+    const element = document.getElementById(field);
+    if (!element) return undefined;
+    if (isFocusable(element)) return element;
+    return Array.from(
+        element.querySelectorAll<HTMLElement>("input, select, textarea, button"),
+    ).find(isFocusable);
+}
+
 /**
  * Moves focus to the input a validation error belongs to.
  *
@@ -22,6 +32,9 @@ function isFocusable(element: HTMLElement): boolean {
  * and therefore useless as anchor targets). A design system select keeps that
  * name on a hidden element and takes focus on its button, so when the named
  * element cannot be focused the field's wrapper is searched for what can.
+ *
+ * A field outside Form.io is found by its id instead: the element itself, or
+ * the first focusable control inside it, as for a radio group.
  *
  * A miss is deliberately silent: the message is already on screen, and a field
  * that cannot be focused, hidden by a conditional say, is not worth throwing
@@ -33,11 +46,11 @@ function focusField(field: string) {
     const target =
         named && isFocusable(named)
             ? named
-            : Array.from(
+            : (Array.from(
                   document.querySelectorAll<HTMLElement>(
                       `.formio-component-${key} :is(input, select, textarea, button)`,
                   ),
-              ).find(isFocusable);
+              ).find(isFocusable) ?? byId(field));
     if (!target) return;
 
     target.focus();

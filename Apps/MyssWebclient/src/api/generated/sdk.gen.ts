@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { CancelAccountEmailChangeData, CancelAccountEmailChangeErrors, CancelAccountEmailChangeResponses, ChangeAccountEmailData, ChangeAccountEmailErrors, ChangeAccountEmailResponses, CreateAfaApplicationData, CreateAfaApplicationErrors, CreateAfaApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetAfaApplicationData, GetAfaApplicationErrors, GetAfaApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFeaturesData, GetFeaturesResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetRegistrationEmailVerificationData, GetRegistrationEmailVerificationResponses, ListAfaApplicationsData, ListAfaApplicationsResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, RequestPinResetData, RequestPinResetErrors, RequestPinResetResponses, RequestRegistrationEmailVerificationData, RequestRegistrationEmailVerificationErrors, RequestRegistrationEmailVerificationResponses, ResendAccountEmailVerificationData, ResendAccountEmailVerificationErrors, ResendAccountEmailVerificationResponses, ResetPinData, ResetPinErrors, ResetPinResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
+import type { CancelAccountEmailChangeData, CancelAccountEmailChangeErrors, CancelAccountEmailChangeResponses, ChangeAccountEmailData, ChangeAccountEmailErrors, ChangeAccountEmailResponses, CreateAfaApplicationData, CreateAfaApplicationErrors, CreateAfaApplicationResponses, CreateApplicationData, CreateApplicationErrors, CreateApplicationResponses, GetAccountData, GetAccountErrors, GetAccountResponses, GetAfaApplicationData, GetAfaApplicationErrors, GetAfaApplicationResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetErrorMessagesData, GetErrorMessagesResponses, GetEstimatorRatesData, GetEstimatorRatesResponses, GetEstimatorSpecData, GetEstimatorSpecErrors, GetEstimatorSpecResponses, GetFeaturesData, GetFeaturesResponses, GetFormMessageData, GetFormMessageErrors, GetFormMessageResponses, GetFormSpecData, GetFormSpecErrors, GetFormSpecResponses, GetMeData, GetMeErrors, GetMeResponses, GetPlaceholderData, GetPlaceholderResponses, GetRegistrationEmailVerificationData, GetRegistrationEmailVerificationResponses, ListAfaApplicationsData, ListAfaApplicationsResponses, ListApplicationsData, ListApplicationsResponses, ListAttachmentsData, ListAttachmentsResponses, RequestPinResetData, RequestPinResetErrors, RequestPinResetResponses, RequestRegistrationEmailVerificationData, RequestRegistrationEmailVerificationErrors, RequestRegistrationEmailVerificationResponses, ResendAccountEmailVerificationData, ResendAccountEmailVerificationErrors, ResendAccountEmailVerificationResponses, ResetPinData, ResetPinErrors, ResetPinResponses, SaveAccountPinData, SaveAccountPinErrors, SaveAccountPinResponses, SaveApplicationAnswersData, SaveApplicationAnswersErrors, SaveApplicationAnswersResponses, SubmitApplicationData, SubmitApplicationErrors, SubmitApplicationResponses, SubmitBusPassData, SubmitBusPassErrors, SubmitBusPassResponses, SubmitFormData, SubmitFormErrors, SubmitFormResponses, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesErrors, UpdateAccountNotificationPreferencesResponses, UpdateAccountPhonesData, UpdateAccountPhonesErrors, UpdateAccountPhonesResponses, UploadAttachmentData, UploadAttachmentErrors, UploadAttachmentResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses, WithdrawApplicationData, WithdrawApplicationErrors, WithdrawApplicationResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -150,9 +150,10 @@ export const cancelAccountEmailChange = <ThrowOnError extends boolean = false>(o
 
 /**
  * Registration's Step 2 (MYSS-295): emails a link to prove the address
- * from Step 1, before the profile exists. Any signed-in caller, as the
- * registration submit is. An address already proven in this
- * registration is not sent another link.
+ * from Step 1, before the profile exists. Citizens only (the Client
+ * policy, which a citizen sign-in has before registering): a worker or
+ * admin sign-in cannot send these emails. An address already proven in
+ * this registration is not sent another link.
  */
 export const requestRegistrationEmailVerification = <ThrowOnError extends boolean = false>(options?: Options<RequestRegistrationEmailVerificationData, ThrowOnError>): RequestResult<RequestRegistrationEmailVerificationResponses, RequestRegistrationEmailVerificationErrors, ThrowOnError> => (options?.client ?? client).post<RequestRegistrationEmailVerificationResponses, RequestRegistrationEmailVerificationErrors, ThrowOnError>({
     url: '/v1/registration/email-verification-requests',
@@ -187,6 +188,12 @@ export const verifyEmail = <ThrowOnError extends boolean = false>(options?: Opti
  * Returns every feature flag and whether it is on.
  */
 export const getFeatures = <ThrowOnError extends boolean = false>(options?: Options<GetFeaturesData, ThrowOnError>): RequestResult<GetFeaturesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetFeaturesResponses, unknown, ThrowOnError>({ url: '/v1/features', ...options });
+
+/**
+ * Returns a form message's live texts. A 404 when none is published or the
+ * message is not defined; a 502 when the content engine cannot be read.
+ */
+export const getFormMessage = <ThrowOnError extends boolean = false>(options: Options<GetFormMessageData, ThrowOnError>): RequestResult<GetFormMessageResponses, GetFormMessageErrors, ThrowOnError> => (options.client ?? client).get<GetFormMessageResponses, GetFormMessageErrors, ThrowOnError>({ url: '/v1/forms/{formSpecId}/messages/{messageKey}', ...options });
 
 /**
  * Returns the latest published spec for a form (content-engine proxy).
@@ -269,6 +276,11 @@ export const submitApplication = <ThrowOnError extends boolean = false>(options:
         ...options.headers
     }
 });
+
+/**
+ * Withdraws the caller's draft, submitted or returned application.
+ */
+export const withdrawApplication = <ThrowOnError extends boolean = false>(options: Options<WithdrawApplicationData, ThrowOnError>): RequestResult<WithdrawApplicationResponses, WithdrawApplicationErrors, ThrowOnError> => (options.client ?? client).post<WithdrawApplicationResponses, WithdrawApplicationErrors, ThrowOnError>({ url: '/v1/intake/applications/{id}/withdraw', ...options });
 
 /**
  * Emails the caller a single-use link to reset their PIN, at the address

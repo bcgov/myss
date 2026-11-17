@@ -1,0 +1,58 @@
+.questions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+}
+
+.heading,
+.subheading,
+.paragraph,
+.hint {
+    margin: 0;
+}
+
+.hint {
+    color: var(--typography-color-secondary);
+    font-size: var(--typography-font-size-small-body);
+}
+
+/* The chosen context's own questions, indented under the options. */
+.followUps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+    padding-left: var(--layout-padding-medium);
+    border-left: var(--layout-border-width-large) solid
+        var(--surface-color-border-default);
+}
+
+.field {
+    max-width: 28rem;
+}
+
+.answer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-xsmall);
+    padding: var(--layout-padding-small) var(--layout-padding-medium);
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+}
+
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (max-width: 767px) {
+    .followUps {
+        padding-left: var(--layout-padding-small);
+    }
+}
