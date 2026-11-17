@@ -23,3 +23,23 @@ MYSS_E2E_LIVE_API=1 npm run test:e2e   # no stubs: run against the configured AP
 
 `bddgen` writes the generated specs to `.features-gen/` (ignored). The
 cucumber-style report lands in `e2e-report/index.html`.
+
+## Nightly integration run
+
+`.github/workflows/e2e-integration.yml` runs the same scenarios against a
+deployed environment every day at 10:00 UTC (02:00 PST, 03:00 PDT), and on
+demand from the Actions tab ("Run workflow", choosing `dev` or `test`). It sets
+`MYSS_E2E_LIVE_API=1` and `E2E_BASE_URL` to the environment's webclient route,
+so no Vite server is started and nothing is stubbed: the deployed `config.js`,
+MyssApi and MyssContent are what the scenarios exercise. Reproduce a run
+locally with:
+
+```bash
+MYSS_E2E_LIVE_API=1 \
+E2E_BASE_URL=https://myss-webclient-e07f31-dev.apps.gold.devops.gov.bc.ca \
+npm run test:e2e
+```
+
+The reports (HTML, cucumber and traces) are uploaded as the run's artifact.
+Because the scenarios assert the seeded copy and rates, content published on
+the target environment that differs from the seed fails them.

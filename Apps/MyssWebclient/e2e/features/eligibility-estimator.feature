@@ -17,16 +17,16 @@ Feature: Pre-eligibility estimator
 
   Scenario: Only the residency question is asked at first
     Then I see the question "Do you currently reside in British Columbia?"
-    But I do not see the question "Do you have a status that allows you to live in Canada?"
+    But I do not see the question "Do you meet the ministry's citizenship requirements?"
 
   Scenario: Not living in British Columbia ends the estimate
     When I answer "Do you currently reside in British Columbia?" with "No"
     Then I am warned that I might not be eligible
-    And I do not see the question "Do you have a status that allows you to live in Canada?"
+    And I do not see the question "Do you meet the ministry's citizenship requirements?"
 
   Scenario: No eligible status ends the estimate
     When I answer "Do you currently reside in British Columbia?" with "Yes"
-    And I answer "Do you have a status that allows you to live in Canada?" with "No"
+    And I answer "Do you meet the ministry's citizenship requirements?" with "No"
     Then I am warned that I might not be eligible
     And the warning links to the residency requirements
     And I do not see the question "What is your relationship status?"
@@ -44,8 +44,8 @@ Feature: Pre-eligibility estimator
 
     Examples: Dependants raise the family size; PWD changes the client type
       | relationship             | dependants | pwd         | income | amount    | size | household     |
-      | Single and Never Married | 0          | do not plan | 0      | $1,060.00 | 1    | Single        |
-      | Single and Never Married | 0          | plan        | 0      | $1,535.50 | 1    | Single        |
+      | Single                   | 0          | do not plan | 0      | $1,060.00 | 1    | Single        |
+      | Single                   | 0          | plan        | 0      | $1,535.50 | 1    | Single        |
       | Divorced                 | 2          | do not plan | 300    | $1,200.00 | 3    | Single parent |
       | Widowed                  | 1          | plan        | 500    | $1,380.50 | 2    | Single parent |
 
@@ -74,7 +74,7 @@ Feature: Pre-eligibility estimator
   Scenario: Income at or above the limit gives a $0 estimate
     Given I live in BC with an eligible status
     And I am under 65
-    And I am "Single and Never Married" with 0 dependent children
+    And I am "Single" with 0 dependent children
     And I do not plan to apply for the PWD designation
     And my monthly income is $1200
     When I ask for an estimate
@@ -85,7 +85,7 @@ Feature: Pre-eligibility estimator
   Scenario: Assets over the ceiling disqualify regardless of income
     Given I live in BC with an eligible status
     And I am under 65
-    And I am "Single and Never Married" with 0 dependent children
+    And I am "Single" with 0 dependent children
     And I do not plan to apply for the PWD designation
     And my other assets are worth $6000
     When I ask for an estimate
@@ -96,7 +96,7 @@ Feature: Pre-eligibility estimator
   Scenario: A dependant raises the asset ceiling
     Given I live in BC with an eligible status
     And I am under 65
-    And I am "Single and Never Married" with 1 dependent children
+    And I am "Single" with 1 dependent children
     And I do not plan to apply for the PWD designation
     And my other assets are worth $6000
     When I ask for an estimate

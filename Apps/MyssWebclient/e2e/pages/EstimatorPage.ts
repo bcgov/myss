@@ -4,7 +4,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 // a feature reads like the form, and a renamed question fails in one place.
 export const Question = {
   residesInBc: "Do you currently reside in British Columbia?",
-  hasEligibleStatus: "Do you have a status that allows you to live in Canada?",
+  hasEligibleStatus: "Do you meet the ministry's citizenship requirements?",
   age65: "Are you 65 years of age or older?",
   relationshipStatus: "What is your relationship status?",
   partnerAge65: "Is your spouse 65 years of age or older?",
@@ -16,13 +16,13 @@ export const Question = {
   monthlyIncome: "Your Monthly Income",
   partnerMonthlyIncome: "Spouse's Monthly Income",
   assetValue:
-    "What is the total value of your assets not listed above (property, investments, cash or savings)?",
+    "What is the total value of your assets not listed above (additional vehicles, property, investments, cash or savings)?",
 } as const;
 
 /**
  * A field's accessible name is its label, which Form.io suffixes with
  * " (required)" on required fields. Match the whole name either way, so
- * "Married" can never also match "Single and Never Married".
+ * "Married" can never also match "Marriage-Like Relationship" or a longer label.
  */
 function fieldName(label: string): RegExp {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -70,9 +70,12 @@ export class EstimatorPage {
     await this.page.getByRole("button", { name: "Get Estimate" }).click();
   }
 
-  /** The inline "might not be eligible" warning shown on a "No". */
+  /** The inline "may not be eligible" warning shown on a "No". Exact, so the
+   * lede "Based on your answers, you may not be eligible…" never matches. */
   warning(): Locator {
-    return this.page.getByText("You might not be eligible for assistance");
+    return this.page.getByText("You may not be eligible for assistance", {
+      exact: true,
+    });
   }
 
   residencyRequirementsLink(): Locator {

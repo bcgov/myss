@@ -16,6 +16,12 @@ const testDir = defineBddConfig({
 // Its own port so a developer's `npm run dev` on 5173 is left alone.
 const PORT = 5174;
 
+// E2E_BASE_URL points the scenarios at a deployed webclient instead (the
+// nightly integration run, .github/workflows/e2e-integration.yml): no local
+// server is started, and with MYSS_E2E_LIVE_API=1 nothing is stubbed, so the
+// deployed config.js, API and content are what the scenarios exercise.
+const liveBaseUrl = process.env.E2E_BASE_URL;
+
 export default defineConfig({
   testDir,
   fullyParallel: true,
@@ -29,14 +35,16 @@ export default defineConfig({
     cucumberReporter("html", { outputFile: "e2e-report/index.html" }),
   ],
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: liveBaseUrl ?? `http://localhost:${PORT}`,
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: liveBaseUrl
+    ? undefined
+    : {
+        command: `npx vite --port ${PORT} --strictPort`,
+        url: `http://localhost:${PORT}`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 60_000,
+      },
 });
