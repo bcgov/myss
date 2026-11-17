@@ -379,6 +379,16 @@ describe("design system fields", () => {
       expect(submissions).toHaveLength(0);
     });
 
+    it("applies the date rule when the builder's None setting stores an empty validator", async () => {
+      const { year, submit, submissions } = await renderDate(
+        { properties: { myssValidator: "" } },
+        "2025-02-31",
+      );
+      await submit.click();
+      await expect.element(year).toHaveAttribute("aria-invalid", "true");
+      expect(submissions).toHaveLength(0);
+    });
+
     it.each(["1950-12-31", "1950-12-31T23:00:00-08:00"])(
       "displays an existing answer without a timezone shift: %s",
       async (value) => {

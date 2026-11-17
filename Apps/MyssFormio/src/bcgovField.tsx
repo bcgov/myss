@@ -175,9 +175,7 @@ export function humanizeKey(key: string): string {
 }
 
 /** Whether a Form.io component instance is one of these wrappers. */
-function isWrapper(
-  component: unknown,
-): component is {
+function isWrapper(component: unknown): component is {
   bcgovConfirms(key: string): boolean;
   bcgovRecheckIfShowing(): void;
 } {
@@ -492,7 +490,9 @@ export function withBcgovField<TBase extends FormioFieldCtor>(Base: TBase) {
 
       const text = String(value);
       const dateRule = this.component.type === "datetime" ? "date" : undefined;
-      const rule = properties?.myssValidator ??
+      // The builder's "None" stores "", which the server also reads as absent.
+      const rule =
+        properties?.myssValidator ||
         (isPhoneField(this.component) ? "phone" : dateRule);
       if (typeof rule === "string" && rule !== "") {
         const failed = checkRule(rule, text, {

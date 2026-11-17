@@ -162,8 +162,14 @@ namespace Myss.Api.Services
             {
                 (IReadOnlyList<ValidationErrorModel> pinErrors, registrationPin) =
                     await ValidateRegistrationPinAsync(request, cancellationToken);
+                // The generic date failure on a datetime field gives way to the
+                // registration's own date-of-birth wording.
                 errors = FormSpecValidator.OnePerField(
-                    [.. errors, .. ValidateRegistration(spec.Spec, request.Answers), .. pinErrors]);
+                [
+                    .. errors.Where(e => e.Field != "dateOfBirth" || e.Keyword != ValidationKeywords.DateInvalid),
+                    .. ValidateRegistration(spec.Spec, request.Answers),
+                    .. pinErrors,
+                ]);
 
                 // MYSS-295: with EmailVerification on, the address must have been
                 // proven in registration's Step 2 before the profile is created.
