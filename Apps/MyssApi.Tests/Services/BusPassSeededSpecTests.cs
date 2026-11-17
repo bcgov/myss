@@ -151,15 +151,17 @@ namespace Myss.Api.Tests.Services
         }
 
         [Theory]
-        [InlineData("2010-02-31")]
-        [InlineData("2027-01-01")]
-        public void V8_ABadDateOfBirth_IsRefusedOnceOnTheDateFieldABadDateOfBirth_IsRefusedOnceOnTheDateField(string dateOfBirth)
+        [InlineData("2010-02-31", BusPassErrorKeywords.DateOfBirthInvalid)]
+        [InlineData("12/31/1950", BusPassErrorKeywords.DateOfBirthInvalid)]
+        [InlineData("2027-01-01", BusPassErrorKeywords.DateOfBirthInFuture)]
+        public void V8_ABadDateOfBirth_IsRefusedOnceOnTheDateFieldABadDateOfBirth_IsRefusedOnceOnTheDateField(string dateOfBirth, string keyword)
         {
             var answers = NewApplicant(8);
             answers["dateOfBirth"] = dateOfBirth;
 
             ValidationErrorModel error = Assert.Single(Run(8, answers));
             Assert.Equal("dateOfBirth", error.Field);
+            Assert.Equal(keyword, error.Keyword);
         }
 
         [Theory]

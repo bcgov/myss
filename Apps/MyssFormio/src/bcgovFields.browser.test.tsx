@@ -175,6 +175,219 @@ describe("design system fields", () => {
     expect(document.querySelector("input.form-control")).toBeNull();
   });
 
+  describe("date input", () => {
+    async function renderDate(
+      component: Record<string, unknown> = {},
+      value = "",
+      options: Record<string, unknown> = {},
+    ) {
+      const submissions: Record<string, unknown>[] = [];
+      const screen = await render(
+        <Form
+          src={
+            {
+              display: "form",
+              components: [
+                {
+                  type: "datetime",
+                  key: "date",
+                  label: "Date of birth",
+                  input: true,
+                  enableTime: false,
+                  format: "yyyy-MM-dd",
+                  ...component,
+                },
+                {
+                  type: "button",
+                  key: "submit",
+                  action: "submit",
+                  label: "Submit",
+                },
+              ],
+            } as unknown as FormType
+          }
+          submission={{ data: { date: value } }}
+          options={{ noAlerts: true, ...options }}
+          onSubmit={(submission: { data: Record<string, unknown> }) => {
+            submissions.push(submission.data);
+          }}
+        />,
+      );
+      return {
+        screen,
+        submissions,
+        year: screen.getByRole("spinbutton", { name: /year/i }),
+        month: screen.getByRole("spinbutton", { name: /month/i }),
+        day: screen.getByRole("spinbutton", { name: /day/i }),
+        submit: screen.getByRole("button", { name: "Submit", exact: true }),
+      };
+    }
+
+    it("supports keyboard entry of a historical date without opening the calendar", async () => {
+      const { screen, year, month, day, submit, submissions } =
+        await renderDate({
+          description: "Use the date on your identification.",
+        });
+      await expect
+        .element(
+          screen.getByRole("group", { name: "Date of birth", exact: true }),
+        )
+        .toBeVisible();
+      expect(
+        year.element().closest(".bcds-react-aria-DatePicker"),
+      ).not.toBeNull();
+      const calendar = screen.getByRole("button", { name: /calendar/i });
+      await expect.element(calendar).toBeEnabled();
+      await year.click();
+      await userEvent.keyboard("1948");
+      await expect.element(month).toHaveFocus();
+      await userEvent.keyboard("02");
+      await expect.element(day).toHaveFocus();
+      await userEvent.keyboard("29");
+      await userEvent.tab();
+      await expect.element(calendar).toHaveFocus();
+      await userEvent.tab();
+      await expect.element(submit).toHaveFocus();
+      await userEvent.keyboard("{Enter}");
+      await vi.waitFor(() => expect(submissions).toHaveLength(1));
+      expect(submissions[0].date).toBe("1948-02-29");
+      const ids =
+        year.element().getAttribute("aria-describedby")?.split(" ") ?? [];
+      const instructions = ids
+        .map((id) => document.getElementById(id)?.textContent)
+        .join(" ");
+      expect(instructions).toContain("Format: year - month - day");
+      expect(instructions).toContain("Use the date on your identification.");
+    });
+
+    it("opens the design system calendar and submits the date selected with the keyboard", async () => {
+      const { screen, day, submit, submissions } = await renderDate(
+        {},
+        "1950-01-01",
+      );
+      await screen.getByRole("button", { name: /calendar/i }).click();
+      await expect.element(screen.getByRole("dialog")).toBeVisible();
+      await userEvent.keyboard("{ArrowRight}{Enter}");
+      await expect.element(screen.getByRole("dialog")).not.toBeInTheDocument();
+      await expect.element(day).toHaveAttribute("aria-valuenow", "2");
+      await submit.click();
+      await vi.waitFor(() => expect(submissions).toHaveLength(1));
+      expect(submissions[0].date).toBe("1950-01-02");
+    });
+
+    it("allows an empty optional date", async () => {
+      const { submit, submissions } = await renderDate();
+      await submit.click();
+      await vi.waitFor(() => expect(submissions).toHaveLength(1));
+      expect(submissions[0].date).toBe("");
+    });
+
+    it("associates a required error with every input and clears it after correction", async () => {
+      const { screen, year, month, day, submit, submissions } =
+        await renderDate({
+          validate: {
+            required: true,
+            customMessage: "Enter your date of birth.",
+          },
+        });
+      await submit.click();
+      await expect
+        .element(screen.getByText("Enter your date of birth.", { exact: true }))
+        .toBeVisible();
+      for (const field of [year, month, day]) {
+        await expect.element(field).toHaveAttribute("aria-invalid", "true");
+        const ids =
+          field.element().getAttribute("aria-describedby")?.split(" ") ?? [];
+        expect(
+          ids.some(
+            (id) =>
+              document.getElementById(id)?.textContent ===
+              "Enter your date of birth.",
+          ),
+        ).toBe(true);
+      }
+      await year.click();
+      await userEvent.keyboard("20000229");
+      await submit.click();
+      await vi.waitFor(() => expect(submissions).toHaveLength(1));
+      await expect.element(year).not.toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("keeps inclusive minimum and maximum date rules", async () => {
+      const { year, submit, submissions } = await renderDate({
+        datePicker: { minDate: "1950-01-01", maxDate: "2000-12-31" },
+      });
+      await year.click();
+      await userEvent.keyboard("19491231");
+      await submit.click();
+      await expect.element(year).toHaveAttribute("aria-invalid", "true");
+      expect(submissions).toHaveLength(0);
+      await year.click();
+      await userEvent.keyboard("19500101");
+      await submit.click();
+      await vi.waitFor(() => expect(submissions).toHaveLength(1));
+      await year.click();
+      await userEvent.keyboard("2001");
+      await submit.click();
+      await expect.element(year).toHaveAttribute("aria-invalid", "true");
+      expect(submissions).toHaveLength(1);
+      await year.click();
+      await userEvent.keyboard("20001231");
+      await submit.click();
+      await vi.waitFor(() => expect(submissions).toHaveLength(2));
+      expect(submissions.map((data) => data.date)).toEqual([
+        "1950-01-01",
+        "2000-12-31",
+      ]);
+    });
+
+    it("retains form-specific date rules", async () => {
+      const { year, submit, submissions, screen } = await renderDate({
+        validate: {
+          custom: "valid = input < '2000-01-01' || 'Use a date before 2000.';",
+        },
+      });
+      await year.click();
+      await userEvent.keyboard("20010101");
+      await submit.click();
+      await expect
+        .element(screen.getByText("Use a date before 2000.", { exact: true }))
+        .toBeVisible();
+      expect(submissions).toHaveLength(0);
+      await year.click();
+      await userEvent.keyboard("1999");
+      await submit.click();
+      await vi.waitFor(() => expect(submissions).toHaveLength(1));
+    });
+
+    it.each(["2025-02-31", "not a date", "1950-12-31x"])(
+      "shows an empty picker for a stored value that is not a date: %s",
+      async (value) => {
+        const { year, month, day } = await renderDate({}, value, {
+          readOnly: true,
+        });
+        for (const field of [year, month, day]) {
+          await expect.element(field).not.toHaveAttribute("aria-valuenow");
+        }
+      },
+    );
+
+    it.each(["1950-12-31", "1950-12-31T23:00:00-08:00"])(
+      "displays an existing answer without a timezone shift: %s",
+      async (value) => {
+        const { year, month, day } = await renderDate({}, value, {
+          readOnly: true,
+        });
+        await expect.element(year).toHaveAttribute("aria-valuenow", "1950");
+        await expect.element(month).toHaveAttribute("aria-valuenow", "12");
+        await expect.element(day).toHaveAttribute("aria-valuenow", "31");
+        for (const field of [year, month, day]) {
+          await expect.element(field).toHaveAttribute("aria-disabled", "true");
+        }
+      },
+    );
+  });
+
   it("stays silent until a submit attempt, then shows each field's message", async () => {
     const { screen, submissions } = await renderForm();
 
@@ -305,21 +518,18 @@ describe("design system fields", () => {
   it.each([
     ["a trailing letter", "2505550199x", "Backspace", 11],
     ["a leading plus", "+2505550199", "Delete", 0],
-  ])(
-    "removing %s keeps every digit",
-    async (_name, typed, key, caret) => {
-      const { screen } = await renderForm();
-      const phone = screen.getByRole("textbox", { name: "Marked phone" });
-      const input = phone.element() as HTMLInputElement;
-      await phone.fill(typed);
-      await expect.element(phone).toHaveValue(typed);
-      input.focus();
-      input.setSelectionRange(caret as number, caret as number);
+  ])("removing %s keeps every digit", async (_name, typed, key, caret) => {
+    const { screen } = await renderForm();
+    const phone = screen.getByRole("textbox", { name: "Marked phone" });
+    const input = phone.element() as HTMLInputElement;
+    await phone.fill(typed);
+    await expect.element(phone).toHaveValue(typed);
+    input.focus();
+    input.setSelectionRange(caret as number, caret as number);
 
-      await userEvent.keyboard(`{${key}}`);
-      await expect.element(phone).toHaveValue("(250) 555-0199");
-    },
-  );
+    await userEvent.keyboard(`{${key}}`);
+    await expect.element(phone).toHaveValue("(250) 555-0199");
+  });
 
   it("keeps deleting forward through the hyphen and brackets", async () => {
     const { screen } = await renderForm();
@@ -368,7 +578,9 @@ describe("design system fields", () => {
       ].flatMap((ids) => ids?.split(/\s+/) ?? []);
       expect(
         errorIds.some((id) =>
-          document.getElementById(id)?.textContent?.includes("Phone number is invalid"),
+          document
+            .getElementById(id)
+            ?.textContent?.includes("Phone number is invalid"),
         ),
       ).toBe(true);
 

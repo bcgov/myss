@@ -749,9 +749,9 @@ class BcgovRadioComponent extends withBcgovField(stockComponent("radio")) {
 // ---------------------------------------------------------------------------
 // datetime
 
-/** The date portion of a stored value as a calendar date, or null. */
+/** Read the stored date portion without converting it through a time zone. */
 function calendarDateOf(value: unknown): CalendarDate | null {
-  const match = /^(\d{4}-\d{2}-\d{2})/.exec(textOf(value));
+  const match = /^(\d{4}-\d{2}-\d{2})(?:T|$)/.exec(textOf(value));
   if (!match) return null;
   try {
     return parseDate(match[1]);
@@ -761,7 +761,7 @@ function calendarDateOf(value: unknown): CalendarDate | null {
 }
 
 /**
- * Form.io's `datetime`, drawn with the design system DatePicker. The answer is
+ * Form.io's `datetime`, drawn with the BC Gov date picker. The answer is
  * stored as the ISO date (`yyyy-MM-dd`), which the API's date parsing accepts
  * alongside the datetime strings Form.io's own picker used to send.
  */
@@ -773,6 +773,8 @@ class BcgovDateTimeComponent extends withBcgovField(
     return (
       <DatePicker
         {...props}
+        // Form.io owns validation; "aria" shows its message, not the browser's.
+        validationBehavior="aria"
         value={calendarDateOf(this.dataValue)}
         onChange={(next) => {
           this.bcgovCommit(next ? next.toString() : "");
