@@ -1,9 +1,9 @@
 # Design principles
 
 > **Status:** convention — adopted 2026-09-09. The token rules describe
-> the target; existing CSS still carries `var(--token, fallback)`
-> literals and stray hex values that should be removed as files are
-> touched.
+> the target. No `var(--token, fallback)` literals remain; about seven
+> stray raw hex values are left in CSS and should be removed as files
+> are touched.
 
 The rules that keep the UI one system instead of a collection of
 look-alikes. Structural rules live in
@@ -27,7 +27,7 @@ the custom properties.
   review diff is a question to answer, not a style choice.
 - **Never re-declare tokens** — not in CSS, not in Sass, not in JS
   constants. A second definition is where the fork starts.
-- Global type and theme layers (`ui/typography.css`, `ui/themes.css`)
+- Global layers (`index.css`, `ui/typography.css`)
   are _consumers_ of tokens, not definers.
 
 ## Components: BCDS first, wrap don't rebuild
@@ -35,8 +35,9 @@ the custom properties.
 Before building anything in `src/components/`, check
 `@bcgov/design-system-react-components`. If it exists there, wrap it
 (to fix a prop surface or add a MySS default) rather than re-implement
-it. Build only what BCDS lacks — the MySS-specific patterns: `SinInput`,
-status pills, the attachment list, the error summary.
+it. Build only what BCDS lacks — the MySS-specific patterns: `Callout`,
+`PinField`, the status pill (shared from `@myss/web-common`), the
+attachment upload, the error summary.
 
 Variants are **props on one component**, not sibling files.
 

@@ -97,6 +97,10 @@ a change, all MEASURED on SIT2 on 2026-09-24 and detailed in the README's "Case 
 - **`GetContactsAsync` follows ICM's pages.** The child is a list GET; the repository
   reads 100 rows at a time and continues until `lastpage` is `"true"`, the rows run out,
   or `CaseRepository.MaxContactPages`. Only the one-page case is MEASURED.
+  `IServiceRequestService.GetContactsAsync` pages the SR's `ICMContact` child the same
+  way, capped by `ServiceRequestRepository.MaxContactPages` (50). The service also has
+  `UpsertAsync` (matched on user keys; null when nothing changed) and `DeleteAsync`
+  (false when there was nothing to delete).
 - **Validation runs before the token.** `CaseService`/`ContactService` call
   `CaseMapper.Validate`/`ContactMapper.Validate` (which *are* `ToSiebel`) before
   acquiring a token, and the repository vets again when it builds the query. Keep both.
@@ -246,7 +250,11 @@ store (`dotnet user-secrets set "Icm:Auth:ClientSecret" "…"` — keyed by the 
 `UserSecretsId`) then `Icm_` environment variables then the command line, gets a token,
 runs one search against a real ICM and dumps the result (`--Mode=query`, the default;
 `buspass` submits and reads back, `contact` searches contacts, `case` reads a case and
-the people on it, `describe` saves a resource's OpenAPI document). The token endpoint is composed
+the people on it, `describe` saves a resource's OpenAPI document, `prospect` reads an
+SR's prospects, `direct` creates an SR without the workflow, `raw` sends one request as
+given, `activity` reads an SR's activities and plan, `srcontact` lists an SR's contacts).
+`buspass` and `direct` **write to ICM**; so do `prospect`, `activity` and `srcontact`
+when given their create/link settings, and `raw` with a write verb. The token endpoint is composed
 from `Icm:Auth:BaseUrl` + `Icm:Auth:Realm` (both non-secret, both committed) so the realm
 is a visible setting rather than a path segment inside a pasted URL; an optional
 `Icm:Auth:TokenUrl` overrides both. Nothing in the unit suite touches the network, so
@@ -266,5 +274,7 @@ ICM call is the signature of a VPN that is down — not a credentials problem. B
 Tests mirror the layers: `Contracts/` covers the wire contract and the mapper, `Api/`
 asserts on real `HttpRequestMessage`s through a recording handler (Refit generates its
 implementation at compile time, so a dropped query parameter is otherwise invisible),
-`Repositories/` runs the real Refit stack over canned responses, and `Services/` uses
-fakes to count round trips.
+`Repositories/` runs the real Refit stack over canned responses, `Services/` uses
+fakes to count round trips, `Workflows/` covers the bus pass workflow's mapper, request
+and response, and `TestDoubles/` holds the shared fakes (recording repositories and
+HTTP handler, fake token repository and time provider).

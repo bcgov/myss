@@ -12,10 +12,10 @@ same API data. This package holds that code once.
 
 | Entry point                   | What it holds                                                                                                                                                                                                                  |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@myss/web-common/config`     | `resolveRuntimeConfig`: the API address, OIDC realm and client, and Canada Post key, read from `window.APP_CONFIG`, then `VITE_*`, then a default. Each app passes its own default API address and its `import.meta.env`.      |
+| `@myss/web-common/config`     | `resolveRuntimeConfig`: the API address, OIDC realm and client, Canada Post key and legacy MySelfServe URL (`legacyMyssUrl`), read from `window.APP_CONFIG`, then `VITE_*`, then a default. Each app passes its own default API address and its `import.meta.env`.      |
 | `@myss/web-common/auth`       | The access token store and `authHeaders()`, the OIDC settings builder, the SiteMinder sign-out, the 15-minute idle timeout (RULE-IDA-07), the `/auth/me` read and query, and the open-redirect guard for the sign-in callback. |
-| `@myss/web-common/api`        | The shapes both APIs answer with: form specs and the 422 error list, the application status and problem-details refusal, and the eligibility rate table.                                                                       |
-| `@myss/web-common/components` | `AuthCallbackPage`, `StatusPill` and `AnnouncementBanner`.                                                                                                                                                                     |
+| `@myss/web-common/api`        | The shapes both APIs answer with: form specs and the 422 error list, the form messages (shape, built-in texts and validation rules), the application status and problem-details refusal, and the eligibility rate table.                                                                       |
+| `@myss/web-common/components` | `AuthCallbackPage`, `StatusPill`, `AnnouncementBanner`, `DraftApplicationForm`, `MessageText`, `messageShowsPlaceholder`, `SubmissionErrors` and `useClientValidation`; the shared stylesheet is exported as `@myss/web-common/components/ApplicationForm.module.css`.                                                                                                                                                                     |
 
 What differs between the apps is passed in rather than written here: where
 sign-out returns to, where the callback lands when there is no return path,
@@ -32,7 +32,7 @@ The Form.io components are a separate package, `@myss/formio`
 As TypeScript source: `package.json` `exports` point at `src/`, and there is no
 build step. Each app's Vite build compiles it, and each app's `tsc -b`
 type-checks the files it imports. React, react-router, the OIDC libraries,
-TanStack Query and the design system are peer dependencies, so each app's copy
+TanStack Query, the design system and `@formio/react` are peer dependencies, so each app's copy
 is the one used.
 
 Inside the package, imports are relative (no `@/` alias), and nothing reads an
@@ -49,3 +49,4 @@ Run from `Apps/` with `-w @myss/web-common`, or from this directory.
 | `npm run test:unit`             | Unit tests (Vitest, node)             |
 | `npm run test:browser`          | Browser tests (Vitest + Playwright)   |
 | `npm run test:browser-headless` | Browser tests, headless               |
+| `npm run test:coverage`         | All tests, headless, with coverage    |

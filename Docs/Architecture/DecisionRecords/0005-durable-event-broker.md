@@ -1,6 +1,7 @@
 # ADR-0005 — Durable event-broker selection
 
 - **Status:** Deferred — decide if/when the OCR/AI futures activate
+- **Implementation status:** nothing built. There is no `events.publish(...)` seam and no Redis (Streams or otherwise) in the codebase; domains coordinate only through in-process module-API calls and the `IEventStore` append
 - **Date:** July 2026
 - **Deciders:** Senior Developer
 - **Related:** Handbook §3.1 (extraction stays affordable), §3.4, §3.7 (eventing futures), Part 1.6 (future goals); ADR-0001
