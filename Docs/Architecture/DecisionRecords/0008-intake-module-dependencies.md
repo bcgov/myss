@@ -49,7 +49,11 @@ Option 2. `Myss.Api.Intake` depends on exactly:
   `INTAKE.APPLICATION.PROFILE_REQUIRED`).
 
 Intake never reads `forms.*` tables. It reaches the event log only through
-`IEventStore` in `Myss.Api.Platform`.
+`IEventStore` in `Myss.Data.Platform` (`Apps/MyssData/Platform/IEventStore.cs`).
+
+> **Implementation note:** the intake events and state (`ApplicationEvents`,
+> `ApplicationState`) now live in `Myss.Data.Intake` (`Apps/MyssData/Intake/`),
+> shared with MyssAdminApi per ADR-0010.
 
 Two lifecycle deviations, deliberate:
 

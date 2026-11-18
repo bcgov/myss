@@ -14,8 +14,15 @@ like the citizen webclient.
 | `/`                            | Admin landing page: the list of admin tools     |
 | `/form-management`             | The forms list, and starting a new form         |
 | `/form-management/:formSpecId` | The form editor (and, for the estimator, rates) |
+| `/form-management/:formSpecId/from-json` | Save pasted JSON as a new form or a new version |
+| `/form-management/:formSpecId/messages` | One form's messages                    |
+| `/form-management/:formSpecId/messages/:messageKey` | Edit one form message       |
 | `/applications`                | Applications to review (WORKER or ADMIN role)   |
 | `/applications/:id`            | One application: pick up, decide, notes         |
+| `/worker-override`             | Start an application for a client (workers)     |
+| `/worker-override/drafts`      | Every worker's unsubmitted override drafts      |
+| `/worker-override/:id`         | One worker override application                 |
+| `/support/clients`             | Support View client search (workers)            |
 | `/auth/callback`               | OIDC redirect target                            |
 | `/signed-out`                  | Where sign-out and idle logout land             |
 
@@ -37,7 +44,11 @@ The editor's preview renders specs with the same Form.io components as the
 citizen webclient, from the shared `@myss/formio` workspace
 (`Apps/MyssFormio`).
 
-**No error message catalogue.** The citizen webclient loads the published
+**Form messages.** The form messages pages edit the published message
+catalogue that the citizen webclient shows (`api/formMessages.ts`,
+`hooks/useFormMessages.ts`), one form at a time.
+
+**No error message catalogue in the preview.** The citizen webclient loads the published
 error wording from `/v1/forms/error-messages` and the Form.io components use it
 for rule failures. This app does not load it, so the preview words rule failures
 with the compiled default messages. The fields, layout and rules are the same.
@@ -46,8 +57,8 @@ with the compiled default messages. The fields, layout and rules are the same.
 
 - Install [Node.js](https://nodejs.org) (see the Dockerfile for the version).
 - Run `npm install` from `Apps/`, the npm workspace root (one lockfile,
-  `Apps/package-lock.json`, for this app, the citizen webclient and
-  `@myss/formio`).
+  `Apps/package-lock.json`, for all four workspaces: this app, the citizen
+  webclient, `@myss/formio` and `@myss/web-common`).
 - Copy `.env.sample` to `.env`. `VITE_MYSS_API_URL` is MyssAdminApi
   (default `http://localhost:5010`).
 - Run `npm run dev`. The dev server listens on <http://localhost:5174>, so it
@@ -65,9 +76,11 @@ Run here, or from `Apps/` with `-w myss-admin-webclient`.
 | `npm run preview`               | Preview the production build             |
 | `npm run lint`                  | Run ESLint                               |
 | `npm run format`                | Format with Prettier                     |
+| `npm run format:check`          | Check formatting without writing         |
 | `npm run test:unit`             | Run unit tests (Vitest)                  |
 | `npm run test:browser`          | Run browser tests (Vitest + Playwright)  |
 | `npm run test:browser-headless` | Browser tests, headless                  |
+| `npm run test:coverage`         | All tests, headless, with coverage       |
 
 ## Container image
 

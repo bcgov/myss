@@ -1,6 +1,7 @@
 # ADR-0006 — MIS PORTALSERVICES cache is once per session
 
 - **Status:** Accepted (supersedes the "~24h TTL" note in the target architecture)
+- **Implementation status:** not yet implemented. There is no Redis or `IDistributedCache` in the codebase, and case/account data comes from `PlaceholderCaseAccountProvider` (Apps/MyssApi/Providers/PlaceholderCaseAccountProvider.cs), so there is nothing to cache yet
 - **Date:** July 2026
 - **Deciders:** Senior Developer; freshness target tuned via discovery session DS-02
 - **Related:** SQ-04, DS-02; Handbook §3.6 (caching strategy), Part 6.7 (Payments & Tax), Account Info, Part 8.3 (MIS); risk R-07

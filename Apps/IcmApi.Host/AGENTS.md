@@ -22,14 +22,17 @@ Rules that shape changes here:
   sides in one PR or one suite fails. The response is the four fields MyssApi reads;
   never add the echoed name.
 - **Fail-closed startup, like MyssApi.** `Icm:BaseUrl`, a resolvable token URL and a
-  non-empty `Oidc:AllowedClients` are required to boot (unless the mock gate is open).
-  Credentials are checked per call. Preserve that shape rather than adding fallbacks.
+  `Oidc:Authority` with a non-empty `Oidc:AllowedClients` are required to boot. An open
+  mock gate skips only the `Oidc` check; `Icm:BaseUrl` and the token URL are still
+  required (`IcmClientServiceExtensions` throws). Credentials are checked per call. Preserve that shape rather than adding fallbacks.
 - **No retries.** ICM files a service request on every call. The submitter reports;
   MyssApi decides.
 - **Nothing from ICM's response bodies in logs.** Log status codes, keywords and ids.
 - **Configuration precedence** is `appsettings.json` → environment file → user secrets
-  (Development; the store is shared with IcmApi.Console) → `appsettings.local.json` →
-  environment variables prefixed `Icm_`.
+  (Development; the store is shared with IcmApi.Console) → unprefixed environment
+  variables → command line → `appsettings.local.json` → environment variables prefixed
+  `Icm_` (`Configuration/ProgramConfiguration.cs`). So a local file overrides an
+  unprefixed `Icm__*` variable; only the `Icm_` prefix beats it.
 - Tests substitute `IBusPassSubmitter` (endpoint tests) or the library's
   `IBusPassRepository`/`IOAuthTokenService` (submitter tests) with the fakes in
   `IcmApi.Host.Tests/TestDoubles/`; nothing connects to ICM or the realm.
