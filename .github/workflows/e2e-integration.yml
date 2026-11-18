@@ -1,0 +1,72 @@
+name: E2E integration tests
+
+# The webclient's Gherkin scenarios (Apps/MyssWebclient/e2e) run against a
+# deployed environment: no local Vite server and no API stubs, so the
+# deployed config.js, MyssApi and MyssContent are what the scenarios exercise.
+# The PR runs of the same scenarios (stubbed, from the seed) are in
+# tests-dev.yml.
+on:
+  schedule:
+    # Cron is UTC: 10:00 UTC is 02:00 PST (03:00 during daylight time).
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to test
+        type: choice
+        options: [dev, test]
+        default: dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-integration-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: Playwright e2e (${{ inputs.environment || 'dev' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # A scheduled run has no inputs, so it always tests dev.
+      TARGET: ${{ inputs.environment || 'dev' }}
+
+    defaults:
+      run:
+        working-directory: Apps
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Apps/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run scenarios against the deployed stack
+        run: npm run test:e2e --workspace MyssWebclient
+        env:
+          MYSS_E2E_LIVE_API: "1"
+          E2E_BASE_URL: https://myss-webclient-e07f31-${{ env.TARGET }}.apps.gold.devops.gov.bc.ca
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-integration-${{ env.TARGET }}
+          path: |
+            Apps/MyssWebclient/playwright-report
+            Apps/MyssWebclient/e2e-report
+            Apps/MyssWebclient/test-results
+          retention-days: 14
