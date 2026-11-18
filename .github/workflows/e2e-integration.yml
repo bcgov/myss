@@ -39,6 +39,23 @@ jobs:
         working-directory: Apps
 
     steps:
+      # Fails fast, with the connection detail in the log, when the runner
+      # cannot reach the environment: otherwise every scenario times out in
+      # page.goto with nothing more than net::ERR_ABORTED.
+      - name: Check the environment is reachable
+        working-directory: .
+        run: |
+          echo "Runner public IP: $(curl -s --max-time 10 https://api.ipify.org || echo unknown)"
+          for url in \
+            "https://myss-webclient-e07f31-${TARGET}.apps.gold.devops.gov.bc.ca/eligibility-estimator" \
+            "https://myss-api-e07f31-${TARGET}.apps.gold.devops.gov.bc.ca/v1/features"; do
+            echo "::group::$url"
+            curl -v -o /dev/null --max-time 20 \
+              -w 'HTTP %{http_code}, connect %{time_connect}s, total %{time_total}s, remote %{remote_ip}\n' \
+              "$url"
+            echo "::endgroup::"
+          done
+
       - uses: actions/checkout@v7
 
       - name: Set up Node.js
