@@ -58,6 +58,8 @@ import {
 } from "./numberText";
 import calloutStyles from "./Callout.module.css";
 import { setCanadaPostApiKey } from "./config";
+import { escapeHtml } from "./html";
+import { BcgovRepeatSectionComponent } from "./repeatSection";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -158,14 +160,6 @@ const FieldsetComponent = stockComponent("fieldset") as unknown as new (
   nestedKey: string;
   renderComponents(): string;
 };
-
-function escapeHtml(text: string): string {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 /** The callout box. Reads `calloutTitle`, `headingLevel` and `variant`. */
 class BcgovCalloutComponent extends FieldsetComponent {
@@ -887,5 +881,6 @@ export function registerBcgovComponents(
   setComponent("bcgovCallout", BcgovCalloutComponent);
   setComponent("bcgovInlineAlert", BcgovInlineAlertComponent);
   setComponent("bcgovAddressAutocomplete", BcgovAddressAutocompleteComponent);
+  setComponent("bcgovRepeatSection", BcgovRepeatSectionComponent);
   registered = true;
 }

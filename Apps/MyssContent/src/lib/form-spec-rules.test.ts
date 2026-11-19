@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -189,6 +192,46 @@ describe("validateFormSpec", () => {
         ],
       }),
     ).toEqual([]);
+  });
+});
+
+// The cases are shared with MyssFormio's specRules and the API's
+// ValidateSpecStructure, so the three copies of the rule word every problem alike.
+describe("validateFormSpec: repeat sections", () => {
+  const shared = JSON.parse(
+    readFileSync(resolve(__dirname, "../../../../Shared/validation/repeat-section-specs.json"), "utf8"),
+  ) as { cases: { name: string; spec: unknown; problems: string[] }[] };
+
+  it("has cases to run", () => {
+    expect(shared.cases.length).toBeGreaterThan(0);
+  });
+
+  it.each(shared.cases)("$name", ({ spec, problems }) => {
+    const violations = validateFormSpec(spec);
+
+    expect(
+      violations
+        .filter((v) => v.keyword === FormSpecRule.RepeatSectionInvalid)
+        .map((v) => v.message),
+    ).toEqual(problems);
+    expect(violations.filter((v) => v.keyword !== FormSpecRule.RepeatSectionInvalid)).toEqual([]);
+  });
+
+  it("refuses a repeat section on publish, as the lifecycle does", () => {
+    const violations = evaluateCreate(
+      {
+        formSpecId: "repeat",
+        version: 1,
+        spec: {
+          components: [
+            { type: "bcgovRepeatSection", key: "children", components: [{ type: "textfield", key: "a" }] },
+          ],
+        },
+      },
+      [],
+    );
+
+    expect(keywords(violations)).toEqual([FormSpecRule.RepeatSectionInvalid]);
   });
 });
 

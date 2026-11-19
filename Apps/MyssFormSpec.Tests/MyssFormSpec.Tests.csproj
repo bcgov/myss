@@ -38,6 +38,9 @@
     <Content Include="..\..\Shared\validation\validation-vectors.json"
              Link="validation-vectors.json"
              CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Shared\validation\repeat-section-specs.json"
+             Link="repeat-section-specs.json"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

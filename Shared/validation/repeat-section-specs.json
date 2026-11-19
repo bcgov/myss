@@ -1,0 +1,129 @@
+{
+  "$comment": [
+    "SHARED REPEAT SECTION CASES - the contract between the three copies of the",
+    "publish rule for a repeat section (bcgovRepeatSection):",
+    "  Apps/MyssContent/src/lib/form-spec-rules.ts      (Strapi, the authoritative gate)",
+    "  Apps/MyssFormio/src/specRules.ts                 (the form editor's early warning)",
+    "  Apps/MyssFormSpec/FormSpecValidator.cs           (ValidateSpecStructure, MyssAdminApi's fast 422)",
+    "Each suite runs every case and expects exactly the listed problems, in this",
+    "order and in this wording, so a divergence is a failing test.",
+    "",
+    "The rule: a repeat section names a number question outside itself as its",
+    "count (properties.myssRepeatCount), sets a maximum (properties.myssRepeatMax)",
+    "that is blank or a whole number from 1 to 50, and contains no repeat section.",
+    "Each spec is otherwise valid, so the rule's problems are the only ones."
+  ],
+  "cases": [
+    {
+      "name": "a valid section",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount", "myssRepeatMax": "10" },
+          "components": [ { "type": "textfield", "key": "childFirstName" } ] }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "a valid section inside a panel, with a blank maximum and its count in a column",
+      "spec": { "components": [
+        { "type": "columns", "key": "countColumns", "columns": [
+          { "components": [ { "type": "number", "key": "childCount" } ] }
+        ] },
+        { "type": "panel", "key": "family", "components": [
+          { "type": "bcgovRepeatSection", "key": "children",
+            "properties": { "myssRepeatCount": "childCount", "myssRepeatMax": " " },
+            "components": [ { "type": "textfield", "key": "childFirstName" } ] }
+        ] }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "a maximum given as a JSON number",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount", "myssRepeatMax": 50 },
+          "components": [ { "type": "textfield", "key": "childFirstName" } ] }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "no count question",
+      "spec": { "components": [
+        { "type": "bcgovRepeatSection", "key": "children",
+          "components": [ { "type": "textfield", "key": "childFirstName" } ] }
+      ] },
+      "problems": [ "The repeat section \"children\" needs a count question." ]
+    },
+    {
+      "name": "a count question that is not in the form",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "kidCount" },
+          "components": [ { "type": "textfield", "key": "childFirstName" } ] }
+      ] },
+      "problems": [ "The repeat section \"children\" counts with \"kidCount\", which is not a field in this form." ]
+    },
+    {
+      "name": "a count question that is not a number question",
+      "spec": { "components": [
+        { "type": "textfield", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount" },
+          "components": [ { "type": "textfield", "key": "childFirstName" } ] }
+      ] },
+      "problems": [ "The repeat section \"children\" counts with \"childCount\", which is not a number question." ]
+    },
+    {
+      "name": "a count question inside the section",
+      "spec": { "components": [
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount" },
+          "components": [
+            { "type": "number", "key": "childCount" },
+            { "type": "textfield", "key": "childFirstName" }
+          ] }
+      ] },
+      "problems": [ "The repeat section \"children\" counts with \"childCount\", which is inside the section." ]
+    },
+    {
+      "name": "a maximum above 50",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount", "myssRepeatMax": "80" },
+          "components": [ { "type": "textfield", "key": "childFirstName" } ] }
+      ] },
+      "problems": [ "The repeat section \"children\" has a maximum of \"80\"; use a whole number from 1 to 50." ]
+    },
+    {
+      "name": "a maximum that is not a whole number",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount", "myssRepeatMax": 2.5 },
+          "components": [ { "type": "textfield", "key": "childFirstName" } ] }
+      ] },
+      "problems": [ "The repeat section \"children\" has a maximum of 2.5; use a whole number from 1 to 50." ]
+    },
+    {
+      "name": "a repeat section inside another, and a missing count, both reported",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "components": [
+            { "type": "textfield", "key": "childFirstName" },
+            { "type": "bcgovRepeatSection", "key": "grandchildren",
+              "properties": { "myssRepeatCount": "childCount" },
+              "components": [ { "type": "textfield", "key": "grandchildFirstName" } ] }
+          ] }
+      ] },
+      "problems": [
+        "The repeat section \"children\" needs a count question.",
+        "The repeat section \"children\" contains another repeat section, \"grandchildren\"."
+      ]
+    }
+  ]
+}

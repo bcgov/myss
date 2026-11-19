@@ -26,6 +26,11 @@ namespace Myss.FormSpec
     /// on a container above it) are evaluated against the answers, so a field
     /// is required only when the citizen could see it. Advanced (JSON logic)
     /// conditionals are not evaluated; a field behind one counts as visible.</para>
+    /// <para><b>Repeat sections.</b> A <c>bcgovRepeatSection</c>'s answer is a
+    /// list of rows, one per unit of the number question named by
+    /// <c>properties.myssRepeatCount</c>, at most <c>properties.myssRepeatMax</c>
+    /// (10 when unset). Each row is checked against the section's fields, and
+    /// a failure in a row is named by its path, such as <c>children[1].firstName</c>.</para>
     /// <para><b>How a field opts in to a domain rule.</b> Form.io has no notion
     /// of a Canadian SIN, so the spec must say which rule applies. Two ways,
     /// checked in order:</para>
@@ -77,6 +82,15 @@ namespace Myss.FormSpec
         /// </summary>
         private static readonly TimeSpan PatternTimeout = TimeSpan.FromMilliseconds(100);
 
+        /// <summary>A section of questions repeated once per unit of a count answer.</summary>
+        private const string RepeatSectionType = "bcgovRepeatSection";
+
+        /// <summary>The most rows a repeat section takes when its spec sets no maximum.</summary>
+        private const int DefaultRepeatMax = 10;
+
+        /// <summary>The highest maximum a repeat section may set.</summary>
+        private const int RepeatMaxCeiling = 50;
+
         /// <summary>
         /// Validates answers against a spec.
         /// </summary>
@@ -93,19 +107,28 @@ namespace Myss.FormSpec
                 return errors;
             }
 
-            Dictionary<string, ComponentInfo> components = [];
-            HashSet<string> tolerated = [];
+            FieldSet fields = new();
             if (spec.ValueKind == JsonValueKind.Object)
             {
-                Collect(spec, components, tolerated, []);
+                Collect(spec, fields, []);
             }
 
+            ValidateFields(fields, new AnswerScope(answers, answers, Visible: true), errors);
+            return OnePerField(errors);
+        }
+
+        /// <summary>
+        /// Checks one answers object, the whole submission or one row of a
+        /// repeat section, against the fields it may hold.
+        /// </summary>
+        private static void ValidateFields(FieldSet fields, AnswerScope scope, List<ValidationErrorModel> errors)
+        {
             // Unknown keys first: an answer the spec has no field for is either a
             // client bug or someone probing the endpoint. Either way it must not
             // be persisted silently.
-            foreach (JsonProperty answer in answers.EnumerateObject())
+            foreach (JsonProperty answer in scope.Row.EnumerateObject())
             {
-                if (!components.ContainsKey(answer.Name) && !tolerated.Contains(answer.Name))
+                if (!fields.Components.ContainsKey(answer.Name) && !fields.Tolerated.Contains(answer.Name))
                 {
                     errors.Add(Error(
                         answer.Name,
@@ -114,58 +137,160 @@ namespace Myss.FormSpec
                 }
             }
 
-            foreach ((string key, ComponentInfo component) in components)
+            foreach (ComponentInfo component in fields.Components.Values)
             {
-                bool visible = component.IsVisible(answers);
-                bool present = answers.TryGetProperty(key, out JsonElement value) && !IsEmpty(component.Type, value);
-
-                if (!present)
+                if (component.Repeat is RepeatSection section)
                 {
-                    if (component.Required && visible)
-                    {
-                        errors.Add(RuleError(
-                            component,
-                            "required",
-                            ValidationKeywords.FieldRequired,
-                            component.Validator == "phone" ? "Phone number is invalid" : "This answer is required."));
-                    }
+                    ValidateRepeatSection(component, section, scope, errors);
+                }
+                else
+                {
+                    ValidateField(component, scope, errors);
+                }
+            }
+        }
 
-                    // An empty confirmation of a filled partner is a mismatch, not
-                    // a blank: the typo guard must not be satisfiable by leaving
-                    // the second field out.
-                    if (component.MatchesKey is not null && visible && AnswerText(answers, component.MatchesKey).Trim().Length > 0)
-                    {
-                        errors.Add(RuleError(component, "matches", ValidationKeywords.EmailMismatch, "The two email addresses do not match."));
-                    }
+        private static void ValidateField(ComponentInfo component, AnswerScope scope, List<ValidationErrorModel> errors)
+        {
+            bool visible = scope.Visible && component.IsVisible(scope);
+            bool present = scope.Row.TryGetProperty(component.Key, out JsonElement value) && !IsEmpty(component.Type, value);
 
-                    continue;
+            if (!present)
+            {
+                if (component.Required && visible)
+                {
+                    errors.Add(RequiredError(component));
                 }
 
-                if (!TypeMatches(component.Type, value))
+                // An empty confirmation of a filled partner is a mismatch, not
+                // a blank: the typo guard must not be satisfiable by leaving
+                // the second field out.
+                if (component.MatchesKey is not null && visible && scope.Text(component.MatchesKey).Trim().Length > 0)
                 {
-                    errors.Add(Error(
-                        key,
-                        ValidationKeywords.FieldWrongType,
-                        $"\"{key}\" was not submitted in the expected format."));
-                    continue;
+                    errors.Add(RuleError(component, "matches", ValidationKeywords.EmailMismatch, "The two email addresses do not match."));
                 }
 
-                // A hidden field's value is normally cleared by the form, so one
-                // that arrives anyway did not come from a citizen and is held to
-                // the field's rules rather than stored unchecked. The exception
-                // is a field the designer set to keep its value when hidden: the
-                // form keeps and submits that value without validating it, and
-                // the citizen cannot see the field to correct it.
-                if (!visible && component.KeepsValueWhenHidden && !component.ValidateWhenHidden)
-                {
-                    continue;
-                }
-
-                ApplyFormatRules(component, value, errors);
-                ApplyDomainRules(component, value, answers, errors);
+                return;
             }
 
-            return OnePerField(errors);
+            if (!TypeMatches(component.Type, value))
+            {
+                errors.Add(WrongType(component.Key));
+                return;
+            }
+
+            // A hidden field's value is normally cleared by the form, so one
+            // that arrives anyway did not come from a citizen and is held to
+            // the field's rules rather than stored unchecked. The exception
+            // is a field the designer set to keep its value when hidden: the
+            // form keeps and submits that value without validating it, and
+            // the citizen cannot see the field to correct it.
+            if (!visible && component.KeepsValueWhenHidden && !component.ValidateWhenHidden)
+            {
+                return;
+            }
+
+            ApplyFormatRules(component, value, errors);
+            ApplyDomainRules(component, value, scope, errors);
+        }
+
+        /// <summary>
+        /// A repeat section's answer is a list of rows, one per unit of its
+        /// count answer. Each row is checked like a small form of its own, and
+        /// a failure in it is named by its path, <c>children[1].firstName</c>.
+        /// </summary>
+        private static void ValidateRepeatSection(
+            ComponentInfo component,
+            RepeatSection section,
+            AnswerScope scope,
+            List<ValidationErrorModel> errors)
+        {
+            bool visible = scope.Visible && component.IsVisible(scope);
+
+            if (!scope.Row.TryGetProperty(component.Key, out JsonElement rows) || rows.ValueKind == JsonValueKind.Null)
+            {
+                if (visible)
+                {
+                    CheckRowCount(component, section, 0, scope, errors);
+                }
+
+                return;
+            }
+
+            // The form never draws more rows than the maximum, so a longer list
+            // did not come from it and is refused even on a draft save.
+            if (!IsRowList(rows, section.Max))
+            {
+                errors.Add(WrongType(component.Key));
+                return;
+            }
+
+            if (visible)
+            {
+                CheckRowCount(component, section, rows.GetArrayLength(), scope, errors);
+            }
+
+            int index = 0;
+            foreach (JsonElement row in rows.EnumerateArray())
+            {
+                List<ValidationErrorModel> rowErrors = [];
+                ValidateFields(section.Fields, new AnswerScope(row, scope.Root, visible), rowErrors);
+                foreach (ValidationErrorModel error in rowErrors)
+                {
+                    error.Field = $"{component.Key}[{index}].{error.Field}";
+                    errors.Add(error);
+                }
+
+                index++;
+            }
+        }
+
+        /// <summary>
+        /// The rows must number exactly what the count answer says; no count
+        /// answer means no rows.
+        /// </summary>
+        private static void CheckRowCount(
+            ComponentInfo component,
+            RepeatSection section,
+            int rowCount,
+            AnswerScope scope,
+            List<ValidationErrorModel> errors)
+        {
+            if (section.CountKey is null)
+            {
+                return;
+            }
+
+            int expected = scope.TryGet(section.CountKey, out JsonElement count) && TryReadWholeNumber(count, out int number)
+                ? number
+                : 0;
+
+            if (rowCount != expected)
+            {
+                errors.Add(RuleError(
+                    component,
+                    "rowCount",
+                    ValidationKeywords.FieldRowCountMismatch,
+                    "The number of entries does not match the number you entered."));
+            }
+        }
+
+        private static bool IsRowList(JsonElement value, int max)
+        {
+            if (value.ValueKind != JsonValueKind.Array || value.GetArrayLength() > max)
+            {
+                return false;
+            }
+
+            foreach (JsonElement row in value.EnumerateArray())
+            {
+                if (row.ValueKind != JsonValueKind.Object)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -275,7 +400,136 @@ namespace Myss.FormSpec
                 errors.Add(Error(target, FormSpecStructureKeywords.ConditionalUnknownField, $"A conditional refers to \"{target}\", which is not a field in this form."));
             }
 
+            errors.AddRange(RepeatSectionErrors(components));
             return errors;
+        }
+
+        /// <summary>
+        /// Each repeat section names a number question outside itself as its
+        /// count, sets a maximum from 1 to 50 if it sets one, and holds no repeat
+        /// section of its own. A keyless section is left to the key rule. The
+        /// wording is shared with the two TypeScript copies of this rule through
+        /// <c>Shared/validation/repeat-section-specs.json</c>.
+        /// </summary>
+        private static List<ValidationErrorModel> RepeatSectionErrors(List<JsonElement> components)
+        {
+            Dictionary<string, string?> typesByKey = new(StringComparer.Ordinal);
+            foreach (JsonElement component in components)
+            {
+                if (ReadString(component, "key") is string key)
+                {
+                    typesByKey.TryAdd(key, ReadString(component, "type"));
+                }
+            }
+
+            List<ValidationErrorModel> errors = [];
+            foreach (JsonElement section in components)
+            {
+                string? key = ReadString(section, "key");
+                if (!string.Equals(ReadString(section, "type"), RepeatSectionType, StringComparison.Ordinal)
+                    || string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                foreach (string message in RepeatSectionProblems(key, section, typesByKey))
+                {
+                    errors.Add(Error(key, FormSpecStructureKeywords.RepeatSectionInvalid, message));
+                }
+            }
+
+            return errors;
+        }
+
+        private static List<string> RepeatSectionProblems(
+            string key,
+            JsonElement section,
+            IReadOnlyDictionary<string, string?> typesByKey)
+        {
+            List<JsonElement> inside = [];
+            CollectAll(section, inside);
+            HashSet<string> insideKeys = new(StringComparer.Ordinal);
+            foreach (JsonElement component in inside)
+            {
+                if (ReadString(component, "key") is string insideKey)
+                {
+                    insideKeys.Add(insideKey);
+                }
+            }
+
+            JsonElement properties = section.TryGetProperty("properties", out JsonElement p) ? p : default;
+            List<string> problems = [];
+
+            if (CountQuestionProblem(key, ReadString(properties, "myssRepeatCount"), typesByKey, insideKeys) is string countProblem)
+            {
+                problems.Add(countProblem);
+            }
+
+            if (MaximumProblem(key, properties) is string maximumProblem)
+            {
+                problems.Add(maximumProblem);
+            }
+
+            foreach (JsonElement component in inside)
+            {
+                if (string.Equals(ReadString(component, "type"), RepeatSectionType, StringComparison.Ordinal))
+                {
+                    problems.Add($"The repeat section \"{key}\" contains another repeat section, \"{ReadString(component, "key")}\".");
+                    break;
+                }
+            }
+
+            return problems;
+        }
+
+        private static string? CountQuestionProblem(
+            string key,
+            string? count,
+            IReadOnlyDictionary<string, string?> typesByKey,
+            HashSet<string> insideKeys)
+        {
+            if (string.IsNullOrWhiteSpace(count))
+            {
+                return $"The repeat section \"{key}\" needs a count question.";
+            }
+
+            if (!typesByKey.TryGetValue(count, out string? type))
+            {
+                return $"The repeat section \"{key}\" counts with \"{count}\", which is not a field in this form.";
+            }
+
+            if (insideKeys.Contains(count))
+            {
+                return $"The repeat section \"{key}\" counts with \"{count}\", which is inside the section.";
+            }
+
+            return string.Equals(type, "number", StringComparison.Ordinal)
+                ? null
+                : $"The repeat section \"{key}\" counts with \"{count}\", which is not a number question.";
+        }
+
+        /// <summary>A blank maximum means the default; otherwise a whole number from 1 to 50, as a number or as digits.</summary>
+        private static string? MaximumProblem(string key, JsonElement properties)
+        {
+            if (properties.ValueKind != JsonValueKind.Object
+                || !properties.TryGetProperty("myssRepeatMax", out JsonElement maximum)
+                || maximum.ValueKind == JsonValueKind.Null
+                || (maximum.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(maximum.GetString())))
+            {
+                return null;
+            }
+
+            decimal value = 0;
+            bool parsed = maximum.ValueKind switch
+            {
+                JsonValueKind.Number => maximum.TryGetDecimal(out value),
+                JsonValueKind.String => decimal.TryParse(maximum.GetString()!.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out value),
+                _ => false,
+            };
+
+            return parsed && value == decimal.Truncate(value) && value >= 1 && value <= RepeatMaxCeiling
+                ? null
+                : $"The repeat section \"{key}\" has a maximum of {maximum.GetRawText()}; use a whole number from 1 to {RepeatMaxCeiling}.";
         }
 
         /// <summary>
@@ -376,7 +630,7 @@ namespace Myss.FormSpec
         private static void ApplyDomainRules(
             ComponentInfo component,
             JsonElement value,
-            JsonElement answers,
+            AnswerScope scope,
             List<ValidationErrorModel> errors)
         {
             string raw = value.ValueKind == JsonValueKind.String ? value.GetString() ?? string.Empty : value.ToString();
@@ -412,8 +666,8 @@ namespace Myss.FormSpec
                     // not a number is the required or pattern rule's business; a
                     // complete numeric group must make a real date.
                     if (TryReadDatePart(raw, out int day)
-                        && TryReadDatePart(AnswerText(answers, component.DatePartsMonthKey), out int month)
-                        && TryReadDatePart(AnswerText(answers, component.DatePartsYearKey), out int year)
+                        && TryReadDatePart(scope.Text(component.DatePartsMonthKey), out int month)
+                        && TryReadDatePart(scope.Text(component.DatePartsYearKey), out int year)
                         && !IsoDate.TryCreate(year, month, day, out _))
                     {
                         errors.Add(RuleError(component, "dateParts", ValidationKeywords.DateInvalid, "Enter a valid date."));
@@ -429,7 +683,7 @@ namespace Myss.FormSpec
             // reported against the confirmation, which is where the citizen's
             // focus should land.
             if (component.MatchesKey is not null
-                && !EmailAddress.ConfirmationMatches(AnswerText(answers, component.MatchesKey), raw))
+                && !EmailAddress.ConfirmationMatches(scope.Text(component.MatchesKey), raw))
             {
                 errors.Add(RuleError(component, "matches", ValidationKeywords.EmailMismatch, "The two email addresses do not match."));
             }
@@ -454,20 +708,18 @@ namespace Myss.FormSpec
         /// most of a real form.
         /// </summary>
         /// <param name="node">The node whose children to collect.</param>
-        /// <param name="into">Accumulator, keyed by component key.</param>
-        /// <param name="tolerated">Keys of non-data components: not validated, not rejected.</param>
+        /// <param name="into">Accumulator for the fields and the tolerated keys.</param>
         /// <param name="conditions">The conditionals on every container above this node.</param>
         private static void Collect(
             JsonElement node,
-            Dictionary<string, ComponentInfo> into,
-            HashSet<string> tolerated,
+            FieldSet into,
             IReadOnlyList<SimpleCondition> conditions)
         {
             if (node.TryGetProperty("components", out JsonElement children) && children.ValueKind == JsonValueKind.Array)
             {
                 foreach (JsonElement child in children.EnumerateArray())
                 {
-                    Visit(child, into, tolerated, conditions);
+                    Visit(child, into, conditions);
                 }
             }
 
@@ -475,7 +727,7 @@ namespace Myss.FormSpec
             {
                 foreach (JsonElement column in columns.EnumerateArray())
                 {
-                    Collect(column, into, tolerated, conditions);
+                    Collect(column, into, conditions);
                 }
             }
 
@@ -490,7 +742,7 @@ namespace Myss.FormSpec
 
                     foreach (JsonElement cell in row.EnumerateArray())
                     {
-                        Collect(cell, into, tolerated, conditions);
+                        Collect(cell, into, conditions);
                     }
                 }
             }
@@ -498,8 +750,7 @@ namespace Myss.FormSpec
 
         private static void Visit(
             JsonElement component,
-            Dictionary<string, ComponentInfo> into,
-            HashSet<string> tolerated,
+            FieldSet into,
             IReadOnlyList<SimpleCondition> inherited)
         {
             if (component.ValueKind != JsonValueKind.Object)
@@ -519,9 +770,21 @@ namespace Myss.FormSpec
                 conditions = [.. inherited, own];
             }
 
-            if (component.TryGetProperty("key", out JsonElement k)
-                && k.ValueKind == JsonValueKind.String
-                && k.GetString() is { Length: > 0 } key)
+            string? key = ReadString(component, "key");
+
+            // A repeat section's fields are answered inside each of its rows,
+            // not at this level, so they are collected apart.
+            if (string.Equals(type, RepeatSectionType, StringComparison.Ordinal))
+            {
+                if (key is not null)
+                {
+                    into.Components.TryAdd(key, Describe(key, type, component, conditions) with { Repeat = ReadRepeatSection(component) });
+                }
+
+                return;
+            }
+
+            if (key is not null)
             {
                 if (NonDataTypes.Contains(type))
                 {
@@ -529,16 +792,35 @@ namespace Myss.FormSpec
                     // submission data (`"submit": true`). It is not a field, so
                     // it is neither validated nor rejected — without this, every
                     // genuine Form.io submission fails as an unknown key.
-                    tolerated.Add(key);
+                    into.Tolerated.Add(key);
                 }
                 else
                 {
-                    into.TryAdd(key, Describe(key, type, component, conditions));
+                    into.Components.TryAdd(key, Describe(key, type, component, conditions));
                 }
             }
 
             // Recurse regardless: a panel is not a field but holds them.
-            Collect(component, into, tolerated, conditions);
+            Collect(component, into, conditions);
+        }
+
+        /// <summary>
+        /// A repeat section's settings and the fields of one of its rows. A row
+        /// field's conditionals start afresh at the section, whose own
+        /// visibility is checked on the section.
+        /// </summary>
+        private static RepeatSection ReadRepeatSection(JsonElement component)
+        {
+            FieldSet fields = new();
+            Collect(component, fields, []);
+
+            JsonElement properties = component.TryGetProperty("properties", out JsonElement p) ? p : default;
+            int? max = ReadInt(properties, "myssRepeatMax");
+
+            return new RepeatSection(
+                ReadString(properties, "myssRepeatCount"),
+                max is int authored && authored >= 1 ? Math.Min(authored, RepeatMaxCeiling) : DefaultRepeatMax,
+                fields);
         }
 
         private static ComponentInfo Describe(
@@ -677,19 +959,26 @@ namespace Myss.FormSpec
                 && int.TryParse(trimmed, NumberStyles.None, CultureInfo.InvariantCulture, out part);
         }
 
-        /// <summary>
-        /// An answer as text, the way a conditional or a cross-field rule reads
-        /// it: a missing or null answer is "", a boolean is "true"/"false", a
-        /// number is its invariant text.
-        /// </summary>
-        private static string AnswerText(JsonElement answers, string? key)
+        /// <summary>A count as typed: a number with no fraction, zero or more.</summary>
+        private static bool TryReadWholeNumber(JsonElement value, out int number)
         {
-            if (key is null || !answers.TryGetProperty(key, out JsonElement value))
+            number = 0;
+            if (!TryReadNumber(value, out decimal parsed) || parsed != decimal.Truncate(parsed) || parsed < 0 || parsed > int.MaxValue)
             {
-                return string.Empty;
+                return false;
             }
 
-            return value.ValueKind switch
+            number = (int)parsed;
+            return true;
+        }
+
+        /// <summary>
+        /// An answer as text, the way a conditional or a cross-field rule reads
+        /// it: a null answer is "", a boolean is "true"/"false", a number is its
+        /// invariant text.
+        /// </summary>
+        private static string AnswerText(JsonElement value) =>
+            value.ValueKind switch
             {
                 JsonValueKind.String => value.GetString() ?? string.Empty,
                 JsonValueKind.Number => value.GetRawText(),
@@ -697,7 +986,6 @@ namespace Myss.FormSpec
                 JsonValueKind.False => "false",
                 _ => string.Empty,
             };
-        }
 
         private static bool MatchesPattern(string text, string pattern)
         {
@@ -762,6 +1050,16 @@ namespace Myss.FormSpec
         private static ValidationErrorModel Error(string field, string keyword, string message) =>
             new() { Field = field, Keyword = keyword, Message = message };
 
+        private static ValidationErrorModel WrongType(string key) =>
+            Error(key, ValidationKeywords.FieldWrongType, $"\"{key}\" was not submitted in the expected format.");
+
+        private static ValidationErrorModel RequiredError(ComponentInfo component) =>
+            RuleError(
+                component,
+                "required",
+                ValidationKeywords.FieldRequired,
+                component.Validator == "phone" ? "Phone number is invalid" : "This answer is required.");
+
         /// <summary>
         /// A failure worded from the form when it authored wording for the rule,
         /// otherwise from the compiled default (which the catalogue may replace).
@@ -823,9 +1121,9 @@ namespace Myss.FormSpec
                 return true;
             }
 
-            public bool IsSatisfied(JsonElement answers)
+            public bool IsSatisfied(AnswerScope scope)
             {
-                bool equal = string.Equals(AnswerText(answers, When), Eq, StringComparison.Ordinal);
+                bool equal = string.Equals(scope.Text(When), Eq, StringComparison.Ordinal);
                 return Show ? equal : !equal;
             }
         }
@@ -848,7 +1146,8 @@ namespace Myss.FormSpec
             string? PatternMessage,
             bool KeepsValueWhenHidden,
             bool ValidateWhenHidden,
-            IReadOnlyList<SimpleCondition> Conditions)
+            IReadOnlyList<SimpleCondition> Conditions,
+            RepeatSection? Repeat = null)
         {
             /// <summary>
             /// The rules Form.io itself runs in the browser. Their wording follows
@@ -858,11 +1157,11 @@ namespace Myss.FormSpec
                 ["required", "pattern", "minLength", "maxLength", "min", "max"];
 
             /// <summary>Whether every conditional above and on this field shows it.</summary>
-            public bool IsVisible(JsonElement answers)
+            public bool IsVisible(AnswerScope scope)
             {
                 foreach (SimpleCondition condition in Conditions)
                 {
-                    if (!condition.IsSatisfied(answers))
+                    if (!condition.IsSatisfied(scope))
                     {
                         return false;
                     }
@@ -891,6 +1190,44 @@ namespace Myss.FormSpec
 
                 return fromMap ?? CustomMessage;
             }
+        }
+
+        /// <summary>
+        /// The fields one answers object may hold, the whole form's or one
+        /// repeat-section row's, and the keys it may carry without validation.
+        /// </summary>
+        private sealed class FieldSet
+        {
+            public Dictionary<string, ComponentInfo> Components { get; } = [];
+
+            public HashSet<string> Tolerated { get; } = [];
+        }
+
+        /// <param name="CountKey">The number question that sets how many rows there are.</param>
+        /// <param name="Max">The most rows the section allows.</param>
+        /// <param name="Fields">The fields of one row.</param>
+        private sealed record RepeatSection(string? CountKey, int Max, FieldSet Fields);
+
+        /// <summary>
+        /// Where a field's answers are read: the row of a repeat section it sits
+        /// in, else the whole submission. A key the row does not hold is read
+        /// from the whole submission, so a row field can depend on a question
+        /// outside the section.
+        /// </summary>
+        /// <param name="Row">The answers object the field's own value is in.</param>
+        /// <param name="Root">The whole submission.</param>
+        /// <param name="Visible">False inside a repeat section a conditional hides.</param>
+        private readonly record struct AnswerScope(JsonElement Row, JsonElement Root, bool Visible)
+        {
+            public bool TryGet(string? key, out JsonElement value)
+            {
+                value = default;
+                return key is not null
+                    && (Row.TryGetProperty(key, out value) || Root.TryGetProperty(key, out value));
+            }
+
+            /// <summary>The answer to <paramref name="key"/> as text; "" when there is none.</summary>
+            public string Text(string? key) => TryGet(key, out JsonElement value) ? AnswerText(value) : string.Empty;
         }
     }
 }

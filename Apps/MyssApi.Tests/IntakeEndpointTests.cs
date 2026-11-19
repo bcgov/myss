@@ -38,6 +38,23 @@ namespace Myss.Api.Tests
         }
         """;
 
+        private const string RepeatSectionSpec = """
+        {
+          "display": "form",
+          "components": [
+            { "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } },
+            { "type": "textfield", "key": "lastName", "input": true, "validate": { "required": true } },
+            { "type": "number", "key": "childCount", "input": true },
+            { "type": "bcgovRepeatSection", "key": "children", "input": true,
+              "properties": { "myssRepeatCount": "childCount", "myssRepeatMax": "3" },
+              "components": [
+                { "type": "textfield", "key": "childFirstName", "input": true, "validate": { "required": true } }
+              ] },
+            { "type": "button", "key": "submit", "action": "submit", "input": true }
+          ]
+        }
+        """;
+
         private readonly WebApplicationFactory<Startup> _factory;
         private readonly FakeFormSpecProvider _provider = new();
 
@@ -124,6 +141,40 @@ namespace Myss.Api.Tests
 
             Assert.Equal(HttpStatusCode.UnprocessableEntity, save.StatusCode);
             Assert.Equal(ValidationKeywords.FieldUnknown, await FirstKeyword(save, "isAdmin"));
+        }
+
+        [Fact]
+        public async Task ARepeatSectionDraft_MayHaveIncompleteRows_ButNotMoreRowsThanTheFormDraws()
+        {
+            UseRepeatSectionSpec();
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            Guid id = await host.Create("alice");
+            object[] tooMany = [.. Enumerable.Repeat(new { childFirstName = "Ada" }, 4)];
+
+            using HttpResponseMessage incomplete = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(1, new { firstName = "Ada", lastName = "Byron", childCount = 2, children = new object[] { new { childFirstName = "Ada" }, new { } } }));
+            using HttpResponseMessage overMaximum = await host.Send("alice", HttpMethod.Put, $"{Route}/{id}/answers", Answers(2, new { firstName = "Ada", lastName = "Byron", childCount = 4, children = tooMany }));
+
+            Assert.Equal(HttpStatusCode.OK, incomplete.StatusCode);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, overMaximum.StatusCode);
+            Assert.Equal(ValidationKeywords.FieldWrongType, await FirstKeyword(overMaximum, "children"));
+        }
+
+        [Fact]
+        public async Task ARepeatSectionSubmit_NamesARowsFailureByItsPath_AndStoresTheRows()
+        {
+            UseRepeatSectionSpec();
+            using IntakeTestHost host = NewHost(registered: ["alice"]);
+            Guid id = await host.Create("alice");
+            var complete = new { childFirstName = "Ada" };
+
+            using HttpResponseMessage refused = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, new { firstName = "Ada", lastName = "Byron", childCount = 2, children = new object[] { complete, new { } } }));
+            using HttpResponseMessage submitted = await host.Send("alice", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, new { firstName = "Ada", lastName = "Byron", childCount = 2, children = new[] { complete, complete } }));
+            using HttpResponseMessage read = await host.Send("alice", HttpMethod.Get, $"{Route}/{id}");
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+            Assert.Equal(ValidationKeywords.FieldRequired, await FirstKeyword(refused, "children[1].childFirstName"));
+            Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
+            Assert.Equal(2, (await Payload(read)).GetProperty("answers").GetProperty("children").GetArrayLength());
         }
 
         [Fact]
@@ -432,6 +483,12 @@ namespace Myss.Api.Tests
         private IntakeTestHost NewHost(IReadOnlyList<string> registered, bool mockAuth = true)
         {
             return new IntakeTestHost(_factory, _provider, registered, mockAuth);
+        }
+
+        private void UseRepeatSectionSpec()
+        {
+            _provider.LatestResult = FakeFormSpecProvider.Spec(IntakeService.FormSpecId, 2, RepeatSectionSpec);
+            _provider.VersionResult = FakeFormSpecProvider.Spec(IntakeService.FormSpecId, 2, RepeatSectionSpec);
         }
     }
 }

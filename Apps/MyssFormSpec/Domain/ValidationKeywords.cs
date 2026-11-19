@@ -28,6 +28,9 @@ namespace Myss.FormSpec.Domain
         /// <summary>An answer is not the JSON type the component implies.</summary>
         public const string FieldWrongType = "FORM.FIELD.WRONG_TYPE";
 
+        /// <summary>A repeat section's rows do not number what its count question says.</summary>
+        public const string FieldRowCountMismatch = "FORM.FIELD.ROW_COUNT_MISMATCH";
+
         /// <summary>An answer does not match the field's <c>validate.pattern</c>.</summary>
         public const string FieldPattern = "FORM.FIELD.PATTERN";
 

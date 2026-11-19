@@ -42,6 +42,7 @@ export const FormSpecRule = {
   ComponentKeyMissing: "FORMSPEC.COMPONENT_KEY.MISSING",
   ComponentKeyDuplicate: "FORMSPEC.COMPONENT_KEY.DUPLICATE",
   ConditionalUnknownField: "FORMSPEC.CONDITIONAL.UNKNOWN_FIELD",
+  RepeatSectionInvalid: "FORMSPEC.REPEAT_SECTION.INVALID",
   VersionNotNext: "FORMSPEC.VERSION.NOT_NEXT",
   PublishedImmutable: "FORMSPEC.PUBLISHED.IMMUTABLE",
 } as const;
@@ -122,8 +123,16 @@ export function parseSpec(
 
 interface ComponentLike {
   readonly key?: unknown;
+  readonly type?: unknown;
+  readonly properties?: unknown;
   readonly conditional?: unknown;
 }
+
+/** A section of questions answered once per unit of a count question. */
+const REPEAT_SECTION_TYPE = "bcgovRepeatSection";
+
+/** The highest maximum number of rows a repeat section may set. */
+const REPEAT_MAX_CEILING = 50;
 
 function collectComponents(spec: Record<string, unknown>): ComponentLike[] {
   const out: ComponentLike[] = [];
@@ -232,7 +241,87 @@ export function validateFormSpec(spec: unknown): Violation[] {
     );
   }
 
+  violations.push(...repeatSectionViolations(components));
   return violations;
+}
+
+/**
+ * A repeat section names a number question outside itself as its count, sets
+ * a maximum from 1 to 50 if it sets one, and holds no repeat section of its
+ * own. A keyless section is left to the key rule.
+ */
+function repeatSectionViolations(components: readonly ComponentLike[]): Violation[] {
+  const typesByKey = new Map<string, unknown>();
+  for (const component of components) {
+    if (typeof component.key === "string" && !typesByKey.has(component.key)) {
+      typesByKey.set(component.key, component.type);
+    }
+  }
+
+  const violations: Violation[] = [];
+  for (const section of components) {
+    if (section.type !== REPEAT_SECTION_TYPE) continue;
+    if (typeof section.key !== "string" || section.key.trim() === "") continue;
+    for (const message of repeatSectionProblems(section.key, section, typesByKey)) {
+      violations.push(violation(FormSpecRule.RepeatSectionInvalid, message));
+    }
+  }
+  return violations;
+}
+
+function repeatSectionProblems(
+  key: string,
+  section: ComponentLike,
+  typesByKey: ReadonlyMap<string, unknown>,
+): string[] {
+  const inside = collectComponents(section as Record<string, unknown>);
+  const insideKeys = new Set(inside.map((component) => component.key));
+  const properties = isRecord(section.properties) ? section.properties : {};
+  const problems: string[] = [];
+
+  const countProblem = countQuestionProblem(key, properties.myssRepeatCount, typesByKey, insideKeys);
+  if (countProblem) problems.push(countProblem);
+  const maximum = maximumProblem(key, properties.myssRepeatMax);
+  if (maximum) problems.push(maximum);
+  const nested = inside.find((component) => component.type === REPEAT_SECTION_TYPE);
+  if (nested) {
+    problems.push(`The repeat section "${key}" contains another repeat section, ${JSON.stringify(nested.key ?? "")}.`);
+  }
+  return problems;
+}
+
+function countQuestionProblem(
+  key: string,
+  count: unknown,
+  typesByKey: ReadonlyMap<string, unknown>,
+  insideKeys: ReadonlySet<unknown>,
+): string | undefined {
+  if (typeof count !== "string" || count.trim() === "") {
+    return `The repeat section "${key}" needs a count question.`;
+  }
+  if (!typesByKey.has(count)) {
+    return `The repeat section "${key}" counts with "${count}", which is not a field in this form.`;
+  }
+  if (insideKeys.has(count)) {
+    return `The repeat section "${key}" counts with "${count}", which is inside the section.`;
+  }
+  if (typesByKey.get(count) !== "number") {
+    return `The repeat section "${key}" counts with "${count}", which is not a number question.`;
+  }
+  return undefined;
+}
+
+/** A blank maximum means the default; otherwise a whole number from 1 to 50, as a number or as digits. */
+function maximumProblem(key: string, maximum: unknown): string | undefined {
+  if (maximum === undefined || maximum === null) return undefined;
+  if (typeof maximum === "string" && maximum.trim() === "") return undefined;
+
+  const value =
+    typeof maximum === "string" && /^\d+$/.test(maximum.trim()) ? Number(maximum.trim()) : maximum;
+  if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= REPEAT_MAX_CEILING) {
+    return undefined;
+  }
+  return `The repeat section "${key}" has a maximum of ${JSON.stringify(maximum)}; use a whole number from 1 to ${REPEAT_MAX_CEILING}.`;
 }
 
 /**
