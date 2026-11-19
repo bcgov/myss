@@ -96,6 +96,7 @@ namespace Myss.Api.Tests.Services
             Assert.Null(profile.HelperAuthorized);
             AccountRepresentative representative = Assert.Single(await db.AccountRepresentatives.ToListAsync());
             Assert.Equal(profile.Id, representative.ProfileId);
+            Assert.Same(representative, profile.Representative);
             Assert.Equal(RepresentativeType.LegalRepresentative, representative.Type);
             Assert.Equal("Pat", representative.FirstName);
             Assert.Equal("Lee", representative.LastName);
@@ -132,6 +133,17 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(RepresentativeType.Parent, representative.Type);
             Assert.Null(representative.Agency);
             Assert.Empty(await db.AccountDocuments.ToListAsync());
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("helper")]
+        public void AnswersThatSkippedValidation_AreNotRecorded(string? context)
+        {
+            using FormsDbContext db = NewDb();
+            var model = new AccountCreationRequestModel { Context = context };
+
+            Assert.Throws<InvalidOperationException>(() => NewService(db).Apply(NewProfile(), model));
         }
 
         [Fact]

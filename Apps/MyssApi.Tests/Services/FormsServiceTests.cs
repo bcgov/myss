@@ -588,6 +588,23 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(ValidationKeywords.RegistrationEmailNotVerified, Assert.Single(result.Errors).Keyword);
         }
 
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AMalformedAddressIsReportedAsMalformed()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOn();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"not-an-email","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("email", error.Field);
+            Assert.Equal(ValidationKeywords.EmailInvalidFormat, error.Keyword);
+        }
+
         // Copilot review, MYSS-295: the flag switched off mid-registration must
         // not leave the registration's email proof behind.
         [Fact]
