@@ -5,7 +5,7 @@ This file provides guidance to AI coding agents working with code in this reposi
 ## What this is
 
 My Self Serve (MySS) — a rebuild of the BC income/disability assistance self-serve
-portal (bcgov). Five deployable apps under `Apps/`, plus ADRs under
+portal (bcgov). Six deployable apps under `Apps/`, plus ADRs under
 `Docs/Architecture/DecisionRecords/` and a local Docker stack at `compose.yaml`.
 
 | App | Stack | Role |
@@ -63,7 +63,7 @@ credential into a file, a command, or a commit.
 ## Commands
 
 Whole local stack, one command (Aspire app host — containers, EF migrations, and the
-three apps; dashboard URL printed at startup):
+six apps — IcmApi.Host only when an ICM base URL is configured; dashboard URL printed at startup):
 
 ```bash
 dotnet run --project Apps/MySS.AspireHost
@@ -144,6 +144,7 @@ dotnet test Apps/IcmApi.Host.Tests
 cd Apps/MyssWebclient
 npm run test:unit                             # *.unit.test.ts, node env
 npm run test:browser-headless                 # *.browser.test.tsx, needs `npx playwright install chromium`
+npm run test:e2e                              # e2e/features/*.feature via playwright-bdd; starts Vite on 5174, API stubbed from the seed
 npx vitest --config=vitest.config.ts --project=unit src/auth/decodeJwt.unit.test.ts
 npm run lint && npm run format:check
 # The same scripts exist in Apps/MyssAdminWebclient, Apps/MyssFormio and Apps/MyssWebCommon
@@ -153,9 +154,11 @@ npm run lint && npm run format:check
 cd Apps/MyssContent && npm test               # vitest run
 ```
 
-CI (`.github/workflows/tests-dev.yml`, on PRs into `dev`) runs the API, form spec,
-shared API library (MyssCommon), admin API, ICM client and ICM middleware tests, and both suites of each npm workspace
-(MyssFormio, MyssWebCommon, MyssWebclient, MyssAdminWebclient). `dev` is the main branch.
+CI (`.github/workflows/tests-dev.yml`, on PRs into `dev` and daily) runs a Trivy repo
+scan; the API, form spec, shared API library (MyssCommon), admin API, ICM client and ICM
+middleware tests; MyssContent's build and `test:coverage`; `npm run test:coverage` (both
+suites) for each npm workspace (MyssFormio, MyssWebCommon, MyssWebclient,
+MyssAdminWebclient); and the SonarQube Cloud analyses. `dev` is the main branch.
 
 After changing an API contract, regenerate the typed client: with the API running,
 `cd Apps/MyssWebclient && npm run generate:schema` (writes `src/api/generated/`, never
@@ -195,9 +198,12 @@ pipeline: see `Apps/MyssApi/AGENTS.md`.
 
 The staff side, split from MyssApi into its own deployable. The form editor
 (`GET v1/forms`, `GET`/`PUT v1/forms/{id}/draft`, `POST v1/forms/{id}/publish`) and the
-estimator rates editor (`GET`/`POST v1/EligibilityRates`) are behind the `AdminIdir`
+published versions (`GET v1/forms/{id}/versions/{n}`), the form messages editor
+(`GET v1/form-messages`, `GET`/`POST v1/forms/{id}/messages/{key}`) and the estimator
+rates editor (`GET`/`POST v1/EligibilityRates`) are behind the `AdminIdir`
 policy; the worker endpoints (`v1/intake/review/applications/...`, worker override at
-`v1/intake/worker-override/applications/...`, the stored form submissions, the bus pass
+`v1/intake/worker-override/applications/...`, the stored form submissions at
+`GET v1/forms/{id}/submissions`, client search at `GET v1/support/clients`, the bus pass
 PDF through CDOGS) behind `WorkerWithIdir`; `GET v1/auth/me`
 gives the staff site the caller's roles. It uses MyssApi's database through
 `Apps/MyssData` but never migrates it (ADR-0010), and it holds the only write-scoped
@@ -342,7 +348,7 @@ compiled wording cannot drift apart.
   the logs.
 - **C#**: block-scoped `namespace X { ... }` with `using` directives *inside* the
   namespace; XML doc comments on all public members (`GenerateDocumentationFile` is on
-  and feeds Swagger). `Apps/.editorconfig` (870 lines) force-enables analyzer rules with
+  and feeds Swagger). `Apps/.editorconfig` force-enables analyzer rules with
   `EnforceCodeStyleInBuild` — build warnings are the linter. Services use `_camelCase`
   private fields; the host classes (`MyssCommon/Hosting`, `MyssCommon/Auth`) use
   `this.`-qualified fields.

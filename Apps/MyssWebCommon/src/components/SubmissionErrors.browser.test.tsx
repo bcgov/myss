@@ -1,11 +1,14 @@
-import { DatePicker } from "@bcgov/design-system-react-components";
+import { Select, TextField } from "@bcgov/design-system-react-components";
 import { describe, expect, it } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { SubmissionRejectedError } from "../api/forms";
 import SubmissionErrors from "./SubmissionErrors";
 
-function renderSummary(fields: React.ReactNode, errors: { field: string; message: string }[]) {
+function renderSummary(
+  fields: React.ReactNode,
+  errors: { field: string; message: string }[],
+) {
   return render(
     <>
       <SubmissionErrors
@@ -23,9 +26,13 @@ function renderSummary(fields: React.ReactNode, errors: { field: string; message
 
 describe("SubmissionErrors", () => {
   it("takes focus when it appears", async () => {
-    const screen = await renderSummary(null, [{ field: "x", message: "Fix x." }]);
+    const screen = await renderSummary(null, [
+      { field: "x", message: "Fix x." },
+    ]);
 
-    await expect.element(screen.getByRole("heading", { name: "There is a problem" })).toHaveFocus();
+    await expect
+      .element(screen.getByRole("heading", { name: "There is a problem" }))
+      .toHaveFocus();
   });
 
   it("focuses a Form.io field by its data name", async () => {
@@ -36,29 +43,35 @@ describe("SubmissionErrors", () => {
 
     await screen.getByRole("button", { name: "Enter a first name." }).click();
 
-    await expect.element(screen.getByRole("textbox", { name: "First name" })).toHaveFocus();
+    await expect
+      .element(screen.getByRole("textbox", { name: "First name" }))
+      .toHaveFocus();
   });
 
-  it("focuses the design system date input's year segment from an error link", async () => {
+  it("focuses the date input's month from an error link", async () => {
     const screen = await render(
       <>
         <SubmissionErrors
-          error={new SubmissionRejectedError(422, [
-            {
-              field: "dateOfBirth",
-              keyword: "FORM.DATE.INVALID",
-              message: "Enter a valid date of birth.",
-            },
-          ])}
+          error={
+            new SubmissionRejectedError(422, [
+              {
+                field: "dateOfBirth",
+                keyword: "FORM.DATE.INVALID",
+                message: "Enter a valid date of birth.",
+              },
+            ])
+          }
         />
+        {/* The shape @myss/formio draws for a date question. */}
         <div className="formio-component-dateOfBirth">
-          <DatePicker
-            label="Date of birth"
-            name="data[dateOfBirth]"
-            value={null}
-            isInvalid
-            errorMessage="Enter a valid date of birth."
+          <Select
+            label="Month"
+            placeholder="Select a month"
+            items={[{ id: "1", label: "January" }]}
           />
+          <TextField label="Day" />
+          <TextField label="Year" />
+          <input type="hidden" name="data[dateOfBirth]" value="" />
         </div>
       </>,
     );
@@ -68,7 +81,7 @@ describe("SubmissionErrors", () => {
       .click();
 
     await expect
-      .element(screen.getByRole("spinbutton", { name: /year/i }))
+      .element(screen.getByRole("button", { name: /Month/ }))
       .toHaveFocus();
   });
 
@@ -80,7 +93,9 @@ describe("SubmissionErrors", () => {
 
     await screen.getByRole("button", { name: "Enter your last name." }).click();
 
-    await expect.element(screen.getByRole("textbox", { name: "Last name" })).toHaveFocus();
+    await expect
+      .element(screen.getByRole("textbox", { name: "Last name" }))
+      .toHaveFocus();
   });
 
   it("focuses the first control a group with the id holds", async () => {
@@ -89,16 +104,27 @@ describe("SubmissionErrors", () => {
         <input type="radio" name="who" aria-label="Self" />
         <input type="radio" name="who" aria-label="Someone else" />
       </div>,
-      [{ field: "accountContext", message: "Select the option that describes you." }],
+      [
+        {
+          field: "accountContext",
+          message: "Select the option that describes you.",
+        },
+      ],
     );
 
-    await screen.getByRole("button", { name: "Select the option that describes you." }).click();
+    await screen
+      .getByRole("button", { name: "Select the option that describes you." })
+      .click();
 
-    await expect.element(screen.getByRole("radio", { name: "Self" })).toHaveFocus();
+    await expect
+      .element(screen.getByRole("radio", { name: "Self" }))
+      .toHaveFocus();
   });
 
   it("leaves focus alone when nothing matches", async () => {
-    const screen = await renderSummary(null, [{ field: "missing", message: "Something is wrong." }]);
+    const screen = await renderSummary(null, [
+      { field: "missing", message: "Something is wrong." },
+    ]);
     const button = screen.getByRole("button", { name: "Something is wrong." });
 
     await button.click();

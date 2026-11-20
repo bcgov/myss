@@ -17,7 +17,8 @@ in the editor's preview as it does for citizens.
   from `main.tsx`, passing its Canada Post AddressComplete key.
 - The client half of the validation rule registry (`validationRules.ts`).
 - The spec helpers the admin editor uses (`builderOptions`, `specEdit`,
-  `specPreview`, `specRules`).
+  `specPreview`, `specRules`, `specImport` for pasted-JSON imports), and
+  `specWalk`, the component-tree walk they share.
 - `@myss/formio/errorCatalogue`: the error message catalogue the components word
   rule failures from. The citizen webclient fills it from
   `/v1/forms/error-messages`; the admin webclient leaves it empty, so the
@@ -27,6 +28,8 @@ in the editor's preview as it does for citizens.
 - `ReadOnlySpecForm`: a spec drawn read-only over submitted answers, with its
   buttons removed. The citizen app shows an applicant their submitted
   application with it; the admin app shows it to the reviewing worker.
+- `@myss/formio/Callout.module.css`: the callout styles, exported so the
+  citizen app's own `Callout` matches `bcgovCallout`.
 
 ## How it is consumed
 
@@ -50,6 +53,7 @@ Run from `Apps/` with `-w @myss/formio`, or from this directory.
 | `npm run test:unit`             | Unit tests (Vitest, node)               |
 | `npm run test:browser`          | Browser tests (Vitest + Playwright)     |
 | `npm run test:browser-headless` | Browser tests, headless                 |
+| `npm run test:coverage`         | All tests, headless, with coverage      |
 
 `validationRules.unit.test.ts` reads the shared validation vectors and error
 message catalogue from `Shared/validation/`, the same files the API's tests

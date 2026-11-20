@@ -65,7 +65,32 @@
     {
       "keyword": "FORM.DATE.INVALID",
       "message": "Enter a valid date.",
-      "note": "A date field (properties.myssValidator = date), or the day of a day/month/year group (dateParts), that is not a real date."
+      "note": "A date field (properties.myssValidator = date), or the day of a day/month/year group (dateParts), that is not a real date. In a date question (datetime), also shown once when the month, day and year are all wrong."
+    },
+    {
+      "keyword": "FORM.DATE.MONTH_REQUIRED",
+      "message": "A birth month is required",
+      "note": "Browser only: a date question (datetime) with a day or year typed but no month chosen. Legacy MySS had no month message; worded to match its day and year ones. The API only ever receives whole dates."
+    },
+    {
+      "keyword": "FORM.DATE.DAY_REQUIRED",
+      "message": "A birth day is required",
+      "note": "Browser only: a date question (datetime) with the day left blank. Legacy MySS wording."
+    },
+    {
+      "keyword": "FORM.DATE.DAY_INVALID",
+      "message": "Invalid Day",
+      "note": "Browser only: a date question (datetime) whose day is not a number from 1 to 31. Legacy MySS wording."
+    },
+    {
+      "keyword": "FORM.DATE.YEAR_REQUIRED",
+      "message": "A birth year is required",
+      "note": "Browser only: a date question (datetime) with the year left blank. Legacy MySS wording."
+    },
+    {
+      "keyword": "FORM.DATE.YEAR_INVALID",
+      "message": "Invalid Year",
+      "note": "Browser only: a date question (datetime) whose year is not 4 digits or is before 1900 (future years are accepted). Legacy MySS wording."
     },
     {
       "keyword": "FORM.FIELD.PATTERN",

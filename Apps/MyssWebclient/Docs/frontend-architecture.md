@@ -1,8 +1,8 @@
 # Frontend architecture
 
 > **Status:** convention — adopted 2026-09-09. New code follows it now;
-> the folder migration (see the table at the bottom) has **not** been
-> executed yet, so parts of the tree still show the old layout.
+> the folder migration (see the table at the bottom) is done except for
+> `data/`.
 
 How `Apps/MyssWebclient` is organized and how the pieces are allowed to
 depend on each other. Design rules (tokens, accessibility, contribution
@@ -18,16 +18,21 @@ Three tiers, one dependency rule:
 
 - **Page** — a routed screen (`src/pages/`). Owns route-level concerns:
   data fetching orchestration, page layout, wiring widgets together.
-  Page-scoped logic lives next to the page (`estimatorCalculator.ts`
-  beside `EligibilityEstimatorPage.tsx`), with its tests alongside.
+  Page-scoped logic lives next to the page, with its tests alongside;
+  logic shared beyond one page goes to `lib/` (the estimator's
+  calculator is `src/lib/eligibilityCalculator.ts`).
 - **Widget** — a composed section of a page (`src/widgets/`): the account
-  panel, the cheque calendar, the announcement banner, the Form.io bridge.
+  sections, the home panels, the attachment upload, the form spec
+  renderer. (The announcement banner is in `@myss/web-common`; the
+  Form.io bridge is the `@myss/formio` workspace.)
   A widget may use hooks and be data-aware, and may appear on more than
   one page.
 - **Component** — a shared presentational leaf (`src/components/`):
   props in, markup out. No data fetching, no routing. This is where
-  MySS-specific patterns live (`SinInput`, status pills, the error
-  summary), with variants expressed as props — not parallel files.
+  MySS-specific patterns live (today `Callout` and `PinField`; the
+  status pill is shared from `@myss/web-common`, and the account error
+  summary is `widgets/account/FieldErrorSummary.tsx`), with variants
+  expressed as props — not parallel files.
 
 If two pages need the same thing, it moves _down_ a tier; nothing ever
 reaches _up_ or _across_. When a folder move feels ambiguous, the
@@ -43,11 +48,14 @@ src/
   components/       shared presentational components (BCDS-first)
   hooks/            shared behaviour hooks (useX naming)
   routes/           paths.ts — every URL in one place
-  ui/               global style layers: typography.css, themes.css
-                    (plain CSS consuming design-token variables)
-  api/              generated OpenAPI client (never hand-edited)
+  ui/               global style layer: typography.css (plain CSS
+                    consuming design-token variables; the base layer
+                    is src/index.css)
+  api/              hand-written query hooks; api/generated/ is the
+                    generated OpenAPI client (never hand-edited)
   auth/             auth feature module (provider, guards, session)
   lib/              shared pure utilities
+  data/             static content (homeLinks.ts)
   testing/          helpers for browser tests only (the page-wide
                     styles a layout check needs)
   constants.ts      runtime config + external link registry
@@ -56,7 +64,7 @@ src/
 Notes:
 
 - Folder names stay lowercase (matches the existing tree); component
-  files are PascalCase (`Button.tsx`, `SinInput.tsx` — no `Component`
+  files are PascalCase (`Callout.tsx`, `PinField.tsx` — no `Component`
   suffix, no underscores).
 - External links and config both live in `constants.ts` — deliberately
   one registry, so link URLs cannot fork into a second home.
@@ -69,7 +77,7 @@ Notes:
 
 CSS Modules per component/widget/page (`X.module.css` beside `X.tsx`),
 consuming `--bcds` custom properties directly. Global layers
-(`ui/typography.css`, `ui/themes.css`) are imported once from
+(`index.css`, `ui/typography.css`) are imported once from
 `main.tsx`. Token rules — no literal fallbacks, no raw hex — are in
 designprinciples.md.
 
@@ -87,15 +95,14 @@ before pushing; CI runs it on every PR.
 
 ## Migration from the current tree
 
-New code follows this structure now. Existing files move in a dedicated
-mechanical PR (pure renames, no behaviour) scheduled when few feature
-branches are open, to minimize merge conflicts:
+New code follows this structure now. Most of the old layout has moved;
+what is left moves in a mechanical PR (pure renames, no behaviour):
 
-| Today                                                 | Target                                               |
+| Was / today                                           | Target                                               |
 | ----------------------------------------------------- | ---------------------------------------------------- |
-| `components/home/*` (AccountPanel, ChequeCalendar, …) | `widgets/home/*`                                     |
-| `components/layout/*` (AnnouncementBanner, …)         | `widgets/layout/*`; AnnouncementBanner in `@myss/web-common/components` |
-| `components/AttachmentUpload.*`                       | `widgets/`                                           |
+| `components/home/*` (AccountPanel, ChequeCalendar, …) | `widgets/home/*` (done)                              |
+| `components/layout/*` (AnnouncementBanner, …)         | `widgets/layout/*`; AnnouncementBanner in `@myss/web-common/components` (done) |
+| `components/AttachmentUpload.*`                       | `widgets/AttachmentUploadWidget.*` (done)            |
 | `formio/`                                             | `@myss/formio` (`Apps/MyssFormio`, done)             |
-| `data/`                                               | fold into `lib/` or the owning page                  |
+| `data/`                                               | fold into `lib/` or the owning page (open)           |
 | (new)                                                 | `components/` grows the shared leaves as they appear |

@@ -179,6 +179,13 @@ public class Example(IServiceRequestService serviceRequests)
 }
 ```
 
+Besides `SearchAsync`, `GetAsync`, `CreateAsync` and `UpdateAsync`, the service has
+`UpsertAsync(input)` — insert or update matched on ICM's user keys, null when nothing
+changed — and `DeleteAsync(serviceRequestKey)`, true when a record was deleted and false
+when there was nothing to delete. `GetContactsAsync` follows ICM's pages of the
+`ICMContact` child until the last page, giving up after
+`ServiceRequestRepository.MaxContactPages` (50) pages.
+
 Reach for `IServiceRequestRepository` directly only when the caller already holds a token
 of its own — a request carrying a citizen's token, say, where a client-credentials token
 would be the wrong identity entirely.
@@ -724,8 +731,9 @@ and reading their `SRProspects` child rows over the gateway:
   type `One Address`, no `Memo`, prospect row `Purpose: "Residence/Mailing"` — and
   nothing on the SR or the prospect row records the form's replacement acknowledgement.
   The SR-level `Given Names`/`Last Name`/`Address` are the *matched contact's*, not the
-  submitted ones. The prospect business component exposes 37 fields (empties included;
-  read them with `--Query:ChildCollection=SRProspects` below); none is named for an
+  submitted ones. The `SRProspects` child view exposes 37 fields (empties included;
+  read them with `--Query:ChildCollection=SRProspects` below) — the document's 42 plus
+  `Id`, less the six the child view leaves out (see [Prospects](#prospects)); none is named for an
   acknowledgement, a leave-message consent or an applicant type — `Applicant Flag` is
   `N` on every row seen, the First Nations one included.
 - A live submission through the **retired SOAP path** (SR `1-11085201468` / row
@@ -913,14 +921,18 @@ They mirror the layers, and each one exists for a reason the layer above cannot 
 | `Api/*` | The actual `HttpRequestMessage` — Refit builds its implementation at compile time, so a dropped query parameter is otherwise invisible |
 | `Repositories/*` | Status-code translation, against the real Refit stack over canned responses |
 | `Services/*` | Caching, by counting round trips through fakes |
+| `Workflows/*` | The bus pass workflow: mapper, request shape, response serialization |
+| `TestDoubles/` | Not a suite — the shared fakes (recording repositories and HTTP handler, fake token repository and time provider) |
 
 ## Functional test
 
 `Apps/IcmApi.Console` is a console app that runs one Service Request search against a real
 ICM and prints what came back. With `Query:ServiceRequestKey` set it then reads that row,
 and with `Query:ChildCollection` set (say `SRProspects`) it reads that child collection
-of the row raw — the library has no child-collection support yet, and a bus pass SR's
-applicant rows live there. It has a second mode, `--Mode=buspass`, which **creates a
+of the row raw. The library itself does read child collections — `SRProspects`
+(`IProspectService`), the case `Contact` child (`ICaseService`), the SR's `ICMContact`
+(`IServiceRequestService.GetContactsAsync`) and `Activities`/the activity plan
+(`IActivityService`); the raw read is for collections it does not model. It has a second mode, `--Mode=buspass`, which **creates a
 record in the target ICM**: it submits the synthetic application in the committed
 `BusPass` settings section as transaction INT-316 through the bus pass workflow, prints the out-args (unmodelled
 fields included), then searches recent Bus Pass SRs for the returned `ApplicationNumber`
@@ -1056,7 +1068,7 @@ things worth watching in the output:
   actually consumes this. The wiring above works in the meantime.
 - A prospect's `Purpose`, `M/M`, `Portal Role` and communication-method picklists are
   from ICM's field list, not measured value by value; only `Residence/Mailing`,
-  `Man/Boy`, `Dr.`, `Cousin` and `Home Phone` have been written.
+  `Man/Boy`, `Dr`, `Cousin` and `Home Phone` have been written.
 - **A directly created SR gets no activity plan** (see [Creating a service request
   directly](#creating-a-service-request-directly)); dropping the workflow call needs an
   answer for that. The SR update path (`UpdateAsync`) is still untested live, as are the

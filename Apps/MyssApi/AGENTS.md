@@ -27,6 +27,24 @@ start. `Strapi:ApiToken` is not defaulted. `AllowOrigins` must list the webclien
 origins; `*` stops the app. Preserve that shape rather than adding
 permissive fallbacks.
 
+## Feature areas
+
+- **Account / registration** — `AccountController`, `AccountService`,
+  `UserProfileService` (`RegistrationEmailPurge` clears stale registration emails).
+- **PIN reset** — `PinResetController`, `PinResetService`, `PinHasher`.
+- **Email verification** — `EmailVerificationController`, `EmailVerificationService`;
+  emailed links (`EmailedLinkToken`) go out through BC Gov Notify (`NotifyEmailProvider`).
+- **Bus pass (citizen)** — `BusPassController`, `BusPassSubmissionService`: stores the
+  submission, dispatches it to ICM through IcmApi.Host and records each attempt in the
+  dispatch table (`BusPassDispatchEvent`, MyssData). The worker side is in MyssAdminApi.
+- **Eligibility estimator** — `EligibilityEstimatorController`; rates read from Strapi
+  (`StrapiEligibilityRateProvider`, cached five minutes).
+- **Form messages** — `FormMessagesController` serves per-form messages from Strapi
+  (`StrapiFormMessageProvider`); edited in MyssAdminApi.
+- **Demo** — `DemoController`/`DemoService`, behind `TechDemos`.
+
+Forms, intake and attachments are covered below and in the root AGENTS.md.
+
 ## Auth
 
 Option 1 (current): the API is a stateless resource server validating Keycloak bearer
@@ -70,7 +88,9 @@ save. A registration that creates a profile without that data is refused. With
 ## Feature flags
 
 Citizen features are switched on per environment under `FeatureManagement`
-(`Configuration/FeatureFlags.cs`). **A flag that is not set is off**, so a new feature
+(`Configuration/FeatureFlags.cs`, twelve flags: `HomePage`, `PinReset`,
+`EmailVerification`, `EligibilityEstimator`, `BusPass`, `Notifications`, `Messages`,
+`ServiceRequests`, `AccountInfo`, `Intake`, `Attachments`, `TechDemos`). **A flag that is not set is off**, so a new feature
 stays hidden until an environment turns it on with `Myss_FeatureManagement__<Flag>=true`
 (locally, in `appsettings.local.json`). Endpoints are gated with `[FeatureGate]`: when
 off the action never runs, usually a 404 (sign-in and rate limiting still run first, so
