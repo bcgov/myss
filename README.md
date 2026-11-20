@@ -17,10 +17,10 @@ Apps/<App>/Docs/*.md          the full docs (architecture, design principles,
                               saying whether it describes reality or a target
 ```
 
-Today `Apps/MyssWebclient` has the app level built out
-([AGENTS.md](Apps/MyssWebclient/AGENTS.md),
-[Docs/](Apps/MyssWebclient/Docs/)); other apps add theirs as they grow
-one. When guidance changes, update the layer that owns it — duplicated
+Every app except MyssContent has its own `AGENTS.md` (MyssApi, MyssAdminApi,
+MyssWebclient, MyssAdminWebclient, MyssFormio, MyssWebCommon, IcmApi,
+IcmApi.Host); so far only `Apps/MyssWebclient` has a
+[Docs/](Apps/MyssWebclient/Docs/) folder. When guidance changes, update the layer that owns it — duplicated
 rules drift.
 
 # Local development
@@ -29,7 +29,8 @@ Prerequisites: Docker, the .NET 10 SDK, Node 22+.
 
 ## One command: Aspire
 
-Everything below — the containers, the EF migrations, and all three apps — can be run
+Everything below — the containers, the EF migrations, and all six apps (IcmApi.Host only when an ICM base URL is
+configured) — can be run
 with a single command through the Aspire app host. Its configuration comes from
 `Apps/MySS.AspireHost/appsettings.json` (non-secret defaults, committed) plus user
 secrets for everything password-shaped, stored under `Aspire:Parameters:*` — the
@@ -128,8 +129,9 @@ compose Postgres.
   - Webclient: `cd Apps/MyssWebclient && npm run dev` → http://localhost:5173 (the
     forms demo is under `/techdemos/forms`)
   - Admin webclient: `cd Apps/MyssAdminWebclient && npm run dev` →
-    http://localhost:5174 (IDIR sign-in; the form and rates editors, and, for the
-    WORKER or ADMIN role, the applications to review)
+    http://localhost:5174 (IDIR sign-in; for ADMIN the form, form messages and rates editors, and,
+    for the WORKER or ADMIN role, the applications to review, stored submissions
+    and client search)
 - Strapi admin: http://localhost:1337/admin — the first visit asks you to
   create the initial admin user (local account, any credentials)
 

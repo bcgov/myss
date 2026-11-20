@@ -1,6 +1,7 @@
 # ADR-0001 — Event sourcing as the default state model; Temporal scoped to durable orchestration
 
 - **Status:** Accepted
+- **Implementation status:** event sourcing is implemented (`IEventStore`, `platform.event`). Temporal is not: there is no Temporal workflow in the codebase. Promotion runs synchronously — `ReviewService` (Apps/MyssAdminApi/Services/Intake/ReviewService.cs) calls `IApplicationPromotionProvider.PromoteAsync` (today `PlaceholderApplicationPromotionProvider`) and records the outcome as a `Promoted` or `PromotionFailed` event
 - **Date:** July 2026
 - **Deciders:** Senior Developer (architecture owner), per Handbook Part 2.8
 - **Related:** Handbook §2.5 (invalid states unrepresentable), §3.4 (the state model), §3.7 (eventing futures), Part 4.7 (audit before promote), Part 4.9 (promotion saga); ADR-0004, ADR-0005; risks R-16

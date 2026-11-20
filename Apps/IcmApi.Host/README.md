@@ -39,12 +39,17 @@ The workflow also echoes the matched first and last name. They are deliberately 
 returned: handed to whoever typed a SIN, they would confirm another person's name.
 The controller logs only whether the echo matched what was submitted.
 
-The OpenAPI document at `/swagger/v1/swagger.json` (UI at `/swagger`) is the
-published form of this contract.
+The OpenAPI document at `/swagger/v1/swagger.json` (UI at `/swagger`; the prefix is
+`Swagger:RoutePrefix`) is the published form of this contract. Swagger and `GET /health`
+(the health check) are anonymous; every other endpoint falls under an authorization
+fallback policy that requires an authenticated caller. Every response carries
+`X-Content-Type-Options: nosniff`.
 
 ## Authentication
 
-Callers present a client-credentials token from the shared standard realm. The
+Callers present a client-credentials token from the shared standard realm.
+`Oidc:Authority` is required; `appsettings.json` defaults it to the dev realm
+(`https://dev.loginproxy.gov.bc.ca/auth/realms/standard`). The
 token's `azp` must be in `Oidc:AllowedClients`; the list is required, and an empty
 one refuses to start. Audience is validated only when `Oidc:Audience` is set,
 because a standard-realm client-credentials token names the requesting client as
@@ -71,6 +76,8 @@ dotnet user-secrets set "Icm:Auth:ClientId" "…"
 dotnet user-secrets set "Icm:Auth:ClientSecret" "…"
 dotnet user-secrets set "Icm:TrustedUserName" "…"
 ```
+
+`Icm:Auth:Scopes` defaults to `["openid", "data"]` in `appsettings.json`.
 
 Get the values from another developer or the team's central secrets store. Deployed,
 the same keys are environment variables, either prefixed `Icm_` (`Icm_Icm__BaseUrl`)

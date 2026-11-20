@@ -1,6 +1,7 @@
 # ADR-0004 — Promotion-saga atomicity model
 
 - **Status:** Proposed — pending SB-02 (defined during implementation with the middleware)
+- **Implementation status:** no Temporal saga exists yet. Accept calls `IApplicationPromotionProvider.PromoteAsync` synchronously from `ReviewService` (Apps/MyssAdminApi/Services/Intake/ReviewService.cs); the only provider is `PlaceholderApplicationPromotionProvider`, and the outcome is recorded as a `Promoted` or `PromotionFailed` event. The atomicity model below remains undecided until the real ICM steps are built
 - **Date:** July 2026
 - **Deciders:** Senior Developer, with the ICM/middleware team
 - **Related:** SB-02, SQ-03; Handbook §3.4, §3.5, Part 4.9 (promotion saga), Part 4.7 (audit before promote), Part 8 (INT516 etc.); risk R-16; ADR-0001
