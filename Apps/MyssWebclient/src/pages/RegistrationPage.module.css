@@ -63,3 +63,14 @@
     align-items: flex-start;
     gap: var(--layout-margin-medium);
 }
+
+.questionActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+}
+
+.refused {
+    margin: 0;
+    padding-left: var(--layout-padding-medium);
+}

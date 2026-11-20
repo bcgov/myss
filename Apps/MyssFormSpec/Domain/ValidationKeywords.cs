@@ -79,6 +79,27 @@ namespace Myss.FormSpec.Domain
         /// <summary>A registration email address has not been verified by its emailed link (MYSS-295).</summary>
         public const string RegistrationEmailNotVerified = "REGISTRATION.EMAIL.NOT_VERIFIED";
 
+        /// <summary>A registration does not say who the account is for.</summary>
+        public const string RegistrationContextRequired = "REGISTRATION.CONTEXT.REQUIRED";
+
+        /// <summary>Who a registration's account is for is not one of the options offered.</summary>
+        public const string RegistrationContextUnknown = "REGISTRATION.CONTEXT.UNKNOWN";
+
+        /// <summary>An account for someone else was registered from a sign-in other than Basic BCeID.</summary>
+        public const string RegistrationContextSignInNotAllowed = "REGISTRATION.CONTEXT.SIGN_IN_NOT_ALLOWED";
+
+        /// <summary>A citizen registering with help did not say whether the helper is authorized.</summary>
+        public const string RegistrationHelperAuthorizationRequired = "REGISTRATION.HELPER.AUTHORIZATION_REQUIRED";
+
+        /// <summary>A citizen who authorized their helper attached no signed consent form.</summary>
+        public const string RegistrationDocumentConsentRequired = "REGISTRATION.DOCUMENT.CONSENT_REQUIRED";
+
+        /// <summary>A registration attached more documents of one kind than it allows.</summary>
+        public const string RegistrationDocumentTooMany = "REGISTRATION.DOCUMENT.TOO_MANY";
+
+        /// <summary>An attached document is not the citizen's, has not passed its scan, or is already linked to an account.</summary>
+        public const string RegistrationDocumentNotFound = "REGISTRATION.DOCUMENT.NOT_FOUND";
+
         /// <summary>A phone type is not one of Home, Cell, Work or Message.</summary>
         public const string PhoneTypeUnknown = "ACCOUNT.PHONE.TYPE_UNKNOWN";
 

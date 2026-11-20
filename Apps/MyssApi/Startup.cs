@@ -83,6 +83,7 @@ namespace Myss.Api
                 this.startupConfig.Configuration, "Strapi:ApiToken"));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
             services.AddScoped<IFormsService, FormsService>();
+            services.AddScoped<IAccountCreationService, AccountCreationService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
 
             // Account Info. The case details are placeholders until

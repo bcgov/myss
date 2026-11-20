@@ -36,6 +36,7 @@ namespace Myss.Api.Tests.Services
         private readonly PinHasher _pinHasher = new();
         private readonly FakeEmailProvider _email = new();
         private readonly FakeContactMatchProvider _contactMatch = new();
+        private readonly FakeAttachmentsService _attachments = new();
         // Off by default: these tests are about the form, not Step 2's email proof (MYSS-295),
         // which the tests that need it switch on.
         private IFeatureManager _features = TestFeatures.AllOnExcept(FeatureFlags.EmailVerification);
@@ -587,6 +588,23 @@ namespace Myss.Api.Tests.Services
             Assert.Equal(ValidationKeywords.RegistrationEmailNotVerified, Assert.Single(result.Errors).Keyword);
         }
 
+        [Fact]
+        public async Task Submit_WithEmailVerificationOn_AMalformedAddressIsReportedAsMalformed()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            _features = TestFeatures.AllOn();
+
+            FormSubmissionResultModel result = await NewService(db).SubmitAsync(
+                "registration",
+                Request(3, """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"not-an-email","sin":"050082833"}"""),
+                CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal("email", error.Field);
+            Assert.Equal(ValidationKeywords.EmailInvalidFormat, error.Keyword);
+        }
+
         // Copilot review, MYSS-295: the flag switched off mid-registration must
         // not leave the registration's email proof behind.
         [Fact]
@@ -999,11 +1017,136 @@ namespace Myss.Api.Tests.Services
             Assert.Empty(await db.MyssUserProfiles.ToListAsync());
         }
 
+        private const string AdaAnswers =
+            """{"firstName":"Ada","lastName":"Lovelace","dateOfBirth":"1815-12-10","email":"ada@example.com","sin":"050082833"}""";
+
+        [Fact]
+        public async Task Submit_RegistrationWithoutAccountCreation_IsRefusedNamingTheContext_AndSavesNothing()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+            FormSubmissionRequestModel request = Request(3, AdaAnswers);
+            request.AccountCreation = null;
+
+            FormSubmissionResultModel result = await service.SubmitAsync("registration", request, CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(AccountCreationRules.ContextField, error.Field);
+            Assert.Equal(ValidationKeywords.RegistrationContextRequired, error.Keyword);
+            Assert.Empty(await db.FormSubmissions.ToListAsync());
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_LegalRepresentativeRegistration_SavesTheProfileRepresentativeAndDocumentsTogether()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            Guid document = _attachments.Release("test-subject");
+            FormsService service = NewService(db, new StubCurrentUserAccessor("test-subject", TestBceidGuid));
+            var accountCreation = new AccountCreationRequestModel
+            {
+                Context = "legalRepresentative",
+                Representative = new RepresentativeRequestModel
+                {
+                    FirstName = " Pat ",
+                    LastName = "Lee",
+                    Phone = "(250) 555-0123",
+                    Agency = "Northern Trustee Services",
+                },
+                PowerOfAttorneyDocumentIds = [document],
+            };
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration", Request(3, AdaAnswers, "1357", "1357", accountCreation), CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            MyssUserProfile profile = Assert.Single(await db.MyssUserProfiles.ToListAsync());
+            Assert.Equal(AccountCreationContext.LegalRepresentative, profile.AccountCreationContext);
+            Assert.Null(profile.HelperAuthorized);
+            AccountRepresentative representative = Assert.Single(await db.AccountRepresentatives.ToListAsync());
+            Assert.Equal(profile.Id, representative.ProfileId);
+            Assert.Equal(RepresentativeType.LegalRepresentative, representative.Type);
+            Assert.Equal("Pat", representative.FirstName);
+            Assert.Equal("2505550123", representative.Phone);
+            Assert.Equal("Northern Trustee Services", representative.Agency);
+            AccountDocument linked = Assert.Single(await db.AccountDocuments.ToListAsync());
+            Assert.Equal(profile.Id, linked.ProfileId);
+            Assert.Equal(document, linked.AttachmentId);
+            Assert.Equal(AccountDocumentPurpose.PowerOfAttorney, linked.Purpose);
+        }
+
+        [Fact]
+        public async Task Submit_RepresentativeContextFromASignInWithoutBceid_IsRefused_AndSavesNothing()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+            var accountCreation = new AccountCreationRequestModel
+            {
+                Context = "parentForMinor",
+                Representative = new RepresentativeRequestModel { FirstName = "Pat", LastName = "Lee", Phone = "2505550123" },
+            };
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration", Request(3, AdaAnswers, accountCreation: accountCreation), CancellationToken.None);
+
+            ValidationErrorModel error = Assert.Single(result.Errors);
+            Assert.Equal(AccountCreationRules.ContextField, error.Field);
+            Assert.Equal(ValidationKeywords.RegistrationContextSignInNotAllowed, error.Keyword);
+            Assert.Empty(await db.MyssUserProfiles.ToListAsync());
+            Assert.Empty(await db.AccountRepresentatives.ToListAsync());
+        }
+
+        [Fact]
+        public async Task Submit_RegistrationOfAnExistingProfile_IgnoresAccountCreation()
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db);
+            await service.SubmitAsync("registration", Request(3, AdaAnswers), CancellationToken.None);
+            FormSubmissionRequestModel again = Request(3, AdaAnswers);
+            again.AccountCreation = null;
+
+            FormSubmissionResultModel result = await service.SubmitAsync("registration", again, CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(AccountCreationContext.Self, Assert.Single(await db.MyssUserProfiles.ToListAsync()).AccountCreationContext);
+        }
+
+        [Theory]
+        [InlineData("legalRepresentative")]
+        [InlineData("notAContext")]
+        public async Task Submit_RegistrationOfAnExistingProfile_StoresNoNewAccountCreation(string context)
+        {
+            using FormsDbContext db = NewDb();
+            _provider.VersionResult = FakeFormSpecProvider.Spec("registration", 3, RegistrationSpec);
+            FormsService service = NewService(db, new StubCurrentUserAccessor("test-subject", TestBceidGuid));
+            await service.SubmitAsync("registration", Request(3, AdaAnswers, "1357", "1357"), CancellationToken.None);
+            var accountCreation = new AccountCreationRequestModel
+            {
+                Context = context,
+                Representative = new RepresentativeRequestModel { FirstName = "Pat", LastName = "Lee", Phone = "2505550123" },
+                PowerOfAttorneyDocumentIds = [_attachments.Release("test-subject")],
+            };
+
+            FormSubmissionResultModel result = await service.SubmitAsync(
+                "registration", Request(3, AdaAnswers, accountCreation: accountCreation), CancellationToken.None);
+
+            Assert.True(result.IsValid);
+            Assert.Equal(AccountCreationContext.Self, Assert.Single(await db.MyssUserProfiles.ToListAsync()).AccountCreationContext);
+            Assert.Empty(await db.AccountRepresentatives.ToListAsync());
+            Assert.Empty(await db.AccountDocuments.ToListAsync());
+        }
+
+        // Every registration that creates a profile says who the account is for.
         private static FormSubmissionRequestModel Request(
             int version,
             string answersJson,
             string? pin = null,
-            string? pinConfirmation = null)
+            string? pinConfirmation = null,
+            AccountCreationRequestModel? accountCreation = null)
         {
             using JsonDocument answers = JsonDocument.Parse(answersJson);
             return new FormSubmissionRequestModel
@@ -1012,6 +1155,7 @@ namespace Myss.Api.Tests.Services
                 Answers = answers.RootElement.Clone(),
                 Pin = pin,
                 PinConfirmation = pinConfirmation,
+                AccountCreation = accountCreation ?? new AccountCreationRequestModel { Context = "self" },
             };
         }
 
@@ -1029,7 +1173,8 @@ namespace Myss.Api.Tests.Services
                 _pinHasher,
                 TestEmailVerification.NewService(db, caller, _email),
                 _features,
-                _contactMatch);
+                _contactMatch,
+                new AccountCreationService(NullLogger<AccountCreationService>.Instance, db, _attachments, caller));
         }
 
             private sealed class AnonymousCurrentUserAccessor : ICurrentUserAccessor

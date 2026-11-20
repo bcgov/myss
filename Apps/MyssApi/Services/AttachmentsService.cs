@@ -175,6 +175,25 @@ namespace Myss.Api.Services
                 .ToListAsync(cancellationToken);
         }
 
+        /// <inheritdoc/>
+        public async Task<IReadOnlySet<Guid>> FindReleasedAsync(
+            IReadOnlyCollection<Guid> ids,
+            string ownerSubject,
+            CancellationToken cancellationToken)
+        {
+            if (ids.Count == 0)
+            {
+                return new HashSet<Guid>();
+            }
+
+            List<Guid> found = await _dbContext.Attachments
+                .AsNoTracking()
+                .Where(a => ids.Contains(a.Id) && a.OwnerSubject == ownerSubject && a.Status == AttachmentStatus.Released)
+                .Select(a => a.Id)
+                .ToListAsync(cancellationToken);
+            return found.ToHashSet();
+        }
+
         /// <summary>
         /// Magic-byte check for the declared content type. A type with no
         /// check here is rejected, not waved through.

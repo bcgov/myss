@@ -8,6 +8,7 @@ import {
 import { authHeaders } from "@myss/web-common/auth";
 
 import { API_URL } from "@/constants";
+import type { MyssApiModelsAccountCreationRequestModel } from "@/api/generated/types.gen";
 
 // Calls to the forms API (/v1/forms): fetch form specs and post submissions.
 // Responses come wrapped in the API's payload envelope. The staff calls (the
@@ -59,6 +60,8 @@ export interface FormSubmissionInput {
   answers: Record<string, unknown>;
   pin?: string;
   pinConfirmation?: string;
+  /** Registration only: who the account is for, beside the answers like the PIN. */
+  accountCreation?: MyssApiModelsAccountCreationRequestModel;
 }
 
 export async function submitForm(

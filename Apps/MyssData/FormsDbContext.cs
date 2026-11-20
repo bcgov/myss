@@ -39,6 +39,16 @@ namespace Myss.Data
         /// </summary>
         public DbSet<RegistrationEmailVerification> RegistrationEmailVerifications => Set<RegistrationEmailVerification>();
 
+        /// <summary>
+        /// Gets the representatives who made accounts for someone else, one per profile at most.
+        /// </summary>
+        public DbSet<AccountRepresentative> AccountRepresentatives => Set<AccountRepresentative>();
+
+        /// <summary>
+        /// Gets the uploaded files linked to accounts at registration.
+        /// </summary>
+        public DbSet<AccountDocument> AccountDocuments => Set<AccountDocument>();
+
         /// <inheritdoc/>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -115,6 +125,22 @@ namespace Myss.Data
             // worker can search by, taken from the citizen's sign-in token.
             profile.Property(p => p.BceidUsername).HasColumnName("bceid_username").HasMaxLength(255);
 
+            // Who the account is for. The representative and the linked
+            // documents have tables of their own, deleted with the profile.
+            profile.Property(p => p.AccountCreationContext)
+                .HasColumnName("account_creation_context")
+                .HasConversion<string>()
+                .HasMaxLength(32);
+            profile.Property(p => p.HelperAuthorized).HasColumnName("helper_authorized");
+            profile.HasOne(p => p.Representative)
+                .WithOne()
+                .HasForeignKey<AccountRepresentative>(r => r.ProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+            profile.HasMany(p => p.Documents)
+                .WithOne()
+                .HasForeignKey(d => d.ProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Registration's email proof (MYSS-295): keyed by the identity
             // subject, because no profile exists yet. The token as its hash and
             // a concurrency token, as on the profile.
@@ -144,6 +170,32 @@ namespace Myss.Data
             // One number per type: ICM holds one home, cell, work and message
             // number per contact, so the list stays something it can take.
             phone.HasIndex(p => new { p.ProfileId, p.Type }).IsUnique();
+
+            var representative = modelBuilder.Entity<AccountRepresentative>();
+            representative.ToTable("account_representatives");
+            representative.HasKey(r => r.Id);
+            representative.Property(r => r.Id).HasColumnName("id");
+            representative.Property(r => r.ProfileId).HasColumnName("profile_id");
+            representative.Property(r => r.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(32);
+            representative.Property(r => r.FirstName).HasColumnName("first_name").HasMaxLength(200).IsRequired();
+            representative.Property(r => r.LastName).HasColumnName("last_name").HasMaxLength(200).IsRequired();
+            representative.Property(r => r.Phone).HasColumnName("phone").HasMaxLength(10).IsRequired();
+            representative.Property(r => r.Agency).HasColumnName("agency").HasMaxLength(200);
+            representative.Property(r => r.CreatedAt).HasColumnName("created_at");
+            representative.HasIndex(r => r.ProfileId).IsUnique();
+
+            var document = modelBuilder.Entity<AccountDocument>();
+            document.ToTable("account_documents");
+            document.HasKey(d => d.Id);
+            document.Property(d => d.Id).HasColumnName("id");
+            document.Property(d => d.ProfileId).HasColumnName("profile_id");
+            document.Property(d => d.AttachmentId).HasColumnName("attachment_id");
+            document.Property(d => d.Purpose).HasColumnName("purpose").HasConversion<string>().HasMaxLength(32);
+            document.Property(d => d.AttachedAt).HasColumnName("attached_at");
+            document.HasIndex(d => d.ProfileId);
+
+            // A file is linked to one account at most.
+            document.HasIndex(d => d.AttachmentId).IsUnique();
 
             var dispatchEvent = modelBuilder.Entity<BusPassDispatchEvent>();
             dispatchEvent.ToTable("bus_pass_dispatch_events");

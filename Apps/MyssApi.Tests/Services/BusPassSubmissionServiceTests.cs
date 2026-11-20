@@ -348,7 +348,8 @@ namespace Myss.Api.Tests.Services
                 new PinHasher(),
                 TestEmailVerification.NewService(db, caller, new FakeEmailProvider()),
                 TestFeatures.AllOn(),
-                new FakeContactMatchProvider());
+                new FakeContactMatchProvider(),
+                new FakeAccountCreationService());
 
             return new BusPassSubmissionService(
                 NullLogger<BusPassSubmissionService>.Instance,

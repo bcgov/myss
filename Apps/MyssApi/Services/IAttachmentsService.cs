@@ -1,5 +1,6 @@
 namespace Myss.Api.Services
 {
+    using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Threading;
@@ -37,5 +38,18 @@ namespace Myss.Api.Services
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         Task<IReadOnlyList<AttachmentResponseModel>> ListOwnAsync(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Finds which of the given attachments the owner uploaded and were
+        /// released after a clean scan.
+        /// </summary>
+        /// <param name="ids">The attachment IDs to look for.</param>
+        /// <param name="ownerSubject">The identity subject that must own them.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The IDs, among those given, that the owner uploaded and that are released.</returns>
+        Task<IReadOnlySet<Guid>> FindReleasedAsync(
+            IReadOnlyCollection<Guid> ids,
+            string ownerSubject,
+            CancellationToken cancellationToken);
     }
 }

@@ -8,6 +8,7 @@ import { client } from "@/api/generated/client.gen";
 import { router } from "@/routes/router";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { API_URL, CANADA_POST_API_KEY } from "@/constants.ts";
+import { deleteExpiredKeptFiles } from "@/lib/keptAccountCreation";
 import "@bcgov/design-tokens/css/variables.css";
 import "@/index.css";
 import "@/ui/typography.css";
@@ -18,6 +19,9 @@ client.setConfig({ baseUrl: API_URL });
 // Register the custom BC Gov Form.io components (bcgovAccordion, bcgovRadio)
 // before any <Form> renders — the estimator v4 spec references both types.
 registerBcgovComponents({ canadaPostApiKey: CANADA_POST_API_KEY });
+
+// Files a closed tab kept for a registration are deleted once over an hour old.
+void deleteExpiredKeptFiles(new Date());
 
 const queryClient = new QueryClient();
 

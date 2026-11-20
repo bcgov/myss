@@ -1,0 +1,17 @@
+.needed {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+.heading,
+.paragraph {
+    margin: 0;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-xsmall);
+    margin: 0;
+}
