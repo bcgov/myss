@@ -25,7 +25,6 @@
         "@bcgov/design-tokens": "3.2.0",
         "@formio/js": "^5.5.0",
         "@formio/react": "^6.2.1",
-        "@internationalized/date": "3.12.4",
         "@myss/formio": "*",
         "@myss/web-common": "*",
         "@tanstack/react-query": "5.104.5",

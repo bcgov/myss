@@ -5,52 +5,126 @@
  */
 
 .checkboxField {
-  display: flex;
-  flex-direction: column;
-  gap: var(--layout-margin-xsmall);
-  /* Under a question this is a fieldset; drop the browser's frame. */
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-xsmall);
+    /* Under a question this is a fieldset; drop the browser's frame. */
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
 }
 
 /* Set like the design system fields' messages, as the theme restyles them
    (myss-theme.css, "Form fields"). */
 .fieldError {
-  margin: 0;
-  color: var(--myss-color-error-text, var(--typography-color-danger));
-  font: var(--typography-regular-body);
+    margin: 0;
+    color: var(--myss-color-error-text, var(--typography-color-danger));
+    font: var(--typography-regular-body);
 }
 
 .submitButton {
-  margin-top: var(--layout-margin-medium);
+    margin-top: var(--layout-margin-medium);
 }
 
 /* The components inside a bcgovInlineAlert: the design system's alert body
    text, 16px, set apart from the bold title, with no trailing margin below
    the last paragraph or list. */
 .inlineAlertBody {
-  font: var(--typography-regular-body);
-  color: var(--typography-color-primary);
+    font: var(--typography-regular-body);
+    color: var(--typography-color-primary);
 }
 
 :global(.bcds-Inline-Alert--container) > :global(.title) + .inlineAlertBody {
-  margin-top: var(--layout-margin-medium);
+    margin-top: var(--layout-margin-medium);
 }
 
 .inlineAlertBody :is(p, ul, ol):last-child {
-  margin-bottom: 0;
+    margin-bottom: 0;
 }
 
 /* Links read as links by their underline too, as in the design system's own
    Link; Bootstrap takes the underline off every link. */
 .inlineAlertBody a {
-  text-decoration: underline;
+    text-decoration: underline;
 }
 
 /* A number field's prefix or suffix ("$") inside the box, beside the value. */
 .numberAffix {
-  color: var(--typography-color-secondary);
-  font: var(--typography-regular-body);
+    color: var(--typography-color-secondary);
+    font: var(--typography-regular-body);
+}
+
+/* The date input: its label, then month, day and year side by side, sized
+   for what each holds, then the description and the messages. */
+.dateInput {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.dateParts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--layout-margin-small);
+}
+
+.dateMonth {
+    flex: 0 1 13.25rem;
+    min-width: 10rem;
+}
+
+.dateDay {
+    flex: 0 0 3.25rem;
+}
+
+.dateYear {
+    flex: 0 0 4.75rem;
+}
+
+/* The parts' own labels stay the design system's regular weight under the
+   question's label, which the theme sets bold. */
+.dateParts :global(.bcds-react-aria-TextField--Label),
+.dateParts :global(.bcds-react-aria-Select--Label) {
+    font: var(--typography-regular-small-body);
+    color: var(--typography-color-primary);
+}
+
+.dateParts :global(.bcds-react-aria-TextField) {
+    width: 100%;
+}
+
+.dateParts :global(.bcds-react-aria-TextField--Input) {
+    min-width: 0;
+    width: 100%;
+}
+
+/* The month's box is as tall as the day's and year's (the design system's
+   medium height); its padding around 16px text would make it taller. */
+.dateParts :global(.bcds-react-aria-Select--Button) {
+    height: var(--layout-margin-xxlarge);
+    min-height: var(--layout-margin-xxlarge);
+    padding-block: 0;
+}
+
+/* No warning icon in a box this narrow; the red border and message say it. */
+.dateParts :global(.bcds-react-aria-TextField--container) > svg {
+    display: none;
+}
+
+/* Set like the design system fields' descriptions. */
+.dateDescription {
+    font: var(--typography-regular-small-body);
+    color: var(--typography-color-secondary);
+    padding: var(--layout-padding-xsmall) 0;
+}
+
+.dateErrors {
+    display: flex;
+    flex-direction: column;
+    padding-top: var(--layout-padding-xsmall);
 }

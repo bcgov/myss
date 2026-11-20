@@ -46,17 +46,17 @@ only makes it _possible_ to be accessible cheaply.
 
 ### Date entry
 
-Form.io date fields draw the BC Gov Design System `DatePicker` (through
-`@myss/formio`), with its calendar button enabled.
-Users can type into the Year, Month and Day segments or choose a date from the
-calendar. The design system owns the labels, format instructions, keyboard
-behavior and accessible error associations. No custom date-entry markup or
-calendar navigation is required to type a date. Both webclients use the
-same component. Existing ISO date and datetime answers remain readable
-without time-zone conversion, and completed answers retain the single
-`yyyy-MM-dd` API value. Form.io's required, date-bound and custom rules still
-run, as do a field's `myssValidator: "date"` rule and the server-side business
-rules (such as a date of birth that cannot be in the future).
+Form.io date fields draw the legacy MySS month, day and year inputs (through
+`@myss/formio`): a BC Gov Design System `Select` for the month and
+`TextField`s for the day and year, grouped under the question's label. A
+part that is blank or out of range is marked on its own and its message is
+linked to it; when all three are wrong, one message covers the date. Both
+webclients use the same component. Existing ISO date and datetime answers
+remain readable without time-zone conversion, and completed answers retain
+the single `yyyy-MM-dd` API value. Form.io's required, date-bound and custom
+rules still run, as do a field's `myssValidator: "date"` rule and the
+server-side business rules (such as a date of birth that cannot be in the
+future).
 
 ## How this shows up in code and tests
 

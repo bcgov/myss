@@ -5,10 +5,12 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { setErrorCatalogue } from "./errorCatalogue";
 import {
+  checkDateEntry,
   checkMatches,
   checkRule,
   DEFAULT_MESSAGES,
   isEmailAddress,
+  isoDateOf,
   RULE_KEYWORDS,
   ruleMessage,
   VALIDATION_RULES,
@@ -188,6 +190,79 @@ describe("dateParts rule", () => {
     expect(
       checkRule("dateParts", "31", { data: {}, component: {} }),
     ).toBeNull();
+  });
+});
+
+describe("checkDateEntry", () => {
+  const entry = (month: string, day: string, year: string) => ({
+    month,
+    day,
+    year,
+  });
+  const keywordsOf = (month: string, day: string, year: string) =>
+    checkDateEntry(entry(month, day, year)).map((f) => [f.keyword, f.parts]);
+
+  it("leaves a date with nothing typed to the required rule", () => {
+    expect(checkDateEntry(entry("", "", " "))).toEqual([]);
+  });
+
+  it("accepts a real date, a one-digit day and a leap day", () => {
+    expect(checkDateEntry(entry("2", "29", "2000"))).toEqual([]);
+    expect(checkDateEntry(entry("12", " 1 ", "1950"))).toEqual([]);
+  });
+
+  it("names each blank or out-of-range part on its own", () => {
+    expect(keywordsOf("", "32", "1990")).toEqual([
+      [RULE_KEYWORDS.dateMonthRequired, ["month"]],
+      [RULE_KEYWORDS.dateDayInvalid, ["day"]],
+    ]);
+    expect(keywordsOf("3", "0", "1990")).toEqual([
+      [RULE_KEYWORDS.dateDayInvalid, ["day"]],
+    ]);
+    expect(keywordsOf("3", "1a", "1990")).toEqual([
+      [RULE_KEYWORDS.dateDayInvalid, ["day"]],
+    ]);
+    expect(keywordsOf("3", "", "")).toEqual([
+      [RULE_KEYWORDS.dateDayRequired, ["day"]],
+      [RULE_KEYWORDS.dateYearRequired, ["year"]],
+    ]);
+    expect(keywordsOf("3", "1", "199")).toEqual([
+      [RULE_KEYWORDS.dateYearInvalid, ["year"]],
+    ]);
+  });
+
+  it("accepts years from 1900, future years included", () => {
+    expect(checkDateEntry(entry("1", "1", "1900"))).toEqual([]);
+    expect(checkDateEntry(entry("1", "1", "2999"))).toEqual([]);
+    expect(keywordsOf("12", "31", "1899")).toEqual([
+      [RULE_KEYWORDS.dateYearInvalid, ["year"]],
+    ]);
+  });
+
+  it("refuses good parts that make no real date, on every part", () => {
+    expect(keywordsOf("2", "29", "2001")).toEqual([
+      [RULE_KEYWORDS.dateInvalid, ["month", "day", "year"]],
+    ]);
+  });
+
+  it("reports every part wrong as one date failure", () => {
+    expect(keywordsOf("", "32", "19")).toEqual([
+      [RULE_KEYWORDS.dateInvalid, ["month", "day", "year"]],
+    ]);
+  });
+});
+
+describe("isoDateOf", () => {
+  it("writes a real date as yyyy-MM-dd", () => {
+    expect(isoDateOf({ month: "2", day: "9", year: "1948" })).toBe(
+      "1948-02-09",
+    );
+  });
+
+  it("has no date while the parts make none", () => {
+    expect(isoDateOf({ month: "", day: "", year: "" })).toBeNull();
+    expect(isoDateOf({ month: "2", day: "", year: "1948" })).toBeNull();
+    expect(isoDateOf({ month: "2", day: "30", year: "1948" })).toBeNull();
   });
 });
 
