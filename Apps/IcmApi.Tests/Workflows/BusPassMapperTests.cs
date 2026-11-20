@@ -205,6 +205,8 @@ namespace Icm.Api.Tests.Workflows
                 {
                     RequestType = BusPassRequestType.AddressUpdate,
                     LastName = "Example",
+                    PhoneNumber = "(250) 555-0100",
+                    PhoneType = BusPassPhoneType.Cell,
                     ResidentialAddress = new BusPassAddress { Line1 = "123 Main St", City = "Victoria" },
                     MailingAddress = new BusPassAddress { Line1 = "PO Box 9", City = "Vancouver" },
                 },
@@ -220,6 +222,8 @@ namespace Icm.Api.Tests.Workflows
 
             // Both rows are the same person, so the identity travels on both.
             Assert.Equal("Example", prospects[1].LstNme);
+            Assert.Equal("2505550100", prospects[1].HomePhone);
+            Assert.Equal("2505550100", prospects[1].CellularPhone);
         }
 
         [Fact]
@@ -317,10 +321,11 @@ namespace Icm.Api.Tests.Workflows
         }
 
         [Theory]
-        [InlineData(BusPassPhoneType.Home)]
-        [InlineData(BusPassPhoneType.Work)]
-        [InlineData(BusPassPhoneType.Cell)]
-        public void ThePhoneTypeChoosesTheField(BusPassPhoneType phoneType)
+        [InlineData(BusPassPhoneType.Home, null, null)]
+        [InlineData(BusPassPhoneType.Work, "2505550100", null)]
+        [InlineData(BusPassPhoneType.Cell, null, "2505550100")]
+        public void EveryPhoneTypeFillsTheHomeFieldAndWorkOrCellAlsoFillsItsOwn(
+            BusPassPhoneType phoneType, string? work, string? cell)
         {
             SiebelBusPassProspect prospect = Prospect(BusPassMapper.ToSiebel(
                 new BusPassApplication
@@ -331,9 +336,9 @@ namespace Icm.Api.Tests.Workflows
                 },
                 Now));
 
-            string?[] typed = [prospect.HomePhone, prospect.WorkPhone, prospect.CellularPhone];
-            Assert.Equal("2505550100", typed[(int)phoneType]);
-            Assert.Equal(2, typed.Count(value => value is null));
+            Assert.Equal("2505550100", prospect.HomePhone);
+            Assert.Equal(work, prospect.WorkPhone);
+            Assert.Equal(cell, prospect.CellularPhone);
             Assert.Null(prospect.Phone);
 
             Assert.Null(prospect.AlternatePhone);
@@ -357,12 +362,15 @@ namespace Icm.Api.Tests.Workflows
                 },
                 Now));
 
+            Assert.Equal("2505550100", prospect.HomePhone);
             Assert.Equal("2505550100", prospect.WorkPhone);
+            Assert.Null(prospect.CellularPhone);
+            Assert.Null(prospect.Phone);
             Assert.Equal(expected, prospect.AlternatePhone);
         }
 
         [Fact]
-        public void NoPhoneTypeFallsBackToTheUntypedFieldRatherThanGuessingOne()
+        public void NoPhoneTypeFillsTheHomeAndUntypedFields()
         {
             SiebelBusPassProspect prospect = Prospect(BusPassMapper.ToSiebel(
                 new BusPassApplication
@@ -373,9 +381,28 @@ namespace Icm.Api.Tests.Workflows
                 Now));
 
             Assert.Equal("2505550100", prospect.Phone);
+            Assert.Equal("2505550100", prospect.HomePhone);
+            Assert.Null(prospect.WorkPhone);
+            Assert.Null(prospect.CellularPhone);
+        }
+
+        [Fact]
+        public void WithoutANumberNoPhoneFieldIsSent()
+        {
+            SiebelBusPassProspect prospect = Prospect(BusPassMapper.ToSiebel(
+                new BusPassApplication
+                {
+                    RequestType = BusPassRequestType.Replacement,
+                    PhoneType = BusPassPhoneType.Cell,
+                    LeaveMessageAllowed = true,
+                },
+                Now));
+
             Assert.Null(prospect.HomePhone);
             Assert.Null(prospect.WorkPhone);
             Assert.Null(prospect.CellularPhone);
+            Assert.Null(prospect.Phone);
+            Assert.Null(prospect.AlternatePhone);
         }
 
         [Fact]
