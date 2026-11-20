@@ -1,5 +1,6 @@
 namespace Myss.Api.Tests.Configuration
 {
+    using Myss.Data.Attachments;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Logging.Abstractions;
@@ -77,7 +78,7 @@ namespace Myss.Api.Tests.Configuration
             await AssertUpToDate(new FormsDbContext(new DbContextOptionsBuilder<FormsDbContext>()
                 .UseNpgsql(connectionString, o => MyssMigrations.Configure(o, historySchema: null)).Options));
             await AssertUpToDate(new AttachmentsDbContext(new DbContextOptionsBuilder<AttachmentsDbContext>()
-                .UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "attachments")).Options));
+                .UseNpgsql(connectionString, o => MyssMigrations.Configure(o, "attachments")).Options));
             await AssertUpToDate(new PlatformDbContext(new DbContextOptionsBuilder<PlatformDbContext>()
                 .UseNpgsql(connectionString, o => MyssMigrations.Configure(o, "platform")).Options));
             await AssertUpToDate(new IntakeDbContext(new DbContextOptionsBuilder<IntakeDbContext>()

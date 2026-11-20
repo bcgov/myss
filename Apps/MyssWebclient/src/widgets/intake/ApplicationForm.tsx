@@ -11,6 +11,8 @@ import "@formio/js/dist/formio.form.min.css";
 import "@/widgets/FormSpecWidget.css";
 import styles from "@myss/web-common/components/ApplicationForm.module.css";
 import WithdrawApplication from "./WithdrawApplication";
+import ApplicationDocuments from "./ApplicationDocuments";
+import { useFeature } from "@/hooks/useFeatures";
 
 import {
   ApplicationRequestError,
@@ -180,6 +182,9 @@ export default function ApplicationForm({
   // this session; a later visit to a submitted application just renders it.
   const [submittedHere, setSubmittedHere] = useState(false);
   const handleSubmitted = useCallback(() => setSubmittedHere(true), []);
+  // Supporting documents are their own feature, off until an environment
+  // has the virus scanner and object store they need.
+  const attachments = useFeature("Attachments") === true;
 
   if (isPending) return <p>Loading application…</p>;
   if (error) {
@@ -218,6 +223,9 @@ export default function ApplicationForm({
         spec={application.spec.spec}
         announce={submittedHere}
       />
+      {attachments && (
+        <ApplicationDocuments applicationId={application.id} editable={false} />
+      )}
       </>
     );
   }
@@ -225,6 +233,9 @@ export default function ApplicationForm({
   return (
     <>
     <WithdrawApplication application={application} />
+    {attachments && (
+      <ApplicationDocuments applicationId={application.id} editable />
+    )}
     <DraftForm
       // A return remounts the form, so it starts from the answers as loaded.
       key={`${application.id}:${application.status}`}

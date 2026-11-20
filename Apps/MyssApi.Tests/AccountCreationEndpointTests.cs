@@ -1,5 +1,7 @@
 namespace Myss.Api.Tests
 {
+    using Myss.Common.Storage;
+    using Myss.Data.Attachments;
     using System;
     using System.Collections.Generic;
     using System.Net;

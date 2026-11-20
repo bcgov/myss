@@ -1,5 +1,6 @@
 namespace Myss.Api.Models
 {
+    using Myss.Data.Attachments;
     using System;
     using System.Text.Json.Serialization;
     using Myss.Api.Data;
@@ -66,6 +67,12 @@ namespace Myss.Api.Models
 
         /// <summary>The virus scan flagged the content.</summary>
         Infected,
+
+        /// <summary>
+        /// The application the file was for stopped accepting files while it
+        /// was being scanned (it was submitted or withdrawn).
+        /// </summary>
+        NoLongerAccepted,
     }
 
     /// <summary>
@@ -93,6 +100,7 @@ namespace Myss.Api.Models
             AttachmentRejectionReason.TooLarge => "DOC.UPLOAD.TOO_LARGE",
             AttachmentRejectionReason.TypeNotAllowed => "DOC.UPLOAD.TYPE_NOT_ALLOWED",
             AttachmentRejectionReason.Infected => "DOC.UPLOAD.INFECTED",
+            AttachmentRejectionReason.NoLongerAccepted => Myss.Data.Intake.IntakeKeywords.NotEditable,
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
         };
     }

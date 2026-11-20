@@ -3,7 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Myss.Api.Data;
+using Myss.Data.Attachments;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -18,12 +18,12 @@ namespace Myss.Api.Migrations.Attachments
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("attachments")
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Myss.Api.Data.Attachment", b =>
+            modelBuilder.Entity("Myss.Data.Attachments.Attachment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -85,6 +85,8 @@ namespace Myss.Api.Migrations.Attachments
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerSubject");
+
+                    b.HasIndex("SubmissionId");
 
                     b.ToTable("attachments", "attachments");
                 });

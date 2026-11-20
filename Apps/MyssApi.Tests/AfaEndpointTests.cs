@@ -9,7 +9,7 @@ namespace Myss.Api.Tests
     using Myss.Api.Tests.TestSupport;
     using Myss.Data.Intake;
 
-    /// <summary>Product-authored AFA forms reuse citizen intake without entering worker review.</summary>
+    /// <summary>Product-authored AFA forms reuse citizen intake; submitted ones go to worker review (MyssAdminApi).</summary>
     public class AfaEndpointTests : IClassFixture<WebApplicationFactory<Startup>>
     {
         private const string Route = "/v1/intake/applications";

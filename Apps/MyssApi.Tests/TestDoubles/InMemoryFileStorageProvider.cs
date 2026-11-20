@@ -1,8 +1,8 @@
 namespace Myss.Api.Tests.TestDoubles
 {
+    using Myss.Common.Storage;
     using System.Collections.Concurrent;
     using System.Security.Cryptography;
-    using Myss.Api.Providers;
 
     /// <summary>
     /// In-memory <see cref="IFileStorageProvider"/> for tests. The ETag is a
@@ -26,6 +26,20 @@ namespace Myss.Api.Tests.TestDoubles
             string etag = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             _objects[key] = (bytes, contentType, etag);
             return etag;
+        }
+
+        /// <inheritdoc/>
+        public Task<Stream?> GetAsync(string key, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<Stream?>(
+                _objects.TryGetValue(key, out var stored) ? new MemoryStream(stored.Content, writable: false) : null);
+        }
+
+        /// <inheritdoc/>
+        public Task DeleteAsync(string key, CancellationToken cancellationToken)
+        {
+            _objects.TryRemove(key, out _);
+            return Task.CompletedTask;
         }
     }
 }

@@ -40,6 +40,7 @@ namespace Myss.Api.Intake
         private readonly ICurrentUserAccessor _currentUserAccessor;
         private readonly TimeProvider _timeProvider;
         private readonly IErrorMessageProvider _errorMessageProvider;
+        private readonly IAttachmentsService _attachmentsService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="IntakeService"/> class.
@@ -52,6 +53,7 @@ namespace Myss.Api.Intake
         /// <param name="currentUserAccessor">Injected current user accessor.</param>
         /// <param name="timeProvider">Injected time provider.</param>
         /// <param name="errorMessageProvider">Injected error message catalogue provider.</param>
+        /// <param name="attachmentsService">Injected attachments service (the documents a submit records).</param>
         public IntakeService(
             ILogger<IntakeService> logger,
             IntakeDbContext dbContext,
@@ -60,8 +62,10 @@ namespace Myss.Api.Intake
             IUserProfileService userProfileService,
             ICurrentUserAccessor currentUserAccessor,
             TimeProvider timeProvider,
-            IErrorMessageProvider errorMessageProvider)
+            IErrorMessageProvider errorMessageProvider,
+            IAttachmentsService attachmentsService)
         {
+            _attachmentsService = attachmentsService;
             _logger = logger;
             _dbContext = dbContext;
             _eventStore = eventStore;
@@ -312,10 +316,15 @@ namespace Myss.Api.Intake
             // than submitted again. A withdrawal that read the row after the
             // claim and appended first makes this fail, and the answers have
             // not been touched.
+            // The supporting documents as they stand now: the worker sees
+            // these and nothing uploaded after this point.
+            IReadOnlyList<AttachmentResponseModel> documents =
+                await _attachmentsService.ListForSubmissionAsync(id, cancellationToken);
             var payload = new SubmittedPayload
             {
                 FormSpecVersion = row.FormSpecVersion,
                 Answers = request.Answers,
+                AttachmentIds = documents.Select(d => d.Id).ToList(),
             };
             string eventType = ApplicationProjection.SubmitEventFor(state);
             try
@@ -443,6 +452,27 @@ namespace Myss.Api.Intake
             }
 
             return user.Subject;
+        }
+
+        /// <inheritdoc/>
+        public async Task<IntakeOutcome> CheckAttachmentAccessAsync(
+            Guid id,
+            bool change,
+            CancellationToken cancellationToken)
+        {
+            ApplicationAnswers? row = await FindOwnAsync(id, track: false, cancellationToken);
+            if (row is null)
+            {
+                return IntakeOutcome.NotFound;
+            }
+
+            if (!change)
+            {
+                return IntakeOutcome.Ok;
+            }
+
+            ApplicationState state = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
+            return ApplicationProjection.CanSave(state) ? IntakeOutcome.Ok : IntakeOutcome.NotEditable;
         }
 
         private Task<ApplicationAnswers?> FindOwnAsync(

@@ -345,8 +345,16 @@ IResourceBuilder<ProjectResource> adminApi = builder
     .AddProject<Projects.MyssAdminApi>("MySSAdminApi")
     .WithReference(formsDb)
     .WithEnvironment("Strapi__BaseUrl", content.GetEndpoint("http"))
+
+    // The bucket MySSApi uploads applicants' supporting documents to, which
+    // the worker review screen downloads them from.
+    .WithEnvironment("ObjectStorage__ServiceUrl", minio.GetEndpoint("api"))
+    .WithEnvironment("ObjectStorage__AccessKey", minioRootUser)
+    .WithEnvironment("ObjectStorage__SecretKey", minioRootPassword)
+    .WithEnvironment("ObjectStorage__Bucket", minioBucket)
     .WaitFor(postgres)
-    .WaitForCompletion(migrateIntake);
+    .WaitForCompletion(migrateIntake)
+    .WaitForCompletion(migrateAttachments);
 
 if (!string.IsNullOrWhiteSpace(dashboardOtlp))
 {

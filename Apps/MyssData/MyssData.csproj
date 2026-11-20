@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   The EF Core model the citizen API (MyssApi) and the admin API (MyssAdminApi)
-  share: the forms, intake and platform contexts and their entities, the
+  share: the forms, intake, platform and attachments contexts and their entities, the
   platform event store, and the intake fold both sides read state from.
   Migrations are NOT here: they stay in MyssApi, the only service that changes
   the schema (MigrationsAssembly is set there). MyssAdminApi reads and appends

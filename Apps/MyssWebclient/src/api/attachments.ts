@@ -107,28 +107,77 @@ export async function listAttachments(): Promise<AttachmentPayload[]> {
   return (await res.json()).payload;
 }
 
-/** Uploads one file as the multipart "file" field. */
-export async function uploadAttachment(file: File): Promise<AttachmentPayload> {
+/** Throws the API's refusal (status, keyword, detail) for a failed response. */
+async function throwUploadError(res: Response): Promise<never> {
+  let keyword: string | undefined;
+  let detail: string | undefined;
+  try {
+    const problem = await res.json();
+    keyword = problem.keyword;
+    detail = problem.detail;
+  } catch {
+    // Not a ProblemDetails body; the status alone will have to do.
+  }
+  throw new AttachmentUploadError(res.status, keyword, detail);
+}
+
+async function postFile(url: string, file: File): Promise<AttachmentPayload> {
   const form = new FormData();
   form.append("file", file);
   // No Content-Type header here: the browser must set the multipart boundary
   // itself.
-  const res = await fetch(`${API_URL}/v1/attachments`, {
+  const res = await fetch(url, {
     method: "POST",
     headers: authHeaders(),
     body: form,
   });
-  if (!res.ok) {
-    let keyword: string | undefined;
-    let detail: string | undefined;
-    try {
-      const problem = await res.json();
-      keyword = problem.keyword;
-      detail = problem.detail;
-    } catch {
-      // Not a ProblemDetails body; the status alone will have to do.
-    }
-    throw new AttachmentUploadError(res.status, keyword, detail);
-  }
+  if (!res.ok) await throwUploadError(res);
   return (await res.json()).payload;
+}
+
+/** Uploads one file as the multipart "file" field. */
+export function uploadAttachment(file: File): Promise<AttachmentPayload> {
+  return postFile(`${API_URL}/v1/attachments`, file);
+}
+
+// Supporting documents on an application
+// (/v1/intake/applications/{id}/attachments): the applicant adds and removes
+// them while the application is a draft or returned for more information;
+// once submitted they are read-only here and visible to the worker reviewing
+// it. A 409 with INTAKE.APPLICATION.NOT_EDITABLE means it was submitted or
+// withdrawn in the meantime.
+
+function applicationAttachmentsUrl(applicationId: string) {
+  return `${API_URL}/v1/intake/applications/${encodeURIComponent(applicationId)}/attachments`;
+}
+
+/** The supporting documents on one of the caller's applications, oldest first. */
+export async function listApplicationAttachments(
+  applicationId: string,
+): Promise<AttachmentPayload[]> {
+  const res = await fetch(applicationAttachmentsUrl(applicationId), {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Documents fetch failed (${res.status})`);
+  return (await res.json()).payload;
+}
+
+/** Adds one supporting document to a draft or returned application. */
+export function uploadApplicationAttachment(
+  applicationId: string,
+  file: File,
+): Promise<AttachmentPayload> {
+  return postFile(applicationAttachmentsUrl(applicationId), file);
+}
+
+/** Removes a supporting document from a draft or returned application. */
+export async function deleteApplicationAttachment(
+  applicationId: string,
+  attachmentId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${applicationAttachmentsUrl(applicationId)}/${encodeURIComponent(attachmentId)}`,
+    { method: "DELETE", headers: authHeaders() },
+  );
+  if (!res.ok) await throwUploadError(res);
 }

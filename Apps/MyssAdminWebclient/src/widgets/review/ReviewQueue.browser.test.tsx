@@ -56,7 +56,7 @@ function ReviewLanding() {
   return <p>Review landing {id}</p>;
 }
 
-function renderQueue() {
+function renderQueue(myIdir?: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -64,7 +64,10 @@ function renderQueue() {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[paths.applications]}>
         <Routes>
-          <Route path={paths.applications} element={<ReviewQueue />} />
+          <Route
+            path={paths.applications}
+            element={<ReviewQueue myIdir={myIdir} />}
+          />
           <Route path={paths.application} element={<ReviewLanding />} />
         </Routes>
       </MemoryRouter>
@@ -177,4 +180,45 @@ test("reports a failed load", async () => {
   await expect
     .element(screen.getByRole("alert"))
     .toHaveTextContent("Could not load the submitted applications");
+});
+
+test("shows the applicant and picks out the files assigned to the signed-in worker", async () => {
+  stubApi({
+    status: 200,
+    body: {
+      payload: [
+        { ...queue[0], applicantName: "Ada Lovelace" },
+        {
+          ...queue[1],
+          id: "33333333-4444-5555-6666-777777777777",
+          referenceNumber: "IA-33333333",
+          status: "UNDER_REVIEW",
+          assignee: "MWORKER",
+          applicantName: "Bob Byron",
+        },
+        {
+          ...queue[1],
+          status: "UNDER_REVIEW",
+          assignee: "OTHERWKR",
+          applicantName: "Cy Young",
+        },
+      ],
+    },
+  });
+  const screen = await renderQueue("mworker");
+
+  const waiting = screen.getByRole("table", { name: "Queue" });
+  await expect.element(waiting).toHaveTextContent("Ada Lovelace");
+  await expect.element(waiting).toHaveTextContent("Unassigned");
+
+  const mine = screen.getByRole("table", { name: "Assigned to you" });
+  await expect.element(mine).toHaveTextContent("IA-33333333");
+  await expect.element(mine).toHaveTextContent("Bob Byron");
+  await expect.element(mine).toHaveTextContent("You");
+
+  const others = screen.getByRole("table", {
+    name: "Other files under review and decided",
+  });
+  await expect.element(others).toHaveTextContent("OTHERWKR");
+  await expect.element(others).not.toHaveTextContent("IA-33333333");
 });

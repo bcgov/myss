@@ -29,14 +29,70 @@ namespace Myss.AdminApi.Intake
     public class ReviewApplicationsController : ControllerBase
     {
         private readonly IReviewService _reviewService;
+        private readonly IReviewAttachmentsService _attachmentsService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ReviewApplicationsController"/> class.
         /// </summary>
         /// <param name="reviewService">Injected review service.</param>
-        public ReviewApplicationsController(IReviewService reviewService)
+        /// <param name="attachmentsService">Injected supporting documents service.</param>
+        public ReviewApplicationsController(
+            IReviewService reviewService,
+            IReviewAttachmentsService attachmentsService)
         {
             _reviewService = reviewService;
+            _attachmentsService = attachmentsService;
+        }
+
+        /// <summary>
+        /// Lists the supporting documents the applicant added to a submitted
+        /// application, oldest first.
+        /// </summary>
+        /// <param name="id">The application identifier.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpGet("{id:guid}/attachments")]
+        [Produces("application/json")]
+        [EndpointName("ListReviewApplicationAttachments")]
+        [ProducesResponseType(typeof(BaseResponseModel<IReadOnlyList<ReviewAttachmentModel>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<BaseResponseModel<IReadOnlyList<ReviewAttachmentModel>>>> ListAttachments(
+            Guid id,
+            CancellationToken cancellationToken)
+        {
+            IReadOnlyList<ReviewAttachmentModel>? attachments = await _attachmentsService.ListAsync(id, cancellationToken);
+            if (attachments is null)
+            {
+                return NotFound();
+            }
+
+            return new BaseResponseModel<IReadOnlyList<ReviewAttachmentModel>>
+            {
+                Payload = attachments,
+                DatetimeRequested = DateTime.Now,
+            };
+        }
+
+        /// <summary>
+        /// Downloads one supporting document. Sent as an attachment (never
+        /// rendered inline by the browser) with its stored content type.
+        /// </summary>
+        /// <param name="id">The application identifier.</param>
+        /// <param name="attachmentId">The document identifier.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        [HttpGet("{id:guid}/attachments/{attachmentId:guid}/content")]
+        [EndpointName("DownloadReviewApplicationAttachment")]
+        [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DownloadAttachment(Guid id, Guid attachmentId, CancellationToken cancellationToken)
+        {
+            ReviewAttachmentContent? attachment = await _attachmentsService.OpenAsync(id, attachmentId, cancellationToken);
+            if (attachment is null)
+            {
+                return NotFound();
+            }
+
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            return File(attachment.Content, attachment.ContentType, attachment.FileName);
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-namespace Myss.Api.Data
+namespace Myss.Data.Attachments
 {
     using System;
 

@@ -82,5 +82,17 @@ namespace Myss.Api.Intake
             Guid id,
             ApplicationAnswersRequestModel request,
             CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Checks the caller may see the supporting documents of an
+        /// application, or change them. Reading needs only ownership;
+        /// changing (adding or removing a file) also needs the application
+        /// to be editable: a draft, or returned for more information.
+        /// </summary>
+        /// <param name="id">The application.</param>
+        /// <param name="change">True to add or remove a file.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Ok, NotFound or NotEditable.</returns>
+        Task<IntakeOutcome> CheckAttachmentAccessAsync(Guid id, bool change, CancellationToken cancellationToken);
     }
 }

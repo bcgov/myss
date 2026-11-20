@@ -10,6 +10,7 @@ namespace Myss.AdminApi.Intake
     using Myss.AdminApi.Models;
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Services;
+    using Myss.Data;
     using Myss.Data.Intake;
     using Myss.Data.Platform;
     using Myss.FormSpec;
@@ -28,12 +29,14 @@ namespace Myss.AdminApi.Intake
     {
         /// <summary>
         /// The forms whose submissions come to the worker queue: the income
-        /// assistance application, and the worker override Application for
-        /// Assistance (MYSS-321). The citizen's own AFA does not, yet.
+        /// assistance application, the citizen's own Application for
+        /// Assistance, and the worker override Application for Assistance
+        /// (MYSS-321).
         /// </summary>
-        private static readonly string[] QueuedForms =
+        internal static readonly string[] QueuedForms =
         [
             IntakeFormSpecIds.IncomeAssistance,
+            IntakeFormSpecIds.ApplicationForAssistance,
             IntakeFormSpecIds.WorkerOverrideAfa,
         ];
 
@@ -43,6 +46,7 @@ namespace Myss.AdminApi.Intake
         private readonly IFormSpecProvider _formSpecProvider;
         private readonly ICurrentUserAccessor _currentUserAccessor;
         private readonly IApplicationPromotionProvider _promotionProvider;
+        private readonly FormsDbContext _formsDbContext;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ReviewService"/> class.
@@ -53,14 +57,17 @@ namespace Myss.AdminApi.Intake
         /// <param name="formSpecProvider">Injected form spec provider.</param>
         /// <param name="currentUserAccessor">Injected current user accessor.</param>
         /// <param name="promotionProvider">Injected promotion provider.</param>
+        /// <param name="formsDbContext">Injected forms db context (applicant names from profiles).</param>
         public ReviewService(
             ILogger<ReviewService> logger,
             IntakeDbContext dbContext,
             IEventStore eventStore,
             IFormSpecProvider formSpecProvider,
             ICurrentUserAccessor currentUserAccessor,
-            IApplicationPromotionProvider promotionProvider)
+            IApplicationPromotionProvider promotionProvider,
+            FormsDbContext formsDbContext)
         {
+            _formsDbContext = formsDbContext;
             _logger = logger;
             _dbContext = dbContext;
             _eventStore = eventStore;
@@ -82,11 +89,21 @@ namespace Myss.AdminApi.Intake
                 rows.Select(r => r.Id).ToList(),
                 cancellationToken);
 
-            return rows
+            var submitted = rows
                 .Select(row => (Row: row, State: ApplicationProjection.Fold(streams[row.Id])))
                 .Where(x => x.State.SubmittedAt is not null)
                 .OrderByDescending(x => x.State.SubmittedAt)
-                .Select(x => ToSummary(x.Row, x.State))
+                .ToList();
+            IReadOnlyDictionary<string, string> names = await ApplicantNamesAsync(
+                submitted.Select(x => x.Row.OwnerSubject).Distinct().ToList(),
+                cancellationToken);
+            return submitted
+                .Select(x =>
+                {
+                    ReviewApplicationSummaryModel summary = ToSummary(x.Row, x.State);
+                    summary.ApplicantName = names.GetValueOrDefault(x.Row.OwnerSubject);
+                    return summary;
+                })
                 .ToList();
         }
 
@@ -107,7 +124,7 @@ namespace Myss.AdminApi.Intake
             }
 
             FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
-            return ReviewResultModel.Ok(ToModel(row, state, spec, RequireIdir()));
+            return ReviewResultModel.Ok(await WithNameAsync(ToModel(row, state, spec, RequireIdir()), row, cancellationToken));
         }
 
         /// <inheritdoc/>
@@ -119,11 +136,23 @@ namespace Myss.AdminApi.Intake
         {
             ArgumentNullException.ThrowIfNull(request);
             string eventType = ApplicationProjection.EventFor(action);
+            string? comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
+
+            // The comment goes in first, as a note: once the decision lands the
+            // worker may no longer be the assignee, and notes need one.
+            List<DomainEvent> events = [];
+            if (comment is not null)
+            {
+                events.Add(new NotePayload { Text = comment }.ToEvent());
+            }
+
+            events.Add(new MarkerPayload().ToEvent(eventType));
             ReviewResultModel result = await AppendAsync(
                 id,
                 request.StreamVersion,
-                state => ApplicationProjection.AvailableWorkerActions(state, RequireIdir()).Contains(action, StringComparer.Ordinal),
-                new MarkerPayload().ToEvent(eventType),
+                state => ApplicationProjection.AvailableWorkerActions(state, RequireIdir()).Contains(action, StringComparer.Ordinal)
+                    && (comment is null || ApplicationProjection.CanAddNote(state, RequireIdir())),
+                events,
                 action,
                 cancellationToken);
             if (result.Outcome != ReviewOutcome.Ok || action != WorkerActions.Accept)
@@ -145,20 +174,21 @@ namespace Myss.AdminApi.Intake
                 id,
                 request.StreamVersion,
                 state => ApplicationProjection.CanAddNote(state, RequireIdir()),
-                new NotePayload { Text = request.Text.Trim() }.ToEvent(),
+                [new NotePayload { Text = request.Text.Trim() }.ToEvent()],
                 "AddNote",
                 cancellationToken);
         }
 
         /// <summary>
         /// The shared write path: load, refuse what the state or the
-        /// assignment does not allow, check the version, append one event.
+        /// assignment does not allow, check the version, append the events
+        /// (one, or a decision with its comment) in one go.
         /// </summary>
         private async Task<ReviewResultModel> AppendAsync(
             Guid id,
             int streamVersion,
             Func<ApplicationState, bool> allowed,
-            DomainEvent evt,
+            IReadOnlyList<DomainEvent> events,
             string action,
             CancellationToken cancellationToken)
         {
@@ -197,7 +227,7 @@ namespace Myss.AdminApi.Intake
                 await _eventStore.AppendAsync(
                     id,
                     streamVersion,
-                    [evt],
+                    events,
                     ApplicationActors.Worker(idir),
                     cancellationToken);
             }
@@ -210,7 +240,7 @@ namespace Myss.AdminApi.Intake
             _logger.LogInformation("Worker {Idir} applied {Action} to application {ApplicationId}", idir, action, id);
 
             ApplicationState after = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
-            return ReviewResultModel.Ok(ToModel(row, after, spec: null, idir));
+            return ReviewResultModel.Ok(await WithNameAsync(ToModel(row, after, spec: null, idir), row, cancellationToken));
         }
 
         /// <summary>
@@ -261,7 +291,7 @@ namespace Myss.AdminApi.Intake
             }
 
             ApplicationState after = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, uncancellable));
-            return ReviewResultModel.Ok(ToModel(row, after, spec: null, RequireIdir()));
+            return ReviewResultModel.Ok(await WithNameAsync(ToModel(row, after, spec: null, RequireIdir()), row, uncancellable));
         }
 
         /// <summary>
@@ -308,6 +338,40 @@ namespace Myss.AdminApi.Intake
             return _dbContext.Applications
                 .AsNoTracking()
                 .SingleOrDefaultAsync(a => a.Id == id && QueuedForms.Contains(a.FormSpecId), cancellationToken);
+        }
+
+        private async Task<ReviewApplicationModel> WithNameAsync(
+            ReviewApplicationModel model,
+            ApplicationAnswers row,
+            CancellationToken cancellationToken)
+        {
+            IReadOnlyDictionary<string, string> names = await ApplicantNamesAsync([row.OwnerSubject], cancellationToken);
+            model.ApplicantName = names.GetValueOrDefault(row.OwnerSubject);
+            return model;
+        }
+
+        /// <summary>
+        /// The applicants' names by identity subject, one query for the lot.
+        /// A worker override client's profile is keyed by the same synthetic
+        /// subject its application carries, so it resolves the same way.
+        /// </summary>
+        private async Task<IReadOnlyDictionary<string, string>> ApplicantNamesAsync(
+            IReadOnlyCollection<string> subjects,
+            CancellationToken cancellationToken)
+        {
+            if (subjects.Count == 0)
+            {
+                return new Dictionary<string, string>();
+            }
+
+            var profiles = await _formsDbContext.MyssUserProfiles
+                .AsNoTracking()
+                .Where(p => subjects.Contains(p.Subject))
+                .Select(p => new { p.Subject, p.FirstName, p.LastName })
+                .ToListAsync(cancellationToken);
+            return profiles
+                .GroupBy(p => p.Subject)
+                .ToDictionary(g => g.Key, g => $"{g.First().FirstName} {g.First().LastName}".Trim());
         }
 
         private static ReviewApplicationSummaryModel ToSummary(ApplicationAnswers row, ApplicationState state)
