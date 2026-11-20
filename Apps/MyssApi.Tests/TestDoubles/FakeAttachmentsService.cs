@@ -45,6 +45,19 @@ namespace Myss.Api.Tests.TestDoubles
             string contentType,
             long sizeBytes,
             Stream content,
+            CancellationToken cancellationToken,
+            Guid? submissionId = null,
+            Func<CancellationToken, Task<bool>>? stillAccepting = null) => throw new NotSupportedException();
+
+        /// <inheritdoc/>
+        public Task<IReadOnlyList<AttachmentResponseModel>> ListForSubmissionAsync(
+            Guid submissionId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        /// <inheritdoc/>
+        public Task<bool> DeleteFromSubmissionAsync(
+            Guid submissionId,
+            Guid attachmentId,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
         /// <inheritdoc/>

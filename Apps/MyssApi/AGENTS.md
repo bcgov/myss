@@ -73,6 +73,24 @@ row instead of an orphaned object; a flagged file keeps its row as an audit reco
 its content never reaches the store. `Attachments:MaxSizeBytes` must stay at or below
 clamd's `StreamMaxLength`.
 
+Supporting documents on an application go through the same pipeline at
+`v1/intake/applications/{id}/attachments` (`ApplicationAttachmentsController`: `GET` lists,
+`POST` adds, `DELETE {attachmentId}` removes). The row's `submission_id` is the
+application id. Only the application's owner reaches these routes (anyone else gets a
+404); adding or removing needs the application to be a draft or returned for more
+information (`IIntakeService.CheckAttachmentAccessAsync`, otherwise 409
+`INTAKE.APPLICATION.NOT_EDITABLE`). Both the `Attachments` flag and `Intake` or
+`ServiceRequests` must be on. A removed file's object is deleted and its row dropped.
+A file is linked to the application only when it is released, after a last check that the
+application still takes files (if it was submitted meanwhile, the stored copy is removed
+and the upload refused with 409). Submit records the ids of the files present in the
+Submitted or Resubmitted event (`attachmentIds`), and workers see only those, through
+MyssAdminApi.
+
+`Attachment` and `AttachmentsDbContext` are in `Apps/MyssData/Attachments`, and the
+object store client (`IFileStorageProvider`, `S3FileStorageProvider`,
+`ObjectStorageConfig`) is in `Apps/MyssCommon/Storage`, because MyssAdminApi reads both.
+
 ## Registration
 
 Registration is the generic `POST /v1/forms/registration/submissions`, with checks of
@@ -109,9 +127,8 @@ Four DbContexts, one per schema, all required, applied manually (see the root
 AGENTS.md for the stack-bootstrap commands). Each has its own history table in its
 schema and its own migrations folder.
 
-The forms, platform and intake contexts, their entities, the event store and the
-intake fold are defined in `Apps/MyssData`, which MyssAdminApi shares; only
-`AttachmentsDbContext` is defined here. Their migrations stay in this project: this API
+All four contexts, their entities, the event store and the intake fold are defined in
+`Apps/MyssData`, which MyssAdminApi shares. Their migrations stay in this project: this API
 is the only service that changes the schema. EF looks for migrations in the context's
 own assembly by default, so every place this API builds one of those contexts points it
 here through `Configuration/MyssMigrations` (Startup, `MigrationRunner`, the Postgres

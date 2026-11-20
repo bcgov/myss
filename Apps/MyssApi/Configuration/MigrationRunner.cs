@@ -1,5 +1,6 @@
 namespace Myss.Api.Configuration
 {
+    using Myss.Data.Attachments;
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -140,7 +141,7 @@ namespace Myss.Api.Configuration
                     .Options)),
             new("attachments", "AttachmentsDb", cs => new AttachmentsDbContext(
                 new DbContextOptionsBuilder<AttachmentsDbContext>()
-                    .UseNpgsql(cs, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "attachments"))
+                    .UseNpgsql(cs, npgsql => MyssMigrations.Configure(npgsql, "attachments"))
                     .Options)),
             new("platform", "PlatformDb", cs => new PlatformDbContext(
                 new DbContextOptionsBuilder<PlatformDbContext>()

@@ -1,6 +1,7 @@
 namespace Myss.Data.Intake
 {
     using System;
+    using System.Collections.Generic;
     using System.Text.Json;
     using System.Text.Json.Serialization;
     using Myss.Data.Platform;
@@ -158,6 +159,17 @@ namespace Myss.Data.Intake
         /// </summary>
         [JsonPropertyName("answers")]
         public required JsonElement Answers { get; init; }
+
+        /// <summary>
+        /// Gets the supporting documents on the application at the moment it
+        /// was submitted. Workers see these files and no others, so a file
+        /// that finishes uploading after the submit does not reach them. Null
+        /// on events written before documents were recorded; for those the
+        /// worker side falls back to every file linked to the application.
+        /// </summary>
+        [JsonPropertyName("attachmentIds")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<Guid>? AttachmentIds { get; init; }
 
         /// <summary>
         /// Wraps this payload as a first submission.

@@ -1,5 +1,7 @@
 namespace Myss.Api.Tests.Services
 {
+    using Myss.Common.Storage;
+    using Myss.Data.Attachments;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging.Abstractions;
     using Microsoft.Extensions.Options;
@@ -155,6 +157,48 @@ namespace Myss.Api.Tests.Services
             // No verdict, so the row is still quarantined for later cleanup.
             Attachment row = Assert.Single(await db.Attachments.ToListAsync());
             Assert.Equal(AttachmentStatus.Quarantined, row.Status);
+        }
+
+        [Fact]
+        public async Task Upload_ForAnApplication_LinksTheFileOnlyWhenReleased()
+        {
+            using AttachmentsDbContext db = NewDb();
+            AttachmentsService service = NewService(db);
+            Guid application = Guid.NewGuid();
+            _scanner.Unavailable = true;
+
+            await Assert.ThrowsAsync<VirusScanUnavailableException>(() => service.UploadAsync(
+                "statement.pdf", "application/pdf", PdfBytes.Length, new MemoryStream(PdfBytes), CancellationToken.None, application));
+
+            // A quarantined row belongs to no application, so it can never
+            // sit unseen and unremovable on one.
+            Assert.Null(Assert.Single(await db.Attachments.ToListAsync()).SubmissionId);
+
+            _scanner.Unavailable = false;
+            AttachmentUploadResult result = await service.UploadAsync(
+                "statement.pdf", "application/pdf", PdfBytes.Length, new MemoryStream(PdfBytes), CancellationToken.None, application);
+
+            Assert.Equal(application, result.Attachment!.SubmissionId);
+        }
+
+        [Fact]
+        public async Task Upload_WhenTheApplicationStopsAcceptingDuringTheScan_RemovesTheFile()
+        {
+            using AttachmentsDbContext db = NewDb();
+            AttachmentsService service = NewService(db);
+
+            AttachmentUploadResult result = await service.UploadAsync(
+                "statement.pdf",
+                "application/pdf",
+                PdfBytes.Length,
+                new MemoryStream(PdfBytes),
+                CancellationToken.None,
+                Guid.NewGuid(),
+                stillAccepting: _ => Task.FromResult(false));
+
+            Assert.Equal(AttachmentRejectionReason.NoLongerAccepted, result.Rejection);
+            Assert.Empty(_storage.Objects);
+            Assert.Empty(await db.Attachments.ToListAsync());
         }
 
         [Fact]

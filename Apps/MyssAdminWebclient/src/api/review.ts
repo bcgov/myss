@@ -46,6 +46,8 @@ export interface ReviewApplicationSummaryPayload {
   assignee?: string | null;
   /** Whether it is waiting in the queue: Submitted, Re-submitted or Returned. */
   inQueue: boolean;
+  /** The applicant's name from their profile, when they have one. */
+  applicantName?: string | null;
 }
 
 /** One internal note. Workers only; the applicant never sees these. */
@@ -144,11 +146,15 @@ export async function performReviewAction(
   id: string,
   action: ReviewActionRoute,
   streamVersion: number,
+  comment?: string,
 ): Promise<ReviewApplicationPayload> {
   const res = await fetch(`${BASE_URL}/${encodeURIComponent(id)}/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ streamVersion }),
+    // A comment is kept as a note, written in the same append as the action.
+    body: JSON.stringify(
+      comment ? { streamVersion, comment } : { streamVersion },
+    ),
   });
   if (!res.ok) await throwFor(res);
   return (await res.json()).payload;
@@ -171,4 +177,41 @@ export async function addReviewNote(
   });
   if (!res.ok) await throwFor(res);
   return (await res.json()).payload;
+}
+
+/** A supporting document the applicant sent with the application. */
+export interface ReviewAttachmentPayload {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+}
+
+/** The supporting documents on a submitted application, oldest first. */
+export async function listReviewAttachments(
+  id: string,
+): Promise<ReviewAttachmentPayload[]> {
+  const res = await fetch(`${BASE_URL}/${encodeURIComponent(id)}/attachments`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Documents fetch failed (${res.status})`);
+  return (await res.json()).payload;
+}
+
+/**
+ * Fetches one supporting document's content. The route needs the bearer
+ * token, so a plain link cannot open it; the caller turns the blob into an
+ * object URL to save.
+ */
+export async function downloadReviewAttachment(
+  id: string,
+  attachmentId: string,
+): Promise<Blob> {
+  const res = await fetch(
+    `${BASE_URL}/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}/content`,
+    { headers: authHeaders() },
+  );
+  if (!res.ok) throw new Error(`Document download failed (${res.status})`);
+  return res.blob();
 }

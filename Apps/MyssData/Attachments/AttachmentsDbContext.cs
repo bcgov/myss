@@ -1,4 +1,4 @@
-namespace Myss.Api.Data
+namespace Myss.Data.Attachments
 {
     using Microsoft.EntityFrameworkCore;
 
@@ -44,6 +44,7 @@ namespace Myss.Api.Data
             attachment.Property(a => a.SubmissionId).HasColumnName("submission_id");
             attachment.Property(a => a.UploadedAt).HasColumnName("uploaded_at");
             attachment.HasIndex(a => a.OwnerSubject);
+            attachment.HasIndex(a => a.SubmissionId);
         }
     }
 }

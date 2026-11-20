@@ -47,6 +47,12 @@ namespace Myss.AdminApi.Intake
         public string? Assignee { get; set; }
 
         /// <summary>
+        /// Gets or sets the applicant's name from their profile ("First Last"),
+        /// or null when the owner has no profile row.
+        /// </summary>
+        public string? ApplicantName { get; set; }
+
+        /// <summary>
         /// Gets or sets whether the application is in the worker queue:
         /// Submitted, Re-submitted or Returned.
         /// </summary>
@@ -160,7 +166,8 @@ namespace Myss.AdminApi.Intake
     }
 
     /// <summary>
-    /// The body of a worker action: the stream version the worker last saw.
+    /// The body of a worker action: the stream version the worker last saw,
+    /// and optionally a comment on the decision.
     /// </summary>
     public class ReviewActionRequestModel
     {
@@ -168,6 +175,16 @@ namespace Myss.AdminApi.Intake
         /// Gets or sets the stream version the worker last saw.
         /// </summary>
         public required int StreamVersion { get; set; }
+
+        /// <summary>
+        /// Gets or sets an optional comment on the decision, such as why it
+        /// was denied or what information is missing. It is kept as an
+        /// internal note, written in the same append as the decision, so it
+        /// stays with the application for later review. Only the assignee
+        /// may comment, so a comment on a pick-up is refused.
+        /// </summary>
+        [StringLength(NotePayload.MaxLength)]
+        public string? Comment { get; set; }
     }
 
     /// <summary>

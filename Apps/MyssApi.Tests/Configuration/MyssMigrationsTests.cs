@@ -1,5 +1,6 @@
 namespace Myss.Api.Tests.Configuration
 {
+    using Myss.Data.Attachments;
     using Microsoft.AspNetCore.Mvc.Testing;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.DependencyInjection;

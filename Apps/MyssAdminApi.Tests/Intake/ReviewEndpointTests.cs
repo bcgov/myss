@@ -76,7 +76,7 @@ namespace Myss.AdminApi.Tests.Intake
         }
 
         [Fact]
-        public async Task AnAfaApplication_IsNeverInTheWorkerQueue()
+        public async Task ACitizensAfaApplication_GoesToTheWorkerQueueWithItsDocuments()
         {
             string afa = citizen::Myss.Api.Intake.IntakeService.AfaFormSpecId;
             _provider.LatestResult = FakeFormSpecProvider.Spec(afa, 3, Spec);
@@ -85,27 +85,29 @@ namespace Myss.AdminApi.Tests.Intake
             using HttpResponseMessage created = await host.Send("alice", HttpMethod.Post, "/v1/intake/applications/afa");
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             Guid id = (await Payload(created)).GetProperty("id").GetGuid();
-            using HttpResponseMessage submitted = await host.Send(
-                "alice", HttpMethod.Post, $"/v1/intake/applications/{id}/submit", JsonContent.Create(new { version = 1, answers = Ada }));
-            Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
+
+            using HttpResponseMessage hidden = await host.Send("worker", HttpMethod.Get, $"{Route}/{id}");
+            Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+
+            var form = new MultipartFormDataContent();
+            var file = new ByteArrayContent("%PDF-1.7 id"u8.ToArray());
+            file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+            form.Add(file, "file", "id.pdf");
+            await Ok(host.Send("alice", HttpMethod.Post, $"/v1/intake/applications/{id}/attachments", form));
+            await Ok(host.Send(
+                "alice", HttpMethod.Post, $"/v1/intake/applications/{id}/submit", JsonContent.Create(new { version = 1, answers = Ada })));
 
             using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, Route);
             using HttpResponseMessage get = await host.Send("worker", HttpMethod.Get, $"{Route}/{id}");
-            using HttpResponseMessage review = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/review", Version(1));
-            using HttpResponseMessage note = await host.Send(
-                "worker", HttpMethod.Post, $"{Route}/{id}/notes", JsonContent.Create(new { streamVersion = 1, text = "note" }));
+            using HttpResponseMessage documents = await host.Send("worker", HttpMethod.Get, $"{Route}/{id}/attachments");
 
-            Assert.Empty((await Payload(list)).EnumerateArray());
-            Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, review.StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, note.StatusCode);
-            Assert.Equal(1, await host.CountEvents(id));
+            Assert.Equal(id, Assert.Single((await Payload(list)).EnumerateArray()).GetProperty("id").GetGuid());
+            Assert.Equal(HttpStatusCode.OK, get.StatusCode);
+            Assert.Equal(afa, (await Payload(get)).GetProperty("formSpecId").GetString());
+            Assert.Equal("id.pdf", Assert.Single((await Payload(documents)).EnumerateArray()).GetProperty("fileName").GetString());
 
-            await Ok(host.Send("alice", HttpMethod.Post, $"/v1/intake/applications/{id}/withdraw"));
-            using HttpResponseMessage withdrawn = await host.Send("alice", HttpMethod.Get, $"/v1/intake/applications/afa/{id}");
-            using HttpResponseMessage after = await host.Send("worker", HttpMethod.Get, Route);
-            Assert.Equal(ApplicationStatusCodes.Withdrawn, (await Payload(withdrawn)).GetProperty("status").GetString());
-            Assert.Empty((await Payload(after)).EnumerateArray());
+            await Ok(host.Send("worker", HttpMethod.Post, $"{Route}/{id}/review", Version(1)));
+            Assert.Equal(2, await host.CountEvents(id));
         }
 
         [Fact]
@@ -621,6 +623,59 @@ namespace Myss.AdminApi.Tests.Intake
             using HttpResponseMessage response = await host.Send(persona: null, HttpMethod.Get, Route);
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task TheListAndTheFile_ShowTheApplicantsName()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await host.Create("alice");
+            await host.Submit("alice", id, 1, Ada);
+
+            using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, Route);
+            using HttpResponseMessage get = await host.Send("worker", HttpMethod.Get, $"{Route}/{id}");
+
+            Assert.Equal("alice Tester", Assert.Single((await Payload(list)).EnumerateArray()).GetProperty("applicantName").GetString());
+            Assert.Equal("alice Tester", (await Payload(get)).GetProperty("applicantName").GetString());
+        }
+
+        [Fact]
+        public async Task ADecisionComment_IsKeptAsANoteWithTheDecision()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await host.Create("alice");
+            await host.Submit("alice", id, 1, Ada);
+            await Ok(host.Send("worker", HttpMethod.Post, $"{Route}/{id}/review", Version(1)));
+
+            using HttpResponseMessage returned = await host.Send(
+                "worker",
+                HttpMethod.Post,
+                $"{Route}/{id}/request-more-info",
+                JsonContent.Create(new { streamVersion = 2, comment = "  Proof of address is missing.  " }));
+
+            Assert.Equal(HttpStatusCode.OK, returned.StatusCode);
+            JsonElement file = await Payload(returned);
+            Assert.Equal(ApplicationStatusCodes.Returned, file.GetProperty("status").GetString());
+            JsonElement note = Assert.Single(file.GetProperty("notes").EnumerateArray());
+            Assert.Equal("Proof of address is missing.", note.GetProperty("text").GetString());
+            Assert.Equal("MWORKER", note.GetProperty("author").GetString());
+            Assert.Equal(
+                [ApplicationEventTypes.Submitted, ApplicationEventTypes.PickedUp, ApplicationEventTypes.NoteAdded, ApplicationEventTypes.MoreInfoRequested],
+                await host.EventTypes(id));
+        }
+
+        [Fact]
+        public async Task AComment_OnAPickUp_IsRefusedAndNothingIsWritten()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await host.Create("alice");
+            await host.Submit("alice", id, 1, Ada);
+
+            using HttpResponseMessage review = await host.Send(
+                "worker", HttpMethod.Post, $"{Route}/{id}/review", JsonContent.Create(new { streamVersion = 1, comment = "mine" }));
+
+            Assert.Equal(HttpStatusCode.Conflict, review.StatusCode);
+            Assert.Equal(1, await host.CountEvents(id));
         }
 
         private static JsonContent Version(int streamVersion)

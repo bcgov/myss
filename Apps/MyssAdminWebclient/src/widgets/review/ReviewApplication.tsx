@@ -16,6 +16,7 @@ import {
   type ReviewActionRoute,
 } from "@/hooks/useReview";
 import { paths } from "@/routes/paths";
+import ReviewDocuments from "@/widgets/review/ReviewDocuments";
 import ReviewHistory from "@/widgets/review/ReviewHistory";
 import ReviewNotes from "@/widgets/review/ReviewNotes";
 
@@ -28,8 +29,6 @@ import ReviewNotes from "@/widgets/review/ReviewNotes";
 // Design: docs/development_design/income-assistance-application.md, "Worker
 // slice (MYSS-226)".
 
-const MESSAGE_UNSAVED_NOTE =
-  "You have a note that has not been added. Add it or clear it before choosing an action.";
 const MESSAGE_CONFLICT =
   "This application was changed by another worker before your action was saved. It has been reloaded; check its status before acting again.";
 
@@ -88,17 +87,16 @@ export default function ReviewApplication({
   const { mutate: mutateNote } = addNote;
   // The last outcome this session produced, announced under the summary.
   const [outcome, setOutcome] = useState<string>();
-  // The note being written. A decision is held back while it has text, so
-  // a note is never dropped by choosing an action before adding it.
+  // The note being written. Choosing an action while it has text sends it
+  // as the decision's comment, saved as a note in the same write, so a
+  // note is never dropped and the reason stays with the decision.
   const [noteText, setNoteText] = useState("");
-  const [unsavedNote, setUnsavedNote] = useState(false);
   // One write at a time: a note and an action sent together would carry the
   // same stream version, and one of them would be refused.
   const busy = act.isPending || addNote.isPending;
 
   const handleNoteChange = useCallback((text: string) => {
     setNoteText(text);
-    setUnsavedNote(false);
   }, []);
 
   const handleAddNote = useCallback(() => {
@@ -114,18 +112,23 @@ export default function ReviewApplication({
   const handleAction = useCallback(
     (action: ReviewAction) => {
       if (!application || busy) return;
-      if (noteText.trim()) {
-        setUnsavedNote(true);
-        return;
-      }
+      const comment = noteText.trim() || undefined;
       setOutcome(undefined);
       mutate(
         {
           action: ACTIONS[action].route,
           streamVersion: application.streamVersion,
+          comment,
         },
         {
-          onSuccess: (updated) => setOutcome(OUTCOMES[updated.status]),
+          onSuccess: (updated) => {
+            if (comment) setNoteText("");
+            setOutcome(
+              comment
+                ? `${OUTCOMES[updated.status] ?? ""} Your note was saved with the decision.`.trim()
+                : OUTCOMES[updated.status],
+            );
+          },
         },
       );
     },
@@ -163,6 +166,8 @@ export default function ReviewApplication({
         <dd>
           <code>{application.referenceNumber}</code>
         </dd>
+        <dt>Applicant</dt>
+        <dd>{application.applicantName ?? "—"}</dd>
         <dt>Submitted on</dt>
         <dd>{formatDate(application.submittedAt)}</dd>
         <dt>Status</dt>
@@ -206,11 +211,6 @@ export default function ReviewApplication({
         isBusy={busy}
         error={addNote.error}
       />
-      {unsavedNote && (
-        <p role="alert" className={styles.notice}>
-          {MESSAGE_UNSAVED_NOTE}
-        </p>
-      )}
       {application.availableActions.length > 0 && (
         <div className={styles.actions}>
           {application.availableActions.map((action) => (
@@ -237,6 +237,7 @@ export default function ReviewApplication({
           is no longer available from the content engine.
         </p>
       )}
+      <ReviewDocuments applicationId={application.id} />
       <ReviewHistory history={application.history} />
     </div>
   );

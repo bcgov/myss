@@ -8,7 +8,7 @@ import type { ReviewApplicationPayload } from "@/hooks/useReview";
 // The internal notes on a file, oldest first, and — for the worker who has it
 // Under Review — a box to add one. Notes are for workers only; the applicant
 // never sees them. The draft text and the write belong to the review page,
-// which must know about an unsaved note before it lets a decision through.
+// which sends a note still being written as the comment on a decision.
 
 /** Mirrors NotePayload.MaxLength in MyssApi. */
 const MAX_LENGTH = 4000;
@@ -58,7 +58,7 @@ export default function ReviewNotes({
         <div className={styles.add}>
           <TextArea
             label="Add a note"
-            description="Only workers can see notes."
+            description="Only workers can see notes. A note written here when you choose an action is saved with that decision."
             value={text}
             onChange={onTextChange}
             maxLength={MAX_LENGTH}
