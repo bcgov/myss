@@ -5,7 +5,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc -b && vite build",
+        "build": "tsc -b tsconfig.app.json tsconfig.node.json && vite build",
+        "typecheck:e2e": "tsc -b tsconfig.e2e.json",
         "format": "npx prettier . --write",
         "format:check": "npx prettier . --check",
         "lint": "eslint .",
