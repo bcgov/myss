@@ -740,12 +740,11 @@ and reading their `SRProspects` child rows over the gateway:
   `1-53BUC70`, 2026-09-03) stores in exactly the same shape, so both channels land on the
   same workflow. It also showed: a duplicate-case rejection still files the SR (sub type
   `Error - Web`, the reason in `Memo`) **and still returns that SR's number to the
-  caller** — so an `ApplicationNumber` coming back is not by itself a success; the phone
-  type selected on the form picks the stored field (Home was selected, `Home Phone #` is
-  where the number landed — confirming this client's typed-field routing) though the
-  number is *also* copied into `Alternate Phone #` (this client fills only the typed
-  field — unknown whether the workflow or the old sender duplicates it); and the
-  SR-level `Address` is the *matched contact's* address on file, not the submitted one.
+  caller** — so an `ApplicationNumber` coming back is not by itself a success; Home was
+  selected as the phone type, and the number landed in `Home Phone #` and also in
+  `Alternate Phone #` (the leave-message consent, item 5 below; this client's own phone
+  rule is described after the list); and the SR-level `Address` is the *matched
+  contact's* address on file, not the submitted one.
 
 **The upsert needs caller-supplied keys.** MEASURED against SIT2 on 2026-09-10, the
 first live submissions through this client: with `SRKey` absent — or present but
@@ -824,6 +823,16 @@ submissions** (four through the old Test1 form, six through this client — see 
    `Case` element, and the payload-level `ClientId` is the other candidate slot.
 8. **Attachments** (`minItems: 1` in the spec) — still awaiting a live call that sends
    one.
+
+**ICM shows the home phone as *Primary Phone #*.** The SR's Prospects tab in ICM has one
+phone column, *Primary Phone #*; the REST view of the prospect has no field of that name.
+MEASURED 2026-11-19 on SRs filed through MySS's dev deployment: it shows the number sent
+as `HomePhone#` (`1-11557528508`, `1-11561087727`) and stays empty when the number travels
+only as `CellularPhone#` (`1-11560160508`) or only as the untyped `Phone`
+(`1-11561087708`). So the mapper sends the number as `HomePhone#` whatever the phone type,
+and also as `WorkPhone#` or `CellularPhone#` for those types, or as `Phone` when none is
+given. Not yet measured: what ICM shows for a number sent as `WorkPhone#`, and whether ICM
+keeps `WorkPhone#` or `CellularPhone#` when `HomePhone#` travels with it.
 
 **The authorization block is history.** The first attempt (2026-09-03) failed with
 `403` `SBL-DAT-00825` — `Access to Resource 'ICM Receive Bus Pass Online Request

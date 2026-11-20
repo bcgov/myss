@@ -301,22 +301,19 @@ namespace Icm.Api.Workflows.Contracts
                 Postal = address?.PostalCode,
             };
 
-            // The old form sent one number plus a type code; this object has a field per
-            // type instead, so the type picks the field. No type falls back to the
-            // untyped Phone field rather than guessing one.
+            // ICM shows the home phone as the primary phone, so it always carries the number.
+            // A work or cell number also goes in its own field; no type, in the untyped Phone.
             string? phone = Digits(application.PhoneNumber);
+            prospect.HomePhone = phone;
             switch (application.PhoneType)
             {
-                case BusPassPhoneType.Home:
-                    prospect.HomePhone = phone;
-                    break;
                 case BusPassPhoneType.Work:
                     prospect.WorkPhone = phone;
                     break;
                 case BusPassPhoneType.Cell:
                     prospect.CellularPhone = phone;
                     break;
-                default:
+                case null:
                     prospect.Phone = phone;
                     break;
             }
