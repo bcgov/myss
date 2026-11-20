@@ -3,9 +3,9 @@
 // Form.io's data grid keeps the answers, one object per row under the
 // section's key, and checks each row's fields; this class sets the number of
 // rows from the count answer instead of add and remove buttons, and draws each
-// row as a headed group of stacked questions instead of a table row. The
-// builder still sees the data grid's own drawing, which is what it drops
-// questions into.
+// row as a headed group of stacked questions instead of a table row. In the
+// builder it draws, and takes dropped questions, like a panel: its heading
+// once, then its questions one under another.
 
 import {
   renderBareWrapper,
@@ -23,13 +23,18 @@ const DEFAULT_MAX_ROWS = 10;
 /** The highest maximum a section may set; the publish rule refuses more. */
 const MAX_ROWS_CEILING = 50;
 
+const REPEAT_SECTION_TYPE = "bcgovRepeatSection";
+
 type Row = Record<string, unknown>;
 
 /** Form.io's data grid, with the members this class uses. */
 interface DataGridInstance extends FormioFieldInstance {
+  type: string;
   rows: Record<string, FormioFieldInstance>[];
   builderMode: boolean;
   datagridKey: string;
+  nestedKey: string;
+  renderComponents(components?: FormioFieldInstance[]): string;
   attachComponents(
     element: HTMLElement | undefined,
     components: FormioFieldInstance[],
@@ -47,7 +52,7 @@ type DataGridCtor = (new (...args: any[]) => DataGridInstance) & {
 
 const DataGridComponent = stockComponent("datagrid") as unknown as DataGridCtor;
 
-/** The data grid's parent, whose attach this class keeps. */
+/** The data grid's parent, whose drawing, attach and builder handling this class keeps. */
 const NestedArrayPrototype = Object.getPrototypeOf(
   DataGridComponent.prototype,
 ) as DataGridInstance;
@@ -69,17 +74,24 @@ export class BcgovRepeatSectionComponent extends DataGridComponent {
   /** What the live region says once the section has drawn its new rows. */
   private pendingAnnouncement?: string;
 
+  constructor(...args: unknown[]) {
+    super(...args);
+    // Form.io's builder drops questions into a data grid as table columns;
+    // under its own type the section takes them as a panel does.
+    if (this.builderMode) this.type = REPEAT_SECTION_TYPE;
+  }
+
   static schema(...extend: unknown[]): Record<string, unknown> {
     return DataGridComponent.schema(
       {
-        type: "bcgovRepeatSection",
+        type: REPEAT_SECTION_TYPE,
         key: "repeatSection",
         label: "Repeat section",
         initEmpty: true,
         disableAddingRemovingRows: true,
         properties: {
           myssRepeatCount: "",
-          myssRepeatMax: String(DEFAULT_MAX_ROWS),
+          myssRepeatMax: DEFAULT_MAX_ROWS,
           myssRowLabel: "",
         },
       },
@@ -161,7 +173,13 @@ export class BcgovRepeatSectionComponent extends DataGridComponent {
   }
 
   render(): string {
-    if (this.builderMode) return super.render();
+    if (this.builderMode) {
+      return NestedArrayPrototype.render.call(
+        this,
+        `<p class="${styles.legend}">${escapeHtml(this.rowLabel)}</p>` +
+          `<div ref="${this.nestedKey}">${this.renderComponents()}</div>`,
+      );
+    }
 
     const label = escapeHtml(this.rowLabel);
     const total = this.rows.length;
@@ -186,7 +204,7 @@ export class BcgovRepeatSectionComponent extends DataGridComponent {
   }
 
   attach(element: HTMLElement): Promise<void> {
-    if (this.builderMode) return super.attach(element);
+    if (this.builderMode) return NestedArrayPrototype.attach.call(this, element);
 
     this.loadRefs(element, { [`${this.datagridKey}-row`]: "multiple" });
     const bodies = this.refs[`${this.datagridKey}-row`];

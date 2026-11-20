@@ -17,6 +17,7 @@ import {
 
 import { ApplicationRequestError } from "../api/applications";
 import { SubmissionRejectedError, type FormValidationError } from "../api/forms";
+import { fieldOfInputName } from "./fieldNames";
 import SubmissionErrors from "./SubmissionErrors";
 import { useClientValidation } from "./useClientValidation";
 
@@ -76,8 +77,7 @@ interface FormData {
 function formFieldName(target: EventTarget) {
   if (!(target instanceof HTMLElement)) return;
 
-  const match = /^data\[([^\]]+)\]$/.exec(target.getAttribute("name") ?? "");
-  return match?.[1];
+  return fieldOfInputName(target.getAttribute("name") ?? "");
 }
 
 function conflictOf(error: Error | null) {

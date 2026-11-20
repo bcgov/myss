@@ -7,7 +7,8 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-type Visit = (component: Record<string, unknown>) => void;
+/** Returning `false` skips the component's children. */
+type Visit = (component: Record<string, unknown>) => boolean | void;
 
 /** Visit every component in `spec`, in document order. */
 export function forEachComponent(spec: unknown, visit: Visit): void {
@@ -19,8 +20,7 @@ export function forEachComponent(spec: unknown, visit: Visit): void {
 function walkComponents(nodes: unknown, visit: Visit): void {
   if (!Array.isArray(nodes)) return;
   for (const node of nodes) {
-    if (!isRecord(node)) continue;
-    visit(node);
+    if (!isRecord(node) || visit(node) === false) continue;
     walkComponents(node.components, visit);
     walkColumns(node.columns, visit);
     walkRows(node.rows, visit);

@@ -1,7 +1,11 @@
 import type { FormType } from "@formio/react/lib/components/Form";
 
 import { ALLOWED_COMPONENT_TYPES, QUESTION_TYPES } from "./builderOptions";
-import { findDuplicateKeys, findUnknownConditionalTargets } from "./specRules";
+import {
+  findDuplicateKeys,
+  findInvalidRepeatSections,
+  findUnknownConditionalTargets,
+} from "./specRules";
 import { forEachComponent, isRecord } from "./specWalk";
 
 // Turns text an administrator pastes into a Form.io spec ready to preview and
@@ -354,6 +358,7 @@ function keyProblems(spec: unknown): SpecProblem[] {
       ...(key === undefined ? {} : { key }),
     });
   });
+  problems.push(...findInvalidRepeatSections(spec));
   return problems;
 }
 
@@ -370,7 +375,10 @@ function questionKeys(spec: unknown): string[] {
 }
 
 function isQuestion(component: Record<string, unknown>): boolean {
-  if (component.type === "button" || component.input === false) return false;
+  if (component.input === false) return false;
+  if (component.type === "button" || component.type === "bcgovRepeatSection") {
+    return false;
+  }
   return (
     component.input === true ||
     (typeof component.type === "string" && ANSWER_TYPES.has(component.type))

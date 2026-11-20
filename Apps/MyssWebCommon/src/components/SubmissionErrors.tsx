@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import styles from "./SubmissionErrors.module.css";
 import { SubmissionRejectedError } from "../api/forms";
+import { inputNameOfField } from "./fieldNames";
 
 /** Whether an element can take focus the way a citizen would give it. */
 function isFocusable(element: HTMLElement): boolean {
@@ -16,8 +17,9 @@ function isFocusable(element: HTMLElement): boolean {
 /**
  * Moves focus to the input a validation error belongs to.
  *
- * Every field's input is named `data[<key>]`, and the API reports failures by
- * component key, so the two line up without the client needing to know
+ * Every field's input is named after where its answer goes (`data[<key>]`,
+ * `data[<section>][<row>][<key>]` in a repeat section), and the API reports
+ * failures by the same place, so the two line up without the client needing to know
  * anything about Form.io's generated element ids (which are random per render
  * and therefore useless as anchor targets). A design system select keeps that
  * name on a hidden element and takes focus on its button; date inputs focus
@@ -30,7 +32,9 @@ function isFocusable(element: HTMLElement): boolean {
  */
 function focusField(field: string) {
     const key = CSS.escape(field);
-    const named = document.querySelector<HTMLElement>(`[name="data[${key}]"]`);
+    const named = document.querySelector<HTMLElement>(
+        `[name="${CSS.escape(inputNameOfField(field))}"]`,
+    );
     const target =
         named && isFocusable(named)
             ? named

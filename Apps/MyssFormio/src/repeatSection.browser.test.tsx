@@ -291,6 +291,37 @@ describe("bcgovRepeatSection", () => {
     expect(submissions[0].children ?? []).toEqual([]);
   });
 
+  it("names each row's inputs after their row, so one row's choice leaves another's alone", async () => {
+    const form = childrenSpec([
+      {
+        type: "radio",
+        key: "sharesLastName",
+        label: "Does this child share your last name?",
+        input: true,
+        values: [
+          { label: "Same", value: "yes" },
+          { label: "Different", value: "no" },
+        ],
+      },
+      { type: "textfield", key: "childFirstName", label: FIRST_NAME, input: true },
+    ]);
+    const { screen } = await renderForm(form);
+    await answerYes(screen);
+    await enterCount(screen, "2");
+    await expectRowCount(2);
+
+    await row(screen, 1, 2).getByText("Same", { exact: true }).click();
+    await row(screen, 2, 2).getByText("Different", { exact: true }).click();
+
+    await expect.element(row(screen, 1, 2).getByRole("radio", { name: "Same" })).toBeChecked();
+    await expect
+      .element(row(screen, 2, 2).getByRole("radio", { name: "Different" }))
+      .toBeChecked();
+    await expect
+      .element(row(screen, 2, 2).getByRole("textbox", { name: FIRST_NAME }))
+      .toHaveAttribute("name", "data[children][1][childFirstName]");
+  });
+
   it("shows and hides a row's question by that row's own answer", async () => {
     const sharesLastName = "Does this child share your last name?";
     const form = childrenSpec([

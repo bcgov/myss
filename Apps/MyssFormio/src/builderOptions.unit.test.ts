@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { ALLOWED_COMPONENT_TYPES, builderOptions } from "./builderOptions";
+import {
+  ALLOWED_COMPONENT_TYPES,
+  builderOptions,
+  countQuestionOptions,
+} from "./builderOptions";
 
 // The palette's shape. That each listed type is actually registered with
 // Form.io — and that the key field really disappears from the settings dialog —
@@ -81,8 +85,9 @@ describe("builderOptions", () => {
       "panel",
       "button",
     ];
+    // The repeat section holds questions and has Data tab settings of its own.
     const questions = ALLOWED_COMPONENT_TYPES.filter(
-      (type) => !CONTENT.includes(type),
+      (type) => !CONTENT.includes(type) && type !== "bcgovRepeatSection",
     );
     for (const type of questions) {
       const dataTab = overridesFor(type).find((tab) => tab.key === "data");
@@ -162,5 +167,95 @@ describe("builderOptions", () => {
     // The seeded specs carry their own submit button; a second one would post
     // the form twice over.
     expect(builderOptions.noDefaultSubmitButton).toBe(true);
+  });
+});
+
+describe("the repeat section in the builder", () => {
+  function tab(key: string) {
+    return overridesFor("bcgovRepeatSection").find((t) => t.key === key)
+      ?.components;
+  }
+
+  it("is offered beside the content and layout types", () => {
+    expect(ALLOWED_COMPONENT_TYPES).toContain("bcgovRepeatSection");
+    expect(Object.keys(builderOptions.builder.content.components)).toContain(
+      "bcgovRepeatSection",
+    );
+  });
+
+  it("asks for each entry's heading, the count question and the most entries", () => {
+    const fields = tab("display") ?? [];
+    const asked = fields.filter((f) => !f.ignore);
+
+    expect(asked.map((f) => f.key)).toEqual([
+      "properties.myssRowLabel",
+      "properties.myssRepeatCount",
+      "properties.myssRepeatMax",
+    ]);
+    expect(fields.find((f) => f.key === "properties.myssRepeatCount")?.type).toBe(
+      "select",
+    );
+  });
+
+  it("drops the data grid's row controls, default rows and row limits", () => {
+    const ignored = (key: string) =>
+      (tab(key) ?? []).filter((f) => f.ignore).map((f) => f.key);
+
+    expect(ignored("display")).toEqual(
+      expect.arrayContaining(["addAnother", "reorder", "initEmpty", "disableAddingRemovingRows"]),
+    );
+    expect(ignored("data")).toEqual(["defaultValue"]);
+    expect(ignored("validation")).toEqual(
+      expect.arrayContaining([
+        "validate.required",
+        "validate.minLength",
+        "validate.maxLength",
+        "custom-validation-js",
+        "json-validation-json",
+      ]),
+    );
+  });
+});
+
+describe("countQuestionOptions", () => {
+  const spec = {
+    components: [
+      { type: "number", key: "childCount", label: "How many children?" },
+      { type: "textfield", key: "firstName", label: "First name" },
+      {
+        type: "panel",
+        key: "more",
+        components: [{ type: "number", key: "petCount", label: "" }],
+      },
+      {
+        type: "bcgovRepeatSection",
+        key: "children",
+        components: [{ type: "number", key: "childAge", label: "Age" }],
+      },
+    ],
+  };
+
+  it("offers the number questions outside every repeat section, by label and key", () => {
+    expect(countQuestionOptions(spec)).toEqual([
+      { label: "How many children? (childCount)", value: "childCount" },
+      { label: "petCount (petCount)", value: "petCount" },
+    ]);
+  });
+
+  it("offers nothing for a form without one", () => {
+    expect(countQuestionOptions(undefined)).toEqual([]);
+    expect(countQuestionOptions({ components: [{ type: "textfield", key: "a" }] })).toEqual([]);
+  });
+
+  it("is what the count question's list is built from", () => {
+    const count = (overridesFor("bcgovRepeatSection")
+      .find((t) => t.key === "display")
+      ?.components ?? []).find((f) => f.key === "properties.myssRepeatCount") as unknown as {
+      data: { custom(context: unknown): unknown };
+    };
+
+    expect(count.data.custom({ instance: { options: { editForm: spec } } })).toEqual(
+      countQuestionOptions(spec),
+    );
   });
 });

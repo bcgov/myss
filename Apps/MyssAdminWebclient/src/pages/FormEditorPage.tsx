@@ -20,6 +20,7 @@ import ErrorSummary, { type ErrorSummaryItem } from "@/components/ErrorSummary";
 import {
     builderOptions,
     findDuplicateKeys,
+    findInvalidRepeatSections,
     findUnknownConditionalTargets,
     flattenComponents,
     forEachComponent,
@@ -405,6 +406,9 @@ function ruleErrors(spec: FormType): EditorError[] {
         errors.push({
             message: `A condition refers to a field that doesn't exist: ${key}`,
         });
+    }
+    for (const problem of findInvalidRepeatSections(spec)) {
+        errors.push({ message: problem.message, field: problem.key });
     }
     return errors;
 }
