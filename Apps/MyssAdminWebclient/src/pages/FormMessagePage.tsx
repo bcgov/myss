@@ -359,12 +359,19 @@ function EditView({
             <div className={styles.fields}>
                 <TextField label="Page heading" {...fieldProps("heading")} />
                 <TextField label="Message title" {...fieldProps("title")} />
-                <TextArea
-                    label="Message"
-                    description={`At most ${FORM_MESSAGE_LIMITS.body.toLocaleString("en-CA")} characters, formatting marks included.`}
-                    maxLength={FORM_MESSAGE_LIMITS.body}
-                    {...fieldProps("body")}
-                />
+                {/* No maxLength on the TextArea: BCDS 0.9 forwards it as a native
+                    maxlength, which would stop an over-long message being typed
+                    and explained. The page counts and refuses it instead. */}
+                <div className={styles.counted}>
+                    <TextArea
+                        label="Message"
+                        description={`At most ${FORM_MESSAGE_LIMITS.body.toLocaleString("en-CA")} characters, formatting marks included.`}
+                        {...fieldProps("body")}
+                    />
+                    <div className={styles.counter}>
+                        {edit.texts.body.length}/{FORM_MESSAGE_LIMITS.body}
+                    </div>
+                </div>
                 <FormattingHelp placeholders={placeholders} />
                 <div className={styles.actions}>
                     <Button variant="primary" isPending={isSaving} onPress={onSave}>

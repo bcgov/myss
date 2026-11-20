@@ -253,3 +253,15 @@
     margin: 0;
     min-width: 0;
 }
+
+/* The message field with its own character counter beneath it. */
+.counted {
+    display: flex;
+    flex-direction: column;
+}
+
+.counter {
+    align-self: flex-end;
+    font: var(--typography-regular-small-body);
+    color: var(--typography-color-secondary);
+}
