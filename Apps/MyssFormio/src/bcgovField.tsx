@@ -246,7 +246,7 @@ function hasServerMessage(messages: unknown): boolean {
   );
 }
 
-function isPromise<T>(value: unknown): value is Promise<T> {
+export function isPromise<T>(value: unknown): value is Promise<T> {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -514,9 +514,15 @@ export function withBcgovField<TBase extends FormioFieldCtor>(Base: TBase) {
       failed: RuleFailure,
     ): FormioError[] {
       if (errors.length > 0) return errors;
+      errors.push(this.bcgovRuleError(failed));
+      return errors;
+    }
+
+    /** A rule's failure as one of Form.io's errors, worded by `ruleMessage`. */
+    protected bcgovRuleError(failed: RuleFailure): FormioError {
       const message = ruleMessage(this.component, failed);
       const path = this.path ?? this.key;
-      errors.push({
+      return {
         level: "error",
         message,
         errorKeyOrMessage: message,
@@ -531,8 +537,7 @@ export function withBcgovField<TBase extends FormioFieldCtor>(Base: TBase) {
           hasLabel: false,
           field: textOf(this.component.label),
         },
-      });
-      return errors;
+      };
     }
 
     override focus(): void {
