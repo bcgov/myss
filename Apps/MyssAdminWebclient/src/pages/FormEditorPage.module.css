@@ -1,3 +1,7 @@
+.layoutChoice {
+    margin-top: var(--layout-margin-large, 24px);
+}
+
 .modeBar {
     /* Rendered as a fieldset: drop the browser's default box. */
     border: 0;

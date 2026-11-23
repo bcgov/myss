@@ -12,10 +12,13 @@ export { ALLOWED_COMPONENT_TYPES, builderOptions } from "./builderOptions";
 export { revealAllComponents } from "./specPreview";
 export {
   flattenComponents,
+  formLayoutOf,
   listEditableComponents,
+  setFormLayout,
   setLabel,
   setRequired,
   type EditableComponent,
+  type FormLayout,
 } from "./specEdit";
 export { findDuplicateKeys, findUnknownConditionalTargets } from "./specRules";
 export { forEachComponent } from "./specWalk";
