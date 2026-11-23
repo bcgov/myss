@@ -15,6 +15,11 @@ in the editor's preview as it does for citizens.
   a BC Design System wrapper, plus the BC Gov custom types (`bcgovAccordion`,
   `bcgovCallout`, `bcgovAddressAutocomplete`, …). The host app calls it once
   from `main.tsx`, passing its Canada Post AddressComplete key.
+- `bcgovRepeatSection` (`repeatSection.ts`): a group of questions asked once
+  per unit of a number question's answer, on Form.io's data grid. Citizens see
+  one headed group per row; the builder draws it stacked, like a panel.
+  `findInvalidRepeatSections` in `specRules.ts` is the editor's copy of its
+  publish rule (see `Shared/validation/repeat-section-specs.json`).
 - The client half of the validation rule registry (`validationRules.ts`).
 - The spec helpers the admin editor uses (`builderOptions`, `specEdit`,
   `specPreview`, `specRules`, `specImport` for pasted-JSON imports), and
