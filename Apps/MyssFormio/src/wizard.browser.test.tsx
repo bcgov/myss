@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 import "@formio/js/dist/formio.form.min.css";
 import { registerBcgovComponents } from "./bcgovComponents";
 
-// SPIKE (temporary): does a display: "wizard" spec work with our renderer?
+// A `display: "wizard"` spec as a citizen meets it: one top-level panel per
+// page, drawn with the design system fields, paged by Form.io's own buttons.
 
 registerBcgovComponents();
 
@@ -16,7 +17,7 @@ const spec = {
   components: [
     {
       type: "panel",
-      key: "page1",
+      key: "aboutYou",
       title: "About you",
       input: false,
       components: [
@@ -42,7 +43,7 @@ const spec = {
     },
     {
       type: "panel",
-      key: "page2",
+      key: "partner",
       title: "Your partner",
       input: false,
       conditional: { show: true, when: "hasPartner", eq: "yes" },
@@ -58,7 +59,7 @@ const spec = {
     },
     {
       type: "panel",
-      key: "page3",
+      key: "contact",
       title: "Contact",
       input: false,
       components: [
@@ -74,53 +75,66 @@ const spec = {
   ],
 } as unknown as FormType;
 
-describe("wizard spike", () => {
-  it("pages forward with validation, back with answers kept, and submits all pages", async () => {
+describe("wizard form", () => {
+  it("pages forward with validation, back with answers kept, skips a hidden page and submits every page", async () => {
     const submissions: Record<string, unknown>[] = [];
-    const submitErrors: unknown[] = [];
     const screen = await render(
       <Form
         src={spec}
         options={{ noAlerts: true }}
-        onSubmit={(s: { data: Record<string, unknown> }) => submissions.push(s.data)}
-        onSubmitError={(e: unknown) => submitErrors.push(e)}
+        onSubmit={(submission: { data: Record<string, unknown> }) =>
+          submissions.push(submission.data)
+        }
       />,
     );
+    // The design system covers each radio input with its label.
+    const choose = (label: string) =>
+      screen.getByText(label, { exact: true }).click();
+    // Form.io settles the page list just after a change; Next before that
+    // still pages through the old list.
+    const partnerPage = screen.getByText("Your partner", { exact: true });
 
     const firstName = screen.getByRole("textbox", { name: "First name" });
     await expect.element(firstName).toBeVisible();
-    // Design system field inside a wizard page.
-    expect(firstName.element().closest(".bcds-react-aria-TextField")).not.toBeNull();
+    expect(
+      firstName.element().closest(".bcds-react-aria-TextField"),
+    ).not.toBeNull();
     expect(screen.getByRole("textbox", { name: "Email" }).query()).toBeNull();
 
-    // Next is blocked while page 1 is invalid.
+    // Next is refused while the page has an unanswered required question.
     await screen.getByRole("button", { name: "Next" }).click();
-    await expect.element(screen.getByRole("textbox", { name: "First name" })).toBeVisible();
-    console.log("SPIKE submitError on blocked Next:", submitErrors.length);
+    await expect.element(firstName).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "Email" }).query()).toBeNull();
 
     await userEvent.fill(firstName, "Ada");
-    await screen.getByRole("radio", { name: "Yes" }).click();
+    await choose("Yes");
+    await expect.element(partnerPage).toBeVisible();
     await screen.getByRole("button", { name: "Next" }).click();
-    await expect.element(screen.getByRole("textbox", { name: "Partner name" })).toBeVisible();
+    await expect
+      .element(screen.getByRole("textbox", { name: "Partner name" }))
+      .toBeVisible();
 
-    // Back to page 1: answer kept.
     await screen.getByRole("button", { name: "Previous" }).click();
     await expect
       .element(screen.getByRole("textbox", { name: "First name" }))
       .toHaveValue("Ada");
 
-    // Change answer so the partner page is skipped.
-    await screen.getByRole("radio", { name: "No" }).click();
+    // "No" hides the partner page, so Next goes straight to Contact.
+    await choose("No");
+    await expect.element(partnerPage).not.toBeInTheDocument();
     await screen.getByRole("button", { name: "Next" }).click();
-    await expect.element(screen.getByRole("textbox", { name: "Email" })).toBeVisible();
+    const email = screen.getByRole("textbox", { name: "Email" });
+    await expect.element(email).toBeVisible();
 
-    await userEvent.fill(screen.getByRole("textbox", { name: "Email" }), "ada@example.com");
-    await screen.getByRole("button", { name: "Submit" }).click();
+    await userEvent.fill(email, "ada@example.com");
+    await screen.getByRole("button", { name: "Submit Form" }).click();
+
     await expect.poll(() => submissions.length).toBe(1);
-    console.log("SPIKE submitted data:", JSON.stringify(submissions[0]));
-    console.log(
-      "SPIKE nav markup classes:",
-      document.querySelector(".formio-wizard-nav-container")?.outerHTML.slice(0, 300),
-    );
+    expect(submissions[0]).toMatchObject({
+      firstName: "Ada",
+      hasPartner: "no",
+      email: "ada@example.com",
+    });
+    expect(submissions[0].partnerName ?? "").toBe("");
   });
 });

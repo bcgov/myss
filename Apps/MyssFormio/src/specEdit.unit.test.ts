@@ -42,7 +42,12 @@ describe("listEditableComponents", () => {
     const editable = listEditableComponents(spec);
 
     expect(editable).toEqual([
-      { key: "fullName", label: "Full name", required: true, type: "textfield" },
+      {
+        key: "fullName",
+        label: "Full name",
+        required: true,
+        type: "textfield",
+      },
     ]);
   });
 
@@ -129,9 +134,9 @@ describe("setRequired", () => {
 
     const next = setRequired(spec, "fullName", true);
 
-    expect((componentsOf(next)[0].validate as { required: boolean }).required).toBe(
-      true,
-    );
+    expect(
+      (componentsOf(next)[0].validate as { required: boolean }).required,
+    ).toBe(true);
     expect(componentsOf(spec)[0].validate).toBeUndefined();
   });
 
@@ -147,9 +152,9 @@ describe("setRequired", () => {
 
     const next = setRequired(spec, "fullName", false);
 
-    expect((componentsOf(next)[0].validate as { required: boolean }).required).toBe(
-      false,
-    );
+    expect(
+      (componentsOf(next)[0].validate as { required: boolean }).required,
+    ).toBe(false);
   });
 });
 
@@ -188,9 +193,9 @@ describe("setFormLayout", () => {
       { key: "b", type: "panel", title: "B", components: [] },
     ];
 
-    expect(componentsOf(setFormLayout(asSpec([...pages, submit]), "wizard"))).toEqual(
-      pages,
-    );
+    expect(
+      componentsOf(setFormLayout(asSpec([...pages, submit]), "wizard")),
+    ).toEqual(pages);
   });
 
   it("does not reuse a key the form already has for the new page", () => {
@@ -212,9 +217,8 @@ describe("setFormLayout", () => {
   });
 
   it("adds no second Submit to a form that has one", () => {
-    expect(componentsOf(setFormLayout(asSpec([field, submit]), "form"))).toEqual([
-      field,
-      submit,
-    ]);
+    expect(
+      componentsOf(setFormLayout(asSpec([field, submit]), "form")),
+    ).toEqual([field, submit]);
   });
 });
