@@ -85,6 +85,54 @@ describe("SubmissionErrors", () => {
       .toHaveFocus();
   });
 
+  it("focuses the month of a repeat section row's date from an error link", async () => {
+    const screen = await render(
+      <>
+        <SubmissionErrors
+          error={
+            new SubmissionRejectedError(422, [
+              {
+                field: "children[1].childDateOfBirth",
+                keyword: "FORM.FIELD.REQUIRED",
+                message: "Enter the second child's date of birth.",
+              },
+            ])
+          }
+        />
+        {[0, 1].map((row) => (
+          <fieldset key={row} aria-label={`Child Info ${row + 1} of 2`}>
+            <div className="formio-component formio-component-childDateOfBirth">
+              <Select
+                label="Month"
+                placeholder="Select a month"
+                items={[{ id: "1", label: "January" }]}
+              />
+              <TextField label="Day" />
+              <TextField label="Year" />
+              <input
+                type="hidden"
+                name={`data[children][${row}][childDateOfBirth]`}
+                value=""
+              />
+            </div>
+          </fieldset>
+        ))}
+      </>,
+    );
+
+    await screen
+      .getByRole("button", { name: "Enter the second child's date of birth." })
+      .click();
+
+    await expect
+      .element(
+        screen
+          .getByRole("group", { name: "Child Info 2 of 2" })
+          .getByRole("button", { name: /Month/ }),
+      )
+      .toHaveFocus();
+  });
+
   it("focuses a field outside Form.io by its id", async () => {
     const screen = await renderSummary(
       <input aria-label="Last name" id="representativeLastName" />,

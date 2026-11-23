@@ -44,17 +44,19 @@ function byId(field: string): HTMLElement | undefined {
  * over.
  */
 function focusField(field: string) {
-  const key = CSS.escape(field);
   const named = document.querySelector<HTMLElement>(
     `[name="${CSS.escape(inputNameOfField(field))}"]`,
   );
+  const wrapper =
+    named?.closest(".formio-component") ??
+    document.querySelector(`.formio-component-${CSS.escape(field)}`);
   const target =
     named && isFocusable(named)
       ? named
       : (Array.from(
-          document.querySelectorAll<HTMLElement>(
-            `.formio-component-${key} :is(input, select, textarea, button, [tabindex])`,
-          ),
+          wrapper?.querySelectorAll<HTMLElement>(
+            "input, select, textarea, button, [tabindex]",
+          ) ?? [],
         ).find(isFocusable) ?? byId(field));
   if (!target) return;
 
