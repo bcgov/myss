@@ -1,6 +1,6 @@
 import { Form } from "@formio/react";
 import type { FormType, JSON as FormioJson } from "@formio/react/lib/components/Form";
-import { userEvent } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -19,7 +19,10 @@ const DATE_OF_BIRTH = "What is this child's date of birth?";
 
 const showWhenYes = { show: true, when: "hasChildren", eq: "yes" };
 
-function childrenSpec(rowFields: unknown[]): FormType {
+function childrenSpec(
+  rowFields: unknown[],
+  { count = {}, section = { conditional: showWhenYes } }: { count?: object; section?: object } = {},
+): FormType {
   return {
     display: "form",
     components: [
@@ -40,6 +43,7 @@ function childrenSpec(rowFields: unknown[]): FormType {
         input: true,
         validate: { min: 1, max: 10 },
         conditional: showWhenYes,
+        ...count,
       },
       {
         type: "bcgovRepeatSection",
@@ -47,8 +51,8 @@ function childrenSpec(rowFields: unknown[]): FormType {
         label: "Children",
         input: true,
         properties: { myssRepeatCount: "childCount", myssRepeatMax: "10", myssRowLabel: "Child Info" },
-        conditional: showWhenYes,
         components: rowFields,
+        ...section,
       },
       { type: "button", key: "submit", action: "submit", label: "Submit", input: true },
     ],
@@ -183,9 +187,108 @@ describe("bcgovRepeatSection", () => {
 
     await expectRowCount(2);
     await expect.element(row(screen, 2, 2)).toBeVisible();
+    await expect.element(page.getByRole("status")).toHaveTextContent("Child Info 3 removed.");
+  });
+
+  it("says so in one live region that outlasts the section's redraws", async () => {
+    const { screen } = await renderForm();
+    await answerYes(screen);
+    await enterCount(screen, "3");
+    await expectRowCount(3);
+    const region = page.getByRole("status").element();
+
+    await enterCount(screen, "1");
+
+    await expectRowCount(1);
+    await expect.element(page.getByRole("status")).toHaveTextContent("Child Info 2 to 3 removed.");
+    expect(page.getByRole("status").element()).toBe(region);
+  });
+
+  it("puts back the rows a lower count took off when the count rises again", async () => {
+    const { screen } = await renderForm();
+    await answerYes(screen);
+    await enterCount(screen, "3");
+    await expectRowCount(3);
+    for (const [index, name] of [[1, "Ada"], [2, "Allegra"], [3, "Annabella"]] as const) {
+      await row(screen, index, 3).getByRole("textbox", { name: FIRST_NAME }).fill(name);
+    }
+
+    await enterCount(screen, "1");
+    await expectRowCount(1);
+    await enterCount(screen, "4");
+
+    await expectRowCount(4);
+    for (const [index, name] of [[1, "Ada"], [2, "Allegra"], [3, "Annabella"], [4, ""]] as const) {
+      await expect
+        .element(row(screen, index, 4).getByRole("textbox", { name: FIRST_NAME }))
+        .toHaveValue(name);
+    }
+  });
+
+  it("puts back no rows once the section has been hidden", async () => {
+    const { screen } = await renderForm();
+    await answerYes(screen);
+    await enterCount(screen, "2");
+    await expectRowCount(2);
+    await row(screen, 2, 2).getByRole("textbox", { name: FIRST_NAME }).fill("Allegra");
+    await enterCount(screen, "1");
+    await expectRowCount(1);
+
+    await screen.getByText("No", { exact: true }).click();
+    await expectRowCount(0);
+    await answerYes(screen);
+    await enterCount(screen, "2");
+
+    await expectRowCount(2);
     await expect
-      .poll(() => document.querySelector('[aria-live="polite"][ref="liveRegion"]')?.textContent)
-      .toBe("Child Info 3 removed.");
+      .element(row(screen, 1, 2).getByRole("textbox", { name: FIRST_NAME }))
+      .toHaveValue("");
+    await expect
+      .element(row(screen, 2, 2).getByRole("textbox", { name: FIRST_NAME }))
+      .toHaveValue("");
+  });
+
+  it("holds a count question that sets no limits to the section's: required, whole, from 1 to the maximum", async () => {
+    const { screen, submissions } = await renderForm(
+      childrenSpec([{ type: "textfield", key: "childFirstName", label: FIRST_NAME, input: true }], {
+        count: { validate: {} },
+      }),
+    );
+    await answerYes(screen);
+    const count = screen.getByRole("textbox", { name: COUNT_LABEL });
+    await expect.element(count).toBeVisible();
+
+    await screen.getByRole("button", { name: "Submit" }).click();
+    await expect.element(count).toHaveAttribute("aria-invalid", "true");
+
+    for (const value of ["0", "12"]) {
+      await enterCount(screen, value);
+      await screen.getByRole("button", { name: "Submit" }).click();
+      await expect.element(count).toHaveAttribute("aria-invalid", "true");
+    }
+    await count.fill("2.5");
+    expect((count.element() as HTMLInputElement).value).not.toContain(".");
+    expect(submissions).toHaveLength(0);
+  });
+
+  it("shows the section only while its count question shows", async () => {
+    const { screen, submissions } = await renderForm(
+      childrenSpec([{ type: "textfield", key: "childFirstName", label: FIRST_NAME, input: true }], {
+        section: {},
+      }),
+    );
+    expect(rowGroups()).toHaveLength(0);
+    await answerYes(screen);
+    await enterCount(screen, "2");
+    await expectRowCount(2);
+    await row(screen, 1, 2).getByRole("textbox", { name: FIRST_NAME }).fill("Ada");
+
+    await screen.getByText("No", { exact: true }).click();
+    await expectRowCount(0);
+    await screen.getByRole("button", { name: "Submit" }).click();
+
+    await vi.waitFor(() => expect(submissions).toHaveLength(1));
+    expect(submissions[0].children ?? []).toEqual([]);
   });
 
   it("keeps the rows already answered while the count is retyped", async () => {
@@ -289,6 +392,63 @@ describe("bcgovRepeatSection", () => {
 
     await vi.waitFor(() => expect(submissions).toHaveLength(1));
     expect(submissions[0].children ?? []).toEqual([]);
+  });
+
+  it("draws the rows as soon as its own condition shows a section whose count is already answered", async () => {
+    const { screen } = await renderForm(
+      childrenSpec([{ type: "textfield", key: "childFirstName", label: FIRST_NAME, input: true }], {
+        count: { conditional: undefined },
+      }),
+    );
+    await enterCount(screen, "2");
+    expect(rowGroups()).toHaveLength(0);
+
+    await answerYes(screen);
+
+    await expectRowCount(2);
+  });
+
+  it("follows a count question inside a container drawn after the section", async () => {
+    const form = {
+      display: "form",
+      components: [
+        {
+          type: "radio",
+          key: "hasChildren",
+          label: "Do you have any dependent children under the age of 19 living with you?",
+          input: true,
+          values: [
+            { label: "Yes", value: "yes" },
+            { label: "No", value: "no" },
+          ],
+        },
+        {
+          type: "bcgovRepeatSection",
+          key: "children",
+          label: "Children",
+          input: true,
+          properties: { myssRepeatCount: "childCount", myssRowLabel: "Child Info" },
+          components: [{ type: "textfield", key: "childFirstName", label: FIRST_NAME, input: true }],
+        },
+        {
+          type: "panel",
+          key: "family",
+          title: "Family",
+          input: false,
+          conditional: showWhenYes,
+          components: [{ type: "number", key: "childCount", label: COUNT_LABEL, input: true }],
+        },
+        { type: "button", key: "submit", action: "submit", label: "Submit", input: true },
+      ],
+    } as unknown as FormType;
+    const { screen } = await renderForm(form);
+    await answerYes(screen);
+    await enterCount(screen, "2");
+    await expectRowCount(2);
+
+    await screen.getByText("No", { exact: true }).click();
+
+    await expectRowCount(0);
   });
 
   it("names each row's inputs after their row, so one row's choice leaves another's alone", async () => {

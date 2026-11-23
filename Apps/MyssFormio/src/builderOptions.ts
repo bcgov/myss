@@ -314,7 +314,8 @@ const DATA_GRID_ROW_SETTINGS = [
 
 // A repeat section draws its rows from the count question's answer, so the
 // dialog asks for that question, the most rows and each row's heading, and
-// drops the data grid's own row controls, default rows and row limits. Its
+// drops the data grid's own row controls, default rows and row limits. It has
+// no Hidden setting: the section shows and hides with its count question. Its
 // questions are added by dragging them into it.
 const repeatSectionSettings = [
   lockedKey,
@@ -322,6 +323,7 @@ const repeatSectionSettings = [
     key: "display",
     components: [
       ...DATA_GRID_ROW_SETTINGS.map((key) => ({ key, ignore: true })),
+      { key: "hidden", ignore: true },
       {
         type: "textfield",
         key: "properties.myssRowLabel",
@@ -336,7 +338,7 @@ const repeatSectionSettings = [
         key: "properties.myssRepeatCount",
         label: "Count question",
         description:
-          "The number question whose answer sets how many entries are shown.",
+          "The number question whose answer sets how many entries are shown. The entries show only while it does, and the citizen must answer it with a whole number from 1 to the most entries.",
         input: true,
         weight: 2,
         dataSrc: "custom",
@@ -351,7 +353,7 @@ const repeatSectionSettings = [
         type: "number",
         key: "properties.myssRepeatMax",
         label: "Most entries",
-        description: "From 1 to 50. The count question should allow no more.",
+        description: "From 1 to 50. The count question allows no more.",
         input: true,
         weight: 3,
         validate: { required: true, min: 1, max: 50, integer: true },

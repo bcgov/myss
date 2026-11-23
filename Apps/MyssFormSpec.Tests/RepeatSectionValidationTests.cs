@@ -58,12 +58,148 @@ namespace Myss.FormSpec.Tests
             Assert.Equal(ValidationKeywords.FieldRowCountMismatch, error.Keyword);
         }
 
-        [Fact]
-        public void Validate_ReadsAFractionalCountAsNoCount()
+        [Theory]
+        [InlineData(2)]
+        [InlineData(0)]
+        public void Validate_RefusesACountThatIsNotAWholeNumber_WithOrWithoutRows(int rows)
         {
-            ValidationErrorModel error = Assert.Single(Run(ChildrenSpec, Answers("2.5", Rows(2))));
+            ValidationErrorModel error = Assert.Single(Run(ChildrenSpec, Answers("2.5", Rows(rows))));
 
-            Assert.Equal(ValidationKeywords.FieldRowCountMismatch, error.Keyword);
+            Assert.Equal("childCount", error.Field);
+            Assert.Equal(ValidationKeywords.FieldWrongType, error.Keyword);
+        }
+
+        [Theory]
+        [InlineData("0", ValidationKeywords.FieldMin)]
+        [InlineData("-3", ValidationKeywords.FieldMin)]
+        [InlineData("11", ValidationKeywords.FieldMax)]
+        [InlineData("99999999999", ValidationKeywords.FieldMax)]
+        public void Validate_HoldsTheCountToTheSectionsRange_WhenTheQuestionSetsNoLimits(string count, string keyword)
+        {
+            string spec = ChildrenSpec.Replace(
+                "\"validate\": { \"required\": true, \"min\": 1, \"max\": 10 },",
+                string.Empty,
+                StringComparison.Ordinal);
+
+            ValidationErrorModel error = Assert.Single(Run(spec, Answers(count, "[]")));
+
+            Assert.Equal("childCount", error.Field);
+            Assert.Equal(keyword, error.Keyword);
+        }
+
+        [Fact]
+        public void Validate_RequiresTheCount_WhenTheQuestionDoesNotSaySo()
+        {
+            string spec = ChildrenSpec.Replace(
+                "\"validate\": { \"required\": true, \"min\": 1, \"max\": 10 },",
+                string.Empty,
+                StringComparison.Ordinal);
+
+            ValidationErrorModel error = Assert.Single(Run(spec, """{"hasChildren":"yes","children":[]}"""));
+
+            Assert.Equal("childCount", error.Field);
+            Assert.Equal(ValidationKeywords.FieldRequired, error.Keyword);
+        }
+
+        [Fact]
+        public void Validate_KeepsTheQuestionsOwnNarrowerLimits()
+        {
+            string spec = ChildrenSpec.Replace("\"min\": 1, \"max\": 10", "\"min\": 2, \"max\": 4", StringComparison.Ordinal);
+
+            Assert.Equal(ValidationKeywords.FieldMin, Assert.Single(Run(spec, Answers(1, Rows(1)))).Keyword);
+            Assert.Equal(ValidationKeywords.FieldMax, Assert.Single(Run(spec, Answers(5, Rows(5)))).Keyword);
+        }
+
+        [Fact]
+        public void Validate_ReportsAMissingOrUnusableCountOnTheCountQuestion_NotAsAMismatch()
+        {
+            ValidationErrorModel missing = Assert.Single(Run(ChildrenSpec, $$"""{"hasChildren":"yes","children":{{Rows(2)}}}"""));
+            ValidationErrorModel zero = Assert.Single(Run(ChildrenSpec, Answers(0, Rows(2))));
+
+            Assert.Equal(("childCount", ValidationKeywords.FieldRequired), (missing.Field, missing.Keyword));
+            Assert.Equal(("childCount", ValidationKeywords.FieldMin), (zero.Field, zero.Keyword));
+        }
+
+        [Fact]
+        public void Validate_HidesTheSectionWithItsCountQuestion()
+        {
+            const string spec = """
+            {
+              "components": [
+                { "type": "radio", "key": "hasChildren", "input": true },
+                { "type": "number", "key": "childCount", "input": true,
+                  "conditional": { "show": true, "when": "hasChildren", "eq": "yes" } },
+                { "type": "bcgovRepeatSection", "key": "children", "input": true,
+                  "properties": { "myssRepeatCount": "childCount" },
+                  "components": [
+                    { "type": "textfield", "key": "childFirstName", "input": true, "validate": { "required": true } }
+                  ] }
+              ]
+            }
+            """;
+
+            Assert.Empty(Run(spec, """{"hasChildren":"no","children":[{},{}]}"""));
+            Assert.Empty(Run(spec, """{"hasChildren":"yes","childCount":1,"children":[{"childFirstName":"Ada"}]}"""));
+            Assert.Equal(
+                ValidationKeywords.FieldRowCountMismatch,
+                Assert.Single(Run(spec, """{"hasChildren":"yes","childCount":2,"children":[{"childFirstName":"Ada"}]}""")).Keyword);
+        }
+
+        [Fact]
+        public void Validate_HidesTheSectionWithTheContainerAroundItsCountQuestion()
+        {
+            const string spec = """
+            {
+              "components": [
+                { "type": "radio", "key": "hasChildren", "input": true },
+                { "type": "bcgovRepeatSection", "key": "children", "input": true,
+                  "properties": { "myssRepeatCount": "childCount" },
+                  "components": [
+                    { "type": "textfield", "key": "childFirstName", "input": true, "validate": { "required": true } }
+                  ] },
+                { "type": "panel", "key": "family", "input": false,
+                  "conditional": { "show": true, "when": "hasChildren", "eq": "yes" },
+                  "components": [ { "type": "number", "key": "childCount", "input": true } ] }
+              ]
+            }
+            """;
+
+            Assert.Empty(Run(spec, """{"hasChildren":"no","children":[{}]}"""));
+            ValidationErrorModel error = Assert.Single(Run(spec, """{"hasChildren":"yes","children":[]}"""));
+            Assert.Equal(("childCount", ValidationKeywords.FieldRequired), (error.Field, error.Keyword));
+        }
+
+        [Fact]
+        public void Validate_GivesACountSharedByTwoSectionsTheSmallerMaximum()
+        {
+            const string spec = """
+            {
+              "components": [
+                { "type": "number", "key": "childCount", "input": true },
+                { "type": "bcgovRepeatSection", "key": "children", "input": true,
+                  "properties": { "myssRepeatCount": "childCount", "myssRepeatMax": 5 },
+                  "components": [ { "type": "textfield", "key": "childFirstName", "input": true } ] },
+                { "type": "bcgovRepeatSection", "key": "schools", "input": true,
+                  "properties": { "myssRepeatCount": "childCount", "myssRepeatMax": 3 },
+                  "components": [ { "type": "textfield", "key": "schoolName", "input": true } ] }
+              ]
+            }
+            """;
+
+            Assert.Empty(Run(spec, """{"childCount":3,"children":[{},{},{}],"schools":[{},{},{}]}"""));
+            ValidationErrorModel error = Assert.Single(Run(spec, """{"childCount":4,"children":[{},{},{},{}],"schools":[]}"""));
+            Assert.Equal(("childCount", ValidationKeywords.FieldMax), (error.Field, error.Keyword));
+        }
+
+        [Fact]
+        public void Validate_LeavesANumberQuestionThatCountsNoSectionAlone()
+        {
+            const string spec = """
+            { "components": [ { "type": "number", "key": "weeklyHours", "input": true } ] }
+            """;
+
+            Assert.Empty(Run(spec, """{"weeklyHours":2.5}"""));
+            Assert.Empty(Run(spec, "{}"));
         }
 
         [Fact]
@@ -130,15 +266,15 @@ namespace Myss.FormSpec.Tests
         }
 
         [Fact]
-        public void Validate_RefusesMoreRowsThanTheMaximum_EvenWhenTheCountAgrees()
+        public void Validate_RefusesMoreRowsThanTheMaximum_AndACountAboveIt()
         {
             string spec = ChildrenSpec.Replace("\"myssRepeatMax\": \"10\"", "\"myssRepeatMax\": \"3\"", StringComparison.Ordinal);
 
             Assert.Empty(Run(spec, Answers(3, Rows(3))));
-            ValidationErrorModel error = Assert.Single(Run(spec, Answers(4, Rows(4))));
+            IReadOnlyList<ValidationErrorModel> errors = Run(spec, Answers(4, Rows(4)));
 
-            Assert.Equal("children", error.Field);
-            Assert.Equal(ValidationKeywords.FieldWrongType, error.Keyword);
+            Assert.Contains(errors, e => e.Field == "children" && e.Keyword == ValidationKeywords.FieldWrongType);
+            Assert.Contains(errors, e => e.Field == "childCount" && e.Keyword == ValidationKeywords.FieldMax);
         }
 
         [Fact]
@@ -158,7 +294,9 @@ namespace Myss.FormSpec.Tests
                 .Replace("\"min\": 1, \"max\": 10", "\"min\": 1", StringComparison.Ordinal);
 
             Assert.Empty(Run(spec, Answers(50, Rows(50))));
-            Assert.Equal(ValidationKeywords.FieldWrongType, Assert.Single(Run(spec, Answers(51, Rows(51)))).Keyword);
+            Assert.Contains(
+                Run(spec, Answers(51, Rows(51))),
+                e => e.Field == "children" && e.Keyword == ValidationKeywords.FieldWrongType);
         }
 
         [Fact]

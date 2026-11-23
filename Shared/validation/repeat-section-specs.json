@@ -8,8 +8,9 @@
     "Each suite runs every case and expects exactly the listed problems, in this",
     "order and in this wording, so a divergence is a failing test.",
     "",
-    "The rule: a repeat section names a number question outside itself as its",
-    "count (properties.myssRepeatCount), sets a maximum (properties.myssRepeatMax)",
+    "The rule: a repeat section names a number question that is not hidden,",
+    "outside every repeat section, as its count (properties.myssRepeatCount),",
+    "sets a maximum (properties.myssRepeatMax)",
     "that is blank or a whole number from 1 to 50, and contains no repeat section.",
     "Each spec is otherwise valid, so the rule's problems are the only ones."
   ],
@@ -87,6 +88,29 @@
           ] }
       ] },
       "problems": [ "The repeat section \"children\" counts with \"childCount\", which is inside the section." ]
+    },
+    {
+      "name": "a count question inside another repeat section",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount" },
+          "components": [ { "type": "number", "key": "petCount" } ] },
+        { "type": "bcgovRepeatSection", "key": "pets",
+          "properties": { "myssRepeatCount": "petCount" },
+          "components": [ { "type": "textfield", "key": "petName" } ] }
+      ] },
+      "problems": [ "The repeat section \"pets\" counts with \"petCount\", which is inside the repeat section \"children\"." ]
+    },
+    {
+      "name": "a hidden count question",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount", "hidden": true },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount" },
+          "components": [ { "type": "textfield", "key": "childFirstName" } ] }
+      ] },
+      "problems": [ "The repeat section \"children\" counts with \"childCount\", which is hidden." ]
     },
     {
       "name": "a maximum above 50",

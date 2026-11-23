@@ -202,7 +202,7 @@ describe("the repeat section in the builder", () => {
       (tab(key) ?? []).filter((f) => f.ignore).map((f) => f.key);
 
     expect(ignored("display")).toEqual(
-      expect.arrayContaining(["addAnother", "reorder", "initEmpty", "disableAddingRemovingRows"]),
+      expect.arrayContaining(["addAnother", "reorder", "initEmpty", "disableAddingRemovingRows", "hidden"]),
     );
     expect(ignored("data")).toEqual(["defaultValue"]);
     expect(ignored("validation")).toEqual(

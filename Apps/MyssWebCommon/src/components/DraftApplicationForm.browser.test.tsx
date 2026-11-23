@@ -96,6 +96,19 @@ const rowsSpec = {
   ],
 } as unknown as FormType;
 
+/**
+ * Waits past Form.io's 100 ms change delay, after which it shows a field's
+ * outstanding errors again.
+ */
+function pastChangeDelay() {
+  return new Promise((resolve) => setTimeout(resolve, 500));
+}
+
+/** The text a field's Form.io wrapper shows, its error message included. */
+function fieldText(key: string) {
+  return document.querySelector(`.formio-component-${key}`)?.textContent ?? "";
+}
+
 function Harness({
   application,
   saveFn,
@@ -263,9 +276,14 @@ describe("DraftApplicationForm", () => {
       .toBeVisible();
     expect(onSubmitted).not.toHaveBeenCalled();
 
-    // Without the edit clearing the server error, Form.io would still count
-    // the field invalid and refuse this submit client-side.
+    // Form.io shows a server error again on every change after a submit, even
+    // once its field is corrected, unless the edit takes it off the field.
     await screen.getByRole("textbox", { name: /Last name/ }).fill("Lovelace");
+    await pastChangeDelay();
+    await screen.getByRole("textbox", { name: /First name/ }).fill("Adah");
+    await pastChangeDelay();
+    expect(fieldText("lastName")).not.toContain("Enter a real last name.");
+
     await screen.getByRole("button", { name: "Submit" }).click();
 
     await vi.waitFor(() => expect(onSubmitted).toHaveBeenCalledOnce());
@@ -311,6 +329,11 @@ describe("DraftApplicationForm", () => {
     expect(onSubmitted).not.toHaveBeenCalled();
 
     await page.elementLocator(second()!).fill("Allegra");
+    await pastChangeDelay();
+    expect(second()?.closest(".formio-component-childFirstName")?.textContent ?? "").not.toContain(
+      "Enter the second child's first name.",
+    );
+
     await screen.getByRole("button", { name: "Submit" }).click();
 
     await vi.waitFor(() => expect(onSubmitted).toHaveBeenCalledOnce());

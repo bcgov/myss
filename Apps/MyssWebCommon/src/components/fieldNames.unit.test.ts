@@ -6,6 +6,8 @@ const PAIRS: [string, string][] = [
   ["data[firstName]", "firstName"],
   ["data[children][1][childFirstName]", "children[1].childFirstName"],
   ["data[children][0][pets][2][petName]", "children[0].pets[2].petName"],
+  ["data[2024]", "2024"],
+  ["data[children][0][5]", "children[0].5"],
 ];
 
 describe("fieldOfInputName", () => {

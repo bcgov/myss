@@ -30,7 +30,10 @@ namespace Myss.FormSpec
     /// list of rows, one per unit of the number question named by
     /// <c>properties.myssRepeatCount</c>, at most <c>properties.myssRepeatMax</c>
     /// (10 when unset). Each row is checked against the section's fields, and
-    /// a failure in a row is named by its path, such as <c>children[1].firstName</c>.</para>
+    /// a failure in a row is named by its path, such as <c>children[1].firstName</c>.
+    /// The section shows only while its count question does, and the count
+    /// question is required to be a whole number from 1 to the maximum, as the
+    /// form treats it.</para>
     /// <para><b>How a field opts in to a domain rule.</b> Form.io has no notion
     /// of a Canadian SIN, so the spec must say which rule applies. Two ways,
     /// checked in order:</para>
@@ -111,6 +114,7 @@ namespace Myss.FormSpec
             if (spec.ValueKind == JsonValueKind.Object)
             {
                 Collect(spec, fields, []);
+                ApplyCountRules(fields);
             }
 
             ValidateFields(fields, new AnswerScope(answers, answers, Visible: true), errors);
@@ -173,7 +177,7 @@ namespace Myss.FormSpec
                 return;
             }
 
-            if (!TypeMatches(component.Type, value))
+            if (!AnswerTypeMatches(component, value))
             {
                 errors.Add(WrongType(component.Key));
                 return;
@@ -246,8 +250,10 @@ namespace Myss.FormSpec
         }
 
         /// <summary>
-        /// The rows must number exactly what the count answer says; no count
-        /// answer means no rows.
+        /// The rows must number exactly what the count answer says. A count the
+        /// section cannot draw, or a missing one, is reported on the count
+        /// question itself; with no count question in the form, no count means
+        /// no rows.
         /// </summary>
         private static void CheckRowCount(
             ComponentInfo component,
@@ -261,9 +267,21 @@ namespace Myss.FormSpec
                 return;
             }
 
-            int expected = scope.TryGet(section.CountKey, out JsonElement count) && TryReadWholeNumber(count, out int number)
-                ? number
-                : 0;
+            int expected = 0;
+            bool usable = scope.TryGet(section.CountKey, out JsonElement count)
+                && !IsEmpty("number", count)
+                && TryReadWholeNumber(count, out expected)
+                && expected >= 1
+                && expected <= section.Max;
+            if (!usable)
+            {
+                if (section.HasCountQuestion)
+                {
+                    return;
+                }
+
+                expected = 0;
+            }
 
             if (rowCount != expected)
             {
@@ -274,6 +292,47 @@ namespace Myss.FormSpec
                     "The number of entries does not match the number you entered."));
             }
         }
+
+        /// <summary>
+        /// A repeat section shows only while its count question does, and the
+        /// count question takes the limits of what the section can draw: an
+        /// answer is required, and it is a whole number from 1 to the section's
+        /// maximum (or the question's own narrower limits).
+        /// </summary>
+        private static void ApplyCountRules(FieldSet fields)
+        {
+            List<ComponentInfo> components = [.. fields.Components.Values];
+            foreach (ComponentInfo section in components)
+            {
+                if (section.Repeat?.CountKey is not string countKey
+                    || !fields.Components.TryGetValue(countKey, out ComponentInfo? count)
+                    || !string.Equals(count.Type, "number", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                int max = section.Repeat.Max;
+                fields.Components[countKey] = count with
+                {
+                    Required = true,
+                    WholeNumber = true,
+                    Min = count.Min > 1 ? count.Min : 1,
+                    Max = count.Max < max ? count.Max : max,
+                };
+                fields.Components[section.Key] = section with
+                {
+                    Conditions = [.. section.Conditions, .. count.Conditions],
+                    Repeat = section.Repeat with { HasCountQuestion = true },
+                };
+            }
+        }
+
+        /// <summary>The JSON type the field takes; a count question also takes no fraction.</summary>
+        private static bool AnswerTypeMatches(ComponentInfo component, JsonElement value) =>
+            TypeMatches(component.Type, value) && (!component.WholeNumber || IsWholeNumber(value));
+
+        private static bool IsWholeNumber(JsonElement value) =>
+            value.TryGetDecimal(out decimal number) && number == decimal.Truncate(number);
 
         private static bool IsRowList(JsonElement value, int max)
         {
@@ -405,34 +464,39 @@ namespace Myss.FormSpec
         }
 
         /// <summary>
-        /// Each repeat section names a number question outside itself as its
-        /// count, sets a maximum from 1 to 50 if it sets one, and holds no repeat
-        /// section of its own. A keyless section is left to the key rule. The
+        /// Each repeat section names a number question that is not hidden,
+        /// outside every repeat section, as its count, sets a maximum from 1 to
+        /// 50 if it sets one, and holds no repeat section of its own. A keyless section is left to the key rule. The
         /// wording is shared with the two TypeScript copies of this rule through
         /// <c>Shared/validation/repeat-section-specs.json</c>.
         /// </summary>
         private static List<ValidationErrorModel> RepeatSectionErrors(List<JsonElement> components)
         {
-            Dictionary<string, string?> typesByKey = new(StringComparer.Ordinal);
+            Dictionary<string, JsonElement> questionsByKey = new(StringComparer.Ordinal);
             foreach (JsonElement component in components)
             {
                 if (ReadString(component, "key") is string key)
                 {
-                    typesByKey.TryAdd(key, ReadString(component, "type"));
+                    questionsByKey.TryAdd(key, component);
                 }
             }
 
-            List<ValidationErrorModel> errors = [];
-            foreach (JsonElement section in components)
+            List<(string Key, JsonElement Section)> sections = [];
+            foreach (JsonElement component in components)
             {
-                string? key = ReadString(section, "key");
-                if (!string.Equals(ReadString(section, "type"), RepeatSectionType, StringComparison.Ordinal)
-                    || string.IsNullOrWhiteSpace(key))
+                string? key = ReadString(component, "key");
+                if (string.Equals(ReadString(component, "type"), RepeatSectionType, StringComparison.Ordinal)
+                    && !string.IsNullOrWhiteSpace(key))
                 {
-                    continue;
+                    sections.Add((key, component));
                 }
+            }
 
-                foreach (string message in RepeatSectionProblems(key, section, typesByKey))
+            Dictionary<string, string> owners = SectionsByInnerKey(sections);
+            List<ValidationErrorModel> errors = [];
+            foreach ((string key, JsonElement section) in sections)
+            {
+                foreach (string message in RepeatSectionProblems(key, section, questionsByKey, owners))
                 {
                     errors.Add(Error(key, FormSpecStructureKeywords.RepeatSectionInvalid, message));
                 }
@@ -441,10 +505,31 @@ namespace Myss.FormSpec
             return errors;
         }
 
+        /// <summary>The repeat section each question inside one belongs to, by the question's key.</summary>
+        private static Dictionary<string, string> SectionsByInnerKey(List<(string Key, JsonElement Section)> sections)
+        {
+            Dictionary<string, string> owners = new(StringComparer.Ordinal);
+            foreach ((string key, JsonElement section) in sections)
+            {
+                List<JsonElement> inside = [];
+                CollectAll(section, inside);
+                foreach (JsonElement component in inside)
+                {
+                    if (ReadString(component, "key") is string innerKey)
+                    {
+                        owners.TryAdd(innerKey, key);
+                    }
+                }
+            }
+
+            return owners;
+        }
+
         private static List<string> RepeatSectionProblems(
             string key,
             JsonElement section,
-            IReadOnlyDictionary<string, string?> typesByKey)
+            Dictionary<string, JsonElement> questionsByKey,
+            Dictionary<string, string> owners)
         {
             List<JsonElement> inside = [];
             CollectAll(section, inside);
@@ -460,7 +545,7 @@ namespace Myss.FormSpec
             JsonElement properties = section.TryGetProperty("properties", out JsonElement p) ? p : default;
             List<string> problems = [];
 
-            if (CountQuestionProblem(key, ReadString(properties, "myssRepeatCount"), typesByKey, insideKeys) is string countProblem)
+            if (CountQuestionProblem(key, ReadString(properties, "myssRepeatCount"), questionsByKey, insideKeys, owners) is string countProblem)
             {
                 problems.Add(countProblem);
             }
@@ -485,15 +570,16 @@ namespace Myss.FormSpec
         private static string? CountQuestionProblem(
             string key,
             string? count,
-            IReadOnlyDictionary<string, string?> typesByKey,
-            HashSet<string> insideKeys)
+            Dictionary<string, JsonElement> questionsByKey,
+            HashSet<string> insideKeys,
+            Dictionary<string, string> owners)
         {
             if (string.IsNullOrWhiteSpace(count))
             {
                 return $"The repeat section \"{key}\" needs a count question.";
             }
 
-            if (!typesByKey.TryGetValue(count, out string? type))
+            if (!questionsByKey.TryGetValue(count, out JsonElement question))
             {
                 return $"The repeat section \"{key}\" counts with \"{count}\", which is not a field in this form.";
             }
@@ -503,9 +589,19 @@ namespace Myss.FormSpec
                 return $"The repeat section \"{key}\" counts with \"{count}\", which is inside the section.";
             }
 
-            return string.Equals(type, "number", StringComparison.Ordinal)
-                ? null
-                : $"The repeat section \"{key}\" counts with \"{count}\", which is not a number question.";
+            if (owners.TryGetValue(count, out string? owner))
+            {
+                return $"The repeat section \"{key}\" counts with \"{count}\", which is inside the repeat section \"{owner}\".";
+            }
+
+            if (!string.Equals(ReadString(question, "type"), "number", StringComparison.Ordinal))
+            {
+                return $"The repeat section \"{key}\" counts with \"{count}\", which is not a number question.";
+            }
+
+            return question.TryGetProperty("hidden", out JsonElement hidden) && hidden.ValueKind == JsonValueKind.True
+                ? $"The repeat section \"{key}\" counts with \"{count}\", which is hidden."
+                : null;
         }
 
         /// <summary>A blank maximum means the default; otherwise a whole number from 1 to 50, as a number or as digits.</summary>
@@ -1147,7 +1243,8 @@ namespace Myss.FormSpec
             bool KeepsValueWhenHidden,
             bool ValidateWhenHidden,
             IReadOnlyList<SimpleCondition> Conditions,
-            RepeatSection? Repeat = null)
+            RepeatSection? Repeat = null,
+            bool WholeNumber = false)
         {
             /// <summary>
             /// The rules Form.io itself runs in the browser. Their wording follows
@@ -1206,7 +1303,8 @@ namespace Myss.FormSpec
         /// <param name="CountKey">The number question that sets how many rows there are.</param>
         /// <param name="Max">The most rows the section allows.</param>
         /// <param name="Fields">The fields of one row.</param>
-        private sealed record RepeatSection(string? CountKey, int Max, FieldSet Fields);
+        /// <param name="HasCountQuestion">Whether the form holds the count question, which then reports a missing count.</param>
+        private sealed record RepeatSection(string? CountKey, int Max, FieldSet Fields, bool HasCountQuestion = false);
 
         /// <summary>
         /// Where a field's answers are read: the row of a repeat section it sits

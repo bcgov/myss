@@ -12,6 +12,7 @@ interface ComponentLike {
   readonly type?: unknown;
   readonly properties?: unknown;
   readonly conditional?: unknown;
+  readonly hidden?: unknown;
 }
 
 /** A section of questions answered once per unit of a count question. */
@@ -79,41 +80,61 @@ export function findUnknownConditionalTargets(spec: unknown): string[] {
 
 /**
  * Problems with the form's repeat sections, in document order: each names a
- * number question outside itself as its count, sets a maximum from 1 to 50 if
- * it sets one, and holds no repeat section of its own. A keyless section is
- * left to the key rules.
+ * number question that is not hidden, outside every repeat section, as its
+ * count, sets a maximum from 1 to 50 if it sets one, and holds no repeat
+ * section of its own. A keyless section is left to the key rules.
  */
 export function findInvalidRepeatSections(spec: unknown): RepeatSectionProblem[] {
   const components = collectComponents(spec);
-  const typesByKey = new Map<string, unknown>();
+  const questionsByKey = new Map<string, ComponentLike>();
   for (const component of components) {
-    if (typeof component.key === "string" && !typesByKey.has(component.key)) {
-      typesByKey.set(component.key, component.type);
+    if (typeof component.key === "string" && !questionsByKey.has(component.key)) {
+      questionsByKey.set(component.key, component);
     }
   }
 
+  const sections = components.filter(isKeyedSection);
+  const owners = sectionsByInnerKey(sections);
   const problems: RepeatSectionProblem[] = [];
-  for (const section of components) {
-    if (section.type !== REPEAT_SECTION_TYPE) continue;
-    if (typeof section.key !== "string" || section.key.trim() === "") continue;
-    for (const message of repeatSectionProblems(section.key, section, typesByKey)) {
+  for (const section of sections) {
+    for (const message of repeatSectionProblems(section.key, section, questionsByKey, owners)) {
       problems.push({ key: section.key, message });
     }
   }
   return problems;
 }
 
+function isKeyedSection(component: ComponentLike): component is ComponentLike & { key: string } {
+  return (
+    component.type === REPEAT_SECTION_TYPE &&
+    typeof component.key === "string" &&
+    component.key.trim() !== ""
+  );
+}
+
+/** The repeat section each question inside one belongs to, by the question's key. */
+function sectionsByInnerKey(sections: readonly (ComponentLike & { key: string })[]): Map<unknown, string> {
+  const owners = new Map<unknown, string>();
+  for (const section of sections) {
+    for (const inner of collectComponents(section)) {
+      if (!owners.has(inner.key)) owners.set(inner.key, section.key);
+    }
+  }
+  return owners;
+}
+
 function repeatSectionProblems(
   key: string,
   section: ComponentLike,
-  typesByKey: ReadonlyMap<string, unknown>,
+  questionsByKey: ReadonlyMap<string, ComponentLike>,
+  owners: ReadonlyMap<unknown, string>,
 ): string[] {
   const inside = collectComponents(section);
   const insideKeys = new Set(inside.map((component) => component.key));
   const properties = isRecord(section.properties) ? section.properties : {};
   const problems: string[] = [];
 
-  const countProblem = countQuestionProblem(key, properties.myssRepeatCount, typesByKey, insideKeys);
+  const countProblem = countQuestionProblem(key, properties.myssRepeatCount, questionsByKey, insideKeys, owners);
   if (countProblem) problems.push(countProblem);
   const maximum = maximumProblem(key, properties.myssRepeatMax);
   if (maximum) problems.push(maximum);
@@ -127,20 +148,29 @@ function repeatSectionProblems(
 function countQuestionProblem(
   key: string,
   count: unknown,
-  typesByKey: ReadonlyMap<string, unknown>,
+  questionsByKey: ReadonlyMap<string, ComponentLike>,
   insideKeys: ReadonlySet<unknown>,
+  owners: ReadonlyMap<unknown, string>,
 ): string | undefined {
   if (typeof count !== "string" || count.trim() === "") {
     return `The repeat section "${key}" needs a count question.`;
   }
-  if (!typesByKey.has(count)) {
+  const question = questionsByKey.get(count);
+  if (!question) {
     return `The repeat section "${key}" counts with "${count}", which is not a field in this form.`;
   }
   if (insideKeys.has(count)) {
     return `The repeat section "${key}" counts with "${count}", which is inside the section.`;
   }
-  if (typesByKey.get(count) !== "number") {
+  const owner = owners.get(count);
+  if (owner !== undefined) {
+    return `The repeat section "${key}" counts with "${count}", which is inside the repeat section "${owner}".`;
+  }
+  if (question.type !== "number") {
     return `The repeat section "${key}" counts with "${count}", which is not a number question.`;
+  }
+  if (question.hidden === true) {
+    return `The repeat section "${key}" counts with "${count}", which is hidden.`;
   }
   return undefined;
 }
