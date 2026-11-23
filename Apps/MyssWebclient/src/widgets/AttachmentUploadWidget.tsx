@@ -2,27 +2,16 @@ import { useRef } from "react";
 import { Button } from "@bcgov/design-system-react-components";
 
 import styles from "./AttachmentUploadWidget.module.css";
-import { AttachmentUploadError } from "@/api/attachments";
+import {
+  ATTACHMENT_ACCEPT,
+  AttachmentUploadError,
+  attachmentErrorMessage,
+} from "@/api/attachments";
 import { useAttachments, useUploadAttachment } from "@/hooks/useAttachments";
 
-// Same allow-list as the backend. The picker filter is just a convenience;
-// the API re-checks type, magic bytes and size on every upload.
-const ACCEPT = "application/pdf,image/png,image/jpeg";
-
-// Display text for each error keyword the API can return.
-const KEYWORD_MESSAGES: Record<string, string> = {
-  "DOC.UPLOAD.EMPTY": "The selected file is empty.",
-  "DOC.UPLOAD.TOO_LARGE": "The file is too large. The limit is 5 MB.",
-  "DOC.UPLOAD.TYPE_NOT_ALLOWED": "Only PDF, PNG and JPEG files are accepted.",
-  "DOC.UPLOAD.INFECTED":
-    "The file failed the virus scan and was not stored.",
-  "DOC.SCAN.UNAVAILABLE":
-    "The virus scanner is unavailable right now. Try again in a few minutes.",
-};
-
 function errorMessage(error: Error): string {
-  if (error instanceof AttachmentUploadError && error.keyword) {
-    return KEYWORD_MESSAGES[error.keyword] ?? error.message;
+  if (error instanceof AttachmentUploadError) {
+    return attachmentErrorMessage(error.keyword) ?? error.message;
   }
   return error.message;
 }
@@ -54,7 +43,7 @@ export default function AttachmentUploadWidget() {
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPT}
+        accept={ATTACHMENT_ACCEPT}
         aria-label="Choose a file to upload"
         className={styles.fileInput}
         onChange={onFileChosen}

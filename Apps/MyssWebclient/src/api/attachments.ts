@@ -34,6 +34,70 @@ export class AttachmentUploadError extends Error {
   }
 }
 
+/** The types the API accepts, for the file picker. The API re-checks each file. */
+export const ATTACHMENT_ACCEPT = "application/pdf,image/png,image/jpeg";
+
+/** The API's size limit, 5 MiB. */
+export const ATTACHMENT_MAX_BYTES = 5_242_880;
+
+export const ATTACHMENT_KEYWORDS = {
+  empty: "DOC.UPLOAD.EMPTY",
+  tooLarge: "DOC.UPLOAD.TOO_LARGE",
+  typeNotAllowed: "DOC.UPLOAD.TYPE_NOT_ALLOWED",
+  infected: "DOC.UPLOAD.INFECTED",
+  scanUnavailable: "DOC.SCAN.UNAVAILABLE",
+} as const;
+
+const KEYWORD_MESSAGES: Readonly<Record<string, string>> = {
+  [ATTACHMENT_KEYWORDS.empty]: "The selected file is empty.",
+  [ATTACHMENT_KEYWORDS.tooLarge]: "The file is too large. The limit is 5 MB.",
+  [ATTACHMENT_KEYWORDS.typeNotAllowed]:
+    "Only PDF, PNG and JPEG files are accepted.",
+  [ATTACHMENT_KEYWORDS.infected]:
+    "The file failed the virus scan and was not stored.",
+  [ATTACHMENT_KEYWORDS.scanUnavailable]:
+    "The virus scanner is unavailable right now. Try again in a few minutes.",
+};
+
+/** Display text for an upload keyword, or undefined for one this list does not know. */
+export function attachmentErrorMessage(
+  keyword: string | undefined,
+): string | undefined {
+  return keyword === undefined ? undefined : KEYWORD_MESSAGES[keyword];
+}
+
+// The first bytes of each accepted type, as the API checks them.
+const SIGNATURES: Readonly<Record<string, readonly number[]>> = {
+  "application/pdf": [0x25, 0x50, 0x44, 0x46, 0x2d],
+  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  "image/jpeg": [0xff, 0xd8, 0xff],
+};
+
+/**
+ * The keyword the API would refuse a file with, or null when it would take
+ * it: not empty, within the size limit, and an accepted type both by its
+ * declared type and by its first bytes. The virus scan happens only in the API.
+ */
+export async function checkAttachmentFile(file: File): Promise<string | null> {
+  if (file.size === 0) return ATTACHMENT_KEYWORDS.empty;
+  if (file.size > ATTACHMENT_MAX_BYTES) return ATTACHMENT_KEYWORDS.tooLarge;
+  const signature = SIGNATURES[file.type.toLowerCase()];
+  if (!signature) return ATTACHMENT_KEYWORDS.typeNotAllowed;
+  const head = new Uint8Array(
+    await file.slice(0, signature.length).arrayBuffer(),
+  );
+  return signature.every((byte, i) => head[i] === byte)
+    ? null
+    : ATTACHMENT_KEYWORDS.typeNotAllowed;
+}
+
+/** A file's size as a citizen reads it: "0 bytes", "412 KB", "1.8 MB". */
+export function formatFileSize(sizeBytes: number): string {
+  if (sizeBytes < 1024) return `${sizeBytes} bytes`;
+  if (sizeBytes < 1024 * 1024) return `${Math.round(sizeBytes / 1024)} KB`;
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /** The caller's released attachments, newest first. */
 export async function listAttachments(): Promise<AttachmentPayload[]> {
   const res = await fetch(`${API_URL}/v1/attachments`, {
@@ -43,28 +107,77 @@ export async function listAttachments(): Promise<AttachmentPayload[]> {
   return (await res.json()).payload;
 }
 
-/** Uploads one file as the multipart "file" field. */
-export async function uploadAttachment(file: File): Promise<AttachmentPayload> {
+/** Throws the API's refusal (status, keyword, detail) for a failed response. */
+async function throwUploadError(res: Response): Promise<never> {
+  let keyword: string | undefined;
+  let detail: string | undefined;
+  try {
+    const problem = await res.json();
+    keyword = problem.keyword;
+    detail = problem.detail;
+  } catch {
+    // Not a ProblemDetails body; the status alone will have to do.
+  }
+  throw new AttachmentUploadError(res.status, keyword, detail);
+}
+
+async function postFile(url: string, file: File): Promise<AttachmentPayload> {
   const form = new FormData();
   form.append("file", file);
   // No Content-Type header here: the browser must set the multipart boundary
   // itself.
-  const res = await fetch(`${API_URL}/v1/attachments`, {
+  const res = await fetch(url, {
     method: "POST",
     headers: authHeaders(),
     body: form,
   });
-  if (!res.ok) {
-    let keyword: string | undefined;
-    let detail: string | undefined;
-    try {
-      const problem = await res.json();
-      keyword = problem.keyword;
-      detail = problem.detail;
-    } catch {
-      // Not a ProblemDetails body; the status alone will have to do.
-    }
-    throw new AttachmentUploadError(res.status, keyword, detail);
-  }
+  if (!res.ok) await throwUploadError(res);
   return (await res.json()).payload;
+}
+
+/** Uploads one file as the multipart "file" field. */
+export function uploadAttachment(file: File): Promise<AttachmentPayload> {
+  return postFile(`${API_URL}/v1/attachments`, file);
+}
+
+// Supporting documents on an application
+// (/v1/intake/applications/{id}/attachments): the applicant adds and removes
+// them while the application is a draft or returned for more information;
+// once submitted they are read-only here and visible to the worker reviewing
+// it. A 409 with INTAKE.APPLICATION.NOT_EDITABLE means it was submitted or
+// withdrawn in the meantime.
+
+function applicationAttachmentsUrl(applicationId: string) {
+  return `${API_URL}/v1/intake/applications/${encodeURIComponent(applicationId)}/attachments`;
+}
+
+/** The supporting documents on one of the caller's applications, oldest first. */
+export async function listApplicationAttachments(
+  applicationId: string,
+): Promise<AttachmentPayload[]> {
+  const res = await fetch(applicationAttachmentsUrl(applicationId), {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Documents fetch failed (${res.status})`);
+  return (await res.json()).payload;
+}
+
+/** Adds one supporting document to a draft or returned application. */
+export function uploadApplicationAttachment(
+  applicationId: string,
+  file: File,
+): Promise<AttachmentPayload> {
+  return postFile(applicationAttachmentsUrl(applicationId), file);
+}
+
+/** Removes a supporting document from a draft or returned application. */
+export async function deleteApplicationAttachment(
+  applicationId: string,
+  attachmentId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${applicationAttachmentsUrl(applicationId)}/${encodeURIComponent(attachmentId)}`,
+    { method: "DELETE", headers: authHeaders() },
+  );
+  if (!res.ok) await throwUploadError(res);
 }

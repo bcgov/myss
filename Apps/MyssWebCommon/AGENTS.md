@@ -15,7 +15,15 @@ to the package.
 - **Only what both apps use.** Code used by one app stays in that app.
 - **Keep node-safe entry points light.** `@myss/web-common/config`, `/auth` and
   `/api` are imported by node-environment unit tests in the apps; they must not
-  import CSS or components. Components go in `/components`.
+  import CSS or components. Components go in `/components` (its stylesheet
+  `ApplicationForm.module.css` has its own export).
+- **What is here:** `/config` (`resolveRuntimeConfig`, including
+  `legacyMyssUrl`), `/auth`, `/api` (form specs and errors, form messages,
+  applications, rates) and `/components` (`AuthCallbackPage`, `StatusPill`,
+  `AnnouncementBanner`, `DraftApplicationForm`, `MessageText`,
+  `messageShowsPlaceholder`, `SubmissionErrors`, `useClientValidation`).
+  `@formio/react` is a peer dependency, like React and the OIDC libraries.
+- Tests: `test:unit`, `test:browser(-headless)`, and `test:coverage`.
 - **Public surface is the `exports` in `package.json`** (each points at an
   `index.ts` barrel, or `config.ts`). Add an export there before an app imports
   it.

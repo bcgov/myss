@@ -4,7 +4,10 @@ import { render } from "vitest-browser-react";
 import { afterEach, expect, test, vi } from "vitest";
 
 import type { FormSpecPayload } from "@/api/forms";
-import type { ReviewApplicationPayload } from "@/api/review";
+import type {
+  ReviewApplicationPayload,
+  ReviewAttachmentPayload,
+} from "@/api/review";
 import { REVIEW_KEYWORDS } from "@/api/review";
 import ReviewApplication from "@/widgets/review/ReviewApplication";
 import { registerBcgovComponents } from "@myss/formio";
@@ -133,6 +136,8 @@ interface Stub {
   nextAction?: Answer;
   /** When set, a note's response waits for this before going out. */
   holdNote?: Promise<void>;
+  /** The supporting documents the applicant sent; none unless set. */
+  documents?: ReviewAttachmentPayload[];
 }
 
 function json(status: number, body: unknown) {
@@ -178,6 +183,13 @@ function stubApi(stub: Stub) {
 
     if (url.endsWith(base) && method === "GET") {
       return json(200, { payload: stub.application });
+    }
+    if (url.endsWith(`${base}/attachments`) && method === "GET") {
+      return json(200, { payload: stub.documents ?? [] });
+    }
+    if (url.includes(`${base}/attachments/`) && url.endsWith("/content")) {
+      actions.push({ route: "download", body: url });
+      return new Response(new Blob(["%PDF-1.7"], { type: "application/pdf" }));
     }
     if (url.endsWith(`${base}/notes`) && method === "POST") {
       const body = JSON.parse(String(init?.body));
@@ -526,40 +538,39 @@ test("shows the history with who did what", async () => {
     .toBeVisible();
 });
 
-test("a decision is held back while a note is written but not added", async () => {
+test("a note written when a decision is chosen is saved with the decision", async () => {
   const actions = stubApi({ application: underReview() });
   const screen = await renderReview();
 
   await screen
     .getByRole("textbox", { name: /Add a note/ })
-    .fill("Checked the income proof.");
+    .fill("  Checked the income proof.  ");
   await screen.getByRole("button", { name: "Accept" }).click();
 
   await expect
-    .element(screen.getByRole("alert"))
-    .toHaveTextContent("You have a note that has not been added.");
+    .element(screen.getByRole("status"))
+    .toHaveTextContent("Your note was saved with the decision.");
   await expect
     .element(screen.getByRole("textbox", { name: /Add a note/ }))
-    .toHaveValue("Checked the income proof.");
-  expect(actions).toEqual([]);
+    .not.toBeInTheDocument();
+  expect(actions).toEqual([
+    {
+      route: "accept",
+      body: { streamVersion: 2, comment: "Checked the income proof." },
+    },
+  ]);
+});
 
-  // Adding it clears the hold; the decision then goes out.
-  await screen.getByRole("button", { name: "Add note" }).click();
-  await expect
-    .element(screen.getByText("Checked the income proof."))
-    .toBeVisible();
+test("a decision without a note sends no comment", async () => {
+  const actions = stubApi({ application: underReview() });
+  const screen = await renderReview();
+
   await screen.getByRole("button", { name: "Accept" }).click();
 
   await expect
     .element(screen.getByRole("gridcell", { name: "Accepted" }))
     .toBeVisible();
-  expect(actions).toEqual([
-    {
-      route: "notes",
-      body: { streamVersion: 2, text: "Checked the income proof." },
-    },
-    { route: "accept", body: { streamVersion: 3 } },
-  ]);
+  expect(actions).toEqual([{ route: "accept", body: { streamVersion: 2 } }]);
 });
 
 test("the actions wait while a note is being saved", async () => {
@@ -635,4 +646,54 @@ test("shows a submission's rows read-only, one Child Info group per row", async 
     await expect.element(field).toHaveValue(name);
     await expect.element(field).toBeDisabled();
   }
+});
+
+test("the supporting documents are listed and download through the API", async () => {
+  const createObjectURL = vi
+    .spyOn(URL, "createObjectURL")
+    .mockReturnValue("blob:document");
+  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  const actions = stubApi({
+    application: submitted(),
+    documents: [
+      {
+        id: "doc-a",
+        fileName: "paystub.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 2048,
+        uploadedAt: "2026-11-20T10:00:00Z",
+      },
+    ],
+  });
+  const screen = await renderReview();
+
+  const section = screen.getByRole("region", { name: "Supporting documents" });
+  await expect.element(section).toHaveTextContent("paystub.pdf");
+  await expect.element(section).toHaveTextContent("2 KB");
+
+  await screen.getByRole("button", { name: "Download paystub.pdf" }).click();
+
+  await vi.waitFor(() => expect(createObjectURL).toHaveBeenCalledOnce());
+  expect(actions).toContainEqual({
+    route: "download",
+    body: expect.stringContaining(
+      `/v1/intake/review/applications/${ID}/attachments/doc-a/content`,
+    ),
+  });
+});
+
+test("an application without documents says so", async () => {
+  stubApi({ application: submitted() });
+  const screen = await renderReview();
+
+  await expect
+    .element(screen.getByText("The applicant did not send any documents."))
+    .toBeVisible();
+});
+
+test("the summary names the applicant", async () => {
+  stubApi({ application: submitted({ applicantName: "Ada Lovelace" }) });
+  const screen = await renderReview();
+
+  await expect.element(screen.getByText("Ada Lovelace")).toBeVisible();
 });

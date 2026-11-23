@@ -5,6 +5,7 @@ import { render } from "vitest-browser-react";
 import { AccountRequestError } from "@/api/account";
 import { SubmissionRejectedError, type FormValidationError } from "@/api/forms";
 import type { IdentityDetails } from "./registrationSpec";
+import type { RegistrationAccountCreation } from "./RegistrationForm";
 import { registerBcgovComponents } from "@myss/formio";
 
 const formState = vi.hoisted(() => ({
@@ -138,12 +139,40 @@ const identity: IdentityDetails = {
     gender: "female",
 };
 
+const SELF: RegistrationAccountCreation = {
+    request: { context: "self" },
+    rows: [{ label: "Who the account is for", value: "I’m making an account for myself (and family, if applicable)" }],
+    representative: false,
+};
+
+const LEGAL_REPRESENTATIVE: RegistrationAccountCreation = {
+    request: {
+        context: "legalRepresentative",
+        representative: { firstName: "Pat", lastName: "Lee", phone: "2505550123", agency: "Northern Trustee Services" },
+        powerOfAttorneyDocumentIds: ["attachment-1"],
+    },
+    rows: [
+        {
+            label: "Who the account is for",
+            value: "I’m a legal representative who is creating an account on behalf of someone else",
+        },
+        { label: "Your name (authorized representative)", value: "Pat Lee" },
+        { label: "Agency", value: "Northern Trustee Services" },
+        { label: "Power of attorney documents", value: ["poa.pdf (412 KB)"] },
+    ],
+    representative: true,
+};
+
 function renderForm(
     overrides: Partial<IdentityDetails> | null = {},
-    { requirePin = false }: { requirePin?: boolean } = {},
+    {
+        requirePin = false,
+        accountCreation = SELF,
+    }: { requirePin?: boolean; accountCreation?: RegistrationAccountCreation } = {},
 ) {
     const onRegistered = vi.fn();
     const onCancel = vi.fn();
+    const onAccountCreationRejected = vi.fn();
     const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false } },
     });
@@ -153,6 +182,8 @@ function renderForm(
         <QueryClientProvider client={queryClient}>
             <RegistrationForm
                 identity={details}
+                accountCreation={accountCreation}
+                onAccountCreationRejected={onAccountCreationRejected}
                 requirePin={requirePin}
                 onRegistered={onRegistered}
                 onCancel={onCancel}
@@ -162,7 +193,7 @@ function renderForm(
     const screen = render(tree());
     // The mocked useSubmitForm does not re-render when its state changes.
     const rerender = async () => (await screen).rerender(tree());
-    return { screen, rerender, onRegistered, onCancel };
+    return { screen, rerender, onRegistered, onCancel, onAccountCreationRejected };
 }
 
 /**
@@ -529,6 +560,152 @@ describe("RegistrationForm", () => {
             .element(screen.getByRole("heading", { name: "Step 1: Provide your information" }))
             .toBeVisible();
         expect(formState.submit.mutate).not.toHaveBeenCalled();
+    });
+
+    describe("who the account is for", () => {
+        const INFO = "All remaining questions relate to the person you are representing.";
+
+        it("repeats the info bar in Step 1 for a representative", async () => {
+            formState.spec.data = { version: 4, spec: specV4 };
+            const screen = await renderForm({}, { accountCreation: LEGAL_REPRESENTATIVE }).screen;
+
+            await expect.element(screen.getByText(INFO)).toBeVisible();
+        });
+
+        it("shows no info bar for an account made for oneself", async () => {
+            formState.spec.data = { version: 4, spec: specV4 };
+            const screen = await renderForm().screen;
+
+            await expect.element(screen.getByRole("textbox", { name: /First name/ })).toBeVisible();
+            await expect.element(screen.getByText(INFO)).not.toBeInTheDocument();
+        });
+
+        it("fills nothing from the sign-in for a representative", async () => {
+            formState.spec.data = { version: 4, spec: specV4 };
+            const screen = await renderForm({}, { accountCreation: LEGAL_REPRESENTATIVE }).screen;
+
+            const firstName = screen.getByRole("textbox", { name: /First name/ });
+            await expect.element(firstName).toHaveValue("");
+            await expect.element(firstName).toBeEnabled();
+            await expect.element(screen.getByRole("textbox", { name: /Email/ })).toHaveValue("");
+        });
+
+        it("sends the account-creation data beside the answers, not in them", async () => {
+            formState.spec.data = { version: 4, spec: specV4 };
+            const screen = await renderForm({}, { accountCreation: LEGAL_REPRESENTATIVE }).screen;
+
+            await screen.getByRole("textbox", { name: /First name/ }).fill("Sam");
+            await screen.getByRole("textbox", { name: /Last name/ }).fill("Rivera");
+            await screen.getByRole("textbox", { name: /Email/ }).fill("sam@example.com");
+            await screen.getByText("Woman/Girl", { exact: true }).click();
+            await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("046454286");
+            await continueToReview(screen);
+            await screen.getByRole("button", { name: "Complete registration" }).click();
+
+            await vi.waitFor(() => expect(formState.submit.mutate).toHaveBeenCalledOnce());
+            const [input] = formState.submit.mutate.mock.calls[0] as [
+                { answers: Record<string, unknown>; accountCreation?: unknown },
+            ];
+            expect(input.accountCreation).toEqual(LEGAL_REPRESENTATIVE.request);
+            expect(input.answers).not.toHaveProperty("accountCreation");
+            expect(input.answers).toMatchObject({ firstName: "Sam", lastName: "Rivera" });
+        });
+
+        it("lists the account-creation answers in their own group on the review", async () => {
+            formState.spec.data = { version: 4, spec: specV4 };
+            const screen = await renderForm({}, { accountCreation: LEGAL_REPRESENTATIVE }).screen;
+            await screen.getByRole("textbox", { name: /First name/ }).fill("Sam");
+            await screen.getByRole("textbox", { name: /Last name/ }).fill("Rivera");
+            await screen.getByRole("textbox", { name: /Email/ }).fill("sam@example.com");
+            await screen.getByText("Woman/Girl", { exact: true }).click();
+            await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("046454286");
+
+            await continueToReview(screen);
+
+            await expect.element(screen.getByText("You, the representative", { exact: true })).toBeVisible();
+            await expect
+                .element(screen.getByText("The person you are representing", { exact: true }))
+                .toBeVisible();
+            await expect.element(screen.getByRole("row", { name: "Agency Northern Trustee Services" })).toBeVisible();
+            await expect.element(screen.getByText("poa.pdf (412 KB)")).toBeVisible();
+            await expect
+                .element(screen.getByRole("button", { name: /Change your answers/ }))
+                .not.toBeInTheDocument();
+            await expect.element(screen.getByText("Need to make a change?")).toBeVisible();
+        });
+
+        it("names the groups for an account made for oneself", async () => {
+            formState.spec.data = { version: 4, spec: specV4 };
+            const screen = await renderForm().screen;
+            await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082833");
+
+            await continueToReview(screen);
+
+            await expect.element(screen.getByText("About the account", { exact: true })).toBeVisible();
+            const headings = Array.from(screen.container.querySelectorAll('th[scope="rowgroup"]'));
+            expect(headings.map((th) => th.textContent)).toEqual(["About the account", "Your information"]);
+        });
+
+        it("hands a refusal of the account-creation answers to the page, and keeps it out of the form", async () => {
+            formState.spec.data = { version: 4, spec: specV4 };
+            const phoneRefused: FormValidationError = {
+                field: "representativePhone",
+                keyword: "IDA.PHONE.INVALID_FORMAT",
+                message: "Phone number is invalid",
+            };
+            refuseWith([phoneRefused]);
+            const { screen: pending, rerender, onAccountCreationRejected } = renderForm({}, { accountCreation: LEGAL_REPRESENTATIVE });
+            const screen = await pending;
+            await screen.getByRole("textbox", { name: /First name/ }).fill("Sam");
+            await screen.getByRole("textbox", { name: /Last name/ }).fill("Rivera");
+            await screen.getByRole("textbox", { name: /Email/ }).fill("sam@example.com");
+            await screen.getByText("Woman/Girl", { exact: true }).click();
+            await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("046454286");
+            await continueToReview(screen);
+
+            await screen.getByRole("button", { name: "Complete registration" }).click();
+            await rerender();
+
+            await vi.waitFor(() => expect(onAccountCreationRejected).toHaveBeenCalledWith([phoneRefused]));
+            await expect.element(screen.getByRole("heading", { name: /Review and submit/ })).toBeVisible();
+            await expect.element(screen.getByText("There is a problem")).not.toBeInTheDocument();
+        });
+
+        it("lists only the form's own errors in Step 1's summary when a refusal mixes both", async () => {
+            formState.spec.data = { version: 4, spec: specV4 };
+            const documentRefused: FormValidationError = {
+                field: "powerOfAttorneyDocuments",
+                keyword: "REGISTRATION.DOCUMENT.NOT_FOUND",
+                message: "One of the attached documents could not be found. Remove it and attach it again.",
+            };
+            refuseWith([sinRefused, documentRefused]);
+            const { screen: pending, rerender } = renderForm();
+            const screen = await pending;
+            await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082830");
+            await continueToReview(screen);
+
+            await screen.getByRole("button", { name: "Complete registration" }).click();
+            await rerender();
+
+            await expect.element(screen.getByRole("heading", { name: "Step 1: Provide your information" })).toBeVisible();
+            await expect.element(screen.getByRole("button", { name: sinRefused.message })).toBeInTheDocument();
+            await expect.element(screen.getByRole("button", { name: documentRefused.message })).not.toBeInTheDocument();
+        });
+
+        it("still takes a refusal of the form's own answers back to Step 1", async () => {
+            formState.spec.data = { version: 4, spec: specV4 };
+            refuseWith([sinRefused]);
+            const { screen: pending, rerender, onAccountCreationRejected } = renderForm();
+            const screen = await pending;
+            await screen.getByRole("textbox", { name: /Social Insurance Number/ }).fill("050082830");
+            await continueToReview(screen);
+
+            await screen.getByRole("button", { name: "Complete registration" }).click();
+            await rerender();
+
+            await expect.element(screen.getByRole("heading", { name: "Step 1: Provide your information" })).toBeVisible();
+            expect(onAccountCreationRejected).not.toHaveBeenCalled();
+        });
     });
 });
 

@@ -1,5 +1,7 @@
 namespace Myss.Api
 {
+    using Myss.Common.Storage;
+    using Myss.Data.Attachments;
     using System;
     using Microsoft.AspNetCore.Authentication;
     using Microsoft.AspNetCore.Builder;
@@ -83,6 +85,7 @@ namespace Myss.Api
                 this.startupConfig.Configuration, "Strapi:ApiToken"));
             services.AddHttpClient<IFormSpecProvider, StrapiFormSpecProvider>();
             services.AddScoped<IFormsService, FormsService>();
+            services.AddScoped<IAccountCreationService, AccountCreationService>();
             services.AddScoped<IUserProfileService, UserProfileService>();
 
             // Account Info. The case details are placeholders until
@@ -132,7 +135,7 @@ namespace Myss.Api
                 options.UseNpgsql(
                     configuration.GetConnectionString("AttachmentsDb")
                         ?? configuration.GetConnectionString(FormsDbConnection),
-                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "attachments")));
+                    npgsql => MyssMigrations.Configure(npgsql, "attachments")));
             services.AddSingleton<IVirusScanProvider, ClamAvScanProvider>();
 
             // No storage config, no startup — same fail-closed idea as the

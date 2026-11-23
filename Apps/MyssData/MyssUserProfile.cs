@@ -141,6 +141,26 @@ namespace Myss.Data
         /// </summary>
         public string? CreatedByIdir { get; set; }
 
+        /// <summary>
+        /// Gets or sets who the citizen said the account is for when registering.
+        /// Null for profiles registered before the question was asked, and for
+        /// worker override accounts.
+        /// </summary>
+        public AccountCreationContext? AccountCreationContext { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether a citizen registering with help authorized the
+        /// ministry to share their information with the helper. Null in every
+        /// other context, and for profiles registered before the question was asked.
+        /// </summary>
+        public bool? HelperAuthorized { get; set; }
+
+        /// <summary>Gets or sets the representative who made the account, when someone made it for the citizen.</summary>
+        public AccountRepresentative? Representative { get; set; }
+
+        /// <summary>Gets or sets the documents linked to the account at registration.</summary>
+        public List<AccountDocument> Documents { get; set; } = [];
+
         /// <summary>Gets or sets the citizen's phone numbers, in their chosen order.</summary>
         public List<MyssUserPhone> Phones { get; set; } = [];
 

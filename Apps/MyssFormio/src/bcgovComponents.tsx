@@ -17,11 +17,9 @@
 
 import type { ReactNode } from "react";
 import { Components, Utils } from "@formio/js";
-import { parseDate, type CalendarDate } from "@internationalized/date";
 import {
   Accordion,
   Button,
-  DatePicker,
   Radio,
   RadioGroup,
   Select,
@@ -35,12 +33,15 @@ import {
 import { BcgovAddressAutocompleteComponent } from "./addressAutocomplete";
 import "./bcgovComponents.css";
 import CheckboxField from "./CheckboxField";
+import DateInputField from "./DateInputField";
 import {
   ReactMount,
+  isPromise,
   isRequired,
   stockComponent,
   textOf,
   withBcgovField,
+  type FormioError,
   type FormioFieldCtor,
   type FormioFieldInstance,
 } from "./bcgovField";
@@ -60,6 +61,15 @@ import calloutStyles from "./Callout.module.css";
 import { setCanadaPostApiKey } from "./config";
 import { escapeHtml } from "./html";
 import { BcgovRepeatSectionComponent } from "./repeatSection";
+import {
+  checkDateEntry,
+  checkRule,
+  isoDateOf,
+  ruleMessage,
+  type DateEntry,
+  type DateEntryFailure,
+  type DateEntryPart,
+} from "./validationRules";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -743,35 +753,101 @@ class BcgovRadioComponent extends withBcgovField(stockComponent("radio")) {
 // ---------------------------------------------------------------------------
 // datetime
 
-/** Read the stored date portion without converting it through a time zone. */
-function calendarDateOf(value: unknown): CalendarDate | null {
-  const match = /^(\d{4}-\d{2}-\d{2})(?:T|$)/.exec(textOf(value));
-  if (!match) return null;
-  try {
-    return parseDate(match[1]);
-  } catch {
-    return null;
+/**
+ * A stored answer as the date input's parts, read from its date portion so no
+ * time zone shifts it; empty parts for anything that is not a real date.
+ */
+function dateEntryOf(value: unknown): DateEntry {
+  const text = textOf(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T|$)/.exec(text);
+  if (!match || checkRule("date", text, { data: {}, component: {} })) {
+    return { month: "", day: "", year: "" };
   }
+  return {
+    month: String(Number(match[2])),
+    day: String(Number(match[3])),
+    year: match[1],
+  };
 }
 
+const ALL_DATE_PARTS: readonly DateEntryPart[] = ["month", "day", "year"];
+
 /**
- * Form.io's `datetime`, drawn with the BC Gov date picker. The answer is
- * stored as the ISO date (`yyyy-MM-dd`), which the API's date parsing accepts
- * alongside the datetime strings Form.io's own picker used to send.
+ * Form.io's `datetime`, drawn as the design system's month, day and year
+ * inputs. The answer is stored as the ISO date (`yyyy-MM-dd`), which the API's
+ * date parsing accepts alongside the datetime strings Form.io's own picker
+ * used to send. Until the parts make a real date the answer is empty, and the
+ * part that is missing or wrong is what the citizen is told about.
  */
 class BcgovDateTimeComponent extends withBcgovField(
   stockComponent("datetime"),
 ) {
+  /** The parts being typed; undefined when the field shows the stored value. */
+  private typed?: DateEntry;
+
+  override setValue(value: unknown, flags?: Record<string, unknown>): boolean {
+    // A value set from outside (a loaded draft, a cleared conditional field)
+    // replaces whatever was being typed.
+    this.typed = undefined;
+    return super.setValue(value, flags);
+  }
+
+  private bcgovEntry(): DateEntry {
+    return this.typed ?? dateEntryOf(this.dataValue);
+  }
+
+  private bcgovEntryFailures(): DateEntryFailure[] {
+    if (!this.visible || this.options.readOnly === true) return [];
+    return checkDateEntry(this.bcgovEntry());
+  }
+
+  override validateComponent(
+    data?: unknown,
+    row?: unknown,
+    flags: Record<string, unknown> = {},
+  ): FormioError[] | Promise<FormioError[]> {
+    const result = super.validateComponent(data, row, flags);
+    const failed = this.bcgovEntryFailures()[0];
+    if (!failed) return result;
+    // Form.io's rules only saw the empty answer an unfinished date holds, so
+    // its "required" would be wrong; the part's message replaces it.
+    const errors = [this.bcgovRuleError(failed)];
+    return isPromise(result) ? result.then(() => errors) : errors;
+  }
+
   protected renderReact(): ReactNode {
-    const props = this.bcgovFieldProps();
+    const { errorMessage, ...props } = this.bcgovFieldProps();
+    const entry = this.bcgovEntry();
+    const errors: { message: string; parts: DateEntryPart[] }[] = [];
+    if (errorMessage) {
+      const failures = this.bcgovEntryFailures();
+      if (failures.length === 0) {
+        // Form.io's own rules or the API judged the whole date.
+        errors.push({ message: errorMessage, parts: [...ALL_DATE_PARTS] });
+      }
+      for (const failed of failures) {
+        const message = ruleMessage(this.component, failed);
+        const same = errors.find((error) => error.message === message);
+        if (same) same.parts.push(...failed.parts);
+        else errors.push({ message, parts: [...failed.parts] });
+      }
+    }
+
     return (
-      <DatePicker
-        {...props}
-        // Form.io owns validation; "aria" shows its message, not the browser's.
-        validationBehavior="aria"
-        value={calendarDateOf(this.dataValue)}
-        onChange={(next) => {
-          this.bcgovCommit(next ? next.toString() : "");
+      <DateInputField
+        label={props.label}
+        aria-label={props["aria-label"]}
+        description={props.description}
+        isRequired={props.isRequired}
+        isDisabled={props.isDisabled}
+        name={props.name}
+        entry={entry}
+        isoValue={isoDateOf(entry) ?? ""}
+        errors={errors}
+        onChange={(part, text) => {
+          const next = { ...this.bcgovEntry(), [part]: text };
+          this.typed = next;
+          this.bcgovCommit(isoDateOf(next) ?? "");
         }}
       />
     );

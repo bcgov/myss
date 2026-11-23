@@ -23,7 +23,6 @@
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
 
         <!-- Object storage (S3-compatible: MinIO locally, any S3 endpoint deployed) -->
-        <PackageReference Include="AWSSDK.S3" Version="4.0.103.4" />
 
         <!-- Outbound HTTP resilience (retry, circuit breaker, timeouts) for the ICM middleware client -->
         <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />

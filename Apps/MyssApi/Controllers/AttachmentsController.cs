@@ -1,5 +1,6 @@
 namespace Myss.Api.Controllers
 {
+    using Myss.Data.Attachments;
     using System;
     using System.Collections.Generic;
     using System.Threading;

@@ -1,5 +1,7 @@
 namespace Myss.Api.Services
 {
+    using Myss.Common.Storage;
+    using Myss.Data.Attachments;
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -63,7 +65,9 @@ namespace Myss.Api.Services
             string contentType,
             long sizeBytes,
             Stream content,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Guid? submissionId = null,
+            Func<CancellationToken, Task<bool>>? stillAccepting = null)
         {
             if (sizeBytes <= 0)
             {
@@ -141,7 +145,23 @@ namespace Myss.Api.Services
             buffer.Position = 0;
             attachment.ETag = await _fileStorageProvider.PutAsync(
                 attachment.StorageKey, buffer, contentType, cancellationToken);
+
+            // The application may have been submitted while this file was
+            // scanned and stored. If so it no longer takes files: remove the
+            // stored copy and drop the row rather than release a file the
+            // submit did not record.
+            if (stillAccepting is not null && !await stillAccepting(cancellationToken))
+            {
+                await _fileStorageProvider.DeleteAsync(attachment.StorageKey, cancellationToken);
+                _dbContext.Attachments.Remove(attachment);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return AttachmentUploadResult.Rejected(
+                    AttachmentRejectionReason.NoLongerAccepted,
+                    "The application can no longer be changed, so the file was not added.");
+            }
+
             attachment.Status = AttachmentStatus.Released;
+            attachment.SubmissionId = submissionId;
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation(
@@ -173,6 +193,73 @@ namespace Myss.Api.Services
                     UploadedAt = a.UploadedAt,
                 })
                 .ToListAsync(cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public async Task<IReadOnlyList<AttachmentResponseModel>> ListForSubmissionAsync(
+            Guid submissionId,
+            CancellationToken cancellationToken)
+        {
+            string subject = _currentUserAccessor.User.Subject;
+            List<Attachment> rows = await _dbContext.Attachments
+                .AsNoTracking()
+                .Where(a => a.SubmissionId == submissionId
+                    && a.OwnerSubject == subject
+                    && a.Status == AttachmentStatus.Released)
+                .OrderBy(a => a.UploadedAt)
+                .ToListAsync(cancellationToken);
+            return rows.Select(ToResponse).ToList();
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> DeleteFromSubmissionAsync(
+            Guid submissionId,
+            Guid attachmentId,
+            CancellationToken cancellationToken)
+        {
+            string subject = _currentUserAccessor.User.Subject;
+            Attachment? attachment = await _dbContext.Attachments.SingleOrDefaultAsync(
+                a => a.Id == attachmentId
+                    && a.SubmissionId == submissionId
+                    && a.OwnerSubject == subject
+                    && a.Status == AttachmentStatus.Released,
+                cancellationToken);
+            if (attachment is null)
+            {
+                return false;
+            }
+
+            // Content first: if the store call fails the row is still there
+            // and the applicant can try again, rather than a row with no file.
+            await _fileStorageProvider.DeleteAsync(attachment.StorageKey, cancellationToken);
+            _dbContext.Attachments.Remove(attachment);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Removed attachment {AttachmentId} from submission {SubmissionId} for {OwnerSubject}",
+                attachment.Id,
+                submissionId,
+                subject);
+            return true;
+        }
+
+        /// <inheritdoc/>
+        public async Task<IReadOnlySet<Guid>> FindReleasedAsync(
+            IReadOnlyCollection<Guid> ids,
+            string ownerSubject,
+            CancellationToken cancellationToken)
+        {
+            if (ids.Count == 0)
+            {
+                return new HashSet<Guid>();
+            }
+
+            List<Guid> found = await _dbContext.Attachments
+                .AsNoTracking()
+                .Where(a => ids.Contains(a.Id) && a.OwnerSubject == ownerSubject && a.Status == AttachmentStatus.Released)
+                .Select(a => a.Id)
+                .ToListAsync(cancellationToken);
+            return found.ToHashSet();
         }
 
         /// <summary>

@@ -5,6 +5,8 @@ namespace Myss.AdminApi
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.EntityFrameworkCore;
+    using Myss.Common.Storage;
+    using Myss.Data.Attachments;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -118,6 +120,31 @@ namespace Myss.AdminApi
                         ?? formsDb,
                     npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "intake")));
             services.AddScoped<IEventStore, EventStore>();
+
+            // Supporting documents on submitted applications: read-only over
+            // the attachments schema (MyssApi migrates it) and the object store
+            // MyssApi uploads to, with the same ObjectStorage keys. Unlike
+            // MyssApi this does not refuse to start without them: the rest of
+            // the worker screens keep working and only a document download
+            // fails, with an error that names the missing settings.
+            services.AddDbContext<AttachmentsDbContext>(options =>
+                options.UseNpgsql(
+                    configuration.GetConnectionString("AttachmentsDb")
+                        ?? formsDb,
+                    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "attachments")));
+            services.Configure<ObjectStorageConfig>(configuration.GetSection("ObjectStorage"));
+            ObjectStorageConfig objectStorage = new();
+            configuration.GetSection("ObjectStorage").Bind(objectStorage);
+            if (objectStorage.IsConfigured)
+            {
+                services.AddSingleton<IFileStorageProvider, S3FileStorageProvider>();
+            }
+            else
+            {
+                services.AddSingleton<IFileStorageProvider, UnconfiguredFileStorageProvider>();
+            }
+
+            services.AddScoped<IReviewAttachmentsService, ReviewAttachmentsService>();
 
             // Specs for the worker screens (the version an application or submission
             // was made on), read with this API's Strapi:AdminApiToken.

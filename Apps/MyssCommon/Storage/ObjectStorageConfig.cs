@@ -1,4 +1,4 @@
-namespace Myss.Api.Configuration.Models
+namespace Myss.Common.Storage
 {
     /// <summary>
     /// Connection settings for the S3-compatible object store, bound from the

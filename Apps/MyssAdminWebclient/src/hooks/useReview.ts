@@ -71,6 +71,8 @@ export function useReviewApplication(id: string) {
 export interface ReviewActionInput {
   action: ReviewActionRoute;
   streamVersion: number;
+  /** A comment on the decision, kept as a note with it. */
+  comment?: string;
 }
 
 /**
@@ -110,8 +112,10 @@ function useReviewWrite<TInput>(
 
 /** Moves a file: pick it up, release it, or decide it. */
 export function useReviewAction(id: string) {
-  return useReviewWrite(id, ({ action, streamVersion }: ReviewActionInput) =>
-    performReviewAction(id, action, streamVersion),
+  return useReviewWrite(
+    id,
+    ({ action, streamVersion, comment }: ReviewActionInput) =>
+      performReviewAction(id, action, streamVersion, comment),
   );
 }
 

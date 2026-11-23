@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { cancelAccountEmailChange, changeAccountEmail, createAfaApplication, createApplication, getAccount, getAfaApplication, getApplication, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFeatures, getFormSpec, getMe, getPlaceholder, getRegistrationEmailVerification, listAfaApplications, listApplications, listAttachments, type Options, requestPinReset, requestRegistrationEmailVerification, resendAccountEmailVerification, resetPin, saveAccountPin, saveApplicationAnswers, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment, verifyEmail } from '../sdk.gen';
-import type { CancelAccountEmailChangeData, CancelAccountEmailChangeError, CancelAccountEmailChangeResponse, ChangeAccountEmailData, ChangeAccountEmailError, ChangeAccountEmailResponse, CreateAfaApplicationData, CreateAfaApplicationError, CreateAfaApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetAfaApplicationData, GetAfaApplicationError, GetAfaApplicationResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFeaturesData, GetFeaturesResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetRegistrationEmailVerificationData, GetRegistrationEmailVerificationResponse, ListAfaApplicationsData, ListAfaApplicationsResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, RequestPinResetData, RequestPinResetError, RequestPinResetResponse, RequestRegistrationEmailVerificationData, RequestRegistrationEmailVerificationError, RequestRegistrationEmailVerificationResponse, ResendAccountEmailVerificationData, ResendAccountEmailVerificationError, ResendAccountEmailVerificationResponse, ResetPinData, ResetPinError, ResetPinResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse, VerifyEmailData, VerifyEmailError, VerifyEmailResponse } from '../types.gen';
+import { cancelAccountEmailChange, changeAccountEmail, createAfaApplication, createApplication, getAccount, getAfaApplication, getApplication, getErrorMessages, getEstimatorRates, getEstimatorSpec, getFeatures, getFormMessage, getFormSpec, getMe, getPlaceholder, getRegistrationEmailVerification, listAfaApplications, listApplications, listAttachments, type Options, requestPinReset, requestRegistrationEmailVerification, resendAccountEmailVerification, resetPin, saveAccountPin, saveApplicationAnswers, submitApplication, submitBusPass, submitForm, updateAccountNotificationPreferences, updateAccountPhones, uploadAttachment, verifyEmail, withdrawApplication } from '../sdk.gen';
+import type { CancelAccountEmailChangeData, CancelAccountEmailChangeError, CancelAccountEmailChangeResponse, ChangeAccountEmailData, ChangeAccountEmailError, ChangeAccountEmailResponse, CreateAfaApplicationData, CreateAfaApplicationError, CreateAfaApplicationResponse, CreateApplicationData, CreateApplicationError, CreateApplicationResponse, GetAccountData, GetAccountError, GetAccountResponse, GetAfaApplicationData, GetAfaApplicationError, GetAfaApplicationResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetErrorMessagesData, GetErrorMessagesResponse, GetEstimatorRatesData, GetEstimatorRatesResponse, GetEstimatorSpecData, GetEstimatorSpecError, GetEstimatorSpecResponse, GetFeaturesData, GetFeaturesResponse, GetFormMessageData, GetFormMessageError, GetFormMessageResponse, GetFormSpecData, GetFormSpecError, GetFormSpecResponse, GetMeData, GetMeError, GetMeResponse, GetPlaceholderData, GetPlaceholderResponse, GetRegistrationEmailVerificationData, GetRegistrationEmailVerificationResponse, ListAfaApplicationsData, ListAfaApplicationsResponse, ListApplicationsData, ListApplicationsResponse, ListAttachmentsData, ListAttachmentsResponse, RequestPinResetData, RequestPinResetError, RequestPinResetResponse, RequestRegistrationEmailVerificationData, RequestRegistrationEmailVerificationError, RequestRegistrationEmailVerificationResponse, ResendAccountEmailVerificationData, ResendAccountEmailVerificationError, ResendAccountEmailVerificationResponse, ResetPinData, ResetPinError, ResetPinResponse, SaveAccountPinData, SaveAccountPinError, SaveAccountPinResponse, SaveApplicationAnswersData, SaveApplicationAnswersError, SaveApplicationAnswersResponse, SubmitApplicationData, SubmitApplicationError, SubmitApplicationResponse, SubmitBusPassData, SubmitBusPassError, SubmitBusPassResponse, SubmitFormData, SubmitFormError, SubmitFormResponse, UpdateAccountNotificationPreferencesData, UpdateAccountNotificationPreferencesError, UpdateAccountNotificationPreferencesResponse, UpdateAccountPhonesData, UpdateAccountPhonesError, UpdateAccountPhonesResponse, UploadAttachmentData, UploadAttachmentError, UploadAttachmentResponse, VerifyEmailData, VerifyEmailError, VerifyEmailResponse, WithdrawApplicationData, WithdrawApplicationError, WithdrawApplicationResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -302,9 +302,10 @@ export const cancelAccountEmailChangeMutation = (options?: Partial<Options<Cance
 
 /**
  * Registration's Step 2 (MYSS-295): emails a link to prove the address
- * from Step 1, before the profile exists. Any signed-in caller, as the
- * registration submit is. An address already proven in this
- * registration is not sent another link.
+ * from Step 1, before the profile exists. Citizens only (the Client
+ * policy, which a citizen sign-in has before registering): a worker or
+ * admin sign-in cannot send these emails. An address already proven in
+ * this registration is not sent another link.
  */
 export const requestRegistrationEmailVerificationMutation = (options?: Partial<Options<RequestRegistrationEmailVerificationData>>): UseMutationOptions<RequestRegistrationEmailVerificationResponse, RequestRegistrationEmailVerificationError, Options<RequestRegistrationEmailVerificationData>> => {
     const mutationOptions: UseMutationOptions<RequestRegistrationEmailVerificationResponse, RequestRegistrationEmailVerificationError, Options<RequestRegistrationEmailVerificationData>> = {
@@ -374,6 +375,25 @@ export const getFeaturesOptions = (options?: Options<GetFeaturesData>) => queryO
         return data;
     },
     queryKey: getFeaturesQueryKey(options)
+});
+
+export const getFormMessageQueryKey = (options: Options<GetFormMessageData>) => createQueryKey('getFormMessage', options);
+
+/**
+ * Returns a form message's live texts. A 404 when none is published or the
+ * message is not defined; a 502 when the content engine cannot be read.
+ */
+export const getFormMessageOptions = (options: Options<GetFormMessageData>) => queryOptions<GetFormMessageResponse, GetFormMessageError, GetFormMessageResponse, ReturnType<typeof getFormMessageQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getFormMessage({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getFormMessageQueryKey(options)
 });
 
 export const getFormSpecQueryKey = (options: Options<GetFormSpecData>) => createQueryKey('getFormSpec', options);
@@ -565,6 +585,23 @@ export const submitApplicationMutation = (options?: Partial<Options<SubmitApplic
     const mutationOptions: UseMutationOptions<SubmitApplicationResponse, SubmitApplicationError, Options<SubmitApplicationData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await submitApplication({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Withdraws the caller's draft, submitted or returned application.
+ */
+export const withdrawApplicationMutation = (options?: Partial<Options<WithdrawApplicationData>>): UseMutationOptions<WithdrawApplicationResponse, WithdrawApplicationError, Options<WithdrawApplicationData>> => {
+    const mutationOptions: UseMutationOptions<WithdrawApplicationResponse, WithdrawApplicationError, Options<WithdrawApplicationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await withdrawApplication({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

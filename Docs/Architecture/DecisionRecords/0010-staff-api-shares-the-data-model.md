@@ -1,6 +1,7 @@
 # ADR-0010 — The staff API is a second deployable sharing MyssApi's data model
 
-- **Status:** Proposed
+- **Status:** Accepted
+- **Implementation status:** implemented — `Apps/MyssData` holds the shared EF model (e.g. `Myss.Data.Platform`, `Myss.Data.Intake`) and MyssAdminApi consumes it
 - **Date:** 2026-10-20
 - **Deciders:** Development team
 - **Related:** ADR-0001 (event sourcing), ADR-0002 (module boundaries), ADR-0003 (EF Core code-first), ADR-0008 (intake dependencies), ADR-0009 (migrations as pipeline jobs)

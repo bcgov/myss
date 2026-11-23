@@ -41,6 +41,11 @@ export const RULE_KEYWORDS = {
   phoneInvalidFormat: "IDA.PHONE.INVALID_FORMAT",
   postalCodeInvalidFormat: "IDA.POSTAL_CODE.INVALID_FORMAT",
   dateInvalid: "FORM.DATE.INVALID",
+  dateMonthRequired: "FORM.DATE.MONTH_REQUIRED",
+  dateDayRequired: "FORM.DATE.DAY_REQUIRED",
+  dateDayInvalid: "FORM.DATE.DAY_INVALID",
+  dateYearRequired: "FORM.DATE.YEAR_REQUIRED",
+  dateYearInvalid: "FORM.DATE.YEAR_INVALID",
 } as const;
 
 /**
@@ -59,6 +64,11 @@ export const DEFAULT_MESSAGES: Readonly<Record<string, string>> = {
   [RULE_KEYWORDS.postalCodeInvalidFormat]:
     "Enter a postal code in the format A1A 1A1.",
   [RULE_KEYWORDS.dateInvalid]: "Enter a valid date.",
+  [RULE_KEYWORDS.dateMonthRequired]: "A birth month is required",
+  [RULE_KEYWORDS.dateDayRequired]: "A birth day is required",
+  [RULE_KEYWORDS.dateDayInvalid]: "Invalid Day",
+  [RULE_KEYWORDS.dateYearRequired]: "A birth year is required",
+  [RULE_KEYWORDS.dateYearInvalid]: "Invalid Year",
 };
 
 function failure(rule: string, keyword: string): RuleFailure {
@@ -211,6 +221,89 @@ const dateParts: ValidationRule = (value, { data, component }) => {
     ? null
     : failure("dateParts", RULE_KEYWORDS.dateInvalid);
 };
+
+/** A date as typed into the date input: the month's number ("1" to "12"), the day and the year. */
+export interface DateEntry {
+  readonly month: string;
+  readonly day: string;
+  readonly year: string;
+}
+
+export type DateEntryPart = keyof DateEntry;
+
+/** A failure of a date typed in parts, with the parts it is about. */
+export interface DateEntryFailure extends RuleFailure {
+  readonly parts: readonly DateEntryPart[];
+}
+
+const ONE_OR_TWO_DIGITS = /^\d{1,2}$/;
+const YEAR_TEXT = /^\d{4}$/;
+/** Legacy MySS's earliest year; future years are accepted. */
+const MIN_YEAR = 1900;
+
+function partFailure(part: DateEntryPart, keyword: string): DateEntryFailure {
+  const rule = `date${part.charAt(0).toUpperCase()}${part.slice(1)}`;
+  return { ...failure(rule, keyword), parts: [part] };
+}
+
+/**
+ * A date typed as month, day and year, checked the way legacy MySS checked a
+ * birth date. Nothing typed is no failure (whether the date may be left out
+ * is Form.io's required rule). Each blank or out-of-range part fails on its
+ * own; three good parts that make no real date (31 February), or three bad
+ * ones, fail together as the date.
+ */
+export function checkDateEntry(entry: DateEntry): DateEntryFailure[] {
+  const month = entry.month.trim();
+  const day = entry.day.trim();
+  const year = entry.year.trim();
+  if (month === "" && day === "" && year === "") return [];
+
+  const failures: DateEntryFailure[] = [];
+  const monthNumber = ONE_OR_TWO_DIGITS.test(month) ? Number(month) : 0;
+  // Chosen from a list, so a month is either there or not.
+  if (monthNumber < 1 || monthNumber > 12) {
+    failures.push(partFailure("month", RULE_KEYWORDS.dateMonthRequired));
+  }
+  const dayNumber = ONE_OR_TWO_DIGITS.test(day) ? Number(day) : 0;
+  if (day === "") {
+    failures.push(partFailure("day", RULE_KEYWORDS.dateDayRequired));
+  } else if (dayNumber < 1 || dayNumber > 31) {
+    failures.push(partFailure("day", RULE_KEYWORDS.dateDayInvalid));
+  }
+  if (year === "") {
+    failures.push(partFailure("year", RULE_KEYWORDS.dateYearRequired));
+  } else if (!YEAR_TEXT.test(year) || Number(year) < MIN_YEAR) {
+    failures.push(partFailure("year", RULE_KEYWORDS.dateYearInvalid));
+  }
+  if (
+    failures.length === 0 &&
+    !isRealDate(Number(year), monthNumber, dayNumber)
+  ) {
+    failures.push({
+      ...failure("date", RULE_KEYWORDS.dateInvalid),
+      parts: ["month", "day", "year"],
+    });
+  }
+  // Every part wrong is one problem with the date, not three messages.
+  if (failures.length === 3) {
+    return [
+      {
+        ...failure("date", RULE_KEYWORDS.dateInvalid),
+        parts: ["month", "day", "year"],
+      },
+    ];
+  }
+  return failures;
+}
+
+/** The ISO date (`yyyy-MM-dd`) the parts make, or null while they make none. */
+export function isoDateOf(entry: DateEntry): string | null {
+  const blank = `${entry.month}${entry.day}${entry.year}`.trim() === "";
+  if (blank || checkDateEntry(entry).length > 0) return null;
+  const pad = (text: string) => text.trim().padStart(2, "0");
+  return `${entry.year.trim()}-${pad(entry.month)}-${pad(entry.day)}`;
+}
 
 /** Every rule a field can name in `properties.myssValidator`. */
 export const VALIDATION_RULES: Readonly<Record<string, ValidationRule>> = {

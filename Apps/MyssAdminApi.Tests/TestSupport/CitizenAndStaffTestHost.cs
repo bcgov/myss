@@ -12,13 +12,16 @@ namespace Myss.AdminApi.Tests.TestSupport
     using Myss.AdminApi.Configuration;
     using Myss.AdminApi.Providers;
     using Myss.AdminApi.Tests.TestDoubles;
+    using Myss.Common.Storage;
     using Myss.Data;
+    using Myss.Data.Attachments;
     using Myss.Data.Intake;
     using Myss.Data.Platform;
     using Myss.Common.Auth;
     using Myss.Common.Content;
     using CitizenErrorMessageProvider = citizen::Myss.Api.Providers.IErrorMessageProvider;
     using CitizenStartup = citizen::Myss.Api.Startup;
+    using CitizenVirusScanProvider = citizen::Myss.Api.Providers.IVirusScanProvider;
 
     /// <summary>
     /// The two services a file passes through, over one in-memory copy of the
@@ -66,6 +69,11 @@ namespace Myss.AdminApi.Tests.TestSupport
                 .UseInMemoryDatabase(dbName + "-intake")
                 .UseInternalServiceProvider(efProvider)
                 .Options;
+            DbContextOptions<AttachmentsDbContext> attachments = new DbContextOptionsBuilder<AttachmentsDbContext>()
+                .UseInMemoryDatabase(dbName + "-attachments")
+                .UseInternalServiceProvider(efProvider)
+                .Options;
+            var storage = new InMemoryFileStorageProvider();
 
             using (var db = new InMemoryFormsDbContext(forms))
             {
@@ -103,6 +111,12 @@ namespace Myss.AdminApi.Tests.TestSupport
                 services.RemoveAll<DbContextOptions<IntakeDbContext>>();
                 services.RemoveAll<IntakeDbContext>();
                 services.AddScoped<IntakeDbContext>(_ => new InMemoryIntakeDbContext(intake));
+
+                services.RemoveAll<DbContextOptions<AttachmentsDbContext>>();
+                services.RemoveAll<AttachmentsDbContext>();
+                services.AddScoped<AttachmentsDbContext>(_ => new AttachmentsDbContext(attachments));
+                services.RemoveAll<IFileStorageProvider>();
+                services.AddSingleton<IFileStorageProvider>(storage);
             }
 
             _citizenFactory = new WebApplicationFactory<CitizenStartup>().WithWebHostBuilder(builder =>
@@ -121,6 +135,10 @@ namespace Myss.AdminApi.Tests.TestSupport
                     // reaches for a content engine that is not running here.
                     services.RemoveAll<CitizenErrorMessageProvider>();
                     services.AddSingleton<CitizenErrorMessageProvider>(new CompiledErrorMessages());
+
+                    // Every upload scans clean; the scan rules have their own tests in MyssApi.
+                    services.RemoveAll<CitizenVirusScanProvider>();
+                    services.AddSingleton<CitizenVirusScanProvider>(new CleanScan());
                 });
             });
 
@@ -231,6 +249,32 @@ namespace Myss.AdminApi.Tests.TestSupport
             await db.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Adds a released attachment row straight to the shared store, linked
+        /// to an application, as an upload that finished after the submit
+        /// would have left it without the release-time check.
+        /// </summary>
+        public async Task<Guid> AddReleasedAttachment(Guid applicationId, string persona)
+        {
+            using IServiceScope scope = _staffFactory.Services.CreateScope();
+            AttachmentsDbContext db = scope.ServiceProvider.GetRequiredService<AttachmentsDbContext>();
+            var attachment = new Attachment
+            {
+                Id = Guid.NewGuid(),
+                OwnerSubject = MockAuthenticationHandler.Personas[persona].Subject,
+                FileName = "late.pdf",
+                ContentType = "application/pdf",
+                SizeBytes = 8,
+                StorageKey = "late",
+                Status = AttachmentStatus.Released,
+                SubmissionId = applicationId,
+                UploadedAt = DateTimeOffset.UtcNow,
+            };
+            db.Attachments.Add(attachment);
+            await db.SaveChangesAsync();
+            return attachment.Id;
+        }
+
         /// <summary>The number of events on a stream.</summary>
         public async Task<int> CountEvents(Guid streamId)
         {
@@ -257,6 +301,12 @@ namespace Myss.AdminApi.Tests.TestSupport
             _staff.Dispose();
             _citizenFactory.Dispose();
             _staffFactory.Dispose();
+        }
+
+        private sealed class CleanScan : CitizenVirusScanProvider
+        {
+            public Task<citizen::Myss.Api.Providers.VirusScanResult> ScanAsync(Stream content, CancellationToken cancellationToken) =>
+                Task.FromResult(new citizen::Myss.Api.Providers.VirusScanResult(IsClean: true));
         }
 
         private sealed class CompiledErrorMessages : CitizenErrorMessageProvider

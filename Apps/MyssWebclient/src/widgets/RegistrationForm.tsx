@@ -22,9 +22,17 @@ import {
   useClientValidation,
 } from "@myss/web-common/components";
 import { useFormSpec, useSubmitForm } from "@/hooks/usePocForm";
+import {
+  type AccountCreationRequest,
+  isAccountCreationField,
+  type RecapRow,
+  REPRESENTATIVE_INFO,
+} from "@/lib/accountContext";
 import { checkNewPin, REGISTRATION_PIN_FIELDS as PIN_FIELDS } from "@/lib/pin";
 import CreatePinSection from "./CreatePinSection";
-import RegistrationReview from "./registration/RegistrationReview";
+import RegistrationReview, {
+  type ReviewGroup,
+} from "./registration/RegistrationReview";
 import RegistrationSteps, {
   type RegistrationStep,
 } from "./registration/RegistrationSteps";
@@ -49,9 +57,41 @@ function isPinField(field: string): boolean {
   return field === PIN_FIELDS.pin || field === PIN_FIELDS.confirmation;
 }
 
-/** A field answered in Step 1: neither the PIN nor the consent, which are Step 3's. */
+/**
+ * A field answered in Step 1: not the PIN or the consent, which are Step 3's,
+ * nor who the account is for, which the page asks before the form.
+ */
 function isInfoField(field: string): boolean {
-  return !isPinField(field) && !CONSENT_KEYS.has(field);
+  return (
+    !isPinField(field) &&
+    !CONSENT_KEYS.has(field) &&
+    !isAccountCreationField(field)
+  );
+}
+
+/** Nothing is filled from the sign-in when it may be someone else's. */
+function prefillFrom(
+  identity: IdentityDetails,
+  representative: boolean,
+): IdentityDetails {
+  return representative ? {} : identity;
+}
+
+/** A refusal without its errors about who the account is for, which the page shows on its questions. */
+function withoutAccountCreationErrors(error: Error | null): Error | null {
+  if (!(error instanceof SubmissionRejectedError)) return error;
+  const errors = error.errors.filter((e) => !isAccountCreationField(e.field));
+  return errors.length === error.errors.length
+    ? error
+    : new SubmissionRejectedError(error.status, errors);
+}
+
+function RepresentativeInfo({
+  representative,
+}: Readonly<{ representative: boolean }>) {
+  return representative ? (
+    <InlineAlert variant="info" title={REPRESENTATIVE_INFO} />
+  ) : null;
 }
 
 function byField(
@@ -70,9 +110,22 @@ function sameAddress(a?: string | null, b?: string | null): boolean {
   return (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
 }
 
+/** Who the account is for, as the citizen answered before the form. */
+export interface RegistrationAccountCreation {
+  /** What the registration request carries beside the answers. */
+  request: AccountCreationRequest;
+  /** The answers as the review lists them. */
+  rows: RecapRow[];
+  /** Someone makes the account for another person. */
+  representative: boolean;
+}
+
 interface RegistrationFormProps {
   /** What the sign-in identity knows about the citizen, used to prefill. */
   identity: IdentityDetails;
+  accountCreation: RegistrationAccountCreation;
+  /** Called with the API's refusals of the answers about who the account is for. */
+  onAccountCreationRejected: (errors: FormValidationError[]) => void;
   /**
    * Whether the citizen creates a PIN as part of registering: Basic BCeID
    * users do (MYSS-258), BC Services Card users do not.
@@ -99,6 +152,8 @@ interface RegistrationFormProps {
  */
 export default function RegistrationForm({
   identity,
+  accountCreation,
+  onAccountCreationRejected,
   requirePin = false,
   signedInWith = "BCeID",
   subject = "",
@@ -127,6 +182,9 @@ export default function RegistrationForm({
   const answersRef = useRef<Record<string, unknown>>({});
   const verifyEmailRef = useRef(verifyEmail);
   verifyEmailRef.current = verifyEmail;
+  // Read when the registration is sent, for the same reason as the answers.
+  const accountCreationRef = useRef({ accountCreation, onAccountCreationRejected });
+  accountCreationRef.current = { accountCreation, onAccountCreationRejected };
   // A refusal of Step 1's Continue that is not a field error (429, 503).
   const [continueProblem, setContinueProblem] = useState<string | null>(null);
   // Step 2's 422 on the address, shown on Step 1's email field.
@@ -178,7 +236,7 @@ export default function RegistrationForm({
   // builds a new user object every render, and a new `src` makes Form.io
   // rebuild the form and drop whatever the citizen has typed.
   const { givenName, familyName, email, phoneNumber, birthdate, gender } =
-    identity;
+    prefillFrom(identity, accountCreation.representative);
   const parts = useMemo(
     () =>
       spec &&
@@ -217,16 +275,6 @@ export default function RegistrationForm({
     if (step !== "verify") stepHeadingRef.current?.focus();
   }, [step]);
 
-  const goTo = useCallback((next: Step) => {
-    setContinueProblem(null);
-    setStep(next);
-    window.scrollTo?.({ top: 0 });
-  }, []);
-
-  const handleFormReady = useCallback((instance: Webform) => {
-    formRef.current = instance;
-  }, []);
-
   // Complete registration waits for the consent form: pressed before it is
   // ready, the consent could not be asked for, and must not be skipped.
   const [consentReady, setConsentReady] = useState(false);
@@ -235,13 +283,20 @@ export default function RegistrationForm({
     setConsentReady(true);
   }, []);
 
-  // The consent form goes when Step 3 does; so does the hold on it.
-  useEffect(() => {
-    if (step !== "review") {
+  const goTo = useCallback((next: Step) => {
+    setContinueProblem(null);
+    // The consent form goes when Step 3 does; so does the hold on it.
+    if (next !== "review") {
       consentFormRef.current = null;
       setConsentReady(false);
     }
-  }, [step]);
+    setStep(next);
+    window.scrollTo?.({ top: 0 });
+  }, []);
+
+  const handleFormReady = useCallback((instance: Webform) => {
+    formRef.current = instance;
+  }, []);
 
   /** Step 1's Continue: Form.io checks the answers, then onInfoSubmit runs. */
   const handleContinue = useCallback(() => {
@@ -352,6 +407,7 @@ export default function RegistrationForm({
       {
         formSpecVersion: spec.version,
         answers: { ...answersRef.current, ...consent },
+        accountCreation: accountCreationRef.current.accountCreation.request,
         ...(requirePin
           ? { pin: enteredPin, pinConfirmation: confirmation }
           : {}),
@@ -372,6 +428,14 @@ export default function RegistrationForm({
           setPinErrors(
             byField(submitError.errors.filter((e) => isPinField(e.field))),
           );
+          const accountCreationErrors = submitError.errors.filter((e) =>
+            isAccountCreationField(e.field),
+          );
+          if (accountCreationErrors.length > 0) {
+            accountCreationRef.current.onAccountCreationRejected(
+              accountCreationErrors,
+            );
+          }
           const notVerified = submitError.errors.some(
             (e) => e.keyword === EMAIL_NOT_VERIFIED_KEYWORD,
           );
@@ -495,7 +559,7 @@ export default function RegistrationForm({
       if (clientValidation.error) return clientValidation.error;
       return fieldRefusal instanceof SubmissionRejectedError &&
         fieldRefusal.errors.some((e) => isInfoField(e.field))
-        ? fieldRefusal
+        ? withoutAccountCreationErrors(fieldRefusal)
         : null;
     }
     if (step !== "review") return null;
@@ -506,14 +570,17 @@ export default function RegistrationForm({
         ...pinAttemptErrors,
       ]);
     }
-    // A refusal of Step 1's answers is shown there; anything else here.
+    // A refusal of Step 1's answers is shown there, and one of who the
+    // account is for on the page's questions; anything else here.
     if (
       submit.error instanceof SubmissionRejectedError &&
-      submit.error.errors.every((e) => isInfoField(e.field))
+      submit.error.errors.every(
+        (e) => isInfoField(e.field) || isAccountCreationField(e.field),
+      )
     ) {
       return null;
     }
-    return submit.error;
+    return withoutAccountCreationErrors(submit.error);
   }, [
     step,
     clientValidation.error,
@@ -526,6 +593,21 @@ export default function RegistrationForm({
     () => (parts ? reviewRows(parts.info, answers) : []),
     [parts, answers],
   );
+  const reviewGroups: ReviewGroup[] = useMemo(() => {
+    const representative = accountCreation.representative;
+    return [
+      {
+        heading: representative ? "You, the representative" : "About the account",
+        rows: accountCreation.rows.map((row) => ({ key: row.label, ...row })),
+      },
+      {
+        heading: representative
+          ? "The person you are representing"
+          : "Your information",
+        rows,
+      },
+    ];
+  }, [accountCreation, rows]);
 
   if (isPending) return <p>Loading form…</p>;
   if (error) return <p>Could not load the form: {error.message}</p>;
@@ -543,6 +625,7 @@ export default function RegistrationForm({
         {step === "info" && summaryError && (
           <SubmissionErrors error={summaryError} />
         )}
+        <RepresentativeInfo representative={accountCreation.representative} />
         <Form
           src={parts?.info ?? spec.spec}
           options={formOptions}
@@ -599,7 +682,7 @@ export default function RegistrationForm({
             />
           )}
           <h3>Review your information</h3>
-          <RegistrationReview rows={rows} />
+          <RegistrationReview groups={reviewGroups} />
           <InlineAlert
             variant="info"
             title="Need to make a change?"

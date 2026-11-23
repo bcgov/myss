@@ -33,7 +33,8 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
   },
   {
     keyword: "IDA.SIN.INVALID_CHECKSUM",
-    message: "That Social Insurance Number is not valid. Check the digits and try again.",
+    message:
+      "That Social Insurance Number is not valid. Check the digits and try again.",
     note: "A nine-digit SIN that fails the Luhn check.",
   },
   {
@@ -59,7 +60,32 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
   {
     keyword: "FORM.DATE.INVALID",
     message: "Enter a valid date.",
-    note: "A date field (properties.myssValidator = date), or the day of a day/month/year group (dateParts), that is not a real date.",
+    note: "A date field (properties.myssValidator = date), or the day of a day/month/year group (dateParts), that is not a real date. In a date question (datetime), also shown once when the month, day and year are all wrong.",
+  },
+  {
+    keyword: "FORM.DATE.MONTH_REQUIRED",
+    message: "A birth month is required",
+    note: "Browser only: a date question (datetime) with a day or year typed but no month chosen. Legacy MySS had no month message; worded to match its day and year ones. The API only ever receives whole dates.",
+  },
+  {
+    keyword: "FORM.DATE.DAY_REQUIRED",
+    message: "A birth day is required",
+    note: "Browser only: a date question (datetime) with the day left blank. Legacy MySS wording.",
+  },
+  {
+    keyword: "FORM.DATE.DAY_INVALID",
+    message: "Invalid Day",
+    note: "Browser only: a date question (datetime) whose day is not a number from 1 to 31. Legacy MySS wording.",
+  },
+  {
+    keyword: "FORM.DATE.YEAR_REQUIRED",
+    message: "A birth year is required",
+    note: "Browser only: a date question (datetime) with the year left blank. Legacy MySS wording.",
+  },
+  {
+    keyword: "FORM.DATE.YEAR_INVALID",
+    message: "Invalid Year",
+    note: "Browser only: a date question (datetime) whose year is not 4 digits or is before 1900 (future years are accepted). Legacy MySS wording.",
   },
   {
     keyword: "FORM.FIELD.PATTERN",
@@ -112,13 +138,49 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
     note: "Registration: the email address has not been verified by its emailed link (MYSS-295).",
   },
   {
+    keyword: "REGISTRATION.CONTEXT.REQUIRED",
+    message: "Select the option that describes you.",
+    note: "Registration: the citizen did not say who the account is for.",
+  },
+  {
+    keyword: "REGISTRATION.CONTEXT.UNKNOWN",
+    message: "Select one of the options shown.",
+    note: "Registration: who the account is for is not one of the four options offered.",
+  },
+  {
+    keyword: "REGISTRATION.CONTEXT.SIGN_IN_NOT_ALLOWED",
+    message: "To create an account for someone else, sign in with Basic BCeID.",
+    note: "Registration: a legal representative or a parent registered from a sign-in other than Basic BCeID.",
+  },
+  {
+    keyword: "REGISTRATION.HELPER.AUTHORIZATION_REQUIRED",
+    message: "Select whether we may share your information with this person.",
+    note: "Registration: a citizen registering with help did not say whether the ministry may share their information with the helper.",
+  },
+  {
+    keyword: "REGISTRATION.DOCUMENT.CONSENT_REQUIRED",
+    message: "Attach your signed Consent to Disclosure of Information form.",
+    note: "Registration: a citizen who authorized their helper attached no signed consent form.",
+  },
+  {
+    keyword: "REGISTRATION.DOCUMENT.TOO_MANY",
+    message: "Attach no more than 5 documents.",
+    note: "Registration: more than 5 documents of one kind were attached.",
+  },
+  {
+    keyword: "REGISTRATION.DOCUMENT.NOT_FOUND",
+    message: "One of the attached documents could not be found. Remove it and attach it again.",
+    note: "Registration: an attached document is not the citizen's, has not passed its virus scan, or is already linked to an account.",
+  },
+  {
     keyword: "ACCOUNT.PHONE.TYPE_UNKNOWN",
     message: "Choose a phone type: home, cell, work or message.",
     note: "Account info: a phone number's type is not one of Home, Cell, Work or Message.",
   },
   {
     keyword: "ACCOUNT.PHONE.DUPLICATE_TYPE",
-    message: "You can have one phone number of each type. Choose a different type.",
+    message:
+      "You can have one phone number of each type. Choose a different type.",
     note: "Account info: two phone numbers were given the same type.",
   },
   {
@@ -148,7 +210,8 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
   },
   {
     keyword: "ACCOUNT.EMAIL.ADDRESS_REJECTED",
-    message: "We could not send an email to that address. Check it and try again.",
+    message:
+      "We could not send an email to that address. Check it and try again.",
     note: "Account Info email change: the email service refused the address itself (MYSS-326). Shown on the email field.",
   },
   {
@@ -178,7 +241,8 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
   },
   {
     keyword: "BUSPASS.CONTACT.EMAIL_REQUIRED",
-    message: "An email address is required when email is the preferred means of communication",
+    message:
+      "An email address is required when email is the preferred means of communication",
     note: "Bus pass: email was chosen as the contact method but no address was given.",
   },
   {

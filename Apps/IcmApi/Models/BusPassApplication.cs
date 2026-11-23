@@ -89,8 +89,9 @@ namespace Icm.Api.Models
         public string? PhoneNumber { get; set; }
 
         /// <summary>
-        /// Gets or sets which kind of number <see cref="PhoneNumber"/> is. Decides which
-        /// of the workflow's typed phone fields carries it; null uses the untyped one.
+        /// Gets or sets which kind of number <see cref="PhoneNumber"/> is. The home phone
+        /// field always carries it, because ICM shows that field as the primary phone;
+        /// Work and Cell also put it in their own field, and null in the untyped one.
         /// </summary>
         public BusPassPhoneType? PhoneType { get; set; }
 

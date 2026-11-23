@@ -1,5 +1,7 @@
 namespace Myss.Api.Tests.Services
 {
+    using Myss.Common.Storage;
+    using Myss.Data.Attachments;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.Extensions.Logging.Abstractions;
     using Microsoft.Extensions.Options;
@@ -158,6 +160,48 @@ namespace Myss.Api.Tests.Services
         }
 
         [Fact]
+        public async Task Upload_ForAnApplication_LinksTheFileOnlyWhenReleased()
+        {
+            using AttachmentsDbContext db = NewDb();
+            AttachmentsService service = NewService(db);
+            Guid application = Guid.NewGuid();
+            _scanner.Unavailable = true;
+
+            await Assert.ThrowsAsync<VirusScanUnavailableException>(() => service.UploadAsync(
+                "statement.pdf", "application/pdf", PdfBytes.Length, new MemoryStream(PdfBytes), CancellationToken.None, application));
+
+            // A quarantined row belongs to no application, so it can never
+            // sit unseen and unremovable on one.
+            Assert.Null(Assert.Single(await db.Attachments.ToListAsync()).SubmissionId);
+
+            _scanner.Unavailable = false;
+            AttachmentUploadResult result = await service.UploadAsync(
+                "statement.pdf", "application/pdf", PdfBytes.Length, new MemoryStream(PdfBytes), CancellationToken.None, application);
+
+            Assert.Equal(application, result.Attachment!.SubmissionId);
+        }
+
+        [Fact]
+        public async Task Upload_WhenTheApplicationStopsAcceptingDuringTheScan_RemovesTheFile()
+        {
+            using AttachmentsDbContext db = NewDb();
+            AttachmentsService service = NewService(db);
+
+            AttachmentUploadResult result = await service.UploadAsync(
+                "statement.pdf",
+                "application/pdf",
+                PdfBytes.Length,
+                new MemoryStream(PdfBytes),
+                CancellationToken.None,
+                Guid.NewGuid(),
+                stillAccepting: _ => Task.FromResult(false));
+
+            Assert.Equal(AttachmentRejectionReason.NoLongerAccepted, result.Rejection);
+            Assert.Empty(_storage.Objects);
+            Assert.Empty(await db.Attachments.ToListAsync());
+        }
+
+        [Fact]
         public async Task ListOwn_ReturnsOnlyTheCallersReleasedAttachments_NewestFirst()
         {
             using AttachmentsDbContext db = NewDb();
@@ -171,6 +215,33 @@ namespace Myss.Api.Tests.Services
             IReadOnlyList<AttachmentResponseModel> list = await service.ListOwnAsync(CancellationToken.None);
 
             Assert.Equal([newer, older], list.Select(a => a.Id));
+        }
+
+        [Fact]
+        public async Task FindReleased_ReturnsOnlyTheGivenIdsTheOwnerUploadedThatAreReleased()
+        {
+            using AttachmentsDbContext db = NewDb();
+            Guid released = await SeedAttachment(db, "user-1", AttachmentStatus.Released, DateTimeOffset.UtcNow);
+            Guid notAsked = await SeedAttachment(db, "user-1", AttachmentStatus.Released, DateTimeOffset.UtcNow);
+            Guid quarantined = await SeedAttachment(db, "user-1", AttachmentStatus.Quarantined, DateTimeOffset.UtcNow);
+            Guid rejected = await SeedAttachment(db, "user-1", AttachmentStatus.Rejected, DateTimeOffset.UtcNow);
+            Guid anotherOwners = await SeedAttachment(db, "someone-else", AttachmentStatus.Released, DateTimeOffset.UtcNow);
+            AttachmentsService service = NewService(db, subject: "user-1");
+
+            IReadOnlySet<Guid> found = await service.FindReleasedAsync(
+                [released, quarantined, rejected, anotherOwners, Guid.NewGuid()], "user-1", CancellationToken.None);
+
+            Assert.Equal([released], found);
+            Assert.DoesNotContain(notAsked, found);
+        }
+
+        [Fact]
+        public async Task FindReleased_WithNoIds_FindsNothing()
+        {
+            using AttachmentsDbContext db = NewDb();
+            await SeedAttachment(db, "user-1", AttachmentStatus.Released, DateTimeOffset.UtcNow);
+
+            Assert.Empty(await NewService(db).FindReleasedAsync([], "user-1", CancellationToken.None));
         }
 
         private static AttachmentsDbContext NewDb()

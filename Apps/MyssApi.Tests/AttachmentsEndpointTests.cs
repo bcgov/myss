@@ -1,5 +1,7 @@
 namespace Myss.Api.Tests
 {
+    using Myss.Common.Storage;
+    using Myss.Data.Attachments;
     using System.Net;
     using System.Net.Http.Headers;
     using System.Text.Json;

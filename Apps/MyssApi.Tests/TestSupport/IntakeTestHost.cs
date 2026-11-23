@@ -10,6 +10,8 @@ namespace Myss.Api.Tests.TestSupport
     using Myss.Api.Configuration;
     using Myss.Api.Configuration.Models;
     using Myss.Api.Data;
+    using Myss.Common.Storage;
+    using Myss.Data.Attachments;
     using Myss.Api.Intake;
     using Myss.Api.Providers;
     using Myss.Api.Tests.TestDoubles;
@@ -60,6 +62,10 @@ namespace Myss.Api.Tests.TestSupport
                 .Options;
             DbContextOptions<IntakeDbContext> intake = new DbContextOptionsBuilder<IntakeDbContext>()
                 .UseInMemoryDatabase(dbName + "-intake")
+                .UseInternalServiceProvider(efProvider)
+                .Options;
+            DbContextOptions<AttachmentsDbContext> attachments = new DbContextOptionsBuilder<AttachmentsDbContext>()
+                .UseInMemoryDatabase(dbName + "-attachments")
                 .UseInternalServiceProvider(efProvider)
                 .Options;
 
@@ -115,6 +121,16 @@ namespace Myss.Api.Tests.TestSupport
                     services.RemoveAll<IFormSpecProvider>();
                     services.AddSingleton<IFormSpecProvider>(provider);
 
+                    // Supporting documents: in-memory rows and objects, and a
+                    // scanner a test can set to flag a file or be unavailable.
+                    services.RemoveAll<DbContextOptions<AttachmentsDbContext>>();
+                    services.RemoveAll<AttachmentsDbContext>();
+                    services.AddScoped<AttachmentsDbContext>(_ => new AttachmentsDbContext(attachments));
+                    services.RemoveAll<IVirusScanProvider>();
+                    services.AddSingleton<IVirusScanProvider>(Scanner);
+                    services.RemoveAll<IFileStorageProvider>();
+                    services.AddSingleton<IFileStorageProvider>(Storage);
+
                     // The compiled defaults, so a refused save or submit never
                     // reaches for a content engine that is not running here.
                     services.RemoveAll<IErrorMessageProvider>();
@@ -131,6 +147,12 @@ namespace Myss.Api.Tests.TestSupport
         }
 
         /// <summary>Sends a request as a persona (null for anonymous) to a relative API path.</summary>
+        /// <summary>Gets the virus scanner the host uses.</summary>
+        public FakeVirusScanProvider Scanner { get; } = new();
+
+        /// <summary>Gets the object store the host uses.</summary>
+        public InMemoryFileStorageProvider Storage { get; } = new();
+
         public Task<HttpResponseMessage> Send(string? persona, HttpMethod method, string relativePath, HttpContent? content = null)
         {
             var request = new HttpRequestMessage(method, relativePath) { Content = content };

@@ -27,6 +27,24 @@ start. `Strapi:ApiToken` is not defaulted. `AllowOrigins` must list the webclien
 origins; `*` stops the app. Preserve that shape rather than adding
 permissive fallbacks.
 
+## Feature areas
+
+- **Account / registration** — `AccountController`, `AccountService`,
+  `UserProfileService` (`RegistrationEmailPurge` clears stale registration emails).
+- **PIN reset** — `PinResetController`, `PinResetService`, `PinHasher`.
+- **Email verification** — `EmailVerificationController`, `EmailVerificationService`;
+  emailed links (`EmailedLinkToken`) go out through BC Gov Notify (`NotifyEmailProvider`).
+- **Bus pass (citizen)** — `BusPassController`, `BusPassSubmissionService`: stores the
+  submission, dispatches it to ICM through IcmApi.Host and records each attempt in the
+  dispatch table (`BusPassDispatchEvent`, MyssData). The worker side is in MyssAdminApi.
+- **Eligibility estimator** — `EligibilityEstimatorController`; rates read from Strapi
+  (`StrapiEligibilityRateProvider`, cached five minutes).
+- **Form messages** — `FormMessagesController` serves per-form messages from Strapi
+  (`StrapiFormMessageProvider`); edited in MyssAdminApi.
+- **Demo** — `DemoController`/`DemoService`, behind `TechDemos`.
+
+Forms, intake and attachments are covered below and in the root AGENTS.md.
+
 ## Auth
 
 Option 1 (current): the API is a stateless resource server validating Keycloak bearer
@@ -55,10 +73,42 @@ row instead of an orphaned object; a flagged file keeps its row as an audit reco
 its content never reaches the store. `Attachments:MaxSizeBytes` must stay at or below
 clamd's `StreamMaxLength`.
 
+Supporting documents on an application go through the same pipeline at
+`v1/intake/applications/{id}/attachments` (`ApplicationAttachmentsController`: `GET` lists,
+`POST` adds, `DELETE {attachmentId}` removes). The row's `submission_id` is the
+application id. Only the application's owner reaches these routes (anyone else gets a
+404); adding or removing needs the application to be a draft or returned for more
+information (`IIntakeService.CheckAttachmentAccessAsync`, otherwise 409
+`INTAKE.APPLICATION.NOT_EDITABLE`). Both the `Attachments` flag and `Intake` or
+`ServiceRequests` must be on. A removed file's object is deleted and its row dropped.
+A file is linked to the application only when it is released, after a last check that the
+application still takes files (if it was submitted meanwhile, the stored copy is removed
+and the upload refused with 409). Submit records the ids of the files present in the
+Submitted or Resubmitted event (`attachmentIds`), and workers see only those, through
+MyssAdminApi.
+
+`Attachment` and `AttachmentsDbContext` are in `Apps/MyssData/Attachments`, and the
+object store client (`IFileStorageProvider`, `S3FileStorageProvider`,
+`ObjectStorageConfig`) is in `Apps/MyssCommon/Storage`, because MyssAdminApi reads both.
+
+## Registration
+
+Registration is the generic `POST /v1/forms/registration/submissions`, with checks of
+its own in `FormsService`. The PIN and the account-creation data (who the account is
+for, the helper's authorization, the representative and the attachment IDs of the
+documents) travel beside the answers, not in them, so neither is stored in
+`form_submissions`. `AccountCreationRules` checks the account-creation data, and
+`AccountCreationService` checks that each document is the caller's, released and not
+linked yet, then records it all when the registration creates the profile, in the same
+save. A registration that creates a profile without that data is refused. With
+`EmailVerification` on, the address must be proven by its emailed link first.
+
 ## Feature flags
 
 Citizen features are switched on per environment under `FeatureManagement`
-(`Configuration/FeatureFlags.cs`). **A flag that is not set is off**, so a new feature
+(`Configuration/FeatureFlags.cs`, twelve flags: `HomePage`, `PinReset`,
+`EmailVerification`, `EligibilityEstimator`, `BusPass`, `Notifications`, `Messages`,
+`ServiceRequests`, `AccountInfo`, `Intake`, `Attachments`, `TechDemos`). **A flag that is not set is off**, so a new feature
 stays hidden until an environment turns it on with `Myss_FeatureManagement__<Flag>=true`
 (locally, in `appsettings.local.json`). Endpoints are gated with `[FeatureGate]`: when
 off the action never runs, usually a 404 (sign-in and rate limiting still run first, so
@@ -77,9 +127,8 @@ Four DbContexts, one per schema, all required, applied manually (see the root
 AGENTS.md for the stack-bootstrap commands). Each has its own history table in its
 schema and its own migrations folder.
 
-The forms, platform and intake contexts, their entities, the event store and the
-intake fold are defined in `Apps/MyssData`, which MyssAdminApi shares; only
-`AttachmentsDbContext` is defined here. Their migrations stay in this project: this API
+All four contexts, their entities, the event store and the intake fold are defined in
+`Apps/MyssData`, which MyssAdminApi shares. Their migrations stay in this project: this API
 is the only service that changes the schema. EF looks for migrations in the context's
 own assembly by default, so every place this API builds one of those contexts points it
 here through `Configuration/MyssMigrations` (Startup, `MigrationRunner`, the Postgres

@@ -32,6 +32,13 @@ namespace Myss.Api.Models
         /// Gets or sets the PIN typed a second time, which must match <see cref="Pin"/>.
         /// </summary>
         public string? PinConfirmation { get; set; }
+
+        /// <summary>
+        /// Gets or sets who a registration makes the account for, with that
+        /// context's own answers. Registration only. Outside
+        /// <see cref="Answers"/>, so it is not stored with the submission.
+        /// </summary>
+        public AccountCreationRequestModel? AccountCreation { get; set; }
     }
 
     /// <summary>

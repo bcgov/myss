@@ -116,6 +116,10 @@ function stubApi(stub: Stub) {
     const method = init?.method ?? "GET";
     const base = `/v1/intake/applications/${ID}`;
 
+    // Supporting documents have their own tests (ApplicationDocuments).
+    if (url.endsWith("/v1/features")) {
+      return json(200, { payload: { Attachments: false } });
+    }
     if (url.endsWith(base) && method === "GET") {
       return json(200, { payload: stub.application });
     }

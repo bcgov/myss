@@ -108,6 +108,41 @@ export type MyssApiIntakeApplicationSummaryModel = {
 };
 
 /**
+ * Who a registration makes the account for, with that context's own
+ * answers. Only the chosen context's answers are read.
+ */
+export type MyssApiModelsAccountCreationRequestModel = {
+    /**
+     * Gets or sets the context: `self`, `withHelper`,
+     * `legalRepresentative` or `parentForMinor`. A string, so that
+     * an unknown value is refused as a field error.
+     */
+    context?: string | null;
+    /**
+     * Nullable<Boolean>
+     *
+     * Gets or sets whether the citizen authorizes the ministry to share
+     * their information with their helper. Read for `withHelper` only.
+     */
+    helperAuthorized?: boolean | null;
+    representative?: MyssApiModelsRepresentativeRequestModel;
+    /**
+     * IReadOnlyList<Guid>
+     *
+     * Gets or sets the attachment IDs of the signed consent forms. Read for
+     * `withHelper` when the helper is authorized.
+     */
+    consentDocumentIds?: Array<string> | null;
+    /**
+     * IReadOnlyList<Guid>
+     *
+     * Gets or sets the attachment IDs of the power of attorney documents.
+     * Read for `legalRepresentative` only.
+     */
+    powerOfAttorneyDocumentIds?: Array<string> | null;
+};
+
+/**
  * What Account Info shows the citizen (MYSS-271): case details, which come
  * from ICM and MIS, beside the contact details MySS holds itself.
  */
@@ -285,6 +320,25 @@ export type MyssApiModelsDemoModel = {
 };
 
 /**
+ * The texts of a form message as a form's page shows them. Who saved them is
+ * never part of this anonymous answer.
+ */
+export type MyssApiModelsFormMessageModel = {
+    /**
+     * Gets the page heading.
+     */
+    heading: string | null;
+    /**
+     * Gets the title.
+     */
+    title: string | null;
+    /**
+     * Gets the message, in the formatting the web client renders.
+     */
+    body: string | null;
+};
+
+/**
  * A form submission request from the SPA.
  */
 export type MyssApiModelsFormSubmissionRequestModel = {
@@ -307,6 +361,7 @@ export type MyssApiModelsFormSubmissionRequestModel = {
      * Gets or sets the PIN typed a second time, which must match Myss.Api.Models.FormSubmissionRequestModel.Pin.
      */
     pinConfirmation?: string | null;
+    accountCreation?: MyssApiModelsAccountCreationRequestModel;
 };
 
 /**
@@ -411,6 +466,28 @@ export type MyssApiModelsRegistrationEmailModel = {
      * Gets or sets a value indicating whether the link has been followed.
      */
     verified?: boolean;
+};
+
+/**
+ * The person making an account for someone else.
+ */
+export type MyssApiModelsRepresentativeRequestModel = {
+    /**
+     * Gets or sets the representative's first name.
+     */
+    firstName?: string | null;
+    /**
+     * Gets or sets the representative's last name.
+     */
+    lastName?: string | null;
+    /**
+     * Gets or sets the representative's phone number, as typed.
+     */
+    phone?: string | null;
+    /**
+     * Gets or sets the agency, optional. Read for `legalRepresentative` only.
+     */
+    agency?: string | null;
 };
 
 /**
@@ -635,6 +712,19 @@ export type MyssCommonModelsBaseResponseModelMyssApiModelsBusPassSubmissionRespo
  */
 export type MyssCommonModelsBaseResponseModelMyssApiModelsDemoModel = {
     payload: MyssApiModelsDemoModel;
+    /**
+     * Gets or sets the payload information.
+     */
+    datetimeRequested: string;
+};
+
+/**
+ * BaseResponseModel<FormMessageModel>
+ *
+ * Represents the result of a request.
+ */
+export type MyssCommonModelsBaseResponseModelMyssApiModelsFormMessageModel = {
+    payload: MyssApiModelsFormMessageModel;
     /**
      * Gets or sets the payload information.
      */
@@ -1266,6 +1356,10 @@ export type RequestRegistrationEmailVerificationData = {
 
 export type RequestRegistrationEmailVerificationErrors = {
     /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
      * Unprocessable Content
      */
     422: MyssCommonModelsBaseResponseModelSystemCollectionsGenericIReadOnlyListMyssFormSpecValidationErrorModel;
@@ -1349,6 +1443,44 @@ export type GetFeaturesResponses = {
 };
 
 export type GetFeaturesResponse = GetFeaturesResponses[keyof GetFeaturesResponses];
+
+export type GetFormMessageData = {
+    body?: never;
+    path: {
+        /**
+         * The logical form identifier.
+         */
+        formSpecId: string;
+        /**
+         * The message's key within the form.
+         */
+        messageKey: string;
+    };
+    query?: never;
+    url: '/v1/forms/{formSpecId}/messages/{messageKey}';
+};
+
+export type GetFormMessageErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Bad Gateway
+     */
+    502: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type GetFormMessageError = GetFormMessageErrors[keyof GetFormMessageErrors];
+
+export type GetFormMessageResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiModelsFormMessageModel;
+};
+
+export type GetFormMessageResponse = GetFormMessageResponses[keyof GetFormMessageResponses];
 
 export type GetFormSpecData = {
     body?: never;
@@ -1672,6 +1804,40 @@ export type SubmitApplicationResponses = {
 };
 
 export type SubmitApplicationResponse = SubmitApplicationResponses[keyof SubmitApplicationResponses];
+
+export type WithdrawApplicationData = {
+    body?: never;
+    path: {
+        /**
+         * The application identifier.
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/intake/applications/{id}/withdraw';
+};
+
+export type WithdrawApplicationErrors = {
+    /**
+     * Not Found
+     */
+    404: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+    /**
+     * Conflict
+     */
+    409: MicrosoftAspNetCoreMvcProblemDetails | MicrosoftAspNetCoreHttpHttpValidationProblemDetails;
+};
+
+export type WithdrawApplicationError = WithdrawApplicationErrors[keyof WithdrawApplicationErrors];
+
+export type WithdrawApplicationResponses = {
+    /**
+     * OK
+     */
+    200: MyssCommonModelsBaseResponseModelMyssApiIntakeApplicationModel;
+};
+
+export type WithdrawApplicationResponse = WithdrawApplicationResponses[keyof WithdrawApplicationResponses];
 
 export type RequestPinResetData = {
     body?: never;

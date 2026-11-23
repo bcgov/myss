@@ -41,8 +41,9 @@ what is specific to the webclient. Full docs:
 sections) ·
 `components/` (shared presentational leaves) · `hooks/` (`useX` naming)
 · `routes/paths.ts` (every URL) · `ui/` (global CSS layers) · `api/`
-(generated — regenerate with `npm run generate:schema`, never
-hand-edit) · `auth/` · `lib/` · `testing/` (helpers for browser tests,
+(hand-written query hooks and helpers; only `api/generated/` is
+generated — regenerate with `npm run generate:schema`, never hand-edit
+it) · `auth/` · `lib/` · `data/` (static content such as `homeLinks.ts`) · `testing/` (helpers for browser tests,
 such as the page-wide styles a layout check needs) · `constants.ts`
 (config + external links, the only registry).
 
@@ -66,13 +67,15 @@ code follows the target structure even where old code has not moved yet.
 
 ## Conventions
 
-- Component files PascalCase, no `Component` suffix (`Button.tsx`,
-  `SinInput.tsx`); folders lowercase.
+- Component files PascalCase, no `Component` suffix (`Callout.tsx`,
+  `PinField.tsx`); folders lowercase.
 - Styling is CSS Modules beside the component; global layers live in
   `ui/` and are imported once from `main.tsx`.
 - Tests colocated: `*.unit.test.ts` (node) / `*.browser.test.tsx`
   (Playwright); the vitest projects select on those suffixes.
 - Path alias `@` → `src`.
-- Runtime config: `window.APP_CONFIG` → `VITE_*` → default; adding a
-  value touches `entrypoint.sh`, `public/config.js` and
-  `src/constants.ts` together.
+- Runtime config: `window.APP_CONFIG` → `VITE_*` → default, resolved
+  by `resolveRuntimeConfig` in `@myss/web-common/config` and exposed
+  through `src/constants.ts`; adding a value touches `entrypoint.sh`,
+  the resolver and `src/constants.ts` together (`public/config.js` is
+  only the local placeholder and carries just `CANADA_POST_API_KEY`).

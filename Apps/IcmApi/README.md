@@ -179,6 +179,13 @@ public class Example(IServiceRequestService serviceRequests)
 }
 ```
 
+Besides `SearchAsync`, `GetAsync`, `CreateAsync` and `UpdateAsync`, the service has
+`UpsertAsync(input)` — insert or update matched on ICM's user keys, null when nothing
+changed — and `DeleteAsync(serviceRequestKey)`, true when a record was deleted and false
+when there was nothing to delete. `GetContactsAsync` follows ICM's pages of the
+`ICMContact` child until the last page, giving up after
+`ServiceRequestRepository.MaxContactPages` (50) pages.
+
 Reach for `IServiceRequestRepository` directly only when the caller already holds a token
 of its own — a request carrying a citizen's token, say, where a client-credentials token
 would be the wrong identity entirely.
@@ -724,20 +731,20 @@ and reading their `SRProspects` child rows over the gateway:
   type `One Address`, no `Memo`, prospect row `Purpose: "Residence/Mailing"` — and
   nothing on the SR or the prospect row records the form's replacement acknowledgement.
   The SR-level `Given Names`/`Last Name`/`Address` are the *matched contact's*, not the
-  submitted ones. The prospect business component exposes 37 fields (empties included;
-  read them with `--Query:ChildCollection=SRProspects` below); none is named for an
+  submitted ones. The `SRProspects` child view exposes 37 fields (empties included;
+  read them with `--Query:ChildCollection=SRProspects` below) — the document's 42 plus
+  `Id`, less the six the child view leaves out (see [Prospects](#prospects)); none is named for an
   acknowledgement, a leave-message consent or an applicant type — `Applicant Flag` is
   `N` on every row seen, the First Nations one included.
 - A live submission through the **retired SOAP path** (SR `1-11085201468` / row
   `1-53BUC70`, 2026-09-03) stores in exactly the same shape, so both channels land on the
   same workflow. It also showed: a duplicate-case rejection still files the SR (sub type
   `Error - Web`, the reason in `Memo`) **and still returns that SR's number to the
-  caller** — so an `ApplicationNumber` coming back is not by itself a success; the phone
-  type selected on the form picks the stored field (Home was selected, `Home Phone #` is
-  where the number landed — confirming this client's typed-field routing) though the
-  number is *also* copied into `Alternate Phone #` (this client fills only the typed
-  field — unknown whether the workflow or the old sender duplicates it); and the
-  SR-level `Address` is the *matched contact's* address on file, not the submitted one.
+  caller** — so an `ApplicationNumber` coming back is not by itself a success; Home was
+  selected as the phone type, and the number landed in `Home Phone #` and also in
+  `Alternate Phone #` (the leave-message consent, item 5 below; this client's own phone
+  rule is described after the list); and the SR-level `Address` is the *matched
+  contact's* address on file, not the submitted one.
 
 **The upsert needs caller-supplied keys.** MEASURED against SIT2 on 2026-09-10, the
 first live submissions through this client: with `SRKey` absent — or present but
@@ -816,6 +823,16 @@ submissions** (four through the old Test1 form, six through this client — see 
    `Case` element, and the payload-level `ClientId` is the other candidate slot.
 8. **Attachments** (`minItems: 1` in the spec) — still awaiting a live call that sends
    one.
+
+**ICM shows the home phone as *Primary Phone #*.** The SR's Prospects tab in ICM has one
+phone column, *Primary Phone #*; the REST view of the prospect has no field of that name.
+MEASURED 2026-11-19 on SRs filed through MySS's dev deployment: it shows the number sent
+as `HomePhone#` (`1-11557528508`, `1-11561087727`) and stays empty when the number travels
+only as `CellularPhone#` (`1-11560160508`) or only as the untyped `Phone`
+(`1-11561087708`). So the mapper sends the number as `HomePhone#` whatever the phone type,
+and also as `WorkPhone#` or `CellularPhone#` for those types, or as `Phone` when none is
+given. Not yet measured: what ICM shows for a number sent as `WorkPhone#`, and whether ICM
+keeps `WorkPhone#` or `CellularPhone#` when `HomePhone#` travels with it.
 
 **The authorization block is history.** The first attempt (2026-09-03) failed with
 `403` `SBL-DAT-00825` — `Access to Resource 'ICM Receive Bus Pass Online Request
@@ -913,14 +930,18 @@ They mirror the layers, and each one exists for a reason the layer above cannot 
 | `Api/*` | The actual `HttpRequestMessage` — Refit builds its implementation at compile time, so a dropped query parameter is otherwise invisible |
 | `Repositories/*` | Status-code translation, against the real Refit stack over canned responses |
 | `Services/*` | Caching, by counting round trips through fakes |
+| `Workflows/*` | The bus pass workflow: mapper, request shape, response serialization |
+| `TestDoubles/` | Not a suite — the shared fakes (recording repositories and HTTP handler, fake token repository and time provider) |
 
 ## Functional test
 
 `Apps/IcmApi.Console` is a console app that runs one Service Request search against a real
 ICM and prints what came back. With `Query:ServiceRequestKey` set it then reads that row,
 and with `Query:ChildCollection` set (say `SRProspects`) it reads that child collection
-of the row raw — the library has no child-collection support yet, and a bus pass SR's
-applicant rows live there. It has a second mode, `--Mode=buspass`, which **creates a
+of the row raw. The library itself does read child collections — `SRProspects`
+(`IProspectService`), the case `Contact` child (`ICaseService`), the SR's `ICMContact`
+(`IServiceRequestService.GetContactsAsync`) and `Activities`/the activity plan
+(`IActivityService`); the raw read is for collections it does not model. It has a second mode, `--Mode=buspass`, which **creates a
 record in the target ICM**: it submits the synthetic application in the committed
 `BusPass` settings section as transaction INT-316 through the bus pass workflow, prints the out-args (unmodelled
 fields included), then searches recent Bus Pass SRs for the returned `ApplicationNumber`
@@ -1056,7 +1077,7 @@ things worth watching in the output:
   actually consumes this. The wiring above works in the meantime.
 - A prospect's `Purpose`, `M/M`, `Portal Role` and communication-method picklists are
   from ICM's field list, not measured value by value; only `Residence/Mailing`,
-  `Man/Boy`, `Dr.`, `Cousin` and `Home Phone` have been written.
+  `Man/Boy`, `Dr`, `Cousin` and `Home Phone` have been written.
 - **A directly created SR gets no activity plan** (see [Creating a service request
   directly](#creating-a-service-request-directly)); dropping the workflow call needs an
   answer for that. The SR update path (`UpdateAsync`) is still untested live, as are the

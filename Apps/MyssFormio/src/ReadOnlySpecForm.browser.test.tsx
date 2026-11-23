@@ -43,4 +43,49 @@ describe("ReadOnlySpecForm", () => {
       .toBeInTheDocument();
     expect(screen.getByRole("button").elements()).toHaveLength(0);
   });
+
+  it("shows a declaration panel with its text and the applicant's answer", async () => {
+    const withDeclaration = {
+      display: "form",
+      components: [
+        {
+          type: "panel",
+          key: "declarations",
+          title: "Declarations",
+          components: [
+            {
+              type: "content",
+              key: "declarationText",
+              html: "<p>The information I have given is true and complete.</p>",
+              input: false,
+            },
+            {
+              type: "checkbox",
+              key: "declarationAgreed",
+              label: "I agree with the declaration above",
+              input: true,
+            },
+          ],
+        },
+      ],
+    } as unknown as FormType;
+
+    const screen = await render(
+      <ReadOnlySpecForm
+        spec={withDeclaration}
+        answers={{ declarationAgreed: true }}
+      />,
+    );
+
+    await expect
+      .element(
+        screen.getByText("The information I have given is true and complete."),
+      )
+      .toBeVisible();
+    const agreed = screen.getByRole("checkbox", {
+      name: "I agree with the declaration above",
+    });
+    await expect.element(agreed).toBeChecked();
+    await expect.element(agreed).toBeDisabled();
+  });
 });

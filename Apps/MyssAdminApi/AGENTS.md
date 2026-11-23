@@ -15,7 +15,13 @@ The API behind the admin webclient, in two parts:
   defines; `v1/forms/{id}/messages/{key}` reads one message's live texts and history and
   saves a new version, each save adding an entry that records who made it). Strapi only.
 - **Worker side** (`WorkerWithIdir`: the WORKER or ADMIN role and an IDIR identity):
-  application review (`v1/intake/review/applications...`), worker override
+  application review (`v1/intake/review/applications...`, including the applicant's
+  supporting documents: `GET .../{id}/attachments` lists them and
+  `GET .../{id}/attachments/{attachmentId}/content` downloads one, only for a submitted
+  application in the review queue, and only the files the latest submit recorded in its
+  event; the queue takes the income assistance application, the citizen's Application for
+  Assistance and the worker override AFA; list and file carry the applicant's name from
+  their profile; a decision may carry a `comment`, saved as a note in the same append), worker override
   (`v1/intake/worker-override/applications...`, MYSS-321: a worker submits the
   simplified Application for Assistance for a client who cannot submit their own,
   which makes the client a worker override account through
@@ -34,7 +40,7 @@ choose which screens to show. Every route is the one MyssApi served before the s
 ## Database
 
 The worker side reads and appends through the shared data model in `Apps/MyssData`
-(forms, platform and intake contexts, the event store, the intake fold), on the same
+(forms, platform, intake and attachments contexts, the event store, the intake fold), on the same
 database and with the same connection-string keys as MyssApi (`ConnectionStrings:FormsDb`,
 optional `PlatformDb` and `IntakeDb` falling back to it). **This API never migrates**:
 no `Database.Migrate`, no `EnsureCreated`, no EF Design package. MyssApi owns the
@@ -72,6 +78,10 @@ keeps the read-only `Strapi:ApiToken`. The shared readers read with it too (it h
 and findOne): `Startup` registers `StrapiReadOptions` with this setting. On Form Message
 the token has `find`, `findOne` and `create` only, never `update` or `delete`, so the
 form message history cannot be rewritten through this API.
+The supporting-document download reads the object store MyssApi uploads to, with the
+same `ObjectStorage:ServiceUrl`, `Bucket`, `AccessKey` and `SecretKey` keys (read-only use).
+Without them the API still starts and only a download fails, naming the missing settings,
+the same way the CDOGS settings are checked at the first render.
 `AllowOrigins` lists the admin webclient's origins (`*` is refused). The bus pass PDF needs `Cdogs:BaseUrl`, `Cdogs:TokenEndpoint`,
 `Cdogs:ClientId` and `Cdogs:ClientSecret` (checked at the first render, not at startup,
 as in MyssApi before the move). Copy `appsettings.local.sample.json` to

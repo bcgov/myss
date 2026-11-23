@@ -24,6 +24,93 @@ namespace Myss.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Myss.Data.AccountDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AttachedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("attached_at");
+
+                    b.Property<Guid>("AttachmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attachment_id");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("profile_id");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("purpose");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttachmentId")
+                        .IsUnique();
+
+                    b.HasIndex("ProfileId");
+
+                    b.ToTable("account_documents", "forms");
+                });
+
+            modelBuilder.Entity("Myss.Data.AccountRepresentative", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Agency")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("agency");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("last_name");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("phone");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("profile_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId")
+                        .IsUnique();
+
+                    b.ToTable("account_representatives", "forms");
+                });
+
             modelBuilder.Entity("Myss.Data.BusPassDispatchEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -156,6 +243,11 @@ namespace Myss.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AccountCreationContext")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("account_creation_context");
+
                     b.Property<string>("BceidUsername")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
@@ -204,6 +296,10 @@ namespace Myss.Api.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("gender");
+
+                    b.Property<bool?>("HelperAuthorized")
+                        .HasColumnType("boolean")
+                        .HasColumnName("helper_authorized");
 
                     b.Property<DateTimeOffset?>("IcmContactMatchedAt")
                         .HasColumnType("timestamp with time zone")
@@ -330,6 +426,24 @@ namespace Myss.Api.Migrations
                     b.ToTable("registration_email_verifications", "forms");
                 });
 
+            modelBuilder.Entity("Myss.Data.AccountDocument", b =>
+                {
+                    b.HasOne("Myss.Data.MyssUserProfile", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Myss.Data.AccountRepresentative", b =>
+                {
+                    b.HasOne("Myss.Data.MyssUserProfile", null)
+                        .WithOne("Representative")
+                        .HasForeignKey("Myss.Data.AccountRepresentative", "ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Myss.Data.BusPassDispatchEvent", b =>
                 {
                     b.HasOne("Myss.Data.FormSubmission", null)
@@ -350,7 +464,11 @@ namespace Myss.Api.Migrations
 
             modelBuilder.Entity("Myss.Data.MyssUserProfile", b =>
                 {
+                    b.Navigation("Documents");
+
                     b.Navigation("Phones");
+
+                    b.Navigation("Representative");
                 });
 #pragma warning restore 612, 618
         }
