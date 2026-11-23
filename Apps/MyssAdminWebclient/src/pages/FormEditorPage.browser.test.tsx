@@ -176,9 +176,9 @@ function newQueryClient() {
 // A re-read that changes nothing on screen can only be awaited in the cache.
 async function waitForDraftRead(queryClient: QueryClient, formSpecId: string) {
   await vi.waitFor(() => {
-    expect(
-      queryClient.getQueryState(["admin-draft", formSpecId])?.status,
-    ).toBe("success");
+    expect(queryClient.getQueryState(["admin-draft", formSpecId])?.status).toBe(
+      "success",
+    );
   });
 }
 
@@ -235,7 +235,18 @@ describe("FormEditorPage", () => {
     mockGetRates.mockResolvedValue({
       effectiveDate: "2026-10-02",
       incomeRows: [
-        { familySize: 1, a: 0, b: 1060, c: 0, d: 0, e: 1360, f: 0, g: 1535.5, h: 0, i: 0 },
+        {
+          familySize: 1,
+          a: 0,
+          b: 1060,
+          c: 0,
+          d: 0,
+          e: 1360,
+          f: 0,
+          g: 1535.5,
+          h: 0,
+          i: 0,
+        },
       ],
       assetLimits: { a: 5000, b: 10000, c: 100000, d: 200000 },
     });
@@ -272,10 +283,7 @@ describe("FormEditorPage", () => {
       .mockResolvedValue(saved);
     mockSaveDraft.mockResolvedValue(saved);
 
-    const screen = await renderPage(
-      "test-intake",
-      "?new=1&title=Test+Intake",
-    );
+    const screen = await renderPage("test-intake", "?new=1&title=Test+Intake");
 
     // The title from the New form action heads the page; no not-found alert.
     await expect
@@ -342,10 +350,7 @@ describe("FormEditorPage", () => {
     mockGetDraft.mockRejectedValue(notFound());
     mockSaveDraft.mockRejectedValue(idTaken());
 
-    const screen = await renderPage(
-      "test-intake",
-      "?new=1&title=Test+Intake",
-    );
+    const screen = await renderPage("test-intake", "?new=1&title=Test+Intake");
     await waitForTemplateInBuilder();
     await removeInBuilder("submit");
     await screen.getByRole("button", { name: "Save draft" }).click();
@@ -457,10 +462,7 @@ describe("FormEditorPage", () => {
     mockGetDraft.mockRejectedValue(notFound());
     mockSaveDraft.mockRejectedValue(idTaken());
 
-    const screen = await renderPage(
-      "test-intake",
-      "?new=1&title=Test+Intake",
-    );
+    const screen = await renderPage("test-intake", "?new=1&title=Test+Intake");
     await waitForTemplateInBuilder();
     await screen.getByRole("button", { name: "Publish" }).click();
 
@@ -486,10 +488,7 @@ describe("FormEditorPage", () => {
       .mockRejectedValueOnce(new SpecRejectedError(502, []))
       .mockResolvedValue({ version: 1 });
 
-    const screen = await renderPage(
-      "test-intake",
-      "?new=1&title=Test+Intake",
-    );
+    const screen = await renderPage("test-intake", "?new=1&title=Test+Intake");
     await waitForTemplateInBuilder();
     await screen.getByRole("button", { name: "Publish" }).click();
     await expect
@@ -622,7 +621,11 @@ describe("FormEditorPage", () => {
     mockGetDraft.mockResolvedValue(draft);
     mockSaveDraft.mockRejectedValue(
       new SpecRejectedError(422, [
-        { field: "fullName", keyword: "required", message: "Label is required." },
+        {
+          field: "fullName",
+          keyword: "required",
+          message: "Label is required.",
+        },
       ]),
     );
 
@@ -810,7 +813,10 @@ describe("FormEditorPage build mode", () => {
         component!.editForm!(copyOverrides(builderOptions.editForm[type])),
         "data",
       );
-      const withoutOverride = tabFields(component!.editForm!(undefined), "data");
+      const withoutOverride = tabFields(
+        component!.editForm!(undefined),
+        "data",
+      );
 
       expect(withoutOverride, `${type} has no multiple field`).toContain(
         "multiple",
@@ -985,9 +991,9 @@ describe("FormEditorPage build mode", () => {
     // Read the palette out of the DOM rather than by role: two of the three
     // groups render collapsed, so their entries are present but not visible.
     await vi.waitFor(() => {
-      expect(document.querySelectorAll(".formcomponent").length).toBeGreaterThan(
-        0,
-      );
+      expect(
+        document.querySelectorAll(".formcomponent").length,
+      ).toBeGreaterThan(0);
     });
     const offered = [...document.querySelectorAll(".formcomponent")].map(
       (element) => element.getAttribute("data-key"),
@@ -1117,8 +1123,7 @@ describe("FormEditorPage build mode", () => {
     // If this assertion starts failing, the loss has been fixed; delete it.
     const button = registered("button");
     const defaults = button?.builderInfo?.schema as
-      | { action?: string }
-      | undefined;
+      { action?: string } | undefined;
 
     expect(defaults?.action).toBe("submit");
   });
@@ -1156,9 +1161,7 @@ describe("FormEditorPage build mode", () => {
     const screen = await renderPage();
     await screen.getByRole("button", { name: "Build form" }).click();
 
-    await expect
-      .element(screen.getByText("Do you have status?"))
-      .toBeVisible();
+    await expect.element(screen.getByText("Do you have status?")).toBeVisible();
     await expect
       .element(screen.getByText("What does status mean?"))
       .toBeVisible();
@@ -1177,7 +1180,9 @@ describe("FormEditorPage build mode", () => {
 
     const edit = await vi.waitFor(() => {
       const found = document
-        .querySelector('.builder-component [class~="formio-component-fullName"]')
+        .querySelector(
+          '.builder-component [class~="formio-component-fullName"]',
+        )
         ?.closest(".builder-component")
         ?.querySelector<HTMLElement>('[ref="editComponent"]');
       expect(found, "no edit control on the component").toBeTruthy();
@@ -1215,5 +1220,70 @@ describe("FormEditorPage build mode", () => {
     // "Full name", and the builder's first change would undo the edit.
     await expect.element(screen.getByText("Your legal name")).toBeVisible();
     await expect.element(screen.getByText("Full name")).not.toBeInTheDocument();
+  });
+});
+
+describe("FormEditorPage form layout", () => {
+  // The design system covers the radio input with its indicator, so a user
+  // (and the test) clicks the label.
+  function chooseLayout(
+    screen: Awaited<ReturnType<typeof renderPage>>,
+    name: string,
+  ) {
+    return screen.getByText(name, { exact: true }).click();
+  }
+
+  it("saves a form switched to step by step as a wizard with its fields on a first page", async () => {
+    mockGetDraft.mockResolvedValue(draft);
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    const wizard = screen.getByRole("radio", { name: "Step by step (wizard)" });
+    await expect
+      .element(screen.getByRole("radio", { name: "All on one page" }))
+      .toBeChecked();
+    await chooseLayout(screen, "Step by step (wizard)");
+    await expect.element(wizard).toBeChecked();
+    await screen.getByRole("button", { name: "Save draft" }).click();
+
+    await vi.waitFor(() => expect(mockSaveDraft).toHaveBeenCalledTimes(1));
+    const spec = mockSaveDraft.mock.calls[0][1].spec as unknown as {
+      display: string;
+      components: { type: string; components?: { key: string }[] }[];
+    };
+    expect(spec.display).toBe("wizard");
+    expect(spec.components).toHaveLength(1);
+    expect(spec.components[0].type).toBe("panel");
+    expect(spec.components[0].components?.map((c) => c.key)).toEqual([
+      "fullName",
+      "conditionalField",
+      "help",
+    ]);
+  });
+
+  it("switches the open builder to pages and saves its wizard schema", async () => {
+    mockGetDraft.mockResolvedValue(draft);
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    await expect.element(screen.getByText("Full name")).toBeVisible();
+
+    await chooseLayout(screen, "Step by step (wizard)");
+
+    // The wizard builder lists its pages above the drop area.
+    await vi.waitFor(() => {
+      expect(document.querySelector(".wizard-pages")).not.toBeNull();
+    });
+    await expect.element(screen.getByText("Full name")).toBeVisible();
+
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await vi.waitFor(() => expect(mockSaveDraft).toHaveBeenCalledTimes(1));
+    const spec = mockSaveDraft.mock.calls[0][1].spec as unknown as {
+      display: string;
+      components: { type: string }[];
+    };
+    expect(spec.display).toBe("wizard");
+    expect(spec.components.map((c) => c.type)).toEqual(["panel"]);
   });
 });

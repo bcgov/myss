@@ -142,10 +142,34 @@ describe("checkSpec: shape", () => {
     ],
     [
       { display: "pdf", components: [submit] },
-      'The display "pdf" is not allowed. Use "form".',
+      'The display "pdf" is not allowed. Use "form" or "wizard".',
     ],
   ])("refuses %j", (value, message) => {
     expect(checkSpec(value).problems).toEqual([{ message }]);
+  });
+
+  it("accepts a wizard, whose pages are panels, without a Submit button", () => {
+    const result = checkSpec({
+      display: "wizard",
+      components: [
+        {
+          type: "panel",
+          key: "page1",
+          title: "One",
+          components: [textfield("a")],
+        },
+        {
+          type: "panel",
+          key: "page2",
+          title: "Two",
+          components: [textfield("b")],
+        },
+      ],
+    });
+
+    expect(result.problems).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.questionCount).toBe(2);
   });
 });
 
