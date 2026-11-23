@@ -6,6 +6,7 @@ import {
 import type { FormType } from "@formio/react/lib/components/Form";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
+import { page } from "vitest/browser";
 
 import { ApplicationRequestError } from "../api/applications";
 import { SubmissionRejectedError } from "../api/forms";
@@ -66,23 +67,67 @@ function draft(overrides: Partial<DraftApplication> = {}): DraftApplication {
   return { version: 3, status: "DRAFT", answers: {}, ...overrides };
 }
 
+// Rows of answers under one key, as a repeat section holds them; Form.io's
+// stock data grid has the same data shape and input names.
+const rowsSpec = {
+  display: "form",
+  components: [
+    {
+      type: "datagrid",
+      key: "children",
+      label: "Children",
+      input: true,
+      components: [
+        {
+          type: "textfield",
+          key: "childFirstName",
+          label: "First name",
+          input: true,
+        },
+      ],
+    },
+    {
+      type: "button",
+      key: "submit",
+      action: "submit",
+      label: "Submit",
+      input: true,
+    },
+  ],
+} as unknown as FormType;
+
+/**
+ * Waits past Form.io's 100 ms change delay, after which it shows a field's
+ * outstanding errors again.
+ */
+function pastChangeDelay() {
+  return new Promise((resolve) => setTimeout(resolve, 500));
+}
+
+/** The text a field's Form.io wrapper shows, its error message included. */
+function fieldText(key: string) {
+  return document.querySelector(`.formio-component-${key}`)?.textContent ?? "";
+}
+
 function Harness({
   application,
   saveFn,
   submitFn,
   onSubmitted,
+  form = spec,
 }: Readonly<{
   application: DraftApplication;
   saveFn: Write;
   submitFn: Write;
   onSubmitted: () => void;
+  form?: FormType;
 }>) {
   const save = useMutation({ mutationFn: saveFn });
   const submit = useMutation({ mutationFn: submitFn });
   return (
     <DraftApplicationForm
       application={application}
-      spec={spec}
+      spec={form}
       save={save}
       submit={submit}
       onSubmitted={onSubmitted}
@@ -98,10 +143,12 @@ async function setup({
     updatedAt: "2026-11-03T10:05:00Z",
   }),
   submitFn = vi.fn<Write>().mockResolvedValue({}),
+  form = spec,
 }: {
   application?: DraftApplication;
   saveFn?: ReturnType<typeof vi.fn<Write>>;
   submitFn?: ReturnType<typeof vi.fn<Write>>;
+  form?: FormType;
 } = {}) {
   const onSubmitted = vi.fn();
   const queryClient = new QueryClient({
@@ -114,6 +161,7 @@ async function setup({
         saveFn={saveFn}
         submitFn={submitFn}
         onSubmitted={onSubmitted}
+        form={form}
       />
     </QueryClientProvider>
   );
@@ -228,9 +276,64 @@ describe("DraftApplicationForm", () => {
       .toBeVisible();
     expect(onSubmitted).not.toHaveBeenCalled();
 
-    // Without the edit clearing the server error, Form.io would still count
-    // the field invalid and refuse this submit client-side.
+    // Form.io shows a server error again on every change after a submit, even
+    // once its field is corrected, unless the edit takes it off the field.
     await screen.getByRole("textbox", { name: /Last name/ }).fill("Lovelace");
+    await pastChangeDelay();
+    await screen.getByRole("textbox", { name: /First name/ }).fill("Adah");
+    await pastChangeDelay();
+    expect(fieldText("lastName")).not.toContain("Enter a real last name.");
+
+    await screen.getByRole("button", { name: "Submit" }).click();
+
+    await vi.waitFor(() => expect(onSubmitted).toHaveBeenCalledOnce());
+    expect(submitFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("pins a row's API error on that row's field, focuses it from the summary, and lets an edit clear it", async () => {
+    const submitFn = vi
+      .fn<Write>()
+      .mockRejectedValueOnce(
+        new SubmissionRejectedError(422, [
+          {
+            field: "children[1].childFirstName",
+            keyword: "FORM.FIELD.REQUIRED",
+            message: "Enter the second child's first name.",
+          },
+        ]),
+      )
+      .mockResolvedValueOnce({});
+    const { screen, onSubmitted } = await setup({
+      submitFn,
+      form: rowsSpec,
+      application: draft({
+        answers: { children: [{ childFirstName: "Ada" }, { childFirstName: "A" }] },
+      }),
+    });
+    const second = () =>
+      document.querySelector<HTMLInputElement>('[name="data[children][1][childFirstName]"]');
+    await vi.waitFor(() => expect(second()?.value).toBe("A"));
+
+    await screen.getByRole("button", { name: "Submit" }).click();
+
+    await vi.waitFor(() => {
+      const shown = second()?.closest(".formio-component-childFirstName")?.textContent ?? "";
+      expect(shown).toContain("Enter the second child's first name.");
+    });
+    const first = document.querySelector('[name="data[children][0][childFirstName]"]');
+    expect(first?.closest(".formio-component-childFirstName")?.textContent ?? "").not.toContain(
+      "Enter the second child's first name.",
+    );
+    await screen.getByRole("button", { name: "Enter the second child's first name." }).click();
+    await vi.waitFor(() => expect(document.activeElement).toBe(second()));
+    expect(onSubmitted).not.toHaveBeenCalled();
+
+    await page.elementLocator(second()!).fill("Allegra");
+    await pastChangeDelay();
+    expect(second()?.closest(".formio-component-childFirstName")?.textContent ?? "").not.toContain(
+      "Enter the second child's first name.",
+    );
+
     await screen.getByRole("button", { name: "Submit" }).click();
 
     await vi.waitFor(() => expect(onSubmitted).toHaveBeenCalledOnce());

@@ -520,3 +520,39 @@ describe("locateKey and formatSpecJson", () => {
     expect(formatSpecJson("{")).toBeNull();
   });
 });
+
+describe("checkSpec: repeat sections", () => {
+  const count = { type: "number", key: "childCount", label: "How many?", input: true };
+  function section(extra: object = {}) {
+    return {
+      type: "bcgovRepeatSection",
+      key: "children",
+      label: "Children",
+      input: true,
+      properties: { myssRepeatCount: "childCount", myssRepeatMax: "10", myssRowLabel: "Child Info" },
+      components: [textfield("childFirstName")],
+      ...extra,
+    };
+  }
+
+  it("accepts a section counted by a number question, and counts its questions, not the section", () => {
+    const check = checkSpec(spec(count, section()));
+
+    expect(check.problems).toEqual([]);
+    expect(check.questionCount).toBe(2);
+  });
+
+  it("names the section when its count question is not in the form", () => {
+    const check = checkSpec(
+      spec(count, section({ properties: { myssRepeatCount: "kidCount" } })),
+    );
+
+    expect(check.problems).toEqual([
+      {
+        key: "children",
+        message:
+          'The repeat section "children" counts with "kidCount", which is not a field in this form.',
+      },
+    ]);
+  });
+});

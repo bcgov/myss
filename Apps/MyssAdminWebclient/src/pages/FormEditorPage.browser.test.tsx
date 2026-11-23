@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "vitest-browser-react";
+import { page } from "vitest/browser";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -50,6 +51,32 @@ const mockGetRates = vi.mocked(getEstimatorRates);
 registerBcgovComponents();
 
 const notFound = () => new FormLoadError(404, "Draft fetch failed (404)");
+
+/** A form with one repeat section, whose properties are `properties`. */
+function repeatSectionSpec(properties: Record<string, unknown> = {}) {
+  return {
+    display: "form",
+    components: [
+      { type: "number", key: "childCount", label: "How many children?", input: true },
+      {
+        type: "bcgovRepeatSection",
+        key: "children",
+        label: "Children",
+        input: true,
+        properties,
+        components: [
+          {
+            type: "textfield",
+            key: "childFirstName",
+            label: "What is this child's first name?",
+            input: true,
+          },
+        ],
+      },
+      { type: "button", key: "submit", label: "Submit", action: "submit", input: true },
+    ],
+  } as FormSpecPayload["spec"];
+}
 
 const idTaken = () =>
   new SpecRejectedError(409, [
@@ -568,6 +595,28 @@ describe("FormEditorPage", () => {
     expect(mockPublishForm).toHaveBeenCalledTimes(1);
   });
 
+  it("names a repeat section without a count question instead of saving", async () => {
+    mockGetDraft.mockResolvedValue({
+      ...draft,
+      spec: repeatSectionSpec({ myssRowLabel: "Child Info" }),
+    });
+
+    const screen = await renderPage();
+    await screen
+      .getByRole("textbox", { name: "Label for childFirstName" })
+      .fill("First name");
+    await screen.getByRole("button", { name: "Save draft" }).click();
+
+    await expect
+      .element(
+        screen.getByRole("button", {
+          name: 'The repeat section "children" needs a count question.',
+        }),
+      )
+      .toBeVisible();
+    expect(mockSaveDraft).not.toHaveBeenCalled();
+  });
+
   it("surfaces a 422 as an error summary and keeps the edits on screen", async () => {
     mockGetDraft.mockResolvedValue(draft);
     mockSaveDraft.mockRejectedValue(
@@ -689,6 +738,37 @@ interface RegisteredComponent {
   editForm?: (overrides: unknown) => { components: EditFormNode[] };
 }
 
+/**
+ * A copy of a type's dialog overrides, which building the edit form mutates.
+ * JSON rather than structuredClone: the repeat section's count question builds
+ * its list with a function, which structuredClone refuses and these checks do
+ * not need.
+ */
+function copyOverrides(overrides: unknown): unknown {
+  return JSON.parse(JSON.stringify(overrides)) as unknown;
+}
+
+/** The repeat section keyed "children" on the builder's canvas, once it is drawn. */
+function builderSection(): Promise<HTMLElement> {
+  return vi.waitFor(() => {
+    const found = document.querySelector<HTMLElement>(
+      ".builder-component .formio-component-children",
+    );
+    expect(found, "the section is not on the canvas").not.toBeNull();
+    return found!;
+  });
+}
+
+/** The builder's drop area inside a repeat section, with what Form.io attaches to it. */
+function sectionDropArea(section: HTMLElement) {
+  const container = section.querySelector('[ref="children-container"]');
+  expect(container, "the section has no drop area").not.toBeNull();
+  return container as HTMLElement & {
+    formioContainer?: { key?: string }[];
+    formioComponent?: { component: { key: string } };
+  };
+}
+
 function registered(type: string): RegisteredComponent | undefined {
   return (
     Components as unknown as { components: Record<string, RegisteredComponent> }
@@ -715,7 +795,7 @@ describe("FormEditorPage build mode", () => {
     for (const type of ALLOWED_COMPONENT_TYPES) {
       const component = registered(type);
       const built = component!.editForm!(
-        structuredClone(builderOptions.editForm[type]),
+        copyOverrides(builderOptions.editForm[type]),
       );
       const keyField = tabNodes(built, "api").find(
         (node) => node.key === "key",
@@ -730,7 +810,7 @@ describe("FormEditorPage build mode", () => {
     for (const type of ["textfield", "number", "select", "email"]) {
       const component = registered(type);
       const withOverride = tabFields(
-        component!.editForm!(structuredClone(builderOptions.editForm[type])),
+        component!.editForm!(copyOverrides(builderOptions.editForm[type])),
         "data",
       );
       const withoutOverride = tabFields(
@@ -751,17 +831,148 @@ describe("FormEditorPage build mode", () => {
     for (const type of ["button", "content", "panel"]) {
       const component = registered(type);
       const built = component!.editForm!(
-        structuredClone(builderOptions.editForm[type]),
+        copyOverrides(builderOptions.editForm[type]),
       );
       expect(tabFields(built, "data"), `${type} gained a Data tab`).toEqual([]);
     }
+  });
+
+  it("gives the repeat section a heading, count question and maximum in place of the data grid's row controls", () => {
+    const section = registered("bcgovRepeatSection");
+    const built = section!.editForm!(
+      copyOverrides(builderOptions.editForm.bcgovRepeatSection),
+    );
+    const display = tabFields(built, "display");
+
+    expect(display).toEqual(
+      expect.arrayContaining([
+        "properties.myssRowLabel",
+        "properties.myssRepeatCount",
+        "properties.myssRepeatMax",
+      ]),
+    );
+    for (const control of ["addAnother", "reorder", "initEmpty", "disableAddingRemovingRows"]) {
+      expect(display, `${control} is still offered`).not.toContain(control);
+    }
+    expect(tabFields(built, "data")).not.toContain("defaultValue");
+    expect(tabFields(built, "validation")).not.toContain("validate.maxLength");
+  });
+
+  it("draws a repeat section stacked in the builder, its drop area holding the section's questions", async () => {
+    mockGetDraft.mockResolvedValue({
+      ...draft,
+      spec: repeatSectionSpec({ myssRepeatCount: "childCount", myssRowLabel: "Child Info" }),
+    });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    const section = await builderSection();
+
+    expect(section.querySelector("table"), "drawn as a data grid table").toBeNull();
+    expect(section.textContent).toContain("Children");
+    expect(section.textContent).toContain("Child Info");
+    const container = sectionDropArea(section);
+    // Questions dropped here go into the section's own components.
+    expect(container.formioComponent?.component.key).toBe("children");
+    expect(container.formioContainer?.map((c) => c.key)).toEqual(["childFirstName"]);
+    expect(container.querySelectorAll(".builder-component")).toHaveLength(1);
+  });
+
+  it("shows the builder's drop placeholder in an empty repeat section", async () => {
+    const spec = repeatSectionSpec({ myssRepeatCount: "childCount" });
+    mockGetDraft.mockResolvedValue({
+      ...draft,
+      spec: {
+        ...spec,
+        components: (spec.components as Record<string, unknown>[]).map((c) =>
+          c.key === "children" ? { ...c, components: [] } : c,
+        ),
+      } as FormSpecPayload["spec"],
+    });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    const section = await builderSection();
+
+    expect(sectionDropArea(section).querySelector(".drag-and-drop-alert")).not.toBeNull();
+  });
+
+  it("saves a question removed from inside a repeat section", async () => {
+    mockGetDraft.mockResolvedValue({
+      ...draft,
+      spec: repeatSectionSpec({ myssRepeatCount: "childCount" }),
+    });
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    const section = await builderSection();
+    section.querySelector<HTMLElement>('.builder-component [ref="removeComponent"]')!.click();
+    await vi.waitFor(() => {
+      expect(document.querySelector('[class~="formio-component-childFirstName"]')).toBeNull();
+    });
+
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await expect.element(screen.getByText("Draft saved.")).toBeVisible();
+
+    const [, input] = mockSaveDraft.mock.calls[0];
+    const saved = (input.spec.components ?? []) as Record<string, unknown>[];
+    expect(saved.find((c) => c.key === "children")?.components).toEqual([]);
+    expect(saved.map((c) => c.key)).toEqual(["childCount", "children", "submit"]);
+  });
+
+  it("saves a question edited inside a repeat section in its place", async () => {
+    mockGetDraft.mockResolvedValue({
+      ...draft,
+      spec: repeatSectionSpec({ myssRepeatCount: "childCount" }),
+    });
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    const section = await builderSection();
+    section.querySelector<HTMLElement>('.builder-component [ref="editComponent"]')!.click();
+    const label = await vi.waitFor(() => {
+      const found = document.querySelector<HTMLInputElement>('.formio-dialog input[name="data[label]"]');
+      expect(found?.value, "the settings dialog did not open on the question").toBe(
+        "What is this child's first name?",
+      );
+      return found!;
+    });
+    await page.elementLocator(label).fill("Child's first name");
+    document.querySelector<HTMLElement>('[ref="saveButton"]')!.click();
+    await vi.waitFor(() => {
+      expect(document.querySelector('[ref="saveButton"]')).toBeNull();
+    });
+
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await expect.element(screen.getByText("Draft saved.")).toBeVisible();
+
+    const [, input] = mockSaveDraft.mock.calls[0];
+    const saved = (input.spec.components ?? []) as Record<string, unknown>[];
+    const children = saved.find((c) => c.key === "children")?.components as Record<string, unknown>[];
+    expect(children.map((c) => [c.key, c.label])).toEqual([["childFirstName", "Child's first name"]]);
+    expect(saved.map((c) => c.key)).toEqual(["childCount", "children", "submit"]);
+  });
+
+  it("draws a repeat section in the builder with its questions inside it", async () => {
+    mockGetDraft.mockResolvedValue({ ...draft, spec: repeatSectionSpec() });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+
+    await vi.waitFor(() => {
+      const section = document.querySelector(".builder-component .formio-component-children");
+      expect(section, "the section is not on the canvas").not.toBeNull();
+      expect(section?.textContent).toContain("What is this child's first name?");
+    });
   });
 
   it("gives the accordion heading and body fields in place of a label", () => {
     const accordion = registered("bcgovAccordion");
     const fields = tabFields(
       accordion!.editForm!(
-        structuredClone(builderOptions.editForm.bcgovAccordion),
+        copyOverrides(builderOptions.editForm.bcgovAccordion),
       ),
       "display",
     );

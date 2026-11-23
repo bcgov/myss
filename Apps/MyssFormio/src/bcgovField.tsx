@@ -10,7 +10,7 @@
 //     Form.io's own message markup is suppressed so nothing paints twice;
 //   - a field's `properties.myssValidator` rule and `properties.myssMatches`
 //     confirmation run alongside Form.io's rules (see validationRules.ts);
-//   - `isRequired`, `isDisabled` and `name="data[<key>]"` come from the spec and
+//   - `isRequired`, `isDisabled` and Form.io's input `name` come from the spec and
 //     Form.io's state, so required markers, read-only rendering and the error
 //     summary's focus buttons behave the same on every field.
 //
@@ -581,7 +581,9 @@ export function withBcgovField<TBase extends FormioFieldCtor>(Base: TBase) {
           this.options.readOnly === true,
         isInvalid: this.bcgovErrorMessage !== "",
         errorMessage: this.bcgovErrorMessage || undefined,
-        name: `data[${this.key}]`,
+        // Form.io's own name: `data[<key>]`, or for a field in a repeat
+        // section's row `data[<section>][<row>][<key>]`, one per row.
+        name: textOf(this.options.name) || `data[${this.key}]`,
       };
     }
   }

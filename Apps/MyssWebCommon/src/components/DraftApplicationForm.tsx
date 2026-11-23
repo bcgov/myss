@@ -17,6 +17,7 @@ import {
 
 import { ApplicationRequestError } from "../api/applications";
 import { SubmissionRejectedError, type FormValidationError } from "../api/forms";
+import { fieldOfInputName } from "./fieldNames";
 import SubmissionErrors from "./SubmissionErrors";
 import { useClientValidation } from "./useClientValidation";
 
@@ -76,8 +77,7 @@ interface FormData {
 function formFieldName(target: EventTarget) {
   if (!(target instanceof HTMLElement)) return;
 
-  const match = /^data\[([^\]]+)\]$/.exec(target.getAttribute("name") ?? "");
-  return match?.[1];
+  return fieldOfInputName(target.getAttribute("name") ?? "");
 }
 
 function conflictOf(error: Error | null) {
@@ -137,9 +137,9 @@ export default function DraftApplicationForm<
     formInstanceRef.current = instance;
   }, []);
 
-  // A server error stays on a field until it is edited. Form.io counts
-  // outstanding server errors as invalid, so without this the next submit
-  // would be refused client-side with the stale message still showing.
+  // Takes a server error off the field the citizen edits. Form.io keeps it on
+  // the field and shows it again on every change after a submit, even once
+  // the answer is corrected, until the next submit starts.
   const handleInputCapture = useCallback((event: InputEvent<HTMLElement>) => {
     const field = formFieldName(event.target);
     const form = formInstanceRef.current;

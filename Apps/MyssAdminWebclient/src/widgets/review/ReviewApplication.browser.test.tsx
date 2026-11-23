@@ -10,11 +10,15 @@ import type {
 } from "@/api/review";
 import { REVIEW_KEYWORDS } from "@/api/review";
 import ReviewApplication from "@/widgets/review/ReviewApplication";
+import { registerBcgovComponents } from "@myss/formio";
 
 // One application under review: the submitted answers read-only, the buttons
 // the server allows the caller, internal notes for the assignee, the history,
 // and each write sending the stream version it was decided against. A 409
 // reloads the file instead of pretending.
+
+// As main.tsx does at app start, so the submission renders as it does for workers.
+registerBcgovComponents();
 
 const ID = "11111111-2222-3333-4444-555555555555";
 
@@ -596,6 +600,52 @@ test("the actions wait while a note is being saved", async () => {
   await expect
     .element(screen.getByRole("button", { name: "Accept" }))
     .toBeEnabled();
+});
+
+/** The application with a repeat section: one "Child Info" group per child counted. */
+const repeatSectionSpec = {
+  formSpecId: "income-assistance-poc",
+  version: 2,
+  title: "Income Assistance application",
+  spec: {
+    display: "form",
+    components: [
+      { type: "textfield", key: "firstName", label: "First name", input: true },
+      { type: "number", key: "childCount", label: "How many children?", input: true },
+      {
+        type: "bcgovRepeatSection",
+        key: "children",
+        label: "Children",
+        input: true,
+        properties: { myssRepeatCount: "childCount", myssRepeatMax: 10, myssRowLabel: "Child Info" },
+        components: [
+          { type: "textfield", key: "childFirstName", label: "What is this child's first name?", input: true },
+        ],
+      },
+      { type: "button", key: "submit", action: "submit", label: "Submit", input: true },
+    ],
+  },
+} as unknown as FormSpecPayload;
+
+const threeChildren = {
+  firstName: "Ada",
+  childCount: 3,
+  children: [{ childFirstName: "Ann" }, { childFirstName: "Ben" }, { childFirstName: "Cal" }],
+};
+
+test("shows a submission's rows read-only, one Child Info group per row", async () => {
+  stubApi({
+    application: submitted({ spec: repeatSectionSpec, formSpecVersion: 2, answers: threeChildren }),
+  });
+  const screen = await renderReview();
+
+  for (const [index, name] of [[1, "Ann"], [2, "Ben"], [3, "Cal"]] as const) {
+    const field = screen
+      .getByRole("group", { name: `Child Info ${index} of 3`, exact: true })
+      .getByRole("textbox", { name: "What is this child's first name?" });
+    await expect.element(field).toHaveValue(name);
+    await expect.element(field).toBeDisabled();
+  }
 });
 
 test("the supporting documents are listed and download through the API", async () => {

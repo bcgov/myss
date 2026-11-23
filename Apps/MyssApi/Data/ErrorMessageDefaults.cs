@@ -47,6 +47,7 @@ namespace Myss.Api.Data
                 ["FORM.FIELD.MAX_LENGTH"] = "This answer is too long.",
                 ["FORM.FIELD.MIN"] = "This number is too small.",
                 ["FORM.FIELD.MAX"] = "This number is too large.",
+                ["FORM.FIELD.ROW_COUNT_MISMATCH"] = "The number of entries does not match the number you entered.",
                 ["REGISTRATION.DOB.INVALID"] = "Enter a valid date of birth.",
                 ["REGISTRATION.DOB.FUTURE"] = "Date of birth cannot be in the future.",
                 ["REGISTRATION.GENDER.UNKNOWN"] = "Choose one of the listed options.",

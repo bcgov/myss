@@ -123,6 +123,27 @@ const REGISTRATION_V5: FormSpecPayload = {
 
 const EXAMPLE_TEXT = JSON.stringify(EXAMPLE_SPEC, null, 2);
 
+/** A form whose repeat section counts with `countKey`. */
+function repeatSectionSpec(countKey: string) {
+  return {
+    display: "form",
+    components: [
+      { type: "number", key: "childCount", label: "How many children?", input: true },
+      {
+        type: "bcgovRepeatSection",
+        key: "children",
+        label: "Children",
+        input: true,
+        properties: { myssRepeatCount: countKey, myssRowLabel: "Child Info" },
+        components: [
+          { type: "textfield", key: "childFirstName", label: "First name", input: true },
+        ],
+      },
+      { type: "button", key: "submit", label: "Submit", action: "submit", input: true },
+    ],
+  };
+}
+
 function withoutComponent(spec: object, key: string): object {
   const { components } = spec as { components: { key: string }[] };
   return {
@@ -470,6 +491,31 @@ describe("FormFromJsonPage: JSON, checks and preview", () => {
     await expect
       .element(jsonBody(screen))
       .toHaveAccessibleDescription(/1 problem\. Fix it to save\./);
+  });
+
+  it("accepts a repeat section counted by a number question", async () => {
+    const { screen } = await openPage();
+
+    await jsonBody(screen).fill(JSON.stringify(repeatSectionSpec("childCount"), null, 2));
+
+    await expect
+      .element(jsonBody(screen))
+      .toHaveAccessibleDescription(/Valid\. 2 questions\./);
+    expect(screen.getByText("There is a problem").query()).toBeNull();
+  });
+
+  it("lists a repeat section whose count question is not in the form", async () => {
+    const { screen } = await openPage();
+
+    await jsonBody(screen).fill(JSON.stringify(repeatSectionSpec("kidCount"), null, 2));
+
+    await expect
+      .element(
+        screen.getByRole("button", {
+          name: 'The repeat section "children" counts with "kidCount", which is not a field in this form.',
+        }),
+      )
+      .toBeVisible();
   });
 
   it("accepts the types the current version already uses", async () => {

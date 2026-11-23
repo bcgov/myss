@@ -250,6 +250,21 @@ rules, held to the C# ones by `Shared/validation/validation-vectors.json`. Insid
 builder's settings dialog the wrappers render Form.io's stock markup. A blocked submit and
 a refused submit feed the same `SubmissionErrors` summary (`useClientValidation`).
 
+**Repeat sections.** A `bcgovRepeatSection` (`Apps/MyssFormio/src/repeatSection.ts`, on
+Form.io's data grid) asks its questions once per unit of a number question's answer, named
+by `properties.myssRepeatCount`, up to `properties.myssRepeatMax` rows (default 10, at most
+50), each headed by `properties.myssRowLabel`. Its answer is a list of row objects under the
+section's key; a row's failure is named by its path (`children[1].childFirstName`), and the
+row's input by Form.io's name (`data[children][1][childFirstName]`), which
+`MyssWebCommon/src/components/fieldNames.ts` converts between. The section shows only while
+its count question does, and the count question takes the section's limits in the browser
+and in `FormSpecValidator`: required, a whole number, from 1 to the maximum. A row's
+conditional reads the row first, then the whole form. The publish rule (a number count
+question that is not hidden, outside every repeat section; a maximum from 1 to 50; no
+section inside another) has three copies, Strapi's `form-spec-rules.ts`, the editor's
+`specRules.ts` and `FormSpecValidator.ValidateSpecStructure`, held together by
+`Shared/validation/repeat-section-specs.json`.
+
 **Error wording is content, in three layers.** Wording authored on the form itself comes
 first, in the order the browser shows it: for Form.io's own rules (`required`, `pattern`,
 lengths, `min`/`max`) `validate.customMessage`, then `validate.patternMessage`, then the

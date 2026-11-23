@@ -1,6 +1,8 @@
 // Configuration for the Form.io builder: which component types a designer may
 // add, and what the component settings dialog exposes.
 
+import { forEachComponent } from "./specWalk";
+
 /** Question types that pick from a fixed set of answers. */
 const CHOICE_TYPES = ["radio", "select", "checkbox"] as const;
 
@@ -39,10 +41,18 @@ const CONTENT_TYPES = [
   "button",
 ] as const;
 
+/**
+ * A group of questions asked once per unit of a number question's answer. It
+ * collects an answer, a list of rows, so it is not a content type, but it is
+ * offered beside them, with the other types that hold questions.
+ */
+const REPEAT_SECTION_TYPE = "bcgovRepeatSection";
+
 /** Every type the palette offers. The builder sorts the sidebar itself. */
 export const ALLOWED_COMPONENT_TYPES: readonly string[] = [
   ...QUESTION_TYPES,
   ...CONTENT_TYPES,
+  REPEAT_SECTION_TYPE,
 ];
 
 /**
@@ -267,6 +277,101 @@ const inlineAlertSettings = [
   },
 ];
 
+/**
+ * The number questions a repeat section can count by: every one in the form
+ * except those inside a repeat section, which the publish rules refuse.
+ */
+export function countQuestionOptions(
+  spec: unknown,
+): { label: string; value: string }[] {
+  const options: { label: string; value: string }[] = [];
+  forEachComponent(spec, (component) => {
+    if (component.type === REPEAT_SECTION_TYPE) return false;
+    if (component.type === "number" && typeof component.key === "string") {
+      const label = typeof component.label === "string" ? component.label : "";
+      options.push({
+        label: `${label || component.key} (${component.key})`,
+        value: component.key,
+      });
+    }
+  });
+  return options;
+}
+
+// The data grid's row controls, which a repeat section replaces with its count.
+const DATA_GRID_ROW_SETTINGS = [
+  "disableAddingRemovingRows",
+  "conditionalAddButton",
+  "reorder",
+  "addAnother",
+  "addAnotherPosition",
+  "layoutFixed",
+  "enableRowGroups",
+  "rowGroups",
+  "groupToggle",
+  "initEmpty",
+];
+
+// A repeat section draws its rows from the count question's answer, so the
+// dialog asks for that question, the most rows and each row's heading, and
+// drops the data grid's own row controls, default rows and row limits. It has
+// no Hidden setting: the section shows and hides with its count question. Its
+// questions are added by dragging them into it.
+const repeatSectionSettings = [
+  lockedKey,
+  {
+    key: "display",
+    components: [
+      ...DATA_GRID_ROW_SETTINGS.map((key) => ({ key, ignore: true })),
+      { key: "hidden", ignore: true },
+      {
+        type: "textfield",
+        key: "properties.myssRowLabel",
+        label: "Heading for each entry",
+        description:
+          'Shown above each entry\'s questions, for example "Child Info". Leave blank to use the label.',
+        input: true,
+        weight: 1,
+      },
+      {
+        type: "select",
+        key: "properties.myssRepeatCount",
+        label: "Count question",
+        description:
+          "The number question whose answer sets how many entries are shown. The entries show only while it does, and the citizen must answer it with a whole number from 1 to the most entries.",
+        input: true,
+        weight: 2,
+        dataSrc: "custom",
+        valueProperty: "value",
+        data: {
+          custom(context: { instance?: { options?: { editForm?: unknown } } }) {
+            return countQuestionOptions(context.instance?.options?.editForm);
+          },
+        },
+      },
+      {
+        type: "number",
+        key: "properties.myssRepeatMax",
+        label: "Most entries",
+        description: "From 1 to 50. The count question allows no more.",
+        input: true,
+        weight: 3,
+        validate: { required: true, min: 1, max: 50, integer: true },
+      },
+    ],
+  },
+  { key: "data", components: [{ key: "defaultValue", ignore: true }] },
+  {
+    key: "validation",
+    components: [
+      { key: "validate.required", ignore: true },
+      { key: "validate.minLength", ignore: true },
+      { key: "validate.maxLength", ignore: true },
+      ...scriptValidatorsOff,
+    ],
+  },
+];
+
 // A checkbox can sit under a question of its own ("Acknowledgement"), drawn
 // above it as a label; its Label stays the text beside the box.
 const checkboxQuestionSettings = {
@@ -307,6 +412,7 @@ const editForm: Record<string, unknown> = {
   ],
   bcgovCallout: calloutSettings,
   bcgovInlineAlert: inlineAlertSettings,
+  [REPEAT_SECTION_TYPE]: repeatSectionSettings,
 };
 
 /**
@@ -346,7 +452,7 @@ export const builderOptions = {
       title: "Content and layout",
       weight: 10,
       default: false,
-      components: palette(CONTENT_TYPES),
+      components: palette([...CONTENT_TYPES, REPEAT_SECTION_TYPE]),
     },
   },
   editForm,

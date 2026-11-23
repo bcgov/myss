@@ -2,17 +2,21 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { render } from "vitest-browser-react";
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 
 import type { FormSpecPayload } from "@/api/forms";
 import type { ApplicationPayload } from "@/api/intake";
 import ApplicationForm from "@/widgets/intake/ApplicationForm";
 import { loadPageStyles } from "@/testing/pageStyles";
+import { registerBcgovComponents } from "@myss/formio";
 
 // The draft edits and saves without Form.io's client validation getting in
 // the way, submits through the spec's own button, and turns read-only with
 // an acknowledgement once the API says SUBMITTED. Every refusal the API can
 // give a draft is shown in place.
+
+// As main.tsx does at app start, so the forms render as citizens see them.
+registerBcgovComponents();
 
 const ID = "11111111-2222-3333-4444-555555555555";
 
@@ -561,5 +565,103 @@ describe("layout", () => {
       );
     }
     expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+  });
+});
+
+/** The application with a repeat section: one "Child Info" group per child counted. */
+const repeatSectionSpec = {
+  formSpecId: "income-assistance-poc",
+  version: 2,
+  title: "Income Assistance application",
+  spec: {
+    display: "form",
+    components: [
+      { type: "textfield", key: "firstName", label: "First name", input: true },
+      { type: "number", key: "childCount", label: "How many children?", input: true },
+      {
+        type: "bcgovRepeatSection",
+        key: "children",
+        label: "Children",
+        input: true,
+        properties: { myssRepeatCount: "childCount", myssRepeatMax: 10, myssRowLabel: "Child Info" },
+        components: [
+          { type: "textfield", key: "childFirstName", label: "What is this child's first name?", input: true },
+        ],
+      },
+      { type: "button", key: "submit", action: "submit", label: "Submit", input: true },
+    ],
+  },
+} as unknown as FormSpecPayload;
+
+const threeChildren = {
+  firstName: "Ada",
+  childCount: 3,
+  children: [{ childFirstName: "Ann" }, { childFirstName: "Ben" }, { childFirstName: "Cal" }],
+};
+
+function childGroup(screen: Awaited<ReturnType<typeof renderForm>>, index: number, total: number) {
+  return screen.getByRole("group", { name: `Child Info ${index} of ${total}`, exact: true });
+}
+
+describe("a repeat section", () => {
+  test("a draft's saved rows show as Child Info groups, and Save sends the rows the count now asks for", async () => {
+    const stub: Stub = {
+      application: draft({ spec: repeatSectionSpec, formSpecVersion: 2, answers: threeChildren }),
+    };
+    const writes = stubApi(stub);
+    const screen = await renderForm();
+
+    await expect
+      .element(childGroup(screen, 3, 3).getByRole("textbox", { name: "What is this child's first name?" }))
+      .toHaveValue("Cal");
+    const count = screen.getByRole("textbox", { name: "How many children?" });
+    await expect
+      .poll(async () => {
+        await count.fill("2");
+        await userEvent.tab();
+        return (count.element() as HTMLInputElement).value;
+      }, { timeout: 10_000 })
+      .toBe("2");
+    await expect.element(childGroup(screen, 2, 2)).toBeVisible();
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await vi.waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0].body).toMatchObject({
+      answers: { childCount: 2, children: [{ childFirstName: "Ann" }, { childFirstName: "Ben" }] },
+    });
+  });
+
+  test("a returned application keeps its rows editable", async () => {
+    stubApi({
+      application: draft({
+        status: "RETURNED",
+        spec: repeatSectionSpec,
+        formSpecVersion: 2,
+        answers: threeChildren,
+      }),
+    });
+    const screen = await renderForm();
+
+    const first = childGroup(screen, 1, 3).getByRole("textbox", { name: "What is this child's first name?" });
+    await expect.element(first).toHaveValue("Ann");
+    await expect.element(first).toBeEnabled();
+  });
+
+  test("a submitted application shows its rows read-only, as submitted", async () => {
+    stubApi({
+      application: draft({
+        status: "SUBMITTED",
+        submittedAt: "2026-09-28T11:00:00Z",
+        spec: repeatSectionSpec,
+        formSpecVersion: 2,
+        answers: threeChildren,
+      }),
+    });
+    const screen = await renderForm();
+
+    const third = childGroup(screen, 3, 3).getByRole("textbox", { name: "What is this child's first name?" });
+    await expect.element(third).toHaveValue("Cal");
+    await expect.element(third).toBeDisabled();
+    await expect.element(screen.getByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 });

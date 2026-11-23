@@ -222,3 +222,28 @@ describe("setFormLayout", () => {
     ).toEqual([field, submit]);
   });
 });
+
+describe("a repeat section in the row-by-row editor", () => {
+  const spec = {
+    components: [
+      { type: "number", key: "childCount", label: "How many?", input: true },
+      {
+        type: "bcgovRepeatSection",
+        key: "children",
+        label: "Children",
+        input: true,
+        components: [
+          { type: "textfield", key: "childFirstName", label: "First name", input: true },
+        ],
+      },
+    ],
+  } as unknown as FormType;
+
+  it("lists the section's questions, not the section", () => {
+    expect(flattenComponents(spec).map((c) => c.key)).toEqual(["childCount", "childFirstName"]);
+    expect(listEditableComponents(spec).map((c) => c.key)).toEqual([
+      "childCount",
+      "childFirstName",
+    ]);
+  });
+});

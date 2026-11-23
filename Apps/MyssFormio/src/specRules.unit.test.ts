@@ -1,7 +1,11 @@
+/// <reference types="node" />
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
   findDuplicateKeys,
+  findInvalidRepeatSections,
   findUnknownConditionalTargets,
 } from "./specRules";
 
@@ -244,5 +248,52 @@ describe("the live estimator v3 spec shape", () => {
   it("produces no false positives from either rule", () => {
     expect(findDuplicateKeys(estimatorV3Like)).toEqual([]);
     expect(findUnknownConditionalTargets(estimatorV3Like)).toEqual([]);
+  });
+});
+
+// The cases are shared with MyssContent's publish rule and the API's
+// ValidateSpecStructure, so the three copies of the rule word every problem
+// alike. Read from disk for the reason validationRules.unit.test.ts gives.
+interface RepeatSectionCase {
+  name: string;
+  spec: unknown;
+  problems: string[];
+}
+
+const repeatSectionCases = (
+  JSON.parse(
+    readFileSync(
+      fileURLToPath(new URL("../../../Shared/validation/repeat-section-specs.json", import.meta.url)),
+      "utf8",
+    ),
+  ) as { cases: RepeatSectionCase[] }
+).cases;
+
+describe("findInvalidRepeatSections", () => {
+  it("has cases to run", () => {
+    expect(repeatSectionCases.length).toBeGreaterThan(0);
+  });
+
+  it.each(repeatSectionCases)("$name", ({ spec, problems }) => {
+    expect(findInvalidRepeatSections(spec).map((problem) => problem.message)).toEqual(problems);
+  });
+
+  it("names the section each problem belongs to", () => {
+    const spec = {
+      components: [
+        { type: "bcgovRepeatSection", key: "children", components: [{ type: "textfield", key: "a" }] },
+      ],
+    };
+    expect(findInvalidRepeatSections(spec).map((problem) => problem.key)).toEqual(["children"]);
+  });
+
+  it("leaves a keyless section to the key rules", () => {
+    expect(
+      findInvalidRepeatSections({ components: [{ type: "bcgovRepeatSection", components: [] }] }),
+    ).toEqual([]);
+  });
+
+  it("finds nothing in a spec without a repeat section", () => {
+    expect(findInvalidRepeatSections(estimatorV3Like)).toEqual([]);
   });
 });

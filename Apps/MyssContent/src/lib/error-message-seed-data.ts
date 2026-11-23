@@ -113,6 +113,11 @@ export const seededErrorMessages: readonly ErrorMessageSeed[] = [
     note: "A number over the field's validate.max.",
   },
   {
+    keyword: "FORM.FIELD.ROW_COUNT_MISMATCH",
+    message: "The number of entries does not match the number you entered.",
+    note: "A repeat section (bcgovRepeatSection) whose rows do not number the answer to its count question (properties.myssRepeatCount). The form keeps them equal, and a missing or unusable count is reported on the count question itself, so this is raised only for a request the form did not send.",
+  },
+  {
     keyword: "REGISTRATION.DOB.INVALID",
     message: "Enter a valid date of birth.",
     note: "Registration: the date of birth is not a real date.",

@@ -30,6 +30,7 @@ const CONTAINER_TYPES = new Set([
   "container",
   "datagrid",
   "editgrid",
+  "bcgovRepeatSection",
 ]);
 
 /**
@@ -50,8 +51,9 @@ export function flattenComponents(spec: FormType): Record<string, unknown>[] {
 }
 
 // Input components that aren't questions a designer edits: the submit button
-// and hidden data carriers both set input:true but have no label to change.
-const NON_EDITABLE_TYPES = new Set(["button", "hidden"]);
+// and hidden data carriers both set input:true but have no label to change, and
+// a repeat section holds questions rather than being one.
+const NON_EDITABLE_TYPES = new Set(["button", "hidden", "bcgovRepeatSection"]);
 
 /** Every input field the designer can edit (label + required), in form order. */
 export function listEditableComponents(spec: FormType): EditableComponent[] {

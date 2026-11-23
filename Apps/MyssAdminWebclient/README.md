@@ -48,6 +48,21 @@ citizen webclient, from the shared `@myss/formio` workspace
 catalogue that the citizen webclient shows (`api/formMessages.ts`,
 `hooks/useFormMessages.ts`), one form at a time.
 
+**Repeat sections.** In **Build form**, the *Content and layout* group offers
+**Repeat section**: a group of questions asked once per unit of a number
+answer, such as one "Child Info" group per child. Add the number question
+first, then the section, and drag the group's questions into it. Its settings
+are **Heading for each entry** (shown above each group), **Count question**
+(chosen from the form's number questions outside any repeat section) and
+**Most entries** (1 to 50, default 10). For citizens, the section shows only
+while its count question does; the count must be a whole number from 1 to
+the most entries; lowering it removes the last groups, and raising it again
+brings their answers back. **Save draft** and **Publish** refuse a section
+without a count question, a count question that is not a number question, is
+hidden or sits inside a repeat section, a maximum outside 1 to 50, and a
+repeat section inside another. The answers are a list, one object per group,
+under the section's key.
+
 **No error message catalogue in the preview.** The citizen webclient loads the published
 error wording from `/v1/forms/error-messages` and the Form.io components use it
 for rule failures. This app does not load it, so the preview words rule failures

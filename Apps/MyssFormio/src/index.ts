@@ -20,7 +20,12 @@ export {
   type EditableComponent,
   type FormLayout,
 } from "./specEdit";
-export { findDuplicateKeys, findUnknownConditionalTargets } from "./specRules";
+export {
+  findDuplicateKeys,
+  findInvalidRepeatSections,
+  findUnknownConditionalTargets,
+  type RepeatSectionProblem,
+} from "./specRules";
 export { forEachComponent } from "./specWalk";
 export {
   EXAMPLE_SPEC,

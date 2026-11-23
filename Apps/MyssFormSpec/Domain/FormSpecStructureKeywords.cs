@@ -35,6 +35,12 @@ namespace Myss.FormSpec.Domain
         /// <summary>A <c>conditional.when</c> names a component key that does not exist.</summary>
         public const string ConditionalUnknownField = "FORMSPEC.CONDITIONAL.UNKNOWN_FIELD";
 
+        /// <summary>
+        /// A repeat section has no number question outside itself as its count, a
+        /// maximum that is not a whole number from 1 to 50, or a repeat section inside it.
+        /// </summary>
+        public const string RepeatSectionInvalid = "FORMSPEC.REPEAT_SECTION.INVALID";
+
         /// <summary>The submitted version is not exactly the next in sequence.</summary>
         public const string VersionNotNext = "FORMSPEC.VERSION.NOT_NEXT";
 
@@ -70,6 +76,7 @@ namespace Myss.FormSpec.Domain
             ComponentKeyMissing,
             ComponentKeyDuplicate,
             ConditionalUnknownField,
+            RepeatSectionInvalid,
             VersionNotNext,
             PublishedImmutable,
         };
