@@ -57,6 +57,7 @@ const NESTED_PROPERTIES = new Set(["components", "columns", "rows"]);
 const TEMPLATE_MARKERS = ["{{", "{%"];
 // Top-level `controller`, `module` and `settings` can run code or load a page.
 const TOP_LEVEL_PROPERTIES = new Set(["display", "components"]);
+const DISPLAYS = new Set(["form", "wizard"]);
 // Types that collect an answer even when a spec leaves `input` out, as Form.io
 // fills it in: the palette's questions and the older types the seeded forms use.
 const ANSWER_TYPES = new Set<string>([
@@ -194,11 +195,14 @@ export function checkSpec(value: unknown, current?: unknown): SpecCheck {
 
   const questions = questionKeys(value);
   const pasted = new Set(questions);
+  // A wizard draws its own Submit on the last page.
+  const isWizard = isRecord(value) && value.display === "wizard";
   return {
     problems,
-    warnings: hasSubmitButton
-      ? []
-      : ["There is no Submit button, so citizens could not send this form."],
+    warnings:
+      hasSubmitButton || isWizard
+        ? []
+        : ["There is no Submit button, so citizens could not send this form."],
     removedQuestions:
       current === undefined
         ? []
@@ -225,9 +229,9 @@ function specShapeProblem(value: unknown): SpecProblem | undefined {
       message: `The JSON has a top-level "${extra}", which is not allowed. Only "display" and "components" are.`,
     };
   }
-  if (value.display !== undefined && value.display !== "form") {
+  if (value.display !== undefined && !DISPLAYS.has(value.display as string)) {
     return {
-      message: `The display ${describe(value.display)} is not allowed. Use "form".`,
+      message: `The display ${describe(value.display)} is not allowed. Use "form" or "wizard".`,
     };
   }
   return undefined;

@@ -106,3 +106,71 @@ export function setRequired(
     component.validate = validate;
   });
 }
+
+/** How a citizen moves through a form: all on one page, or page by page. */
+export type FormLayout = "form" | "wizard";
+
+export function formLayoutOf(spec: FormType): FormLayout {
+  return (spec as { display?: unknown }).display === "wizard"
+    ? "wizard"
+    : "form";
+}
+
+function isSubmitButton(component: Record<string, unknown>): boolean {
+  return (
+    component.type === "button" &&
+    (component.action === undefined || component.action === "submit")
+  );
+}
+
+function unusedKey(spec: FormType, base: string): string {
+  const taken = new Set<string>();
+  forEachComponent(spec, (component) => {
+    if (typeof component.key === "string") taken.add(component.key);
+  });
+  let key = base;
+  let n = 2;
+  while (taken.has(key)) {
+    key = `${base}${n}`;
+    n += 1;
+  }
+  return key;
+}
+
+/**
+ * A copy of `spec` in the given layout. A wizard's pages are its top-level
+ * panels and it draws its own Submit, so a form without pages is wrapped in
+ * one and loses its submit buttons; a one-page form gets a Submit back.
+ */
+export function setFormLayout(spec: FormType, layout: FormLayout): FormType {
+  const clone = structuredClone(spec) as unknown as {
+    display?: string;
+    components: Record<string, unknown>[];
+  };
+  clone.display = layout;
+  if (layout === "wizard") {
+    const kept = clone.components.filter((c) => !isSubmitButton(c));
+    const allPages = kept.length > 0 && kept.every((c) => c.type === "panel");
+    clone.components = allPages
+      ? kept
+      : [
+          {
+            type: "panel",
+            key: unusedKey(spec, "page1"),
+            title: "Page 1",
+            label: "Page 1",
+            input: false,
+            components: kept,
+          },
+        ];
+  } else if (!clone.components.some(isSubmitButton)) {
+    clone.components.push({
+      type: "button",
+      key: unusedKey(spec, "submit"),
+      label: "Submit",
+      action: "submit",
+      input: true,
+    });
+  }
+  return clone as unknown as FormType;
+}

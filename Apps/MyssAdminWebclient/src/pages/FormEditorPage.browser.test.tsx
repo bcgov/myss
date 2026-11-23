@@ -1006,3 +1006,59 @@ describe("FormEditorPage build mode", () => {
     await expect.element(screen.getByText("Full name")).not.toBeInTheDocument();
   });
 });
+
+describe("FormEditorPage form layout", () => {
+  it("saves a form switched to step by step as a wizard with its fields on a first page", async () => {
+    mockGetDraft.mockResolvedValue(draft);
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    const wizard = screen.getByRole("radio", { name: "Step by step (wizard)" });
+    await expect
+      .element(screen.getByRole("radio", { name: "All on one page" }))
+      .toBeChecked();
+    await wizard.click();
+    await expect.element(wizard).toBeChecked();
+    await screen.getByRole("button", { name: "Save draft" }).click();
+
+    await vi.waitFor(() => expect(mockSaveDraft).toHaveBeenCalledTimes(1));
+    const spec = mockSaveDraft.mock.calls[0][1].spec as unknown as {
+      display: string;
+      components: { type: string; components?: { key: string }[] }[];
+    };
+    expect(spec.display).toBe("wizard");
+    expect(spec.components).toHaveLength(1);
+    expect(spec.components[0].type).toBe("panel");
+    expect(spec.components[0].components?.map((c) => c.key)).toEqual([
+      "fullName",
+      "conditionalField",
+      "help",
+    ]);
+  });
+
+  it("switches the open builder to pages and saves its wizard schema", async () => {
+    mockGetDraft.mockResolvedValue(draft);
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    await expect.element(screen.getByText("Full name")).toBeVisible();
+
+    await screen.getByRole("radio", { name: "Step by step (wizard)" }).click();
+
+    // The wizard builder lists its pages above the drop area.
+    await vi.waitFor(() => {
+      expect(document.querySelector(".wizard-pages")).not.toBeNull();
+    });
+    await expect.element(screen.getByText("Full name")).toBeVisible();
+
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await vi.waitFor(() => expect(mockSaveDraft).toHaveBeenCalledTimes(1));
+    const spec = mockSaveDraft.mock.calls[0][1].spec as unknown as {
+      display: string;
+      components: { type: string }[];
+    };
+    expect(spec.display).toBe("wizard");
+    expect(spec.components.map((c) => c.type)).toEqual(["panel"]);
+  });
+});

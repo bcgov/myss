@@ -1,3 +1,4 @@
+import { Radio, RadioGroup } from "@bcgov/design-system-react-components";
 import { Form, FormBuilder } from "@formio/react";
 import type { FormType } from "@formio/react/lib/components/Form";
 import { Utils } from "@formio/js";
@@ -23,12 +24,15 @@ import {
     findUnknownConditionalTargets,
     flattenComponents,
     forEachComponent,
+    formLayoutOf,
     listEditableComponents,
     registerBcgovComponents,
     revealAllComponents,
+    setFormLayout,
     setLabel,
     setRequired,
     type EditableComponent,
+    type FormLayout,
 } from "@myss/formio";
 import { useDraft, usePublishForm, useSaveDraft } from "@/hooks/useForms";
 import { formEditorPath, paths } from "@/routes/paths";
@@ -193,6 +197,24 @@ function openBuilder(state: EditorState): EditorState {
     return { ...state, mode: "build", builderSeed: state.workingSpec };
 }
 
+// Form.io picks its builder by layout, so in build mode the builder is
+// re-seeded from the converted copy; `live` is the builder's own latest copy.
+function withLayout(
+    state: EditorState,
+    layout: FormLayout,
+    live: FormType | undefined,
+): EditorState {
+    const base = (state.mode === "build" && live) || state.workingSpec;
+    if (!base || formLayoutOf(base) === layout) return state;
+    const next = setFormLayout(base, layout);
+    return {
+        ...state,
+        workingSpec: next,
+        dirty: true,
+        builderSeed: state.mode === "build" ? next : state.builderSeed,
+    };
+}
+
 // The working copy and the editing surface. Seeded by adjusting state during
 // render — the sanctioned alternative to seeding in an effect.
 function useWorkingSpec(
@@ -234,11 +256,17 @@ function useWorkingSpec(
         return live;
     }, [state.mode, state.workingSpec]);
 
+    const changeLayout = useCallback((layout: FormLayout) => {
+        const live = builderInstance.current?.instance?.schema;
+        setState((s) => withLayout(s, layout, live));
+    }, []);
+
     return {
         ...state,
         captureBuilder,
         editInBuilder,
         specToSend,
+        changeLayout,
         editLabel: (key: string, label: string) =>
             setState((s) =>
                 editedSpec(s, (spec) => setLabel(spec, key, label)),
@@ -481,6 +509,29 @@ function FormLoadStatus({
     if (error && !creating)
         return <p role="alert">{loadErrorMessage(error)}</p>;
     return null;
+}
+
+// Whether citizens see the whole form at once or one page at a time.
+function LayoutChoice({
+    layout,
+    onChange,
+}: Readonly<{ layout: FormLayout; onChange: (layout: FormLayout) => void }>) {
+    return (
+        <div className={styles.layoutChoice}>
+            <RadioGroup
+                label="Form layout"
+                description='Step by step shows one page at a time with Next and Previous. In "Build form", add pages with the "+" beside the page names.'
+                orientation="horizontal"
+                value={layout}
+                onChange={(value) =>
+                    onChange(value === "wizard" ? "wizard" : "form")
+                }
+            >
+                <Radio value="form">All on one page</Radio>
+                <Radio value="wizard">Step by step (wizard)</Radio>
+            </RadioGroup>
+        </div>
+    );
 }
 
 // The two editing surfaces, as toggle buttons.
@@ -815,6 +866,13 @@ export default function FormEditorPage() {
 
             {open && (
                 <>
+                    <LayoutChoice
+                        layout={
+                            workingSpec ? formLayoutOf(workingSpec) : "form"
+                        }
+                        onChange={editor.changeLayout}
+                    />
+
                     <ModeBar
                         mode={editor.mode}
                         onLabels={editor.showLabels}
@@ -823,7 +881,10 @@ export default function FormEditorPage() {
 
                     {editor.mode === "build" && editor.builderSeed && (
                         <div className={styles.builder}>
+                            {/* Keyed so a layout change mounts a new builder
+                                with its own options object. */}
                             <SpecBuilder
+                                key={formLayoutOf(editor.builderSeed)}
                                 seed={editor.builderSeed}
                                 onReady={editor.captureBuilder}
                                 onChange={editor.editInBuilder}

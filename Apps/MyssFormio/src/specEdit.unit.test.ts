@@ -3,7 +3,9 @@ import type { FormType } from "@formio/react/lib/components/Form";
 
 import {
   flattenComponents,
+  formLayoutOf,
   listEditableComponents,
+  setFormLayout,
   setLabel,
   setRequired,
 } from "./specEdit";
@@ -148,5 +150,71 @@ describe("setRequired", () => {
     expect((componentsOf(next)[0].validate as { required: boolean }).required).toBe(
       false,
     );
+  });
+});
+
+describe("setFormLayout", () => {
+  const field = { key: "name", type: "textfield", label: "Name", input: true };
+  const submit = {
+    key: "submit",
+    type: "button",
+    action: "submit",
+    label: "Submit",
+    input: true,
+  };
+
+  it("wraps a one-page form in a first page and drops its Submit", () => {
+    const spec = asSpec([field, submit]);
+
+    const wizard = setFormLayout(spec, "wizard");
+
+    expect(formLayoutOf(wizard)).toBe("wizard");
+    expect(componentsOf(wizard)).toEqual([
+      {
+        type: "panel",
+        key: "page1",
+        title: "Page 1",
+        label: "Page 1",
+        input: false,
+        components: [field],
+      },
+    ]);
+    expect(componentsOf(spec)).toEqual([field, submit]);
+  });
+
+  it("keeps existing top-level panels as the pages", () => {
+    const pages = [
+      { key: "a", type: "panel", title: "A", components: [field] },
+      { key: "b", type: "panel", title: "B", components: [] },
+    ];
+
+    expect(componentsOf(setFormLayout(asSpec([...pages, submit]), "wizard"))).toEqual(
+      pages,
+    );
+  });
+
+  it("does not reuse a key the form already has for the new page", () => {
+    const spec = asSpec([{ ...field, key: "page1" }]);
+
+    expect(componentsOf(setFormLayout(spec, "wizard"))[0].key).toBe("page12");
+  });
+
+  it("gives a one-page form its Submit back, keeping the pages as sections", () => {
+    const wizard = {
+      display: "wizard",
+      components: [{ key: "a", type: "panel", components: [field] }],
+    } as unknown as FormType;
+
+    const form = setFormLayout(wizard, "form");
+
+    expect(formLayoutOf(form)).toBe("form");
+    expect(componentsOf(form).map((c) => c.type)).toEqual(["panel", "button"]);
+  });
+
+  it("adds no second Submit to a form that has one", () => {
+    expect(componentsOf(setFormLayout(asSpec([field, submit]), "form"))).toEqual([
+      field,
+      submit,
+    ]);
   });
 });
