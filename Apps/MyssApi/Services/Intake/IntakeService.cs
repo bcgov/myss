@@ -111,6 +111,7 @@ namespace Myss.Api.Intake
                 Id = Guid.NewGuid(),
                 OwnerSubject = subject,
                 FormSpecId = formSpecId,
+                Channel = RequestChannels.Client,
                 FormSpecVersion = latest.Version,
                 Answers = JsonDocument.Parse("{}"),
                 Version = 1,

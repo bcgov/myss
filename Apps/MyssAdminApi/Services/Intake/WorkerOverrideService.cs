@@ -83,6 +83,7 @@ namespace Myss.AdminApi.Intake
                 Id = Guid.NewGuid(),
                 OwnerSubject = ProfileOrigins.WorkerOverrideSubject(Guid.NewGuid()),
                 FormSpecId = FormSpecId,
+                Channel = RequestChannels.WorkerOverride,
                 StartedBy = idir,
                 FormSpecVersion = latest.Version,
                 Answers = JsonDocument.Parse("{}"),

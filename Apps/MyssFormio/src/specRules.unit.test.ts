@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   findDuplicateKeys,
+  findInvalidChannelRules,
   findInvalidRepeatSections,
   findUnknownConditionalTargets,
 } from "./specRules";
@@ -295,5 +296,50 @@ describe("findInvalidRepeatSections", () => {
 
   it("finds nothing in a spec without a repeat section", () => {
     expect(findInvalidRepeatSections(estimatorV3Like)).toEqual([]);
+  });
+});
+
+// The publish cases are shared with MyssContent's publish rule and the API's
+// ValidateSpecStructure, so the three copies of the rule word every problem alike.
+interface ChannelRuleCase {
+  name: string;
+  spec: unknown;
+  problems: string[];
+}
+
+const channelRuleCases = (
+  JSON.parse(
+    readFileSync(fileURLToPath(new URL("../../../Shared/validation/channel-specs.json", import.meta.url)), "utf8"),
+  ) as { publishCases: ChannelRuleCase[] }
+).publishCases;
+
+describe("findInvalidChannelRules", () => {
+  it("has cases to run", () => {
+    expect(channelRuleCases.length).toBeGreaterThan(0);
+  });
+
+  it.each(channelRuleCases)("$name", ({ spec, problems }) => {
+    expect(findInvalidChannelRules(spec).map((problem) => problem.message)).toEqual(problems);
+  });
+
+  it("names the component each problem belongs to", () => {
+    const spec = {
+      components: [
+        { type: "radio", key: "hasSpouse", properties: { myssChannels: { client: { show: false } } } },
+        { type: "textfield", key: "spouseName", conditional: { when: "hasSpouse" } },
+        { type: "textfield", key: "sin", properties: { myssChannels: { client: "no" } } },
+      ],
+    };
+    expect(findInvalidChannelRules(spec).map((problem) => problem.key)).toEqual(["spouseName", "sin"]);
+  });
+
+  it("leaves a keyless component to the key rules", () => {
+    expect(
+      findInvalidChannelRules({ components: [{ type: "textfield", properties: { myssChannels: { nobody: true } } }] }),
+    ).toEqual([]);
+  });
+
+  it("finds nothing in a spec without channel rules", () => {
+    expect(findInvalidChannelRules(estimatorV3Like)).toEqual([]);
   });
 });

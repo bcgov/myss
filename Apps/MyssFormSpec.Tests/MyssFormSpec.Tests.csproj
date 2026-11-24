@@ -41,6 +41,9 @@
     <Content Include="..\..\Shared\validation\repeat-section-specs.json"
              Link="repeat-section-specs.json"
              CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Shared\validation\channel-specs.json"
+             Link="channel-specs.json"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

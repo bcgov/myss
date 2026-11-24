@@ -1,0 +1,632 @@
+{
+  "$comment": [
+    "SHARED CHANNEL CASES - the contract between every copy of the request",
+    "channel list, the publish rule for channel rules and the function that",
+    "resolves a form for a channel:",
+    "  channels       Apps/MyssFormSpec/RequestChannels.cs, Apps/MyssFormio/src/requestChannels.ts,",
+    "                 Apps/MyssContent/src/lib/request-channels.ts",
+    "  publishCases   Apps/MyssContent/src/lib/form-spec-rules.ts (Strapi, the authoritative gate),",
+    "                 Apps/MyssFormio/src/specRules.ts (the form editor's early warning),",
+    "                 Apps/MyssFormSpec/ChannelRules.cs (ValidateSpecStructure, the API's fast 422)",
+    "  resolveCases   Apps/MyssFormSpec/ChannelSpec.cs (the APIs), Apps/MyssFormio/src/channelSpec.ts",
+    "                 (the form editor's preview)",
+    "",
+    "A component's channel rules are properties.myssChannels: an object keyed by",
+    "channel, each value an object with show and/or required, both true or false.",
+    "show: false removes the component, and everything inside it, from the form",
+    "for that channel; required sets validate.required for that channel. A",
+    "component shown in a channel must not depend on a component hidden in it:",
+    "through conditional.when, properties.myssMatches, a day's myssDateParts",
+    "(when myssValidator is dateParts), or as a repeat section's count question.",
+    "",
+    "Each publish case expects exactly the listed problems, in this order and in",
+    "this wording, and is otherwise a valid spec. Each resolve case gives the",
+    "resolved form for every channel; the resolved form has no myssChannels.",
+    "Rule and setting names are reported in document order; a name that looks",
+    "like a whole number is avoided here, because JavaScript lists those first."
+  ],
+  "channels": [ "client", "worker-override" ],
+  "publishCases": [
+    {
+      "name": "valid rules: the SIN optional for a worker, a note for workers only",
+      "spec": { "components": [
+        { "type": "textfield", "key": "sin", "validate": { "required": true },
+          "properties": { "myssValidator": "sin", "myssChannels": { "worker-override": { "required": false } } } },
+        { "type": "textarea", "key": "workerNote",
+          "properties": { "myssChannels": { "client": { "show": false }, "worker-override": { "show": true, "required": true } } } }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "valid rules on a panel, a field in a column and a field in a repeat section's row",
+      "spec": { "components": [
+        { "type": "panel", "key": "employment",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } },
+          "components": [ { "type": "textfield", "key": "employer" } ] },
+        { "type": "columns", "key": "nameColumns", "columns": [
+          { "components": [ { "type": "textfield", "key": "middleName",
+            "properties": { "myssChannels": { "client": { "required": false } } } } ] }
+        ] },
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children", "properties": { "myssRepeatCount": "childCount" },
+          "components": [ { "type": "textfield", "key": "childSin",
+            "properties": { "myssChannels": { "worker-override": { "required": false } } } } ] }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "null channel rules are no rules",
+      "spec": { "components": [
+        { "type": "textfield", "key": "sin", "properties": { "myssChannels": null } }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "channel rules that are a list or text",
+      "spec": { "components": [
+        { "type": "textfield", "key": "sin", "properties": { "myssChannels": [ "worker-override" ] } },
+        { "type": "textfield", "key": "phone", "properties": { "myssChannels": "client" } }
+      ] },
+      "problems": [
+        "The channel rules of \"sin\" must be an object keyed by channel.",
+        "The channel rules of \"phone\" must be an object keyed by channel."
+      ]
+    },
+    {
+      "name": "unknown channels, compared exactly",
+      "spec": { "components": [
+        { "type": "textfield", "key": "sin",
+          "properties": { "myssChannels": { "Client": { "required": false }, "applicant-override": { "show": false } } } }
+      ] },
+      "problems": [
+        "The channel rules of \"sin\" name \"Client\", which is not a channel.",
+        "The channel rules of \"sin\" name \"applicant-override\", which is not a channel."
+      ]
+    },
+    {
+      "name": "rules that are not objects",
+      "spec": { "components": [
+        { "type": "textfield", "key": "sin", "properties": { "myssChannels": { "client": true, "worker-override": null } } }
+      ] },
+      "problems": [
+        "The channel rule of \"sin\" for \"client\" must be an object.",
+        "The channel rule of \"sin\" for \"worker-override\" must be an object."
+      ]
+    },
+    {
+      "name": "an empty rule and properties that are not an object are accepted",
+      "spec": { "components": [
+        { "type": "textfield", "key": "sin", "properties": { "myssChannels": { "client": {} } } },
+        { "type": "textfield", "key": "phone", "properties": "worker-override" }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "an unknown setting",
+      "spec": { "components": [
+        { "type": "textfield", "key": "sin",
+          "properties": { "myssChannels": { "worker-override": { "visible": false, "required": false } } } }
+      ] },
+      "problems": [
+        "The channel rule of \"sin\" for \"worker-override\" has \"visible\"; only show and required are allowed."
+      ]
+    },
+    {
+      "name": "settings that are not true or false",
+      "spec": { "components": [
+        { "type": "textfield", "key": "sin",
+          "properties": { "myssChannels": { "client": { "show": "false", "required": 1 } } } }
+      ] },
+      "problems": [
+        "The channel rule of \"sin\" for \"client\" must set \"show\" to true or false.",
+        "The channel rule of \"sin\" for \"client\" must set \"required\" to true or false."
+      ]
+    },
+    {
+      "name": "a shown field that depends on a field hidden in the same channel",
+      "spec": { "components": [
+        { "type": "radio", "key": "hasSpouse",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } } },
+        { "type": "textfield", "key": "spouseName", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" } }
+      ] },
+      "problems": [
+        "\"spouseName\" depends on \"hasSpouse\", which is hidden for the worker-override channel."
+      ]
+    },
+    {
+      "name": "a dependent field hidden in the same channel is accepted",
+      "spec": { "components": [
+        { "type": "radio", "key": "hasSpouse",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } } },
+        { "type": "textfield", "key": "spouseName", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" },
+          "properties": { "myssChannels": { "worker-override": { "show": false } } } }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "a dependent field inside a panel hidden in the same channel is accepted",
+      "spec": { "components": [
+        { "type": "radio", "key": "hasSpouse",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } } },
+        { "type": "panel", "key": "spouse",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } },
+          "components": [
+            { "type": "textfield", "key": "spouseName", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" } }
+          ] }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "a field that depends on a question inside a panel hidden in the channel",
+      "spec": { "components": [
+        { "type": "panel", "key": "household",
+          "properties": { "myssChannels": { "client": { "show": false } } },
+          "components": [ { "type": "radio", "key": "hasSpouse" } ] },
+        { "type": "textfield", "key": "spouseName", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" } }
+      ] },
+      "problems": [
+        "\"spouseName\" depends on \"hasSpouse\", which is hidden for the client channel."
+      ]
+    },
+    {
+      "name": "a panel that depends on a field hidden in the channel",
+      "spec": { "components": [
+        { "type": "radio", "key": "hasSpouse",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } } },
+        { "type": "panel", "key": "spouseDetails", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" },
+          "components": [ { "type": "textfield", "key": "spouseName" } ] }
+      ] },
+      "problems": [
+        "\"spouseDetails\" depends on \"hasSpouse\", which is hidden for the worker-override channel."
+      ]
+    },
+    {
+      "name": "a question kept shown does not hide its dependants",
+      "spec": { "components": [
+        { "type": "radio", "key": "hasSpouse",
+          "properties": { "myssChannels": { "worker-override": { "show": true, "required": false } } } },
+        { "type": "textfield", "key": "spouseName", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" } }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "a repeat section shown in a channel whose count question is hidden in it",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount",
+          "properties": { "myssChannels": { "client": { "show": false } } } },
+        { "type": "bcgovRepeatSection", "key": "children", "properties": { "myssRepeatCount": "childCount" },
+          "components": [ { "type": "textfield", "key": "childName" } ] }
+      ] },
+      "problems": [
+        "The repeat section \"children\" counts with \"childCount\", which is hidden for the client channel."
+      ]
+    },
+    {
+      "name": "a repeat section hidden with its count question is accepted",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount",
+          "properties": { "myssChannels": { "client": { "show": false } } } },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount", "myssChannels": { "client": { "show": false } } },
+          "components": [ { "type": "textfield", "key": "childName" } ] }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "a component's own problems come first, then each channel in order",
+      "spec": { "components": [
+        { "type": "radio", "key": "hasSpouse",
+          "properties": { "myssChannels": { "client": { "show": false }, "worker-override": { "show": false } } } },
+        { "type": "textfield", "key": "spouseName", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" },
+          "properties": { "myssChannels": { "worker": { "show": true } } } }
+      ] },
+      "problems": [
+        "The channel rules of \"spouseName\" name \"worker\", which is not a channel.",
+        "\"spouseName\" depends on \"hasSpouse\", which is hidden for the client channel.",
+        "\"spouseName\" depends on \"hasSpouse\", which is hidden for the worker-override channel."
+      ]
+    },
+    {
+      "name": "a field that depends on a question in a hidden column",
+      "spec": { "components": [
+        { "type": "columns", "key": "householdColumns",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } },
+          "columns": [ { "components": [ { "type": "radio", "key": "hasSpouse" } ] } ] },
+        { "type": "textfield", "key": "spouseName", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" } }
+      ] },
+      "problems": [
+        "\"spouseName\" depends on \"hasSpouse\", which is hidden for the worker-override channel."
+      ]
+    },
+    {
+      "name": "a field that depends on a question in a hidden table",
+      "spec": { "components": [
+        { "type": "table", "key": "householdTable",
+          "properties": { "myssChannels": { "client": { "show": false } } },
+          "rows": [ [ { "components": [ { "type": "radio", "key": "hasSpouse" } ] } ] ] },
+        { "type": "textfield", "key": "spouseName", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" } }
+      ] },
+      "problems": [
+        "\"spouseName\" depends on \"hasSpouse\", which is hidden for the client channel."
+      ]
+    },
+    {
+      "name": "a field in one tab that depends on a question in a hidden tab",
+      "spec": { "components": [
+        { "type": "tabs", "key": "sections", "components": [
+          { "label": "You", "key": "aboutYou",
+            "components": [ { "type": "textfield", "key": "spouseName", "conditional": { "show": true, "when": "hasSpouse", "eq": "yes" } } ] },
+          { "label": "Household", "key": "household",
+            "properties": { "myssChannels": { "client": { "show": false } } },
+            "components": [ { "type": "radio", "key": "hasSpouse" } ] }
+        ] }
+      ] },
+      "problems": [
+        "\"spouseName\" depends on \"hasSpouse\", which is hidden for the client channel."
+      ]
+    },
+    {
+      "name": "an email confirmation shown in a channel whose email is hidden in it",
+      "spec": { "components": [
+        { "type": "email", "key": "contactEmail",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } } },
+        { "type": "email", "key": "confirmEmail", "validate": { "required": true },
+          "properties": { "myssMatches": "contactEmail" } }
+      ] },
+      "problems": [
+        "\"confirmEmail\" depends on \"contactEmail\", which is hidden for the worker-override channel."
+      ]
+    },
+    {
+      "name": "one problem for a field named twice",
+      "spec": { "components": [
+        { "type": "email", "key": "contactEmail",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } } },
+        { "type": "email", "key": "confirmEmail", "conditional": { "show": true, "when": "contactEmail" },
+          "properties": { "myssMatches": "contactEmail" } }
+      ] },
+      "problems": [
+        "\"confirmEmail\" depends on \"contactEmail\", which is hidden for the worker-override channel."
+      ]
+    },
+    {
+      "name": "a day shown in a channel whose month is hidden in it",
+      "spec": { "components": [
+        { "type": "textfield", "key": "birthDay",
+          "properties": { "myssValidator": "dateParts", "myssDateParts": { "month": "birthMonth", "year": "birthYear" } } },
+        { "type": "textfield", "key": "birthMonth",
+          "properties": { "myssChannels": { "client": { "show": false } } } },
+        { "type": "textfield", "key": "birthYear" }
+      ] },
+      "problems": [
+        "\"birthDay\" depends on \"birthMonth\", which is hidden for the client channel."
+      ]
+    },
+    {
+      "name": "date parts are read only from a day field",
+      "spec": { "components": [
+        { "type": "textfield", "key": "birthDay",
+          "properties": { "myssDateParts": { "month": "birthMonth", "year": "birthYear" } } },
+        { "type": "textfield", "key": "birthMonth",
+          "properties": { "myssChannels": { "client": { "show": false } } } },
+        { "type": "textfield", "key": "birthYear" }
+      ] },
+      "problems": []
+    },
+    {
+      "name": "a repeat section whose count question is in a panel hidden in the channel",
+      "spec": { "components": [
+        { "type": "panel", "key": "family",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } },
+          "components": [ { "type": "number", "key": "childCount" } ] },
+        { "type": "bcgovRepeatSection", "key": "children", "properties": { "myssRepeatCount": "childCount" },
+          "components": [ { "type": "textfield", "key": "childName" } ] }
+      ] },
+      "problems": [
+        "The repeat section \"children\" counts with \"childCount\", which is hidden for the worker-override channel."
+      ]
+    },
+    {
+      "name": "a repeat section hidden while its count question stays shown is accepted",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount", "myssChannels": { "worker-override": { "show": false } } },
+          "components": [ { "type": "textfield", "key": "childName" } ] }
+      ] },
+      "problems": []
+    }
+  ],
+  "resolveCases": [
+    {
+      "name": "the SIN: required for a client, optional for a worker",
+      "spec": { "components": [
+        { "type": "textfield", "key": "sin", "label": "Please provide your SIN", "validate": { "required": true },
+          "properties": { "myssValidator": "sin", "myssChannels": { "worker-override": { "required": false } } } }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "textfield", "key": "sin", "label": "Please provide your SIN", "validate": { "required": true },
+            "properties": { "myssValidator": "sin" } }
+        ] },
+        "worker-override": { "components": [
+          { "type": "textfield", "key": "sin", "label": "Please provide your SIN", "validate": { "required": false },
+            "properties": { "myssValidator": "sin" } }
+        ] }
+      }
+    },
+    {
+      "name": "a field shown to a worker only",
+      "spec": { "components": [
+        { "type": "textfield", "key": "firstName" },
+        { "type": "textarea", "key": "workerNote", "properties": { "myssChannels": { "client": { "show": false } } } }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "textfield", "key": "firstName" }
+        ] },
+        "worker-override": { "components": [
+          { "type": "textfield", "key": "firstName" },
+          { "type": "textarea", "key": "workerNote", "properties": {} }
+        ] }
+      }
+    },
+    {
+      "name": "fields made required for one channel, with and without other validation",
+      "spec": { "components": [
+        { "type": "textfield", "key": "middleName", "properties": { "myssChannels": { "client": { "required": true } } } },
+        { "type": "textfield", "key": "phone", "validate": { "maxLength": 30 },
+          "properties": { "myssChannels": { "worker-override": { "required": true } } } }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "textfield", "key": "middleName", "properties": {}, "validate": { "required": true } },
+          { "type": "textfield", "key": "phone", "validate": { "maxLength": 30 }, "properties": {} }
+        ] },
+        "worker-override": { "components": [
+          { "type": "textfield", "key": "middleName", "properties": {} },
+          { "type": "textfield", "key": "phone", "validate": { "maxLength": 30, "required": true }, "properties": {} }
+        ] }
+      }
+    },
+    {
+      "name": "a panel hidden in a channel takes its fields with it",
+      "spec": { "components": [
+        { "type": "panel", "key": "employment",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } },
+          "components": [ { "type": "textfield", "key": "employer", "validate": { "required": true } } ] },
+        { "type": "textfield", "key": "lastName" }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "panel", "key": "employment", "properties": {},
+            "components": [ { "type": "textfield", "key": "employer", "validate": { "required": true } } ] },
+          { "type": "textfield", "key": "lastName" }
+        ] },
+        "worker-override": { "components": [
+          { "type": "textfield", "key": "lastName" }
+        ] }
+      }
+    },
+    {
+      "name": "a wizard page hidden in a channel",
+      "spec": { "display": "wizard", "components": [
+        { "type": "panel", "key": "aboutYou", "title": "About you",
+          "components": [ { "type": "textfield", "key": "firstName" } ] },
+        { "type": "panel", "key": "declaration", "title": "Declaration",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } },
+          "components": [ { "type": "checkbox", "key": "declare", "validate": { "required": true } } ] }
+      ] },
+      "resolved": {
+        "client": { "display": "wizard", "components": [
+          { "type": "panel", "key": "aboutYou", "title": "About you",
+            "components": [ { "type": "textfield", "key": "firstName" } ] },
+          { "type": "panel", "key": "declaration", "title": "Declaration", "properties": {},
+            "components": [ { "type": "checkbox", "key": "declare", "validate": { "required": true } } ] }
+        ] },
+        "worker-override": { "display": "wizard", "components": [
+          { "type": "panel", "key": "aboutYou", "title": "About you",
+            "components": [ { "type": "textfield", "key": "firstName" } ] }
+        ] }
+      }
+    },
+    {
+      "name": "help text for each channel",
+      "spec": { "components": [
+        { "type": "content", "key": "clientHelp", "html": "<p>Use the number on your card.</p>",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } } },
+        { "type": "content", "key": "workerHelp", "html": "<p>Leave it blank if the client does not know it.</p>",
+          "properties": { "myssChannels": { "client": { "show": false } } } }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "content", "key": "clientHelp", "html": "<p>Use the number on your card.</p>", "properties": {} }
+        ] },
+        "worker-override": { "components": [
+          { "type": "content", "key": "workerHelp", "html": "<p>Leave it blank if the client does not know it.</p>", "properties": {} }
+        ] }
+      }
+    },
+    {
+      "name": "fields in a repeat section's row",
+      "spec": { "components": [
+        { "type": "number", "key": "childCount" },
+        { "type": "bcgovRepeatSection", "key": "children", "properties": { "myssRepeatCount": "childCount" },
+          "components": [
+            { "type": "textfield", "key": "childName", "validate": { "required": true } },
+            { "type": "textfield", "key": "childSin", "validate": { "required": true },
+              "properties": { "myssChannels": { "worker-override": { "required": false } } } },
+            { "type": "textfield", "key": "childSchool",
+              "properties": { "myssChannels": { "worker-override": { "show": false } } } }
+          ] }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "number", "key": "childCount" },
+          { "type": "bcgovRepeatSection", "key": "children", "properties": { "myssRepeatCount": "childCount" },
+            "components": [
+              { "type": "textfield", "key": "childName", "validate": { "required": true } },
+              { "type": "textfield", "key": "childSin", "validate": { "required": true }, "properties": {} },
+              { "type": "textfield", "key": "childSchool", "properties": {} }
+            ] }
+        ] },
+        "worker-override": { "components": [
+          { "type": "number", "key": "childCount" },
+          { "type": "bcgovRepeatSection", "key": "children", "properties": { "myssRepeatCount": "childCount" },
+            "components": [
+              { "type": "textfield", "key": "childName", "validate": { "required": true } },
+              { "type": "textfield", "key": "childSin", "validate": { "required": false }, "properties": {} }
+            ] }
+        ] }
+      }
+    },
+    {
+      "name": "a whole repeat section hidden, with its count question",
+      "spec": { "components": [
+        { "type": "textfield", "key": "firstName" },
+        { "type": "number", "key": "childCount",
+          "properties": { "myssChannels": { "worker-override": { "show": false } } } },
+        { "type": "bcgovRepeatSection", "key": "children",
+          "properties": { "myssRepeatCount": "childCount", "myssChannels": { "worker-override": { "show": false } } },
+          "components": [ { "type": "textfield", "key": "childName" } ] }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "textfield", "key": "firstName" },
+          { "type": "number", "key": "childCount", "properties": {} },
+          { "type": "bcgovRepeatSection", "key": "children", "properties": { "myssRepeatCount": "childCount" },
+            "components": [ { "type": "textfield", "key": "childName" } ] }
+        ] },
+        "worker-override": { "components": [
+          { "type": "textfield", "key": "firstName" }
+        ] }
+      }
+    },
+    {
+      "name": "fields in columns and table cells",
+      "spec": { "components": [
+        { "type": "columns", "key": "nameColumns", "columns": [
+          { "components": [ { "type": "textfield", "key": "firstName" } ] },
+          { "components": [ { "type": "textfield", "key": "preferredName",
+            "properties": { "myssChannels": { "worker-override": { "show": false } } } } ] }
+        ] },
+        { "type": "table", "key": "contactTable", "rows": [
+          [ { "components": [ { "type": "email", "key": "email", "validate": { "required": true },
+            "properties": { "myssChannels": { "worker-override": { "required": false } } } } ] } ]
+        ] }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "columns", "key": "nameColumns", "columns": [
+            { "components": [ { "type": "textfield", "key": "firstName" } ] },
+            { "components": [ { "type": "textfield", "key": "preferredName", "properties": {} } ] }
+          ] },
+          { "type": "table", "key": "contactTable", "rows": [
+            [ { "components": [ { "type": "email", "key": "email", "validate": { "required": true }, "properties": {} } ] } ]
+          ] }
+        ] },
+        "worker-override": { "components": [
+          { "type": "columns", "key": "nameColumns", "columns": [
+            { "components": [ { "type": "textfield", "key": "firstName" } ] },
+            { "components": [] }
+          ] },
+          { "type": "table", "key": "contactTable", "rows": [
+            [ { "components": [ { "type": "email", "key": "email", "validate": { "required": false }, "properties": {} } ] } ]
+          ] }
+        ] }
+      }
+    },
+    {
+      "name": "a hidden panel outranks a field inside it that is shown",
+      "spec": { "components": [
+        { "type": "textfield", "key": "firstName" },
+        { "type": "panel", "key": "workerOnly",
+          "properties": { "myssChannels": { "client": { "show": false } } },
+          "components": [ { "type": "textfield", "key": "caseNote",
+            "properties": { "myssChannels": { "client": { "show": true } } } } ] }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "textfield", "key": "firstName" }
+        ] },
+        "worker-override": { "components": [
+          { "type": "textfield", "key": "firstName" },
+          { "type": "panel", "key": "workerOnly", "properties": {},
+            "components": [ { "type": "textfield", "key": "caseNote", "properties": {} } ] }
+        ] }
+      }
+    },
+    {
+      "name": "a form without channel rules is the same in every channel",
+      "spec": { "display": "form", "components": [
+        { "type": "textfield", "key": "sin", "validate": { "required": true }, "properties": { "myssValidator": "sin" } },
+        { "type": "button", "key": "submit" }
+      ] },
+      "resolved": {
+        "client": { "display": "form", "components": [
+          { "type": "textfield", "key": "sin", "validate": { "required": true }, "properties": { "myssValidator": "sin" } },
+          { "type": "button", "key": "submit" }
+        ] },
+        "worker-override": { "display": "form", "components": [
+          { "type": "textfield", "key": "sin", "validate": { "required": true }, "properties": { "myssValidator": "sin" } },
+          { "type": "button", "key": "submit" }
+        ] }
+      }
+    },
+    {
+      "name": "fields inside tabs, and a hidden tab",
+      "spec": { "components": [
+        { "type": "tabs", "key": "sections", "components": [
+          { "label": "You", "key": "aboutYou", "components": [
+            { "type": "textfield", "key": "firstName" },
+            { "type": "textfield", "key": "preferredName",
+              "properties": { "myssChannels": { "worker-override": { "show": false } } } }
+          ] },
+          { "label": "Case", "key": "caseTab",
+            "properties": { "myssChannels": { "client": { "show": false } } },
+            "components": [ { "type": "textarea", "key": "caseNote" } ] }
+        ] }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "tabs", "key": "sections", "components": [
+            { "label": "You", "key": "aboutYou", "components": [
+              { "type": "textfield", "key": "firstName" },
+              { "type": "textfield", "key": "preferredName", "properties": {} }
+            ] }
+          ] }
+        ] },
+        "worker-override": { "components": [
+          { "type": "tabs", "key": "sections", "components": [
+            { "label": "You", "key": "aboutYou", "components": [
+              { "type": "textfield", "key": "firstName" }
+            ] },
+            { "label": "Case", "key": "caseTab", "properties": {},
+              "components": [ { "type": "textarea", "key": "caseNote" } ] }
+          ] }
+        ] }
+      }
+    },
+    {
+      "name": "null rules, properties that are not an object, and a null validate",
+      "spec": { "components": [
+        { "type": "textfield", "key": "firstName", "properties": { "myssChannels": null } },
+        { "type": "textfield", "key": "lastName", "properties": "kept" },
+        { "type": "textfield", "key": "phone", "validate": null,
+          "properties": { "myssChannels": { "client": { "required": true } } } }
+      ] },
+      "resolved": {
+        "client": { "components": [
+          { "type": "textfield", "key": "firstName", "properties": {} },
+          { "type": "textfield", "key": "lastName", "properties": "kept" },
+          { "type": "textfield", "key": "phone", "validate": { "required": true }, "properties": {} }
+        ] },
+        "worker-override": { "components": [
+          { "type": "textfield", "key": "firstName", "properties": {} },
+          { "type": "textfield", "key": "lastName", "properties": "kept" },
+          { "type": "textfield", "key": "phone", "validate": null, "properties": {} }
+        ] }
+      }
+    }
+  ]
+}

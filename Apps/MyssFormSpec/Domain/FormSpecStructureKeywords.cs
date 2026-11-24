@@ -41,6 +41,12 @@ namespace Myss.FormSpec.Domain
         /// </summary>
         public const string RepeatSectionInvalid = "FORMSPEC.REPEAT_SECTION.INVALID";
 
+        /// <summary>
+        /// A component's channel rules are malformed, or a component shown in a channel
+        /// depends on one hidden in it.
+        /// </summary>
+        public const string ChannelRulesInvalid = "FORMSPEC.CHANNEL_RULES.INVALID";
+
         /// <summary>The submitted version is not exactly the next in sequence.</summary>
         public const string VersionNotNext = "FORMSPEC.VERSION.NOT_NEXT";
 
@@ -77,6 +83,7 @@ namespace Myss.FormSpec.Domain
             ComponentKeyDuplicate,
             ConditionalUnknownField,
             RepeatSectionInvalid,
+            ChannelRulesInvalid,
             VersionNotNext,
             PublishedImmutable,
         };

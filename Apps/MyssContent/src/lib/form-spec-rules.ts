@@ -33,6 +33,8 @@
  * Document Service (the seeder). Both are handled.
  */
 
+import { REQUEST_CHANNELS, isRequestChannel } from "./request-channels";
+
 /** Stable keywords, so messages can later be sourced from content and translated. */
 export const FormSpecRule = {
   SpecUnparseable: "FORMSPEC.SPEC.UNPARSEABLE",
@@ -43,6 +45,7 @@ export const FormSpecRule = {
   ComponentKeyDuplicate: "FORMSPEC.COMPONENT_KEY.DUPLICATE",
   ConditionalUnknownField: "FORMSPEC.CONDITIONAL.UNKNOWN_FIELD",
   RepeatSectionInvalid: "FORMSPEC.REPEAT_SECTION.INVALID",
+  ChannelRulesInvalid: "FORMSPEC.CHANNEL_RULES.INVALID",
   VersionNotNext: "FORMSPEC.VERSION.NOT_NEXT",
   PublishedImmutable: "FORMSPEC.PUBLISHED.IMMUTABLE",
 } as const;
@@ -243,6 +246,7 @@ export function validateFormSpec(spec: unknown): Violation[] {
   }
 
   violations.push(...repeatSectionViolations(components));
+  violations.push(...channelRuleViolations(parsed.value));
   return violations;
 }
 
@@ -353,6 +357,164 @@ function maximumProblem(key: string, maximum: unknown): string | undefined {
     return undefined;
   }
   return `The repeat section "${key}" has a maximum of ${JSON.stringify(maximum)}; use a whole number from 1 to ${REPEAT_MAX_CEILING}.`;
+}
+
+/** Where a component's channel rules are authored, under `properties`. */
+const CHANNEL_RULES_PROPERTY = "myssChannels";
+
+/** The settings a channel rule may make. */
+const CHANNEL_SETTINGS: readonly string[] = ["show", "required"];
+
+/** A component with the channels it is hidden in, by its own rules or a container's. */
+interface PlacedComponent {
+  readonly component: ComponentLike;
+  readonly key: string | undefined;
+  readonly hiddenIn: ReadonlySet<string>;
+}
+
+/**
+ * A component's channel rules are an object keyed by known channels, each
+ * setting only `show` and `required`, as true or false; and a component shown
+ * in a channel does not depend on a component hidden in it: through
+ * `conditional.when`, `myssMatches`, a day's `myssDateParts`, or as a repeat
+ * section's count question. A keyless component is left to the key rule.
+ */
+function channelRuleViolations(spec: Record<string, unknown>): Violation[] {
+  const placed = placeComponents(spec);
+  const byKey = new Map<string, PlacedComponent>();
+  for (const item of placed) {
+    if (item.key !== undefined && !byKey.has(item.key)) byKey.set(item.key, item);
+  }
+
+  const violations: Violation[] = [];
+  for (const item of placed) {
+    if (item.key === undefined) continue;
+    const messages = [
+      ...channelRuleProblems(item.key, item.component),
+      ...channelDependencyProblems(item, byKey),
+    ];
+    for (const message of messages) violations.push(violation(FormSpecRule.ChannelRulesInvalid, message));
+  }
+  return violations;
+}
+
+function placeComponents(spec: Record<string, unknown>): PlacedComponent[] {
+  const out: PlacedComponent[] = [];
+  placeChildren(spec, new Set(), out);
+  return out;
+}
+
+/** Places every component below `node`, in document order: components, columns and table cells. */
+function placeChildren(node: unknown, hiddenAbove: ReadonlySet<string>, out: PlacedComponent[]): void {
+  if (!isRecord(node)) return;
+  for (const component of arrayOf(node.components)) {
+    if (!isRecord(component)) continue;
+    const hiddenIn = channelsHiddenIn(component, hiddenAbove);
+    out.push({ component, key: keyOf(component), hiddenIn });
+    placeChildren(component, hiddenIn, out);
+  }
+  for (const column of arrayOf(node.columns)) placeChildren(column, hiddenAbove, out);
+  for (const row of arrayOf(node.rows)) {
+    for (const cell of arrayOf(row)) placeChildren(cell, hiddenAbove, out);
+  }
+}
+
+function arrayOf(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function keyOf(component: ComponentLike): string | undefined {
+  return typeof component.key === "string" && component.key.trim() !== "" ? component.key : undefined;
+}
+
+/** The authored rules; `null` counts as none. */
+function channelRulesOf(component: ComponentLike): unknown {
+  return isRecord(component.properties) ? component.properties[CHANNEL_RULES_PROPERTY] : undefined;
+}
+
+function channelsHiddenIn(component: ComponentLike, hiddenAbove: ReadonlySet<string>): Set<string> {
+  const hidden = new Set(hiddenAbove);
+  const rules = channelRulesOf(component);
+  if (!isRecord(rules)) return hidden;
+  for (const channel of REQUEST_CHANNELS) {
+    const rule = rules[channel];
+    if (isRecord(rule) && rule.show === false) hidden.add(channel);
+  }
+  return hidden;
+}
+
+function channelRuleProblems(key: string, component: ComponentLike): string[] {
+  const rules = channelRulesOf(component);
+  if (rules === undefined || rules === null) return [];
+  if (!isRecord(rules)) return [`The channel rules of "${key}" must be an object keyed by channel.`];
+  return Object.entries(rules).flatMap(([channel, rule]) => oneChannelRuleProblems(key, channel, rule));
+}
+
+function oneChannelRuleProblems(key: string, channel: string, rule: unknown): string[] {
+  if (!isRequestChannel(channel)) {
+    return [`The channel rules of "${key}" name "${channel}", which is not a channel.`];
+  }
+  if (!isRecord(rule)) {
+    return [`The channel rule of "${key}" for "${channel}" must be an object.`];
+  }
+
+  const problems: string[] = [];
+  for (const [setting, value] of Object.entries(rule)) {
+    if (!CHANNEL_SETTINGS.includes(setting)) {
+      problems.push(`The channel rule of "${key}" for "${channel}" has "${setting}"; only show and required are allowed.`);
+    } else if (typeof value !== "boolean") {
+      problems.push(`The channel rule of "${key}" for "${channel}" must set "${setting}" to true or false.`);
+    }
+  }
+  return problems;
+}
+
+function channelDependencyProblems(
+  item: PlacedComponent,
+  byKey: ReadonlyMap<string, PlacedComponent>,
+): string[] {
+  const targets = dependencyTargets(item.component);
+  const count = item.component.type === REPEAT_SECTION_TYPE ? repeatCountOf(item.component) : undefined;
+  const isHiddenIn = (key: string | undefined, channel: string) =>
+    key !== undefined && byKey.get(key)?.hiddenIn.has(channel) === true;
+
+  const problems: string[] = [];
+  for (const channel of REQUEST_CHANNELS) {
+    if (item.hiddenIn.has(channel)) continue;
+    for (const target of targets.filter((t) => isHiddenIn(t, channel))) {
+      problems.push(`"${item.key}" depends on "${target}", which is hidden for the ${channel} channel.`);
+    }
+    if (isHiddenIn(count, channel)) {
+      problems.push(`The repeat section "${item.key}" counts with "${count}", which is hidden for the ${channel} channel.`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * The components this one reads, each once: its conditional's field, the email
+ * it confirms, and, for a day, its month and year.
+ */
+function dependencyTargets(component: ComponentLike): string[] {
+  const properties: Record<string, unknown> = isRecord(component.properties) ? component.properties : {};
+  const dateParts: Record<string, unknown> =
+    properties.myssValidator === "dateParts" && isRecord(properties.myssDateParts) ? properties.myssDateParts : {};
+  const targets = [
+    conditionalTarget(component),
+    nonEmptyString(properties.myssMatches),
+    nonEmptyString(dateParts.month),
+    nonEmptyString(dateParts.year),
+  ];
+  return [...new Set(targets.filter((target): target is string => target !== undefined))];
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function repeatCountOf(section: ComponentLike): string | undefined {
+  const count = isRecord(section.properties) ? section.properties.myssRepeatCount : undefined;
+  return typeof count === "string" && count.trim() !== "" ? count : undefined;
 }
 
 /**

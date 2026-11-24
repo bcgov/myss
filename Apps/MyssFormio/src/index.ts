@@ -22,10 +22,14 @@ export {
 } from "./specEdit";
 export {
   findDuplicateKeys,
+  findInvalidChannelRules,
   findInvalidRepeatSections,
   findUnknownConditionalTargets,
+  type ChannelRuleProblem,
   type RepeatSectionProblem,
 } from "./specRules";
+export { resolveSpecForChannel } from "./channelSpec";
+export { REQUEST_CHANNELS, isRequestChannel, type RequestChannel } from "./requestChannels";
 export { forEachComponent } from "./specWalk";
 export {
   EXAMPLE_SPEC,

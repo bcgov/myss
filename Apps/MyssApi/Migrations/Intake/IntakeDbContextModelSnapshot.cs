@@ -36,6 +36,14 @@ namespace Myss.Api.Migrations.Intake
                         .HasColumnType("jsonb")
                         .HasColumnName("answers");
 
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("client")
+                        .HasColumnName("channel");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");

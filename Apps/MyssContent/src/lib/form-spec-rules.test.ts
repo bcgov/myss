@@ -23,6 +23,7 @@ import {
   eligibilityEstimatorSpecV4,
   eligibilityEstimatorSpecV5,
   seededFormSpecs,
+  seededForms,
   testFormSpecV1,
 } from "./form-spec-seed-data";
 
@@ -232,6 +233,62 @@ describe("validateFormSpec: repeat sections", () => {
     );
 
     expect(keywords(violations)).toEqual([FormSpecRule.RepeatSectionInvalid]);
+  });
+});
+
+// The cases are shared with MyssFormio's specRules and the API's
+// ValidateSpecStructure, so the three copies of the rule word every problem alike.
+describe("validateFormSpec: channel rules", () => {
+  const shared = JSON.parse(
+    readFileSync(resolve(__dirname, "../../../../Shared/validation/channel-specs.json"), "utf8"),
+  ) as { publishCases: { name: string; spec: unknown; problems: string[] }[] };
+
+  it("has cases to run", () => {
+    expect(shared.publishCases.length).toBeGreaterThan(0);
+  });
+
+  it.each(shared.publishCases)("$name", ({ spec, problems }) => {
+    const violations = validateFormSpec(spec);
+
+    expect(
+      violations
+        .filter((v) => v.keyword === FormSpecRule.ChannelRulesInvalid)
+        .map((v) => v.message),
+    ).toEqual(problems);
+    expect(violations.filter((v) => v.keyword !== FormSpecRule.ChannelRulesInvalid)).toEqual([]);
+  });
+
+  it("finds nothing in any seeded form version", () => {
+    for (const form of seededForms) {
+      for (const { spec } of form.versions) {
+        expect(keywords(validateFormSpec(spec))).not.toContain(FormSpecRule.ChannelRulesInvalid);
+      }
+    }
+  });
+
+  it("refuses an unknown channel on publish, as the lifecycle does", () => {
+    const violations = evaluateCreate(
+      {
+        formSpecId: "channels",
+        version: 1,
+        spec: {
+          components: [
+            { type: "textfield", key: "sin", properties: { myssChannels: { "applicant-override": { show: false } } } },
+          ],
+        },
+      },
+      [],
+    );
+
+    expect(keywords(violations)).toEqual([FormSpecRule.ChannelRulesInvalid]);
+  });
+
+  it("reads rules from a spec sent as text, as the admin panel sends it", () => {
+    const spec = JSON.stringify({
+      components: [{ type: "textfield", key: "sin", properties: { myssChannels: { client: "no" } } }],
+    });
+
+    expect(keywords(validateFormSpec(spec))).toEqual([FormSpecRule.ChannelRulesInvalid]);
   });
 });
 

@@ -460,6 +460,7 @@ namespace Myss.FormSpec
             }
 
             errors.AddRange(RepeatSectionErrors(components));
+            errors.AddRange(ChannelRules.Errors(spec));
             return errors;
         }
 

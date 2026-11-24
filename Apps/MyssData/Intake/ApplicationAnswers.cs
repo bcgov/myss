@@ -2,6 +2,7 @@ namespace Myss.Data.Intake
 {
     using System;
     using System.Text.Json;
+    using Myss.FormSpec;
 
     /// <summary>
     /// An Income Assistance application: its identity, its owner, the form
@@ -42,6 +43,12 @@ namespace Myss.Data.Intake
         /// Gets or sets the logical form identifier.
         /// </summary>
         public required string FormSpecId { get; set; }
+
+        /// <summary>
+        /// Gets or sets how the application was started, one of
+        /// <see cref="RequestChannels"/>. Set at creation and never changed.
+        /// </summary>
+        public required string Channel { get; set; }
 
         /// <summary>
         /// Gets or sets the spec version pinned when the application was

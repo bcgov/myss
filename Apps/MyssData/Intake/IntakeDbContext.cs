@@ -1,6 +1,7 @@
 namespace Myss.Data.Intake
 {
     using Microsoft.EntityFrameworkCore;
+    using Myss.FormSpec;
 
     /// <summary>
     /// EF Core context for the Application Intake module. Owns the "intake"
@@ -35,6 +36,8 @@ namespace Myss.Data.Intake
             application.Property(a => a.OwnerSubject).HasColumnName("owner_subject").HasMaxLength(255).IsRequired();
             application.Property(a => a.FormSpecId).HasColumnName("form_spec_id").IsRequired();
             application.Property(a => a.StartedBy).HasColumnName("started_by").HasMaxLength(255);
+            application.Property(a => a.Channel).HasColumnName("channel").HasMaxLength(32).IsRequired()
+                .HasDefaultValue(RequestChannels.Client);
             application.Property(a => a.FormSpecVersion).HasColumnName("form_spec_version");
             application.Property(a => a.Answers).HasColumnName("answers").HasColumnType("jsonb").IsRequired();
             application.Property(a => a.Version).HasColumnName("version").IsConcurrencyToken();
