@@ -3,7 +3,15 @@ import { MemoryRouter } from "react-router";
 import { userEvent } from "@vitest/browser/context";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import type { AccountPayload, PhoneInput } from "@/api/account";
 import { loadPageStyles } from "@/testing/pageStyles";
@@ -203,7 +211,7 @@ describe("AccountInfoPage", () => {
       .not.toBeInTheDocument();
   });
 
-  it("keeps email and mailing address read-only", async () => {
+  it("keeps the current email and mailing address read-only", async () => {
     stubApi({ account: account() });
     const screen = await renderPage();
 
@@ -212,7 +220,9 @@ describe("AccountInfoPage", () => {
       .click();
 
     await expect
-      .element(screen.getByRole("textbox", { name: "Email Address" }))
+      .element(
+        screen.getByRole("textbox", { name: "Email Address", exact: true }),
+      )
       .toHaveAttribute("readonly");
     await expect
       .element(screen.getByRole("textbox", { name: "Mailing Address" }))
@@ -341,6 +351,10 @@ describe("AccountInfoPage", () => {
     await screen
       .getByRole("button", { name: "Edit contact information" })
       .click();
+    await screen
+      .getByRole("group", { name: "Phone number 1" })
+      .getByRole("textbox", { name: "Phone Number" })
+      .fill("604 555 0199");
     await screen.getByRole("button", { name: "Save" }).click();
 
     await expect
@@ -365,11 +379,33 @@ describe("AccountInfoPage", () => {
     await screen
       .getByRole("button", { name: "Edit contact information" })
       .click();
+    await screen
+      .getByRole("group", { name: "Phone number 1" })
+      .getByRole("textbox", { name: "Phone Number" })
+      .fill("604 555 0199");
     await screen.getByRole("button", { name: "Save" }).click();
 
     await expect
       .element(screen.getByRole("alert"))
       .toHaveTextContent("Your changes were not saved.");
+  });
+
+  it("closes without a write when nothing changed", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByRole("button", { name: "Edit contact information" }))
+      .toHaveFocus();
+    expect(writes).toEqual([]);
+    expect(
+      screen.getByText("Your contact information has been updated.").query(),
+    ).toBeNull();
   });
 
   it("removes a number and saves the empty list", async () => {
@@ -775,11 +811,31 @@ describe("PIN management", () => {
 });
 
 describe("Email address", () => {
+  it("offers one edit action for the whole section", async () => {
+    stubApi({ account: account() });
+    const screen = await renderPage();
+
+    const section = screen.getByRole("region", { name: "Contact Information" });
+    await expect
+      .element(
+        section.getByRole("button", { name: "Edit contact information" }),
+      )
+      .toBeVisible();
+    expect(section.getByRole("button", { name: /^Edit/ }).all()).toHaveLength(
+      1,
+    );
+  });
+
   it("changes the address to pending and says the current one stays in use", async () => {
     const writes = stubApi({ account: account() });
     const screen = await renderPage();
 
-    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
+    await expect
+      .element(screen.getByRole("textbox", { name: /^New Email Address/ }))
+      .toHaveFocus();
     await userEvent.fill(
       screen.getByRole("textbox", { name: /^New Email Address/ }),
       "alex.new@example.com",
@@ -800,15 +856,92 @@ describe("Email address", () => {
       { route: "PUT email", body: { email: "alex.new@example.com" } },
     ]);
     await expect
-      .element(screen.getByRole("button", { name: "Edit Email Address" }))
+      .element(screen.getByRole("button", { name: "Edit contact information" }))
       .toHaveFocus();
+  });
+
+  it("saves a new address and phone numbers together", async () => {
+    const writes = stubApi({ account: account() });
+    const screen = await renderPage();
+
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "alex.new@example.com",
+    );
+    await screen
+      .getByRole("group", { name: "Phone number 1" })
+      .getByRole("textbox", { name: "Phone Number" })
+      .fill("604 555 0199");
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByText("Your contact information has been updated."))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("Verification pending"))
+      .toBeVisible();
+    await expect
+      .element(
+        screen
+          .getByRole("group", { name: "Phone number 1" })
+          .getByRole("textbox", { name: "Phone Number" }),
+      )
+      .toHaveValue("(604) 555-0199");
+    expect(writes).toEqual([
+      {
+        route: "phones",
+        body: { phones: [{ number: "(604) 555-0199", type: "Home" }] },
+      },
+      { route: "PUT email", body: { email: "alex.new@example.com" } },
+    ]);
+  });
+
+  it("keeps the form open when the phones saved but the address was refused", async () => {
+    const writes = stubApi({
+      account: account(),
+      nextEmail: { status: 503, body: { detail: "Try again later." } },
+    });
+    const screen = await renderPage();
+
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
+    await userEvent.fill(
+      screen.getByRole("textbox", { name: /^New Email Address/ }),
+      "alex.new@example.com",
+    );
+    await screen
+      .getByRole("group", { name: "Phone number 1" })
+      .getByRole("textbox", { name: "Phone Number" })
+      .fill("604 555 0199");
+    await screen.getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent("Your email address was not changed.");
+
+    // A retry sends only the address; the phones are already saved.
+    await screen.getByRole("button", { name: "Save" }).click();
+    await expect
+      .element(screen.getByText("Verification pending"))
+      .toBeVisible();
+    expect(writes.map((write) => write.route)).toEqual([
+      "phones",
+      "PUT email",
+      "PUT email",
+    ]);
   });
 
   it("refuses an invalid address before sending it", async () => {
     const writes = stubApi({ account: account() });
     const screen = await renderPage();
 
-    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
     await userEvent.fill(
       screen.getByRole("textbox", { name: /^New Email Address/ }),
       "not-an-address",
@@ -819,9 +952,13 @@ describe("Email address", () => {
       .element(
         screen.getByText(
           "Enter an email address in the format name@example.com.",
+          { exact: true },
         ),
       )
       .toBeVisible();
+    await expect
+      .element(screen.getByRole("heading", { name: "There is a problem" }))
+      .toHaveFocus();
     expect(writes).toEqual([]);
   });
 
@@ -831,7 +968,9 @@ describe("Email address", () => {
     const writes = stubApi({ account: account() });
     const screen = await renderPage();
 
-    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
     await userEvent.fill(
       screen.getByRole("textbox", { name: /^New Email Address/ }),
       "alex@gov.bc.ca&&&&",
@@ -842,6 +981,7 @@ describe("Email address", () => {
       .element(
         screen.getByText(
           "Enter an email address in the format name@example.com.",
+          { exact: true },
         ),
       )
       .toBeVisible();
@@ -866,7 +1006,9 @@ describe("Email address", () => {
     });
     const screen = await renderPage();
 
-    await screen.getByRole("button", { name: "Edit Email Address" }).click();
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
     await userEvent.fill(
       screen.getByRole("textbox", { name: /^New Email Address/ }),
       "alex.new@example.com",
@@ -874,7 +1016,16 @@ describe("Email address", () => {
     await screen.getByRole("button", { name: "Save" }).click();
 
     await expect
-      .element(screen.getByText("That address cannot be used."))
+      .element(
+        screen.getByRole("button", {
+          name: "New Email Address: That address cannot be used.",
+        }),
+      )
+      .toBeVisible();
+    await expect
+      .element(
+        screen.getByText("That address cannot be used.", { exact: true }),
+      )
       .toBeVisible();
   });
 
@@ -934,10 +1085,17 @@ describe("Email address", () => {
     await expect
       .element(screen.getByRole("textbox", { name: "Email Address" }))
       .toHaveValue("alex@example.com");
-    expect(
-      screen.getByRole("button", { name: "Edit Email Address" }).query(),
-    ).toBeNull();
     expect(screen.getByText("Email address not verified").query()).toBeNull();
+
+    await screen
+      .getByRole("button", { name: "Edit contact information" })
+      .click();
+    await expect
+      .element(screen.getByRole("button", { name: "Save" }))
+      .toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: /^New Email Address/ }).query(),
+    ).toBeNull();
   });
 
   it("shows an unverified address from registration with Resend but no Cancel", async () => {
