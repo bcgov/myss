@@ -50,6 +50,14 @@ export {
 // The phone number input, shared with the citizen app's own forms.
 export { default as PhoneInput } from "./PhoneInput";
 
+// The month / day / year date field Form.io's `datetime` is drawn with, for
+// the citizen app's design system page to show outside a form.
+export {
+  default as DateInputField,
+  type DateInputError,
+} from "./DateInputField";
+export type { DateEntry, DateEntryPart } from "./validationRules";
+
 // A spec drawn read-only over submitted answers: the applicant's view of their
 // application and the worker's review view.
 export { default as ReadOnlySpecForm } from "./ReadOnlySpecForm";

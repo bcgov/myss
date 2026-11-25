@@ -1,0 +1,273 @@
+/* The design system page (MYSS-355). Its only job is to show the components
+   as they are, so it styles the page around them and never the components. */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-large);
+    max-width: 50rem;
+    width: 100%;
+}
+
+.page h1 {
+    margin: 0;
+}
+
+.lead {
+    font: var(--typography-regular-large-body);
+    margin: 0;
+}
+
+.contents {
+    background-color: var(--surface-color-background-light-gray);
+    border-radius: var(--layout-border-radius-medium);
+    padding: var(--layout-padding-medium);
+}
+
+/* The theme pads h1 to h3 from the top; inside the box that is wasted. */
+.contents .contentsHeading {
+    font: var(--typography-bold-body);
+    margin: 0 0 var(--layout-margin-xsmall);
+    padding: 0;
+}
+
+.contents ol {
+    columns: 2;
+    margin: 0;
+}
+
+.section {
+    border-top: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-medium);
+    scroll-margin-top: var(--layout-margin-medium);
+}
+
+.section > h2 {
+    margin: 0;
+}
+
+.section p {
+    margin: 0;
+}
+
+.example {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+}
+
+/* The name of an example, set small so it reads as a caption over the
+   component, not as part of the page being demonstrated. */
+.example .exampleHeading {
+    color: var(--typography-color-secondary);
+    font: var(--typography-bold-small-body);
+    margin: 0;
+    padding: 0;
+    text-transform: uppercase;
+}
+
+/* Form fields at the width a form column gives them in Figma. */
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-large);
+    max-width: 25rem;
+}
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-small);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-small);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* ---- Tokens ---- */
+
+.swatches {
+    display: grid;
+    gap: var(--layout-margin-small);
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.swatch {
+    align-items: center;
+    column-gap: var(--layout-margin-small);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+}
+
+.swatch code {
+    overflow-wrap: anywhere;
+}
+
+.swatchColour {
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-medium);
+    border-radius: var(--layout-border-radius-medium);
+    grid-row: span 2;
+    height: var(--layout-margin-xxlarge);
+    width: var(--layout-margin-xxlarge);
+}
+
+.tokenValue {
+    color: var(--typography-color-secondary);
+    font: var(--typography-regular-small-body);
+}
+
+.tokenList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-xsmall);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.spacingRow {
+    align-items: center;
+    display: flex;
+    gap: var(--layout-margin-small);
+}
+
+.spacingBar {
+    background-color: var(--surface-color-primary-button-default);
+    display: inline-block;
+    flex-shrink: 0;
+    height: var(--layout-margin-medium);
+}
+
+.boxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-medium);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.boxes li {
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-margin-xsmall);
+}
+
+.box {
+    border: var(--layout-border-width-small) solid
+        var(--surface-color-border-dark);
+    height: var(--layout-margin-xxxlarge);
+    width: var(--layout-margin-xxxlarge);
+}
+
+/* ---- Typography ---- */
+
+.specimen {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Real headings keep the theme's styles; only the space between the samples
+   is set here. */
+.specimen p {
+    margin-bottom: var(--layout-margin-medium);
+}
+
+.specimen .specimenH1,
+.frame .specimenH1 {
+    color: var(--typography-color-primary);
+    font: var(--typography-bold-h1);
+    margin-bottom: var(--layout-margin-xsmall);
+}
+
+.specimen .largeText {
+    font: var(--typography-regular-large-body);
+}
+
+.specimen .smallText {
+    font: var(--typography-regular-small-body);
+}
+
+/* ---- Tables and lists ---- */
+
+.tableScroll {
+    overflow-x: auto;
+}
+
+.table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.table caption {
+    caption-side: top;
+    color: var(--typography-color-primary);
+    font: var(--typography-bold-body);
+    text-align: left;
+}
+
+.table th,
+.table td {
+    border-bottom: var(--layout-border-width-small) solid
+        var(--surface-color-border-default);
+    padding: var(--layout-padding-small);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.table th {
+    background-color: var(--surface-color-background-light-gray);
+}
+
+.lists {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--layout-margin-xlarge);
+}
+
+.summaryList {
+    display: grid;
+    gap: var(--layout-margin-xsmall) var(--layout-margin-medium);
+    grid-template-columns: auto 1fr;
+    margin: 0;
+}
+
+.summaryList dt {
+    font-weight: 700;
+}
+
+.summaryList dd {
+    margin: 0;
+}
+
+/* ---- States ---- */
+
+.frame {
+    border: var(--layout-border-width-small) dashed
+        var(--surface-color-border-medium);
+    border-radius: var(--layout-border-radius-medium);
+    padding: var(--layout-padding-medium);
+}
+
+/* 767px, the app's phone breakpoint. A media query's rem is the browser's
+   default font size, not the root's; both are 16px here. */
+@media (max-width: 47.9375rem) {
+    .contents ol {
+        columns: 1;
+    }
+}
