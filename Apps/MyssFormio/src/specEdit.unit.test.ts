@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { FormType } from "@formio/react/lib/components/Form";
 
 import {
+  describeChannelRules,
+  dropUnsetChannelRules,
   flattenComponents,
   formLayoutOf,
   listEditableComponents,
@@ -245,5 +247,161 @@ describe("a repeat section in the row-by-row editor", () => {
       "childCount",
       "childFirstName",
     ]);
+  });
+});
+
+describe("describeChannelRules", () => {
+  function sinWith(myssChannels: unknown): Map<string, string[]> {
+    return describeChannelRules(
+      asSpec([{ type: "textfield", key: "sin", properties: { myssChannels } }]),
+    );
+  }
+
+  it("names what each channel's rule does, in channel order", () => {
+    expect(
+      sinWith({ "worker-override": { required: false }, client: { show: false } }).get("sin"),
+    ).toEqual(["Hidden for Client", "Optional for Worker override"]);
+    expect(sinWith({ "worker-override": { required: true } }).get("sin")).toEqual([
+      "Required for Worker override",
+    ]);
+  });
+
+  it("says only Hidden for a channel that hides the field, whatever it requires", () => {
+    expect(sinWith({ client: { show: false, required: true } }).get("sin")).toEqual([
+      "Hidden for Client",
+    ]);
+  });
+
+  it("says nothing for a field without rules, or with settings that are not true or false", () => {
+    expect(describeChannelRules(asSpec([{ type: "textfield", key: "sin" }])).size).toBe(0);
+    expect(sinWith({ client: { show: true } }).size).toBe(0);
+    expect(sinWith({ client: { required: "no" } }).size).toBe(0);
+  });
+
+  it("says a field inside a hidden page, panel or column is hidden with it, naming the outermost", () => {
+    const notes = describeChannelRules({
+      display: "wizard",
+      components: [
+        {
+          type: "panel",
+          key: "page2",
+          title: "Page 2",
+          properties: { myssChannels: { "worker-override": { show: false } } },
+          components: [
+            {
+              type: "textfield",
+              key: "clientNote",
+              properties: { myssChannels: { client: { required: true } } },
+            },
+            {
+              type: "columns",
+              key: "row",
+              properties: { myssChannels: { "worker-override": { show: false } } },
+              columns: [{ components: [{ type: "textfield", key: "inColumn" }] }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(notes.get("page2")).toEqual(["Hidden for Worker override"]);
+    expect(notes.get("clientNote")).toEqual([
+      "Required for Client",
+      'Hidden for Worker override (inside "Page 2")',
+    ]);
+    expect(notes.get("inColumn")).toEqual(['Hidden for Worker override (inside "Page 2")']);
+  });
+
+  it("says nothing of a count question's required rules, which have no effect", () => {
+    const notes = describeChannelRules(
+      asSpec([
+        {
+          type: "number",
+          key: "childCount",
+          properties: {
+            myssChannels: { client: { required: false }, "worker-override": { show: false } },
+          },
+        },
+        { type: "bcgovRepeatSection", key: "children", properties: { myssRepeatCount: "childCount" } },
+      ]),
+    );
+
+    expect(notes.get("childCount")).toEqual(["Hidden for Worker override"]);
+  });
+});
+
+describe("dropUnsetChannelRules", () => {
+  const spec = asSpec([
+    {
+      type: "panel",
+      key: "page1",
+      input: false,
+      components: [
+        {
+          type: "textfield",
+          key: "sin",
+          properties: {
+            myssValidator: "sin",
+            myssChannels: {
+              client: { show: "", required: "" },
+              "worker-override": { show: "", required: false },
+            },
+          },
+        },
+        {
+          type: "textfield",
+          key: "fullName",
+          properties: {
+            myssValidator: "",
+            myssChannels: {
+              client: { show: "", required: "" },
+              "worker-override": { show: "", required: "" },
+            },
+          },
+        },
+      ],
+    },
+  ]);
+
+  function propertiesOf(result: FormType, key: string): unknown {
+    return flattenComponents(result).find((c) => c.key === key)?.properties;
+  }
+
+  it("keeps only the settings that were chosen, inside containers too", () => {
+    expect(propertiesOf(dropUnsetChannelRules(spec), "sin")).toEqual({
+      myssValidator: "sin",
+      myssChannels: { "worker-override": { required: false } },
+    });
+  });
+
+  it("drops the rules of a field left as authored, and nothing else of its properties", () => {
+    expect(propertiesOf(dropUnsetChannelRules(spec), "fullName")).toEqual({ myssValidator: "" });
+  });
+
+  it("drops properties left empty once the rules are gone", () => {
+    const panel = asSpec([
+      {
+        type: "panel",
+        key: "page1",
+        properties: { myssChannels: { client: { show: "" }, "worker-override": { show: "" } } },
+        components: [],
+      },
+    ]);
+    expect(componentsOf(dropUnsetChannelRules(panel))[0]).not.toHaveProperty("properties");
+  });
+
+  it("leaves any other wrong value for the rules to report", () => {
+    const wrong = asSpec([
+      { type: "textfield", key: "sin", properties: { myssChannels: { client: { show: "no" } } } },
+      { type: "textfield", key: "a", properties: { myssChannels: { "worker-overide": { show: "" } } } },
+      { type: "textfield", key: "b", properties: { myssChannels: { client: { visible: "" } } } },
+    ]);
+    expect(dropUnsetChannelRules(wrong)).toEqual(wrong);
+  });
+
+  it("does not mutate the spec it is given", () => {
+    const before = structuredClone(spec);
+    dropUnsetChannelRules(spec);
+    expect(spec).toEqual(before);
   });
 });

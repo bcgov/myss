@@ -1287,3 +1287,371 @@ describe("FormEditorPage form layout", () => {
     expect(spec.components.map((c) => c.type)).toEqual(["panel"]);
   });
 });
+
+describe("FormEditorPage channel rules", () => {
+  const sin = {
+    type: "textfield",
+    key: "sin",
+    label: "Social insurance number",
+    input: true,
+    validate: { required: true },
+    properties: {
+      myssValidator: "sin",
+      myssChannels: { "worker-override": { required: false } },
+    },
+  };
+  const clientNote = {
+    type: "textfield",
+    key: "clientNote",
+    label: "Asked of clients only",
+    input: true,
+    properties: { myssChannels: { "worker-override": { show: false } } },
+  };
+  const fullName = {
+    type: "textfield",
+    key: "fullName",
+    label: "Full name",
+    input: true,
+  };
+  const submit = {
+    type: "button",
+    key: "submit",
+    label: "Submit",
+    action: "submit",
+    input: true,
+  };
+
+  function withComponents(...components: object[]): FormSpecPayload {
+    return {
+      ...draft,
+      spec: { display: "form", components } as FormSpecPayload["spec"],
+    };
+  }
+
+  // The design system covers the radio input with its indicator, so a user
+  // (and the test) clicks the label.
+  function previewAs(
+    screen: Awaited<ReturnType<typeof renderPage>>,
+    name: string,
+  ) {
+    return screen.getByText(name, { exact: true }).click();
+  }
+
+  // Each row renders on its own, so wait for the field itself, then read its mark.
+  async function expectRequiredMark(key: string, label: string, marked: boolean) {
+    await vi.waitFor(() => {
+      const text =
+        document.querySelector(`[class~="formio-component-${key}"]`)
+          ?.textContent ?? "";
+      expect(text).toContain(label);
+      expect(text.includes("(required)")).toBe(marked);
+    });
+  }
+
+  async function savedComponents(
+    screen: Awaited<ReturnType<typeof renderPage>>,
+  ) {
+    await screen.getByRole("button", { name: "Save draft" }).click();
+    await expect.element(screen.getByText("Draft saved.")).toBeVisible();
+    const [, input] = mockSaveDraft.mock.calls[0];
+    return (input.spec.components ?? []) as Record<string, unknown>[];
+  }
+
+  function channelRulesOf(
+    components: Record<string, unknown>[],
+    key: string,
+  ): unknown {
+    const properties = components.find((c) => c.key === key)?.properties as
+      | Record<string, unknown>
+      | undefined;
+    return properties?.myssChannels;
+  }
+
+  // Opens the component's settings on the Channel rules tab.
+  async function openChannelRules(key: string) {
+    const edit = await vi.waitFor(() => {
+      const found = document
+        .querySelector(`.builder-component [class~="formio-component-${key}"]`)
+        ?.closest(".builder-component")
+        ?.querySelector<HTMLElement>('[ref="editComponent"]');
+      expect(found, "no edit control on the component").toBeTruthy();
+      return found!;
+    });
+    edit.click();
+    const tab = await vi.waitFor(() => {
+      const found = [
+        ...document.querySelectorAll<HTMLElement>(".formio-dialog .nav-link"),
+      ].find((link) => link.textContent?.trim() === "Channel rules");
+      expect(found, "no Channel rules tab").toBeTruthy();
+      return found!;
+    });
+    await page.elementLocator(tab).click();
+  }
+
+  function channelFieldset(channel: string): HTMLElement {
+    const legend = [
+      ...document.querySelectorAll(".formio-dialog legend"),
+    ].find((node) => node.textContent?.trim() === channel);
+    expect(legend, `no ${channel} section`).toBeTruthy();
+    return legend!.closest("fieldset")!;
+  }
+
+  /** The labels of the choices a channel's section shows. */
+  function shownChoices(channel: string): string[] {
+    return [...channelFieldset(channel).querySelectorAll(".formio-component-select")]
+      .filter((select) => !select.classList.contains("formio-hidden"))
+      .map((select) => select.querySelector("label")?.textContent?.trim() ?? "");
+  }
+
+  function choiceIn(channel: string, setting: string): HTMLElement {
+    const found = [
+      ...channelFieldset(channel).querySelectorAll<HTMLElement>(
+        ".formio-component-select",
+      ),
+    ].find((select) => select.querySelector("label")?.textContent?.trim() === setting);
+    expect(found, `no ${setting} choice for ${channel}`).toBeTruthy();
+    return found!.querySelector<HTMLElement>(".choices")!;
+  }
+
+  async function choose(channel: string, setting: string, option: string) {
+    const choice = choiceIn(channel, setting);
+    await page.elementLocator(choice).click();
+    await page.elementLocator(choice).getByText(option, { exact: true }).click();
+  }
+
+  async function saveSettings() {
+    document.querySelector<HTMLElement>('[ref="saveButton"]')!.click();
+    await vi.waitFor(() => {
+      expect(document.querySelector('[ref="saveButton"]')).toBeNull();
+    });
+  }
+
+  it("previews the form as each channel gets it", async () => {
+    mockGetDraft.mockResolvedValue(withComponents(sin, clientNote, fullName, submit));
+
+    const screen = await renderPage();
+    await expect
+      .element(screen.getByRole("radio", { name: "Base form" }))
+      .toBeChecked();
+    await expect.element(screen.getByText("Asked of clients only")).toBeVisible();
+    await expectRequiredMark("sin", "Social insurance number", true);
+
+    await previewAs(screen, "Worker override");
+    await expect
+      .element(screen.getByText("Asked of clients only"))
+      .not.toBeInTheDocument();
+    await expectRequiredMark("sin", "Social insurance number", false);
+    // The settings still edit the form as authored.
+    await expect
+      .element(screen.getByRole("checkbox", { name: "Required: sin" }))
+      .toBeChecked();
+
+    await previewAs(screen, "Client");
+    await expect.element(screen.getByText("Asked of clients only")).toBeVisible();
+    await expectRequiredMark("sin", "Social insurance number", true);
+  });
+
+  it("previews a wizard page hidden for a channel without its questions", async () => {
+    mockGetDraft.mockResolvedValue({
+      ...draft,
+      spec: {
+        display: "wizard",
+        components: [
+          { type: "panel", key: "page1", title: "Page 1", input: false, components: [fullName] },
+          {
+            type: "panel",
+            key: "page2",
+            title: "Page 2",
+            input: false,
+            properties: { myssChannels: { "worker-override": { show: false } } },
+            components: [{ ...clientNote, properties: {} }],
+          },
+        ],
+      } as unknown as FormSpecPayload["spec"],
+    });
+
+    const screen = await renderPage();
+    await expect.element(screen.getByText("Asked of clients only")).toBeVisible();
+    await expect
+      .element(screen.getByText('Hidden for Worker override (inside "Page 2")'))
+      .toBeVisible();
+
+    await previewAs(screen, "Worker override");
+
+    await expect
+      .element(screen.getByText("Asked of clients only"))
+      .not.toBeInTheDocument();
+    await expect
+      .element(screen.getByRole("textbox", { name: "Label for fullName" }))
+      .toBeVisible();
+  });
+
+  it("says beside each field what its channel rules do", async () => {
+    mockGetDraft.mockResolvedValue(withComponents(sin, clientNote, fullName, submit));
+
+    const screen = await renderPage();
+
+    await expect
+      .element(screen.getByText("Optional for Worker override"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("Hidden for Worker override"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("textbox", { name: "Label for sin" }))
+      .toHaveAccessibleDescription("Optional for Worker override");
+  });
+
+  it("links an error only to a field the preview shows", async () => {
+    const message =
+      'The channel rule of "clientNote" for "client" has "visible"; only show and required are allowed.';
+    mockGetDraft.mockResolvedValue(
+      withComponents(
+        {
+          ...clientNote,
+          properties: {
+            myssChannels: {
+              client: { visible: true },
+              "worker-override": { show: false },
+            },
+          },
+        },
+        fullName,
+        submit,
+      ),
+    );
+
+    const screen = await renderPage();
+    await previewAs(screen, "Worker override");
+    await screen.getByRole("button", { name: "Save draft" }).click();
+
+    await expect.element(screen.getByText(message)).toBeVisible();
+    await expect
+      .element(screen.getByRole("button", { name: message }))
+      .not.toBeInTheDocument();
+
+    await previewAs(screen, "Base form");
+    await expect
+      .element(screen.getByRole("button", { name: message }))
+      .toBeVisible();
+  });
+
+  it("names a rule for a channel that does not exist instead of saving", async () => {
+    mockGetDraft.mockResolvedValue(
+      withComponents(
+        {
+          ...sin,
+          properties: { myssChannels: { "worker-overide": { required: false } } },
+        },
+        submit,
+      ),
+    );
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Save draft" }).click();
+
+    await expect
+      .element(
+        screen.getByRole("button", {
+          name: 'The channel rules of "sin" name "worker-overide", which is not a channel.',
+        }),
+      )
+      .toBeVisible();
+    expect(mockSaveDraft).not.toHaveBeenCalled();
+  });
+
+  it("saves a choice made on the Channel rules tab, and no rule where none is made", async () => {
+    mockGetDraft.mockResolvedValue(withComponents(sin, clientNote, fullName, submit));
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    await openChannelRules("fullName");
+    expect(shownChoices("Worker override")).toEqual(["Visibility", "Required"]);
+    await choose("Worker override", "Required", "Optional");
+    await saveSettings();
+
+    const saved = await savedComponents(screen);
+    expect(channelRulesOf(saved, "fullName")).toEqual({
+      "worker-override": { required: false },
+    });
+    expect(channelRulesOf(saved, "sin")).toEqual({
+      "worker-override": { required: false },
+    });
+    expect(channelRulesOf(saved, "clientNote")).toEqual({
+      "worker-override": { show: false },
+    });
+  });
+
+  it("saves a component's settings unchanged without touching its channel rules", async () => {
+    mockGetDraft.mockResolvedValue(withComponents(sin, fullName, submit));
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    await openChannelRules("sin");
+    await saveSettings();
+    await openChannelRules("fullName");
+    await saveSettings();
+    await openChannelRules("submit");
+    await saveSettings();
+
+    const saved = await savedComponents(screen);
+    expect(channelRulesOf(saved, "sin")).toEqual({
+      "worker-override": { required: false },
+    });
+    expect(channelRulesOf(saved, "fullName")).toBeUndefined();
+    // Nothing else of the button carries properties, so none are left behind.
+    expect(saved.find((c) => c.key === "submit")).not.toHaveProperty("properties");
+  });
+
+  it("drops a rule whose choice is cleared back to As authored", async () => {
+    mockGetDraft.mockResolvedValue(withComponents(sin, submit));
+    mockSaveDraft.mockResolvedValue({ ...draft, version: 3 });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    await openChannelRules("sin");
+    const clear = await vi.waitFor(() => {
+      const found = choiceIn("Worker override", "Required").querySelector<HTMLElement>(
+        ".choices__button",
+      );
+      expect(found, "the choice shows no clear button").toBeTruthy();
+      return found!;
+    });
+    await page.elementLocator(clear).click();
+    await saveSettings();
+
+    expect(channelRulesOf(await savedComponents(screen), "sin")).toBeUndefined();
+  });
+
+  it("asks only whether a repeat section's count question is hidden", async () => {
+    const spec = repeatSectionSpec({ myssRepeatCount: "childCount" }) as {
+      components: object[];
+    };
+    mockGetDraft.mockResolvedValue({
+      ...draft,
+      spec: {
+        ...spec,
+        components: [
+          { type: "number", key: "petCount", label: "How many pets?", input: true },
+          ...spec.components,
+        ],
+      } as unknown as FormSpecPayload["spec"],
+    });
+
+    const screen = await renderPage();
+    await screen.getByRole("button", { name: "Build form" }).click();
+    await openChannelRules("petCount");
+    await vi.waitFor(() => {
+      expect(shownChoices("Worker override")).toEqual(["Visibility", "Required"]);
+    });
+    await saveSettings();
+
+    await openChannelRules("childCount");
+    await vi.waitFor(() => {
+      expect(shownChoices("Client")).toEqual(["Visibility"]);
+      expect(shownChoices("Worker override")).toEqual(["Visibility"]);
+    });
+  });
+});

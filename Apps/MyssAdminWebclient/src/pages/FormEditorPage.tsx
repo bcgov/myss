@@ -2,7 +2,15 @@ import { Radio, RadioGroup } from "@bcgov/design-system-react-components";
 import { Form, FormBuilder } from "@formio/react";
 import type { FormType } from "@formio/react/lib/components/Form";
 import { Utils } from "@formio/js";
-import { Fragment, memo, useCallback, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 
 import "@formio/js/dist/formio.form.min.css";
@@ -12,21 +20,28 @@ import { FormLoadError, SpecRejectedError } from "@/api/forms";
 import type { FormSpecPayload, FormValidationError } from "@/api/forms";
 import ErrorSummary, { type ErrorSummaryItem } from "@/components/ErrorSummary";
 import {
+  REQUEST_CHANNELS,
   builderOptions,
+  describeChannelRules,
+  dropUnsetChannelRules,
   findDuplicateKeys,
+  findInvalidChannelRules,
   findInvalidRepeatSections,
   findUnknownConditionalTargets,
   flattenComponents,
   forEachComponent,
   formLayoutOf,
+  isRequestChannel,
   listEditableComponents,
   registerBcgovComponents,
+  resolveSpecForChannel,
   revealAllComponents,
   setFormLayout,
   setLabel,
   setRequired,
   type EditableComponent,
   type FormLayout,
+  type RequestChannel,
 } from "@myss/formio";
 import { useDraft, usePublishForm, useSaveDraft } from "@/hooks/useForms";
 import { formEditorPath, paths } from "@/routes/paths";
@@ -70,9 +85,19 @@ type EditorMode = "labels" | "build";
 /** The save bar action that ran last; scopes which errors the summary shows. */
 type EditorAction = "save" | "publish";
 
+/** Which form the labels preview shows: as authored, or as one channel gets it. */
+type PreviewAs = "base" | RequestChannel;
+
 /** The builder handle `onBuilderReady` returns. */
 interface BuilderHandle {
   instance?: { schema?: FormType };
+}
+
+// The builder's schema, without the empty values its Channel rules tab writes
+// for "As authored".
+function schemaOf(builder: BuilderHandle | null): FormType | undefined {
+  const schema = builder?.instance?.schema;
+  return schema ? dropUnsetChannelRules(schema) : undefined;
 }
 
 /** The working copy and the editing state that travels with it. */
@@ -230,7 +255,7 @@ function useWorkingSpec(
   // saving it would rewrite the stored spec on the first interaction. Kept
   // referentially stable, or the builder is rebuilt on every render.
   const editInBuilder = useCallback(() => {
-    const next = builderInstance.current?.instance?.schema;
+    const next = schemaOf(builderInstance.current);
     if (next) setState((s) => withBuilderSpec(s, next));
   }, []);
 
@@ -240,9 +265,7 @@ function useWorkingSpec(
   // working copy is brought up to date at the same time.
   const specToSend = useCallback((): FormType | null => {
     const live =
-      state.mode === "build"
-        ? builderInstance.current?.instance?.schema
-        : undefined;
+      state.mode === "build" ? schemaOf(builderInstance.current) : undefined;
     if (!live || sameSpec(state.workingSpec, live)) {
       return state.workingSpec;
     }
@@ -251,7 +274,7 @@ function useWorkingSpec(
   }, [state.mode, state.workingSpec]);
 
   const changeLayout = useCallback((layout: FormLayout) => {
-    const live = builderInstance.current?.instance?.schema;
+    const live = schemaOf(builderInstance.current);
     setState((s) => withLayout(s, layout, live));
   }, []);
 
@@ -275,11 +298,29 @@ function useWorkingSpec(
   };
 }
 
+// The form as authored, or as the API serves it to one channel.
+function previewedForm(
+  spec: FormType | null,
+  previewAs: PreviewAs,
+): FormType | null {
+  if (!spec || previewAs === "base") return spec;
+  return resolveSpecForChannel(spec, previewAs);
+}
+
 // Preview shows every component at once (conditionals stripped), flattened to
 // one field per row so each lines up with its settings.
 function previewRows(spec: FormType | null): Record<string, unknown>[] {
   if (!spec) return [];
   return flattenComponents(revealAllComponents(spec));
+}
+
+/** Each component's channel rules in words, by key, read from the base form. */
+function channelRuleNotes(spec: FormType | null): Map<string, string> {
+  const notes = new Map<string, string>();
+  for (const [key, phrases] of describeChannelRules(spec)) {
+    notes.set(key, phrases.join("; "));
+  }
+  return notes;
 }
 
 function indexEditable(spec: FormType | null): Map<string, EditableComponent> {
@@ -429,6 +470,9 @@ function ruleErrors(spec: FormType): EditorError[] {
   for (const problem of findInvalidRepeatSections(spec)) {
     errors.push({ message: problem.message, field: problem.key });
   }
+  for (const problem of findInvalidChannelRules(spec)) {
+    errors.push({ message: problem.message, field: problem.key });
+  }
   return errors;
 }
 
@@ -477,7 +521,8 @@ function componentKeys(spec: FormType | null): Set<string> {
 }
 
 // A reason links to its settings row only when its field is a component of
-// the working copy; any other field (such as `newVersion`) has no row to show.
+// the form on screen; any other field (such as `newVersion`, or one hidden in
+// the channel previewed) has no row to show.
 function summaryItems(
   errors: EditorError[],
   spec: FormType | null,
@@ -522,6 +567,31 @@ function LayoutChoice({
   );
 }
 
+// The form as authored, or as one channel gets it.
+function PreviewChoice({
+  previewAs,
+  onChange,
+}: Readonly<{ previewAs: PreviewAs; onChange: (previewAs: PreviewAs) => void }>) {
+  return (
+    <div className={styles.layoutChoice}>
+      <RadioGroup
+        label="Preview as"
+        description="A channel's preview leaves out what is hidden for it and marks what it requires."
+        orientation="horizontal"
+        value={previewAs}
+        onChange={(value) => onChange(isRequestChannel(value) ? value : "base")}
+      >
+        <Radio value="base">Base form</Radio>
+        {REQUEST_CHANNELS.map((channel) => (
+          <Radio key={channel.id} value={channel.id}>
+            {channel.label}
+          </Radio>
+        ))}
+      </RadioGroup>
+    </div>
+  );
+}
+
 // The two editing surfaces, as toggle buttons.
 function ModeBar({
   mode,
@@ -556,41 +626,61 @@ interface FieldEdits {
   onRequired: (key: string, required: boolean) => void;
 }
 
-// The settings for one field: its label and required flag. A field that
-// cannot be edited gets a placeholder so the row still lines up.
+// The settings for one field: its label and required flag, and what its
+// channel rules do. A row with neither gets a placeholder so it still lines up.
 function FieldSettings({
   editable,
+  channelRules,
   onLabel,
   onRequired,
-}: Readonly<FieldEdits & { editable: EditableComponent | undefined }>) {
+}: Readonly<
+  FieldEdits & {
+    editable: EditableComponent | undefined;
+    channelRules: string | undefined;
+  }
+>) {
+  const noteId = useId();
+  const note = channelRules ? (
+    <p id={noteId} className={styles.channelRules}>
+      {channelRules}
+    </p>
+  ) : null;
+  const describedBy = note ? noteId : undefined;
   if (!editable) {
     return (
-      <span className={styles.noEdit} aria-hidden="true">
-        —
-      </span>
+      note ?? (
+        <span className={styles.noEdit} aria-hidden="true">
+          —
+        </span>
+      )
     );
   }
   return (
-    <div className={styles.editControls}>
-      <label className={styles.labelField}>
-        <span className={styles.fieldLabel}>Label</span>
-        <input
-          type="text"
-          value={editable.label}
-          aria-label={`Label for ${editable.key}`}
-          onChange={(e) => onLabel(editable.key, e.target.value)}
-        />
-      </label>
-      <label className={styles.requiredField}>
-        <input
-          type="checkbox"
-          checked={editable.required}
-          aria-label={`Required: ${editable.key}`}
-          onChange={(e) => onRequired(editable.key, e.target.checked)}
-        />
-        <span>Required</span>
-      </label>
-    </div>
+    <>
+      <div className={styles.editControls}>
+        <label className={styles.labelField}>
+          <span className={styles.fieldLabel}>Label</span>
+          <input
+            type="text"
+            value={editable.label}
+            aria-label={`Label for ${editable.key}`}
+            aria-describedby={describedBy}
+            onChange={(e) => onLabel(editable.key, e.target.value)}
+          />
+        </label>
+        <label className={styles.requiredField}>
+          <input
+            type="checkbox"
+            checked={editable.required}
+            aria-label={`Required: ${editable.key}`}
+            aria-describedby={describedBy}
+            onChange={(e) => onRequired(editable.key, e.target.checked)}
+          />
+          <span>Required</span>
+        </label>
+      </div>
+      {note}
+    </>
   );
 }
 
@@ -599,12 +689,14 @@ function FieldSettings({
 function LabelsEditor({
   rows,
   editableByKey,
+  channelRulesByKey,
   onLabel,
   onRequired,
 }: Readonly<
   FieldEdits & {
     rows: Record<string, unknown>[];
     editableByKey: Map<string, EditableComponent>;
+    channelRulesByKey: Map<string, string>;
   }
 >) {
   return (
@@ -622,6 +714,7 @@ function LabelsEditor({
             <div className={styles.editCell}>
               <FieldSettings
                 editable={editableByKey.get(key)}
+                channelRules={channelRulesByKey.get(key)}
                 onLabel={onLabel}
                 onRequired={onRequired}
               />
@@ -807,9 +900,18 @@ export default function FormEditorPage() {
 
   const editor = useWorkingSpec(formSpecId, draft, creating);
   const { workingSpec } = editor;
-  const rows = useMemo(() => previewRows(workingSpec), [workingSpec]);
+  const [previewAs, setPreviewAs] = useState<PreviewAs>("base");
+  const previewedSpec = useMemo(
+    () => previewedForm(workingSpec, previewAs),
+    [workingSpec, previewAs],
+  );
+  const rows = useMemo(() => previewRows(previewedSpec), [previewedSpec]);
   const editableByKey = useMemo(
     () => indexEditable(workingSpec),
+    [workingSpec],
+  );
+  const channelRulesByKey = useMemo(
+    () => channelRuleNotes(workingSpec),
     [workingSpec],
   );
 
@@ -874,18 +976,25 @@ export default function FormEditorPage() {
           )}
 
           {editor.mode === "labels" && (
-            <LabelsEditor
-              rows={rows}
-              editableByKey={editableByKey}
-              onLabel={editor.editLabel}
-              onRequired={editor.editRequired}
-            />
+            <>
+              <PreviewChoice previewAs={previewAs} onChange={setPreviewAs} />
+              <LabelsEditor
+                rows={rows}
+                editableByKey={editableByKey}
+                channelRulesByKey={channelRulesByKey}
+                onLabel={editor.editLabel}
+                onRequired={editor.editRequired}
+              />
+            </>
           )}
 
           {/* Announced and focused on each new set of reasons, so a
                         screen-reader user is not left at the button. */}
           <ErrorSummary
-            items={summaryItems(actions.shownErrors, workingSpec)}
+            items={summaryItems(
+              actions.shownErrors,
+              editor.mode === "labels" ? previewedSpec : workingSpec,
+            )}
             focusKey={actions.shownErrors.map((e) => e.message).join("|")}
             announce
           />

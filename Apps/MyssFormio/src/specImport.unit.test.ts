@@ -556,3 +556,25 @@ describe("checkSpec: repeat sections", () => {
     ]);
   });
 });
+
+describe("checkSpec: channel rules", () => {
+  function sin(myssChannels: object) {
+    return textfield("sin", {
+      validate: { required: true },
+      properties: { myssValidator: "sin", myssChannels },
+    });
+  }
+
+  it("accepts a field made optional for a worker override", () => {
+    expect(checkSpec(spec(sin({ "worker-override": { required: false } }))).problems).toEqual([]);
+  });
+
+  it("refuses a rule for a channel that does not exist, naming the field", () => {
+    expect(checkSpec(spec(sin({ "worker-overide": { required: false } }))).problems).toEqual([
+      {
+        key: "sin",
+        message: 'The channel rules of "sin" name "worker-overide", which is not a channel.',
+      },
+    ]);
+  });
+});

@@ -144,6 +144,24 @@ function repeatSectionSpec(countKey: string) {
   };
 }
 
+/** A form whose SIN carries the channel rules `myssChannels`. */
+function channelRulesSpec(myssChannels: object) {
+  return {
+    display: "form",
+    components: [
+      {
+        type: "textfield",
+        key: "sin",
+        label: "Social insurance number",
+        input: true,
+        validate: { required: true },
+        properties: { myssValidator: "sin", myssChannels },
+      },
+      { type: "button", key: "submit", label: "Submit", action: "submit", input: true },
+    ],
+  };
+}
+
 function withoutComponent(spec: object, key: string): object {
   const { components } = spec as { components: { key: string }[] };
   return {
@@ -513,6 +531,35 @@ describe("FormFromJsonPage: JSON, checks and preview", () => {
       .element(
         screen.getByRole("button", {
           name: 'The repeat section "children" counts with "kidCount", which is not a field in this form.',
+        }),
+      )
+      .toBeVisible();
+  });
+
+  it("accepts a field made optional for a worker override", async () => {
+    const { screen } = await openPage();
+
+    await jsonBody(screen).fill(
+      JSON.stringify(channelRulesSpec({ "worker-override": { required: false } }), null, 2),
+    );
+
+    await expect
+      .element(jsonBody(screen))
+      .toHaveAccessibleDescription(/Valid\. 1 question\./);
+    expect(screen.getByText("There is a problem").query()).toBeNull();
+  });
+
+  it("lists a rule for a channel that does not exist, naming the field", async () => {
+    const { screen } = await openPage();
+
+    await jsonBody(screen).fill(
+      JSON.stringify(channelRulesSpec({ "worker-overide": { required: false } }), null, 2),
+    );
+
+    await expect
+      .element(
+        screen.getByRole("button", {
+          name: 'The channel rules of "sin" name "worker-overide", which is not a channel.',
         }),
       )
       .toBeVisible();

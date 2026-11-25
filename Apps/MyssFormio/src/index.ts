@@ -11,6 +11,8 @@ export {
 export { ALLOWED_COMPONENT_TYPES, builderOptions } from "./builderOptions";
 export { revealAllComponents } from "./specPreview";
 export {
+  describeChannelRules,
+  dropUnsetChannelRules,
   flattenComponents,
   formLayoutOf,
   listEditableComponents,

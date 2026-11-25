@@ -1,4 +1,11 @@
 import type { FormType } from "@formio/react/lib/components/Form";
+import {
+  CHANNEL_RULES_PROPERTY,
+  REQUEST_CHANNELS,
+  REQUEST_CHANNEL_IDS,
+  channelSetting,
+  type RequestChannel,
+} from "./requestChannels";
 import { forEachComponent, isRecord } from "./specWalk";
 
 // Pure helpers for reading and changing a form spec in the editor. No fetch, no
@@ -107,6 +114,154 @@ export function setRequired(
     validate.required = required;
     component.validate = validate;
   });
+}
+
+/** The keys of the questions the form's repeat sections count with. */
+export function repeatCountKeys(spec: unknown): Set<string> {
+  const keys = new Set<string>();
+  forEachComponent(spec, (component) => {
+    const count = isRecord(component.properties)
+      ? component.properties.myssRepeatCount
+      : undefined;
+    if (component.type === "bcgovRepeatSection" && typeof count === "string") {
+      keys.add(count);
+    }
+  });
+  return keys;
+}
+
+/** The channels a container hides its contents in, each with its name. */
+type HiddenBy = ReadonlyMap<RequestChannel, string>;
+
+interface NoteContext {
+  readonly notes: Map<string, string[]>;
+  readonly counts: ReadonlySet<string>;
+}
+
+/**
+ * What each keyed component's channel rules do, one phrase per channel, such
+ * as "Optional for Worker override": its own rules, or the container that
+ * hides it. A repeat section's count question is always required, so its
+ * required rules say nothing.
+ */
+export function describeChannelRules(spec: unknown): Map<string, string[]> {
+  const context: NoteContext = {
+    notes: new Map(),
+    counts: repeatCountKeys(spec),
+  };
+  describeChildren(spec, new Map(), context);
+  return context.notes;
+}
+
+function describeChildren(
+  node: unknown,
+  hiddenBy: HiddenBy,
+  context: NoteContext,
+): void {
+  if (!isRecord(node)) return;
+  for (const component of arrayOf(node.components)) {
+    if (isRecord(component)) describeComponent(component, hiddenBy, context);
+  }
+  for (const column of arrayOf(node.columns)) {
+    describeChildren(column, hiddenBy, context);
+  }
+  for (const row of arrayOf(node.rows)) {
+    for (const cell of arrayOf(row)) describeChildren(cell, hiddenBy, context);
+  }
+}
+
+function describeComponent(
+  component: Record<string, unknown>,
+  hiddenBy: HiddenBy,
+  context: NoteContext,
+): void {
+  const key = typeof component.key === "string" ? component.key : undefined;
+  const isCount = key !== undefined && context.counts.has(key);
+  const phrases = REQUEST_CHANNELS.map((channel) =>
+    channelPhrase(component, channel, hiddenBy, isCount),
+  ).filter((phrase): phrase is string => phrase !== undefined);
+  if (key !== undefined && phrases.length > 0) context.notes.set(key, phrases);
+  describeChildren(component, hidingBelow(component, hiddenBy), context);
+}
+
+function channelPhrase(
+  component: Record<string, unknown>,
+  channel: (typeof REQUEST_CHANNELS)[number],
+  hiddenBy: HiddenBy,
+  isCount: boolean,
+): string | undefined {
+  const container = hiddenBy.get(channel.id);
+  if (container !== undefined) {
+    return `Hidden for ${channel.label} (inside "${container}")`;
+  }
+  if (channelSetting(component, channel.id, "show") === false) {
+    return `Hidden for ${channel.label}`;
+  }
+  const required = isCount
+    ? undefined
+    : channelSetting(component, channel.id, "required");
+  if (required === undefined) return undefined;
+  return `${required ? "Required" : "Optional"} for ${channel.label}`;
+}
+
+function hidingBelow(
+  component: Record<string, unknown>,
+  hiddenBy: HiddenBy,
+): HiddenBy {
+  const below = new Map(hiddenBy);
+  for (const channel of REQUEST_CHANNEL_IDS) {
+    if (!below.has(channel) && channelSetting(component, channel, "show") === false) {
+      below.set(channel, nameOf(component));
+    }
+  }
+  return below;
+}
+
+function nameOf(component: Record<string, unknown>): string {
+  for (const name of [component.title, component.label, component.key]) {
+    if (typeof name === "string" && name.trim() !== "") return name;
+  }
+  return "a container";
+}
+
+function arrayOf(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+/** The settings a channel rule may make. */
+const CHANNEL_SETTINGS = ["show", "required"] as const;
+
+/**
+ * A copy of `spec` without the empty values the builder's Channel rules tab
+ * writes for "As authored": the empty setting goes, then a channel left with
+ * no setting, then rules left with no channel, then properties left empty.
+ * Only the settings of known channels are touched; anything else is left for
+ * the rule check to report.
+ */
+export function dropUnsetChannelRules(spec: FormType): FormType {
+  const clone = structuredClone(spec);
+  forEachComponent(clone, (component) => {
+    const properties = component.properties;
+    if (!isRecord(properties)) return;
+    const rules = properties[CHANNEL_RULES_PROPERTY];
+    if (!isRecord(rules)) return;
+    dropUnsetSettings(rules);
+    if (Object.keys(rules).length > 0) return;
+    delete properties[CHANNEL_RULES_PROPERTY];
+    if (Object.keys(properties).length === 0) delete component.properties;
+  });
+  return clone;
+}
+
+function dropUnsetSettings(rules: Record<string, unknown>): void {
+  for (const channel of REQUEST_CHANNEL_IDS) {
+    const rule = rules[channel];
+    if (!isRecord(rule)) continue;
+    for (const setting of CHANNEL_SETTINGS) {
+      if (rule[setting] === "") delete rule[setting];
+    }
+    if (Object.keys(rule).length === 0) delete rules[channel];
+  }
 }
 
 /** How a citizen moves through a form: all on one page, or page by page. */

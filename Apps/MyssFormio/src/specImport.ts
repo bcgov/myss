@@ -3,6 +3,7 @@ import type { FormType } from "@formio/react/lib/components/Form";
 import { ALLOWED_COMPONENT_TYPES, QUESTION_TYPES } from "./builderOptions";
 import {
   findDuplicateKeys,
+  findInvalidChannelRules,
   findInvalidRepeatSections,
   findUnknownConditionalTargets,
 } from "./specRules";
@@ -363,6 +364,7 @@ function keyProblems(spec: unknown): SpecProblem[] {
     });
   });
   problems.push(...findInvalidRepeatSections(spec));
+  problems.push(...findInvalidChannelRules(spec));
   return problems;
 }
 

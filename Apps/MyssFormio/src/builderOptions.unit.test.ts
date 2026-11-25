@@ -4,6 +4,7 @@ import {
   ALLOWED_COMPONENT_TYPES,
   builderOptions,
   countQuestionOptions,
+  isRepeatCountQuestion,
 } from "./builderOptions";
 
 // The palette's shape. That each listed type is actually registered with
@@ -257,5 +258,136 @@ describe("countQuestionOptions", () => {
     expect(count.data.custom({ instance: { options: { editForm: spec } } })).toEqual(
       countQuestionOptions(spec),
     );
+  });
+});
+
+describe("the Channel rules tab", () => {
+  interface ChannelChoice {
+    key: string;
+    dataType?: string;
+    placeholder?: string;
+    data?: { values: { label: string; value: string }[] };
+    customConditional?: (context: unknown) => boolean;
+  }
+
+  interface ChannelFieldset {
+    legend?: string;
+    components?: ChannelChoice[];
+  }
+
+  interface ChannelTab {
+    key: string;
+    label?: string;
+    components: ChannelFieldset[];
+  }
+
+  function channelTab(type: string): ChannelTab | undefined {
+    return (builderOptions.editForm[type] as ChannelTab[]).find((tab) => tab.key === "channelRules");
+  }
+
+  function choices(type: string): ChannelChoice[] {
+    return (channelTab(type)?.components ?? []).flatMap((node) => node.components ?? []);
+  }
+
+  const OLDER_QUESTION_TYPES = ["bcgovRadio", "phoneNumber", "bcgovAddressAutocomplete"];
+  const NO_ANSWER_TYPES = [
+    "bcgovAccordion",
+    "bcgovCallout",
+    "bcgovInlineAlert",
+    "content",
+    "panel",
+    "button",
+    "bcgovRepeatSection",
+    "htmlelement",
+  ];
+
+  it("is on every allowed type and on the older question types", () => {
+    for (const type of [...ALLOWED_COMPONENT_TYPES, ...OLDER_QUESTION_TYPES, "htmlelement"]) {
+      expect(channelTab(type)?.label, type).toBe("Channel rules");
+    }
+  });
+
+  it("asks of a question, for each channel, whether it is hidden and whether it is required", () => {
+    const questions = [
+      ...ALLOWED_COMPONENT_TYPES.filter((type) => !NO_ANSWER_TYPES.includes(type)),
+      ...OLDER_QUESTION_TYPES,
+    ];
+    for (const type of questions) {
+      expect(choices(type).map((choice) => choice.key), type).toEqual([
+        "properties.myssChannels.client.show",
+        "properties.myssChannels.client.required",
+        "properties.myssChannels.worker-override.show",
+        "properties.myssChannels.worker-override.required",
+      ]);
+    }
+    expect(channelTab("textfield")?.components.map((node) => node.legend).filter(Boolean)).toEqual([
+      "Client",
+      "Worker override",
+    ]);
+  });
+
+  it("asks only whether a component that takes no answer is hidden", () => {
+    for (const type of NO_ANSWER_TYPES) {
+      expect(choices(type).map((choice) => choice.key), type).toEqual([
+        "properties.myssChannels.client.show",
+        "properties.myssChannels.worker-override.show",
+      ]);
+    }
+  });
+
+  it("stores a choice as true or false, and reads As authored while none is made", () => {
+    const [show, required] = choices("textfield");
+
+    expect(show.dataType).toBe("boolean");
+    expect(show.placeholder).toBe("As authored");
+    expect(show.data?.values).toEqual([{ label: "Hidden", value: "false" }]);
+    expect(required.dataType).toBe("boolean");
+    expect(required.placeholder).toBe("As authored");
+    expect(required.data?.values).toEqual([
+      { label: "Required", value: "true" },
+      { label: "Optional", value: "false" },
+    ]);
+  });
+
+  it("leaves out the Required choice on a repeat section's count question", () => {
+    const spec = {
+      components: [
+        { type: "number", key: "childCount" },
+        { type: "number", key: "petCount" },
+        { type: "bcgovRepeatSection", key: "children", properties: { myssRepeatCount: "childCount" } },
+      ],
+    };
+    const required = choices("number").find((choice) => choice.key.endsWith(".required"));
+    const shown = (key: string) =>
+      required?.customConditional?.({ instance: { options: { editForm: spec, editComponent: { key } } } });
+
+    expect(shown("childCount")).toBe(false);
+    expect(shown("petCount")).toBe(true);
+    expect(required?.customConditional?.({})).toBe(true);
+  });
+});
+
+describe("isRepeatCountQuestion", () => {
+  const spec = {
+    components: [
+      { type: "number", key: "childCount" },
+      {
+        type: "panel",
+        key: "page",
+        components: [
+          { type: "bcgovRepeatSection", key: "children", properties: { myssRepeatCount: "childCount" } },
+        ],
+      },
+    ],
+  };
+
+  it("is true for the question a repeat section counts with, wherever the section is", () => {
+    expect(isRepeatCountQuestion(spec, "childCount")).toBe(true);
+  });
+
+  it("is false for any other key, a missing key and a form without a section", () => {
+    expect(isRepeatCountQuestion(spec, "page")).toBe(false);
+    expect(isRepeatCountQuestion(spec, undefined)).toBe(false);
+    expect(isRepeatCountQuestion({ components: [{ type: "number", key: "childCount" }] }, "childCount")).toBe(false);
   });
 });

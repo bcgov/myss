@@ -1,6 +1,12 @@
 // Configuration for the Form.io builder: which component types a designer may
 // add, and what the component settings dialog exposes.
 
+import {
+  CHANNEL_RULES_PROPERTY,
+  REQUEST_CHANNELS,
+  type RequestChannel,
+} from "./requestChannels";
+import { repeatCountKeys } from "./specEdit";
 import { forEachComponent } from "./specWalk";
 
 /** Question types that pick from a fixed set of answers. */
@@ -389,30 +395,145 @@ const checkboxQuestionSettings = {
   ],
 };
 
+/** Whether a repeat section in `spec` counts with the question keyed `key`. */
+export function isRepeatCountQuestion(spec: unknown, key: unknown): boolean {
+  return typeof key === "string" && repeatCountKeys(spec).has(key);
+}
+
+// A choice left empty, or cleared, reads "As authored" and writes an empty
+// value, which the editor drops before it keeps the spec
+// (dropUnsetChannelRules), so a component left alone has no rule.
+const VISIBILITY_CHOICES = [{ label: "Hidden", value: "false" }];
+
+const REQUIRED_CHOICES = [
+  { label: "Required", value: "true" },
+  { label: "Optional", value: "false" },
+];
+
+/** What a function in the settings dialog is handed by Form.io. */
+interface EditFormContext {
+  instance?: {
+    options?: { editForm?: unknown; editComponent?: { key?: unknown } };
+  };
+}
+
+function channelChoice(
+  channel: RequestChannel,
+  setting: "show" | "required",
+  label: string,
+  description: string,
+  values: readonly { label: string; value: string }[],
+) {
+  return {
+    type: "select",
+    key: `properties.${CHANNEL_RULES_PROPERTY}.${channel}.${setting}`,
+    label,
+    description,
+    input: true,
+    dataSrc: "values",
+    dataType: "boolean",
+    placeholder: "As authored",
+    data: { values: [...values] },
+  };
+}
+
+// A repeat section's count question is always required, so the choice would
+// do nothing there.
+function notACountQuestion(context: EditFormContext): boolean {
+  const options = context.instance?.options;
+  return !isRepeatCountQuestion(options?.editForm, options?.editComponent?.key);
+}
+
+/**
+ * The Channel rules tab: for each channel, whether the component is hidden
+ * and, when it takes an answer, whether it is required. Stored as
+ * `properties.myssChannels`.
+ */
+function channelRulesTab(takesAnswer: boolean) {
+  return {
+    key: "channelRules",
+    label: "Channel rules",
+    weight: 45,
+    components: [
+      {
+        type: "htmlelement",
+        tag: "p",
+        key: "channelRulesHelp",
+        input: false,
+        content:
+          "A channel is how an application was started. As authored keeps the component as the other tabs set it.",
+      },
+      ...REQUEST_CHANNELS.map((channel) => ({
+        type: "fieldset",
+        key: `channelRules-${channel.id}`,
+        legend: channel.label,
+        input: false,
+        components: [
+          channelChoice(
+            channel.id,
+            "show",
+            "Visibility",
+            "Hidden leaves it, and everything inside it, out of the form for this channel.",
+            VISIBILITY_CHOICES,
+          ),
+          ...(takesAnswer
+            ? [
+                {
+                  ...channelChoice(
+                    channel.id,
+                    "required",
+                    "Required",
+                    "For this channel, in place of Required on the Validation tab.",
+                    REQUIRED_CHOICES,
+                  ),
+                  customConditional: notACountQuestion,
+                },
+              ]
+            : []),
+        ],
+      })),
+    ],
+  };
+}
+
+const answerChannelRules = channelRulesTab(true);
+const displayChannelRules = channelRulesTab(false);
+
+/** Question types no longer offered that published forms still use. */
+const OLDER_QUESTION_TYPES = ["bcgovRadio", "phoneNumber", "bcgovAddressAutocomplete"];
+
 const editForm: Record<string, unknown> = {
   ...Object.fromEntries(
     CHOICE_TYPES.map((type) => [
       type,
-      [lockedKey, lockedMultiple, choiceValidationSettings],
+      [lockedKey, lockedMultiple, choiceValidationSettings, answerChannelRules],
     ]),
   ),
   ...Object.fromEntries(
     [...TEXT_TYPES, ...DATE_TYPES].map((type) => [
       type,
-      [lockedKey, lockedMultiple, textValidationSettings],
+      [lockedKey, lockedMultiple, textValidationSettings, answerChannelRules],
     ]),
   ),
-  ...Object.fromEntries(CONTENT_TYPES.map((type) => [type, [lockedKey]])),
-  bcgovAccordion: accordionSettings,
+  ...Object.fromEntries(
+    CONTENT_TYPES.map((type) => [type, [lockedKey, displayChannelRules]]),
+  ),
+  ...Object.fromEntries(
+    OLDER_QUESTION_TYPES.map((type) => [type, [answerChannelRules]]),
+  ),
+  htmlelement: [displayChannelRules],
+  bcgovAccordion: [...accordionSettings, displayChannelRules],
   checkbox: [
     lockedKey,
     lockedMultiple,
     choiceValidationSettings,
     checkboxQuestionSettings,
+    answerChannelRules,
   ],
-  bcgovCallout: calloutSettings,
-  bcgovInlineAlert: inlineAlertSettings,
-  [REPEAT_SECTION_TYPE]: repeatSectionSettings,
+  bcgovCallout: [...calloutSettings, displayChannelRules],
+  bcgovInlineAlert: [...inlineAlertSettings, displayChannelRules],
+  // Its rows' questions carry their own Required; the section's has no effect.
+  [REPEAT_SECTION_TYPE]: [...repeatSectionSettings, displayChannelRules],
 };
 
 /**

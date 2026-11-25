@@ -180,6 +180,12 @@
     color: var(--typography-color-secondary, #767676);
 }
 
+.channelRules {
+    color: var(--typography-color-secondary, #474543);
+    font-size: 0.875rem;
+    margin: var(--layout-margin-small, 8px) 0 0;
+}
+
 .saveBar {
     align-items: center;
     display: flex;
