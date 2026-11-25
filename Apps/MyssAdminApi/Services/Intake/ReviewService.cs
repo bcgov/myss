@@ -123,7 +123,8 @@ namespace Myss.AdminApi.Intake
                 return ReviewResultModel.NotFound();
             }
 
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            FormSpecModel? published = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            FormSpecModel? spec = published is null ? null : ChannelSpec.Resolve(published, row.Channel);
             return ReviewResultModel.Ok(await WithNameAsync(ToModel(row, state, spec, RequireIdir()), row, cancellationToken));
         }
 

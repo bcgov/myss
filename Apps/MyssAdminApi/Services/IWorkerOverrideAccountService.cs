@@ -13,14 +13,14 @@ namespace Myss.AdminApi.Services
     /// <param name="DateOfBirth">The date of birth.</param>
     /// <param name="Email">The email address, trimmed.</param>
     /// <param name="Phone">The phone number, ten digits.</param>
-    /// <param name="Sin">The social insurance number, nine digits.</param>
+    /// <param name="Sin">The social insurance number, nine digits, or null when the worker left it out.</param>
     public sealed record WorkerOverrideClient(
         string FirstName,
         string LastName,
         DateOnly DateOfBirth,
         string Email,
         string Phone,
-        string Sin);
+        string? Sin);
 
     /// <summary>
     /// The forms module's side of a worker override (MYSS-321): the account a

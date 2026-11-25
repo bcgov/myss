@@ -179,6 +179,23 @@ namespace Myss.AdminApi.Tests.Support
                 Clients(await response.Content.ReadAsStringAsync()).Select(c => c.GetProperty("signInType").GetString()));
         }
 
+        [Fact]
+        public async Task AnAccountWithNoSin_IsFoundByName_WithNoDigitsShown_AndASinSearchPassesItBy()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            MyssUserProfile noSin = Profile("Ada", "Lovelace", sin: null, ProfileOrigins.WorkerOverrideSubject(Guid.NewGuid()));
+            noSin.Origin = ProfileOrigins.WorkerOverride;
+            await host.AddProfiles(noSin, Profile("Grace", "Lovelace", "050082833", "g@bceidbasic"));
+
+            using HttpResponseMessage byName = await host.Send("worker", HttpMethod.Get, $"{Route}?firstName=ada");
+            using HttpResponseMessage bySin = await host.Send("worker", HttpMethod.Get, $"{Route}?sin=050082833");
+
+            JsonElement found = Assert.Single(Clients(await byName.Content.ReadAsStringAsync()));
+            Assert.Equal(noSin.Id, found.GetProperty("id").GetGuid());
+            Assert.Equal(JsonValueKind.Null, found.GetProperty("sinLastThree").ValueKind);
+            Assert.Equal("Grace", Assert.Single(Clients(await bySin.Content.ReadAsStringAsync())).GetProperty("firstName").GetString());
+        }
+
         [Theory]
         [InlineData("alice")]
         [InlineData("workernoidir")]
@@ -194,7 +211,7 @@ namespace Myss.AdminApi.Tests.Support
         private static MyssUserProfile Profile(
             string firstName,
             string lastName,
-            string sin,
+            string? sin,
             string subject,
             string? bceidUsername = null) => new()
             {

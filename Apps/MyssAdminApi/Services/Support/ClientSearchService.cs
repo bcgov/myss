@@ -137,7 +137,7 @@ namespace Myss.AdminApi.Support
             {
                 // A registration stores the SIN as entered, so the punctuation
                 // a citizen typed is dropped before comparing.
-                query = query.Where(p => p.Sin.Replace(" ", string.Empty).Replace("-", string.Empty) == sin);
+                query = query.Where(p => p.Sin != null && p.Sin.Replace(" ", string.Empty).Replace("-", string.Empty) == sin);
             }
 
             return query;
@@ -160,8 +160,13 @@ namespace Myss.AdminApi.Support
 
         private static string Digits(string value) => new(value.Where(char.IsDigit).ToArray());
 
-        private static string? LastThree(string sin)
+        private static string? LastThree(string? sin)
         {
+            if (sin is null)
+            {
+                return null;
+            }
+
             string digits = Digits(sin);
             return digits.Length >= 3 ? digits[^3..] : null;
         }

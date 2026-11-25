@@ -27,8 +27,11 @@ namespace Myss.Data
         /// <summary>Gets or sets the submitted email address.</summary>
         public required string Email { get; set; }
 
-        /// <summary>Gets or sets the submitted social insurance number.</summary>
-        public required string Sin { get; set; }
+        /// <summary>
+        /// Gets or sets the submitted social insurance number. Null for a worker
+        /// override account made without one.
+        /// </summary>
+        public required string? Sin { get; set; }
 
         /// <summary>
         /// Gets or sets the BCeID user name of a citizen who signs in with BCeID,

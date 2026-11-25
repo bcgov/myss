@@ -73,7 +73,7 @@ namespace Myss.Data
             profile.Property(p => p.LastName).HasColumnName("last_name").HasMaxLength(200).IsRequired();
             profile.Property(p => p.DateOfBirth).HasColumnName("date_of_birth").IsRequired();
             profile.Property(p => p.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
-            profile.Property(p => p.Sin).HasColumnName("sin").HasMaxLength(20).IsRequired();
+            profile.Property(p => p.Sin).HasColumnName("sin").HasMaxLength(20);
             profile.Property(p => p.Phone).HasColumnName("phone").HasMaxLength(10);
             profile.Property(p => p.Gender).HasColumnName("gender").HasMaxLength(32);
             profile.Property(p => p.CreatedAt).HasColumnName("created_at");

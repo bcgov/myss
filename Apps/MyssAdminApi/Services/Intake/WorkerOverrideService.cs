@@ -100,7 +100,7 @@ namespace Myss.AdminApi.Intake
                 row.Id,
                 row.FormSpecVersion);
 
-            return WorkerOverrideResultModel.Ok(ToModel(row, ApplicationState.Seed, latest, accountId: null));
+            return WorkerOverrideResultModel.Ok(ToModel(row, ApplicationState.Seed, ChannelSpec.Resolve(latest, row.Channel), accountId: null));
         }
 
         /// <inheritdoc/>
@@ -114,7 +114,7 @@ namespace Myss.AdminApi.Intake
             // in the review queue.
             List<ApplicationAnswers> rows = await _dbContext.Applications
                 .AsNoTracking()
-                .Where(a => a.FormSpecId == FormSpecId)
+                .Where(a => a.Channel == RequestChannels.WorkerOverride)
                 .ToListAsync(cancellationToken);
             IReadOnlyDictionary<Guid, EventStream> streams = await _eventStore.LoadManyAsync(
                 rows.Select(r => r.Id).ToList(),
@@ -146,7 +146,7 @@ namespace Myss.AdminApi.Intake
             }
 
             ApplicationState state = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            FormSpecModel? spec = await PinnedSpecAsync(row, cancellationToken);
             Guid? profileId = await _accounts.FindAsync(row.OwnerSubject, cancellationToken);
             return WorkerOverrideResultModel.Ok(ToModel(row, state, spec, profileId));
         }
@@ -176,7 +176,7 @@ namespace Myss.AdminApi.Intake
                 return WorkerOverrideResultModel.StaleVersion(row.Version);
             }
 
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            FormSpecModel? spec = await PinnedSpecAsync(row, cancellationToken);
             if (spec is null)
             {
                 return WorkerOverrideResultModel.SpecUnavailable();
@@ -236,7 +236,7 @@ namespace Myss.AdminApi.Intake
                 return WorkerOverrideResultModel.StaleVersion(row.Version);
             }
 
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            FormSpecModel? spec = await PinnedSpecAsync(row, cancellationToken);
             if (spec is null)
             {
                 return WorkerOverrideResultModel.SpecUnavailable();
@@ -310,7 +310,9 @@ namespace Myss.AdminApi.Intake
         /// The client's details from answers the form has already accepted. The
         /// form is authored in Strapi, so a field this needs may be missing from
         /// it, or not carry its rule: each is checked again here, and a gap is a
-        /// field error rather than an account with a hole in it.
+        /// field error rather than an account with a hole in it. The SIN is the
+        /// exception: it may be left out, and where the form requires it, the
+        /// form has already refused its absence.
         /// </summary>
         private static WorkerOverrideClient? ReadClient(JsonElement answers, List<ValidationErrorModel> errors)
         {
@@ -319,7 +321,6 @@ namespace Myss.AdminApi.Intake
             string? email = Text(answers, "email");
             string? phone = Text(answers, "phone");
             string? dateOfBirth = Text(answers, "dateOfBirth");
-            string? sin = Text(answers, "sin");
 
             Require(firstName, "firstName", errors);
             Require(lastName, "lastName", errors);
@@ -330,8 +331,13 @@ namespace Myss.AdminApi.Intake
             DomainValidationResult<PhoneNumber> validPhone = PhoneNumber.TryCreate(phone);
             Check(validPhone.IsValid, "phone", validPhone.Keyword, validPhone.Message, errors);
 
-            DomainValidationResult<Sin> validSin = Sin.TryCreate(sin);
-            Check(validSin.IsValid, "sin", validSin.Keyword, validSin.Message, errors);
+            string? sin = null;
+            if (!Unanswered(answers, "sin"))
+            {
+                DomainValidationResult<Sin> validSin = Sin.TryCreate(Text(answers, "sin"));
+                Check(validSin.IsValid, "sin", validSin.Keyword, validSin.Message, errors);
+                sin = validSin.Value?.Digits;
+            }
 
             if (!IsoDate.TryParse(dateOfBirth, out DateOnly birthDate))
             {
@@ -356,7 +362,7 @@ namespace Myss.AdminApi.Intake
                 birthDate,
                 validEmail.Value!.Value,
                 validPhone.Value!.Digits,
-                validSin.Value!.Digits);
+                sin);
         }
 
         /// <summary>The first and last name a draft has so far, or null when it has neither.</summary>
@@ -377,6 +383,13 @@ namespace Myss.AdminApi.Intake
                 && !string.IsNullOrWhiteSpace(value.GetString())
                     ? value.GetString()
                     : null;
+
+        /// <summary>True when the key is missing, null or blank; an answer of another kind is a wrong answer, not none.</summary>
+        private static bool Unanswered(JsonElement answers, string key) =>
+            answers.ValueKind != JsonValueKind.Object
+            || !answers.TryGetProperty(key, out JsonElement value)
+            || value.ValueKind == JsonValueKind.Null
+            || (value.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(value.GetString()));
 
         private static void Require(string? value, string field, List<ValidationErrorModel> errors)
         {
@@ -411,14 +424,24 @@ namespace Myss.AdminApi.Intake
         private Task<ApplicationAnswers?> FindAsync(Guid id, bool track, CancellationToken cancellationToken)
         {
             // Not owner-scoped: every worker may open every worker override
-            // application. Never any other form's, though.
+            // application. Never a citizen's, though, even on the same form.
             IQueryable<ApplicationAnswers> query = _dbContext.Applications;
             if (!track)
             {
                 query = query.AsNoTracking();
             }
 
-            return query.SingleOrDefaultAsync(a => a.Id == id && a.FormSpecId == FormSpecId, cancellationToken);
+            return query.SingleOrDefaultAsync(a => a.Id == id && a.Channel == RequestChannels.WorkerOverride, cancellationToken);
+        }
+
+        /// <summary>
+        /// The spec version the application is pinned to, resolved for its
+        /// channel. Null when the content engine no longer has that version.
+        /// </summary>
+        private async Task<FormSpecModel?> PinnedSpecAsync(ApplicationAnswers row, CancellationToken cancellationToken)
+        {
+            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            return spec is null ? null : ChannelSpec.Resolve(spec, row.Channel);
         }
 
         private static WorkerOverrideApplicationModel ToModel(

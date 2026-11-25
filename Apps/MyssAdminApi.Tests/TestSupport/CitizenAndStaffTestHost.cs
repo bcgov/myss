@@ -236,6 +236,37 @@ namespace Myss.AdminApi.Tests.TestSupport
                 .ToListAsync();
         }
 
+        /// <summary>Adds an empty draft on version 1 of a form straight to the intake store.</summary>
+        public async Task<Guid> InsertApplication(string ownerSubject, string formSpecId, string channel)
+        {
+            using IServiceScope scope = _staffFactory.Services.CreateScope();
+            IntakeDbContext db = scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            var row = new ApplicationAnswers
+            {
+                Id = Guid.NewGuid(),
+                OwnerSubject = ownerSubject,
+                FormSpecId = formSpecId,
+                Channel = channel,
+                FormSpecVersion = 1,
+                Answers = JsonDocument.Parse("{}"),
+                Version = 1,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            db.Applications.Add(row);
+            await db.SaveChangesAsync();
+            return row.Id;
+        }
+
+        /// <summary>The channel an application row was stored with.</summary>
+        public async Task<string> RowChannel(Guid id)
+        {
+            using IServiceScope scope = _staffFactory.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<IntakeDbContext>()
+                .Applications.Where(a => a.Id == id).Select(a => a.Channel).SingleAsync();
+        }
+
         /// <summary>
         /// Bumps an application row's version straight in the intake store, as a
         /// concurrent save by someone else would.

@@ -3,11 +3,14 @@ namespace Myss.AdminApi.Tests.Intake
     using System.Net;
     using System.Net.Http.Json;
     using System.Text.Json;
+    using System.Text.Json.Nodes;
     using Microsoft.AspNetCore.Mvc.Testing;
     using Myss.AdminApi.Tests.TestDoubles;
     using Myss.AdminApi.Tests.TestSupport;
+    using Myss.Common.Auth;
     using Myss.Data;
     using Myss.Data.Intake;
+    using Myss.FormSpec;
     using Myss.FormSpec.Domain;
 
     /// <summary>
@@ -32,6 +35,24 @@ namespace Myss.AdminApi.Tests.Intake
             { "type": "textfield", "key": "phone", "input": true, "validate": { "required": true }, "properties": { "myssValidator": "phone" } },
             { "type": "datetime", "key": "dateOfBirth", "input": true, "validate": { "required": true }, "properties": { "myssValidator": "date" } },
             { "type": "textfield", "key": "sin", "input": true, "validate": { "required": true }, "properties": { "myssValidator": "sin" } },
+            { "type": "button", "key": "submit", "action": "submit", "input": true }
+          ]
+        }
+        """;
+
+        // The same form with channel rules: the SIN is optional for a worker,
+        // and the last question is shown to a client only.
+        private const string ChannelRulesSpec = """
+        {
+          "display": "form",
+          "components": [
+            { "type": "textfield", "key": "firstName", "input": true, "validate": { "required": true } },
+            { "type": "textfield", "key": "lastName", "input": true, "validate": { "required": true } },
+            { "type": "email", "key": "email", "input": true, "validate": { "required": true } },
+            { "type": "textfield", "key": "phone", "input": true, "validate": { "required": true }, "properties": { "myssValidator": "phone" } },
+            { "type": "datetime", "key": "dateOfBirth", "input": true, "validate": { "required": true }, "properties": { "myssValidator": "date" } },
+            { "type": "textfield", "key": "sin", "input": true, "validate": { "required": true }, "properties": { "myssValidator": "sin", "myssChannels": { "worker-override": { "required": false } } } },
+            { "type": "textfield", "key": "clientNote", "input": true, "properties": { "myssChannels": { "worker-override": { "show": false } } } },
             { "type": "button", "key": "submit", "action": "submit", "input": true }
           ]
         }
@@ -77,6 +98,112 @@ namespace Myss.AdminApi.Tests.Intake
             Assert.Equal(IntakeFormSpecIds.WorkerOverrideAfa, draft.GetProperty("formSpecId").GetString());
             Assert.Equal(1, draft.GetProperty("spec").GetProperty("version").GetInt32());
             Assert.Equal(JsonValueKind.Null, draft.GetProperty("accountId").ValueKind);
+            Assert.Equal(RequestChannels.WorkerOverride, await host.RowChannel(draft.GetProperty("id").GetGuid()));
+            Assert.Empty(await host.Profiles());
+        }
+
+        [Fact]
+        public async Task TheFormServed_IsTheOneForAWorker()
+        {
+            UseChannelRules();
+            using CitizenAndStaffTestHost host = NewHost();
+
+            using HttpResponseMessage start = await host.Send("worker", HttpMethod.Post, Route);
+            JsonElement started = await Payload(start);
+            using HttpResponseMessage read = await host.Send("worker", HttpMethod.Get, $"{Route}/{started.GetProperty("id").GetGuid()}");
+
+            foreach (JsonElement spec in new[] { started.GetProperty("spec").GetProperty("spec"), (await Payload(read)).GetProperty("spec").GetProperty("spec") })
+            {
+                Assert.False(HasComponent(spec, "clientNote"));
+                Assert.False(Component(spec, "sin").GetProperty("validate").GetProperty("required").GetBoolean());
+                Assert.DoesNotContain("myssChannels", spec.GetRawText(), StringComparison.Ordinal);
+            }
+        }
+
+        [Theory]
+        [InlineData("answers")]
+        [InlineData("submit")]
+        public async Task AnAnswerToAFieldHiddenFromAWorker_IsRefused(string action)
+        {
+            UseChannelRules();
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await Start(host);
+            HttpMethod method = action == "submit" ? HttpMethod.Post : HttpMethod.Put;
+
+            using HttpResponseMessage response = await host.Send(
+                "worker", method, $"{Route}/{id}/{action}", Answers(1, ClientWith("clientNote", "Saw a poster.")));
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+            Assert.Equal(("clientNote", ValidationKeywords.FieldUnknown), Assert.Single(Errors(await Payload(response))));
+            Assert.Empty(await host.Profiles());
+            Assert.Equal(0, await host.CountEvents(id));
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task ASubmitWithNoSin_MakesAnAccountWithoutOne_WhereTheFormMakesItOptional(string? sin)
+        {
+            UseChannelRules();
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await Start(host);
+
+            using HttpResponseMessage submit = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, ClientWith("sin", sin)));
+
+            Assert.Equal(HttpStatusCode.OK, submit.StatusCode);
+            MyssUserProfile account = Assert.Single(await host.Profiles());
+            Assert.Equal("Ada", account.FirstName);
+            Assert.Null(account.Sin);
+        }
+
+        [Fact]
+        public async Task AMalformedSin_IsRefused_WhereTheFormMakesItOptional()
+        {
+            UseChannelRules();
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await Start(host);
+
+            using HttpResponseMessage submit = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, ClientWith("sin", "123 456")));
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, submit.StatusCode);
+            Assert.Equal("sin", Assert.Single(Errors(await Payload(submit))).Field);
+            Assert.Empty(await host.Profiles());
+            Assert.Equal(0, await host.CountEvents(id));
+        }
+
+        [Fact]
+        public async Task AMalformedSin_IsRefused_OnAFormThatDoesNotCheckIt()
+        {
+            UseChannelRules(ChannelRulesSpecWith(sin => sin["properties"]!.AsObject().Remove("myssValidator")));
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await Start(host);
+
+            using HttpResponseMessage submit = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, ClientWith("sin", "123 456")));
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, submit.StatusCode);
+            Assert.Equal("sin", Assert.Single(Errors(await Payload(submit))).Field);
+            Assert.Empty(await host.Profiles());
+            Assert.Equal(0, await host.CountEvents(id));
+        }
+
+        [Fact]
+        public async Task ASinThatIsNotText_IsRefused_NotDropped()
+        {
+            UseChannelRules(ChannelRulesSpecWith(sin =>
+            {
+                sin["type"] = "number";
+                sin["properties"]!.AsObject().Remove("myssValidator");
+            }));
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await Start(host);
+            JsonObject answers = ClientWith("sin", null);
+            answers["sin"] = 130692544;
+
+            using HttpResponseMessage submit = await host.Send("worker", HttpMethod.Post, $"{Route}/{id}/submit", Answers(1, answers));
+
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, submit.StatusCode);
+            Assert.Equal("sin", Assert.Single(Errors(await Payload(submit))).Field);
             Assert.Empty(await host.Profiles());
         }
 
@@ -392,7 +519,7 @@ namespace Myss.AdminApi.Tests.Intake
             Assert.Equal("MADMIN", drafts[0].GetProperty("startedBy").GetString());
             Assert.Equal(JsonValueKind.Null, drafts[1].GetProperty("clientName").ValueKind);
             Assert.Equal("MWORKER", drafts[1].GetProperty("startedBy").GetString());
-            Assert.StartsWith("IA-", drafts[1].GetProperty("referenceNumber").GetString());
+            Assert.StartsWith("IA-", drafts[1].GetProperty("referenceNumber").GetString(), StringComparison.Ordinal);
         }
 
         [Fact]
@@ -435,6 +562,40 @@ namespace Myss.AdminApi.Tests.Intake
             Assert.Empty((await Payload(list)).EnumerateArray());
         }
 
+        [Fact]
+        public async Task ACitizensApplicationOnTheSameForm_IsNeitherListedNorOpened()
+        {
+            using CitizenAndStaffTestHost host = NewHost(["alice"]);
+            Guid citizens = await host.InsertApplication(
+                MockAuthenticationHandler.Personas["alice"].Subject, IntakeFormSpecIds.WorkerOverrideAfa, RequestChannels.Client);
+
+            using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, DraftsRoute);
+            using HttpResponseMessage read = await host.Send("worker", HttpMethod.Get, $"{Route}/{citizens}");
+            using HttpResponseMessage save = await host.Send("worker", HttpMethod.Put, $"{Route}/{citizens}/answers", Answers(1, new { firstName = "Eve" }));
+            using HttpResponseMessage submit = await host.Send("worker", HttpMethod.Post, $"{Route}/{citizens}/submit", Answers(1, Client));
+
+            Assert.Empty((await Payload(list)).EnumerateArray());
+            Assert.Equal(HttpStatusCode.NotFound, read.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, save.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, submit.StatusCode);
+            Assert.Equal(0, await host.CountEvents(citizens));
+        }
+
+        [Fact]
+        public async Task AWorkerOverrideOnAnotherForm_IsListedAndOpened()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await host.InsertApplication(
+                ProfileOrigins.WorkerOverrideSubject(Guid.NewGuid()), IntakeFormSpecIds.ApplicationForAssistance, RequestChannels.WorkerOverride);
+
+            using HttpResponseMessage list = await host.Send("worker", HttpMethod.Get, DraftsRoute);
+            using HttpResponseMessage read = await host.Send("worker", HttpMethod.Get, $"{Route}/{id}");
+
+            Assert.Equal(id, Assert.Single((await Payload(list)).EnumerateArray()).GetProperty("id").GetGuid());
+            Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+            Assert.Equal(IntakeFormSpecIds.ApplicationForAssistance, (await Payload(read)).GetProperty("formSpecId").GetString());
+        }
+
         [Theory]
         [InlineData("alice")]
         [InlineData("workernoidir")]
@@ -466,6 +627,25 @@ namespace Myss.AdminApi.Tests.Intake
         }
 
         private static JsonContent Answers(int version, object answers) => JsonContent.Create(new { version, answers });
+
+        /// <summary>The client's answers with one changed; null leaves the key out.</summary>
+        private static JsonObject ClientWith(string key, string? value)
+        {
+            JsonObject answers = JsonSerializer.SerializeToNode(Client)!.AsObject();
+            answers.Remove(key);
+            if (value is not null)
+            {
+                answers[key] = value;
+            }
+
+            return answers;
+        }
+
+        private static JsonElement Component(JsonElement spec, string key) =>
+            spec.GetProperty("components").EnumerateArray().Single(c => c.GetProperty("key").GetString() == key);
+
+        private static bool HasComponent(JsonElement spec, string key) =>
+            spec.GetProperty("components").EnumerateArray().Any(c => c.GetProperty("key").GetString() == key);
 
         private static JsonContent StreamVersion(int streamVersion) => JsonContent.Create(new { streamVersion });
 
@@ -504,5 +684,20 @@ namespace Myss.AdminApi.Tests.Intake
 
         private CitizenAndStaffTestHost NewHost(IReadOnlyList<string>? registered = null) =>
             new(_factory, _provider, registered ?? [], mockAuth: true);
+
+        private void UseChannelRules(string spec = ChannelRulesSpec)
+        {
+            FormSpecModel form = FakeFormSpecProvider.Spec(IntakeFormSpecIds.WorkerOverrideAfa, 1, spec);
+            _provider.LatestResult = form;
+            _provider.VersionResult = form;
+        }
+
+        /// <summary>The form with channel rules, with its SIN field changed.</summary>
+        private static string ChannelRulesSpecWith(Action<JsonObject> changeSin)
+        {
+            JsonObject spec = JsonNode.Parse(ChannelRulesSpec)!.AsObject();
+            changeSin(spec["components"]!.AsArray().OfType<JsonObject>().Single(c => (string?)c["key"] == "sin"));
+            return spec.ToJsonString();
+        }
     }
 }

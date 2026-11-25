@@ -51,7 +51,7 @@ namespace Myss.AdminApi.Support
         /// <summary>Gets the BCeID user name; null when the client does not sign in with BCeID or has not since it was recorded.</summary>
         public string? BceidUsername { get; init; }
 
-        /// <summary>Gets the last three digits of the SIN, the only part a result shows.</summary>
+        /// <summary>Gets the last three digits of the SIN, the only part a result shows; null when the account has no SIN.</summary>
         public string? SinLastThree { get; init; }
 
         /// <summary>Gets the date of birth.</summary>

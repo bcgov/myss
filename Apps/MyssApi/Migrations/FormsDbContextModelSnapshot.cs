@@ -362,7 +362,6 @@ namespace Myss.Api.Migrations
                         .HasColumnName("pin_reset_token_hash");
 
                     b.Property<string>("Sin")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("sin");
