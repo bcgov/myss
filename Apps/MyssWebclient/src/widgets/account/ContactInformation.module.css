@@ -29,6 +29,7 @@
 
 /* Flex columns, because a BCDS field stretches to fill one. The number
    takes the spare width; the type keeps its natural size. */
+.email,
 .number,
 .type {
     display: flex;
