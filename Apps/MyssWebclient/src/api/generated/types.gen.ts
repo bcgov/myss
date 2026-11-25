@@ -55,6 +55,10 @@ export type MyssApiIntakeApplicationAnswersRequestModel = {
  */
 export type MyssApiIntakeApplicationModel = MyssApiIntakeApplicationSummaryModel & {
     /**
+     * Gets or sets how the application was started (Myss.FormSpec.RequestChannels).
+     */
+    channel: string | null;
+    /**
      * Gets or sets the answers: the working copy while drafting, the
      * submitted copy afterwards.
      */

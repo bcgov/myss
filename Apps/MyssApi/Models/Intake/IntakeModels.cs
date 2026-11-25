@@ -67,6 +67,11 @@ namespace Myss.Api.Intake
     public class ApplicationModel : ApplicationSummaryModel
     {
         /// <summary>
+        /// Gets or sets how the application was started (<see cref="RequestChannels"/>).
+        /// </summary>
+        public required string Channel { get; set; }
+
+        /// <summary>
         /// Gets or sets the answers: the working copy while drafting, the
         /// submitted copy afterwards.
         /// </summary>

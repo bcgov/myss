@@ -33,6 +33,23 @@ namespace Myss.FormSpec
             return ResolveChildren(root, channel) ? JsonSerializer.SerializeToElement(root) : spec.Clone();
         }
 
+        /// <summary>A copy of <paramref name="form"/> whose spec is resolved for <paramref name="channel"/>.</summary>
+        /// <param name="form">The form as the content engine serves it.</param>
+        /// <param name="channel">One of <see cref="RequestChannels.All"/>.</param>
+        /// <returns>A new model; <paramref name="form"/> is left as it was.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">The channel is not a request channel.</exception>
+        public static FormSpecModel Resolve(FormSpecModel form, string channel)
+        {
+            ArgumentNullException.ThrowIfNull(form);
+            return new FormSpecModel
+            {
+                FormSpecId = form.FormSpecId,
+                Version = form.Version,
+                Title = form.Title,
+                Spec = Resolve(form.Spec, channel),
+            };
+        }
+
         /// <summary>Resolves everything below a node; true when anything changed.</summary>
         private static bool ResolveChildren(JsonNode? node, string channel)
         {

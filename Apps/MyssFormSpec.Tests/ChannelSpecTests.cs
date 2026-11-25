@@ -6,7 +6,7 @@ namespace Myss.FormSpec.Tests
     using Myss.FormSpec.Tests.TestSupport;
 
     /// <summary>
-    /// Tests for <see cref="ChannelSpec.Resolve"/>. The cases are the resolve cases of
+    /// Tests for <see cref="ChannelSpec"/>. The cases are the resolve cases of
     /// <c>Shared/validation/channel-specs.json</c>, which MyssFormio's preview also runs.
     /// </summary>
     public class ChannelSpecTests
@@ -69,6 +69,22 @@ namespace Myss.FormSpec.Tests
             using JsonDocument spec = JsonDocument.Parse("""{ "components": [] }""");
 
             Assert.Throws<ArgumentOutOfRangeException>(() => ChannelSpec.Resolve(spec.RootElement, "applicant-override"));
+        }
+
+        [Fact]
+        public void Resolve_OfAFormModel_KeepsItsIdentityAndLeavesTheOriginalAlone()
+        {
+            JsonElement spec = ChannelCases.Case("resolveCases", "a field shown to a worker only").GetProperty("spec");
+            var form = new FormSpecModel { FormSpecId = "intake-form", Version = 4, Title = "Intake", Spec = spec };
+
+            FormSpecModel resolved = ChannelSpec.Resolve(form, RequestChannels.Client);
+
+            Assert.NotSame(form, resolved);
+            Assert.Equal((form.FormSpecId, form.Version, form.Title), (resolved.FormSpecId, resolved.Version, resolved.Title));
+            Assert.True(JsonNode.DeepEquals(
+                JsonNode.Parse(ChannelSpec.Resolve(spec, RequestChannels.Client).GetRawText()),
+                JsonNode.Parse(resolved.Spec.GetRawText())));
+            Assert.Equal(spec.GetRawText(), form.Spec.GetRawText());
         }
 
         [Fact]

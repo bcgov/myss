@@ -210,6 +210,36 @@ namespace Myss.Api.Tests.TestSupport
             return row.Answers.RootElement.Clone();
         }
 
+        /// <summary>Adds an empty draft owned by a persona straight to the database, started in the given channel.</summary>
+        public async Task<Guid> InsertApplication(string persona, string channel, int formSpecVersion)
+        {
+            using IServiceScope scope = _factory.Services.CreateScope();
+            IntakeDbContext db = scope.ServiceProvider.GetRequiredService<IntakeDbContext>();
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            var row = new ApplicationAnswers
+            {
+                Id = Guid.NewGuid(),
+                OwnerSubject = MockAuthenticationHandler.Personas[persona].Subject,
+                FormSpecId = IntakeService.FormSpecId,
+                Channel = channel,
+                FormSpecVersion = formSpecVersion,
+                Answers = JsonDocument.Parse("{}"),
+                Version = 1,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            db.Applications.Add(row);
+            await db.SaveChangesAsync();
+            return row.Id;
+        }
+
+        public async Task<string> RowChannel(Guid id)
+        {
+            using IServiceScope scope = _factory.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<IntakeDbContext>()
+                .Applications.Where(a => a.Id == id).Select(a => a.Channel).SingleAsync();
+        }
+
         public async Task OverwriteRow(Guid id, string answersJson)
         {
             using IServiceScope scope = _factory.Services.CreateScope();

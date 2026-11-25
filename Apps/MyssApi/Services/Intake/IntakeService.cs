@@ -186,7 +186,7 @@ namespace Myss.Api.Intake
             }
 
             ApplicationState state = ApplicationProjection.Fold(await _eventStore.LoadAsync(id, cancellationToken));
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            FormSpecModel? spec = await PinnedSpecAsync(row, cancellationToken);
             return IntakeResultModel.Ok(ToModel(row, state, spec));
         }
 
@@ -214,7 +214,7 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.StaleVersion(row.Version);
             }
 
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            FormSpecModel? spec = await PinnedSpecAsync(row, cancellationToken);
             if (spec is null)
             {
                 return IntakeResultModel.SpecUnavailable();
@@ -277,7 +277,7 @@ namespace Myss.Api.Intake
                 return IntakeResultModel.StaleVersion(row.Version);
             }
 
-            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            FormSpecModel? spec = await PinnedSpecAsync(row, cancellationToken);
             if (spec is null)
             {
                 return IntakeResultModel.SpecUnavailable();
@@ -476,6 +476,17 @@ namespace Myss.Api.Intake
             return ApplicationProjection.CanSave(state) ? IntakeOutcome.Ok : IntakeOutcome.NotEditable;
         }
 
+        /// <summary>
+        /// The spec version the application is pinned to, as it applies to the
+        /// channel the application was started in: the form both served and
+        /// checked. Null when the content engine no longer has that version.
+        /// </summary>
+        private async Task<FormSpecModel?> PinnedSpecAsync(ApplicationAnswers row, CancellationToken cancellationToken)
+        {
+            FormSpecModel? spec = await _formSpecProvider.GetVersionAsync(row.FormSpecId, row.FormSpecVersion, cancellationToken);
+            return spec is null ? null : ChannelSpec.Resolve(spec, row.Channel);
+        }
+
         private Task<ApplicationAnswers?> FindOwnAsync(
             Guid id,
             bool track,
@@ -525,6 +536,7 @@ namespace Myss.Api.Intake
                 CreatedAt = row.CreatedAt,
                 UpdatedAt = row.UpdatedAt,
                 SubmittedAt = state.SubmittedAt,
+                Channel = row.Channel,
                 Answers = AnswersFor(row, state),
                 Spec = spec,
             };
