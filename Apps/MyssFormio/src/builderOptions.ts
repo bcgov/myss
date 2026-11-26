@@ -3,6 +3,7 @@
 
 import {
   CHANNEL_RULES_PROPERTY,
+  CHANNEL_RULES_SCOPE,
   REQUEST_CHANNELS,
   type RequestChannel,
 } from "./requestChannels";
@@ -460,8 +461,7 @@ function channelRulesTab(takesAnswer: boolean) {
         tag: "p",
         key: "channelRulesHelp",
         input: false,
-        content:
-          "A channel is how an application was started. As authored keeps the component as the other tabs set it.",
+        content: `A channel is how an application was started. As authored keeps the component as the other tabs set it. ${CHANNEL_RULES_SCOPE}`,
       },
       ...REQUEST_CHANNELS.map((channel) => ({
         type: "fieldset",

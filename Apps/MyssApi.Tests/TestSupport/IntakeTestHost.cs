@@ -233,6 +233,7 @@ namespace Myss.Api.Tests.TestSupport
             return row.Id;
         }
 
+        /// <summary>The channel an application row was stored with.</summary>
         public async Task<string> RowChannel(Guid id)
         {
             using IServiceScope scope = _factory.Services.CreateScope();

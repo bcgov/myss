@@ -20,6 +20,7 @@ import { FormLoadError, SpecRejectedError } from "@/api/forms";
 import type { FormSpecPayload, FormValidationError } from "@/api/forms";
 import ErrorSummary, { type ErrorSummaryItem } from "@/components/ErrorSummary";
 import {
+  CHANNEL_RULES_SCOPE,
   REQUEST_CHANNELS,
   builderOptions,
   describeChannelRules,
@@ -576,7 +577,7 @@ function PreviewChoice({
     <div className={styles.layoutChoice}>
       <RadioGroup
         label="Preview as"
-        description="A channel's preview leaves out what is hidden for it and marks what it requires."
+        description={`A channel's preview leaves out what is hidden for it and marks what it requires. ${CHANNEL_RULES_SCOPE}`}
         orientation="horizontal"
         value={previewAs}
         onChange={(value) => onChange(isRequestChannel(value) ? value : "base")}

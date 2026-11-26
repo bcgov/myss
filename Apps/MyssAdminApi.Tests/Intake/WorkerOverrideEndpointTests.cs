@@ -563,7 +563,7 @@ namespace Myss.AdminApi.Tests.Intake
         }
 
         [Fact]
-        public async Task ACitizensApplicationOnTheSameForm_IsNeitherListedNorOpened()
+        public async Task ACitizensApplicationOnTheSameForm_CannotBeListedOpenedSavedOrSubmitted()
         {
             using CitizenAndStaffTestHost host = NewHost(["alice"]);
             Guid citizens = await host.InsertApplication(

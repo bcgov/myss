@@ -31,7 +31,12 @@ export {
   type RepeatSectionProblem,
 } from "./specRules";
 export { resolveSpecForChannel } from "./channelSpec";
-export { REQUEST_CHANNELS, isRequestChannel, type RequestChannel } from "./requestChannels";
+export {
+  CHANNEL_RULES_SCOPE,
+  REQUEST_CHANNELS,
+  isRequestChannel,
+  type RequestChannel,
+} from "./requestChannels";
 export { forEachComponent } from "./specWalk";
 export {
   EXAMPLE_SPEC,

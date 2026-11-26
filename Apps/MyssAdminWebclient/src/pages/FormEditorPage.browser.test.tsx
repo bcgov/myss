@@ -17,6 +17,7 @@ import type { FormSpecPayload } from "@/api/forms";
 import { getEstimatorRates } from "@/api/eligibilityRates";
 import {
   ALLOWED_COMPONENT_TYPES,
+  CHANNEL_RULES_SCOPE,
   builderOptions,
   registerBcgovComponents,
 } from "@myss/formio";
@@ -1433,6 +1434,9 @@ describe("FormEditorPage channel rules", () => {
     await expect
       .element(screen.getByRole("radio", { name: "Base form" }))
       .toBeChecked();
+    await expect
+      .element(screen.getByRole("radiogroup", { name: "Preview as" }))
+      .toHaveAccessibleDescription(expect.stringContaining(CHANNEL_RULES_SCOPE));
     await expect.element(screen.getByText("Asked of clients only")).toBeVisible();
     await expectRequiredMark("sin", "Social insurance number", true);
 

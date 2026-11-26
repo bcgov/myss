@@ -6,6 +6,7 @@ import {
   countQuestionOptions,
   isRepeatCountQuestion,
 } from "./builderOptions";
+import { CHANNEL_RULES_SCOPE } from "./requestChannels";
 
 // The palette's shape. That each listed type is actually registered with
 // Form.io — and that the key field really disappears from the settings dialog —
@@ -271,6 +272,8 @@ describe("the Channel rules tab", () => {
   }
 
   interface ChannelFieldset {
+    key?: string;
+    content?: string;
     legend?: string;
     components?: ChannelChoice[];
   }
@@ -304,6 +307,13 @@ describe("the Channel rules tab", () => {
   it("is on every allowed type and on the older question types", () => {
     for (const type of [...ALLOWED_COMPONENT_TYPES, ...OLDER_QUESTION_TYPES, "htmlelement"]) {
       expect(channelTab(type)?.label, type).toBe("Channel rules");
+    }
+  });
+
+  it("says in its help that only applications for assistance use channel rules", () => {
+    for (const type of ["textfield", "content"]) {
+      const help = channelTab(type)?.components.find((node) => node.key === "channelRulesHelp");
+      expect(help?.content, type).toContain(CHANNEL_RULES_SCOPE);
     }
   });
 

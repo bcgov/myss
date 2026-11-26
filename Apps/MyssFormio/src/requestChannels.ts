@@ -18,6 +18,10 @@ export function isRequestChannel(value: unknown): value is RequestChannel {
   return typeof value === "string" && (REQUEST_CHANNEL_IDS as readonly string[]).includes(value);
 }
 
+/** Where channel rules take effect, for the designer's help texts. */
+export const CHANNEL_RULES_SCOPE =
+  "Channel rules apply to applications for assistance only; other forms ignore them.";
+
 /** Where a component's channel rules are authored, under `properties`. */
 export const CHANNEL_RULES_PROPERTY = "myssChannels";
 
