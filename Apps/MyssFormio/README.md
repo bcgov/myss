@@ -20,6 +20,19 @@ in the editor's preview as it does for citizens.
   one headed group per row; the builder draws it stacked, like a panel.
   `findInvalidRepeatSections` in `specRules.ts` is the editor's copy of its
   publish rule (see `Shared/validation/repeat-section-specs.json`).
+- Channel rules (`requestChannels.ts`, `channelSpec.ts`): a component's rules
+  per request channel, `client` or `worker-override`, under
+  `properties.myssChannels`, such as
+  `{ "worker-override": { "show": false } }`; only `show` and `required`
+  exist. The builder's Channel rules tab writes them (`builderOptions`),
+  `describeChannelRules` (`specEdit`) words them for the editor's rows,
+  `resolveSpecForChannel` is the editor's copy of the API's
+  `ChannelSpec.Resolve` for its preview, and `findInvalidChannelRules` in
+  `specRules.ts` is the editor's copy of their publish rule (see
+  `Shared/validation/channel-specs.json`). Only the intake services resolve a
+  form for a channel, so the rules apply to applications for assistance only
+  (`CHANNEL_RULES_SCOPE`, shown in both help texts). The designer's notes are
+  in the admin webclient's README.
 - The client half of the validation rule registry (`validationRules.ts`).
 - The spec helpers the admin editor uses (`builderOptions`, `specEdit`,
   `specPreview`, `specRules`, `specImport` for pasted-JSON imports), and

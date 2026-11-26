@@ -41,6 +41,13 @@ permissive fallbacks.
   (`StrapiEligibilityRateProvider`, cached five minutes).
 - **Form messages** — `FormMessagesController` serves per-form messages from Strapi
   (`StrapiFormMessageProvider`); edited in MyssAdminApi.
+- **Intake (citizen)** — `IntakeService`: a citizen's application is created with the
+  `client` channel. Read, save and submit take the form version pinned on the row and
+  resolve it for the row's channel (`PinnedSpecAsync`, `ChannelSpec.Resolve`) before they
+  return it or check answers with `FormSpecValidator.Validate`. A new caller of `Validate`
+  on a stored application must resolve first: the base form still has the fields a channel
+  hides and the requirements it lifts. Applications are found by owner, not by channel;
+  a worker override row's owner is a `worker-override:` subject, which no sign-in has.
 - **Demo** — `DemoController`/`DemoService`, behind `TechDemos`.
 
 Forms, intake and attachments are covered below and in the root AGENTS.md.

@@ -37,6 +37,17 @@ The API behind the admin webclient, in two parts:
 `GET v1/auth/me` returns the caller with their effective roles, for the webclient to
 choose which screens to show. Every route is the one MyssApi served before the split.
 
+**Request channel.** `WorkerOverrideService` creates its rows with the `worker-override`
+channel and finds and lists them by that channel, not by form ID, so a worker never reaches
+a citizen's application on the same form. It resolves the pinned form for the row's channel
+(`PinnedSpecAsync`, `ChannelSpec.Resolve`) before it returns it or checks answers with
+`FormSpecValidator.Validate`, and resolves the start response too, which the staff app
+keeps as the draft's form. `ReviewService` resolves the form it returns with an
+application in the same way. A new caller of `Validate` on a stored application must
+resolve first. To create the client's account, `ReadClient` reads `firstName`, `lastName`,
+`email`, `phone` and `dateOfBirth`, all required, and `sin`, which may be left out: the
+account's SIN (`MyssUserProfile.Sin`) is then null.
+
 ## Database
 
 The worker side reads and appends through the shared data model in `Apps/MyssData`

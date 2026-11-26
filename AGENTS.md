@@ -265,6 +265,29 @@ section inside another) has three copies, Strapi's `form-spec-rules.ts`, the edi
 `specRules.ts` and `FormSpecValidator.ValidateSpecStructure`, held together by
 `Shared/validation/repeat-section-specs.json`.
 
+**Channel rules.** An intake application stores how it was started, its request channel
+(`RequestChannels` in `Apps/MyssFormSpec`: `client`, or `worker-override` for a worker
+override), in `intake.application_answers.channel`, set when the row is created and never
+changed. A component's `properties.myssChannels` holds a rule per channel, such as
+`{"worker-override": {"show": false}}` or `{"client": {"required": true}}`; only `show` and
+`required` exist, each `true` or `false`, and a setting left out keeps the component as
+authored. `ChannelSpec.Resolve` (`Apps/MyssFormSpec`) turns the published form into the
+form one channel gets: a component with `show: false` is removed with everything inside it,
+`required` replaces `validate.required`, and every `myssChannels` is dropped. The intake
+services resolve the pinned form for the row's channel before they serve it or check
+answers with `FormSpecValidator.Validate`, so `Validate` never reads a channel rule; a new
+caller of `Validate` on a stored application must resolve first. `FormsService`, the
+estimator and the stored form submissions read the base form, so the rules affect the
+intake forms (`IntakeFormSpecIds`) only. The publish rule (rules keyed by known channels,
+setting only `show` and `required` as booleans; no component shown in a channel depends on
+one hidden in it through `conditional.when`, `myssMatches`, a day's `myssDateParts` or a
+repeat section's count question) has three copies, Strapi's `form-spec-rules.ts` (with
+`request-channels.ts`), the editor's `specRules.ts` and
+`FormSpecValidator.ValidateSpecStructure` (`ChannelRules.cs`, keyword
+`FORMSPEC.CHANNEL_RULES.INVALID`). `Shared/validation/channel-specs.json` holds the three
+channel lists, the three publish rules and the two resolvers (`ChannelSpec.cs`,
+`channelSpec.ts`) together.
+
 **Error wording is content, in three layers.** Wording authored on the form itself comes
 first, in the order the browser shows it: for Form.io's own rules (`required`, `pattern`,
 lengths, `min`/`max`) `validate.customMessage`, then `validate.patternMessage`, then the

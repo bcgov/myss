@@ -63,6 +63,35 @@ hidden or sits inside a repeat section, a maximum outside 1 to 50, and a
 repeat section inside another. The answers are a list, one object per group,
 under the section's key.
 
+**Channel rules.** A channel is how an application was started: **Client**
+(the applicant started it) or **Worker override** (a worker started it for a
+client who cannot submit their own). Channel rules apply to applications for
+assistance only; other forms ignore them. In **Build form**, the settings of
+every question, content block and page have a **Channel rules** tab with one
+group per channel: **Visibility**, where **Hidden** leaves the component, and
+everything inside it, out of the form for that channel; and, for a question,
+**Required**, where **Required** or **Optional** replaces Required on the
+Validation tab for that channel. A choice left empty, or cleared with ×, reads
+**As authored** and keeps the component as the other tabs set it. A repeat
+section's count question offers no Required choice, because it is always
+required. In **Edit labels**, a note under a row names its rules, such as
+"Hidden for Worker override" or "Optional for Client", and **Preview as**
+shows the form as one channel gets it: **Base form**, **Client** or **Worker
+override**. **Save draft** and **Publish** refuse a component shown in a
+channel that depends on one hidden in it (through its condition, the email it
+confirms, a day's month and year, or a repeat section's count question), and,
+in pasted JSON, a rule for an unknown channel, with a setting other than
+`show` and `required`, or with a setting that is not `true` or `false`. In
+pasted JSON, `required` on a component that takes no
+answer, or on a count question, is accepted and has no effect.
+
+- To leave a whole page out for a channel, hide the page itself. Hiding each of
+  its fields leaves an empty page.
+- On the worker override form (`worker-override-afa`), keep `firstName`,
+  `lastName`, `email`, `phone` and `dateOfBirth` shown and required for Worker
+  override, and keep `sin` shown. The staff API reads them to create the
+  client's account, so a submit without one of the first five is refused.
+
 **No error message catalogue in the preview.** The citizen webclient loads the published
 error wording from `/v1/forms/error-messages` and the Form.io components use it
 for rule failures. This app does not load it, so the preview words rule failures
