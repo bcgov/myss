@@ -17,6 +17,7 @@ import TechDemos from "@/pages/TechDemos";
 import FormsTechDemo from "@/pages/FormsTechDemo";
 import BusPassPage from "@/pages/BusPassPage";
 import AttachmentsTechDemo from "@/pages/AttachmentsTechDemo";
+import DesignSystemTechDemo from "@/pages/DesignSystemTechDemo";
 import ApplicationPage from "@/pages/ApplicationPage";
 import AfaServiceRequestPage from "@/pages/AfaServiceRequestPage";
 import ServiceRequestsPage from "@/pages/ServiceRequestsPage";
@@ -136,6 +137,16 @@ export const router = createBrowserRouter([
             element: (
               <FeatureRoute feature="AccountInfo">
                 <AccountInfoPage />
+              </FeatureRoute>
+            ),
+          },
+          // A tech demo, framed by the dashboard so designers see the
+          // components where citizens will (MYSS-355). In no menu.
+          {
+            path: paths.designSystem,
+            element: (
+              <FeatureRoute feature="TechDemos">
+                <DesignSystemTechDemo />
               </FeatureRoute>
             ),
           },

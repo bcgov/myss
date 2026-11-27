@@ -9,10 +9,18 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   AccountRequestError,
+  useChangeEmail,
   useUpdatePhones,
   type AccountPayload,
+  type AccountPhone,
 } from "@/hooks/useAccount";
-import { PhoneInput } from "@myss/formio";
+import { useFeature } from "@/hooks/useFeatures";
+import {
+  isEmailAddress,
+  PhoneInput,
+  RULE_DEFAULT_MESSAGES,
+  RULE_KEYWORDS,
+} from "@myss/formio";
 import { catalogueMessage } from "@myss/formio/errorCatalogue";
 import {
   formatPhone,
@@ -25,11 +33,17 @@ import {
 import styles from "./ContactInformation.module.css";
 import EmailAddress from "./EmailAddress";
 import FieldErrorSummary from "./FieldErrorSummary";
+import { refusal } from "./refusal";
 
 // Contact Information on Account Info (MYSS-271). Read-only until the citizen
-// chooses Edit; then the phone numbers can be changed, added and removed.
-// The email address has its own flow, with verification (EmailAddress,
-// MYSS-305), and the mailing address comes from MIS, so it is read-only.
+// chooses Edit; then one form changes the email address (verified by link,
+// MYSS-305, so it waits as pending; see EmailAddress) and the phone numbers,
+// which can be changed, added and removed. The mailing address comes from
+// MIS, so it is read-only.
+
+const EMAIL_FORMAT_MESSAGE =
+  catalogueMessage(RULE_KEYWORDS.emailInvalidFormat) ??
+  RULE_DEFAULT_MESSAGES[RULE_KEYWORDS.emailInvalidFormat];
 
 interface PhoneRow {
   /** Stable React key; rows can be removed from the middle. */
@@ -65,11 +79,29 @@ function validate(rows: readonly PhoneRow[]): FieldErrors {
   return errors;
 }
 
+/** Only a changed list is sent, so an email-only edit does not rewrite the phones. */
+function phonesChanged(
+  rows: readonly PhoneRow[],
+  phones: readonly AccountPhone[],
+): boolean {
+  return (
+    rows.length !== phones.length ||
+    rows.some(
+      (row, i) =>
+        phoneDigits(row.number) !== phones[i].number ||
+        row.type !== phones[i].type,
+    )
+  );
+}
+
 export default function ContactInformation({
   account,
 }: Readonly<{ account: AccountPayload }>) {
   const save = useUpdatePhones();
+  const change = useChangeEmail();
+  const canChangeEmail = useFeature("EmailVerification") === true;
   const [isEditing, setIsEditing] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
   const [rows, setRows] = useState<PhoneRow[]>([]);
   const [nextKey, setNextKey] = useState(0);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -78,16 +110,20 @@ export default function ContactInformation({
   const summaryRef = useRef<HTMLHeadingElement>(null);
   // BCDS Button does not forward a ref, so focus goes through its wrapper.
   const editActionRef = useRef<HTMLDivElement>(null);
-  // Set when the form closes, so the effect below can put focus back on the
-  // edit button. An effect runs after React has put the button back on the
-  // page; an animation frame can run first under load and leave focus on the
-  // body.
-  const returnFocus = useRef(false);
+  // Set when the form opens or closes, so the effect below can move focus
+  // into the form or back to the edit button. An effect runs after React has
+  // put them on the page; an animation frame can run first under load and
+  // leave focus on the body.
+  const focusAfterToggle = useRef<"form" | "editAction" | null>(null);
 
   useEffect(() => {
-    if (isEditing || !returnFocus.current) return;
-    returnFocus.current = false;
-    editActionRef.current?.querySelector("button")?.focus();
+    const target = focusAfterToggle.current;
+    focusAfterToggle.current = null;
+    if (target === "form") {
+      formRef.current?.querySelector<HTMLElement>("input, button")?.focus();
+    } else if (target === "editAction") {
+      editActionRef.current?.querySelector("button")?.focus();
+    }
   }, [isEditing]);
 
   // After a refused save, move focus to the error summary, so a screen-reader
@@ -114,15 +150,18 @@ export default function ContactInformation({
       })),
     );
     setNextKey(account.phones.length);
+    setNewEmail("");
     setErrors({});
     setIsSaved(false);
     save.reset();
+    change.reset();
+    focusAfterToggle.current = "form";
     setIsEditing(true);
   }
 
   function stopEditing() {
     // The edit button is back in place of the form; keep focus on it.
-    returnFocus.current = true;
+    focusAfterToggle.current = "editAction";
     setIsEditing(false);
   }
 
@@ -148,36 +187,47 @@ export default function ContactInformation({
     setErrors({});
   }
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
+    const email = canChangeEmail ? newEmail.trim() : "";
     const found = validate(rows);
+    if (email !== "" && !isEmailAddress(email)) {
+      found.email = EMAIL_FORMAT_MESSAGE;
+    }
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    save.mutate(
-      rows.map((row) => ({ number: row.number, type: row.type! })),
-      {
-        onSuccess: () => {
-          setIsSaved(true);
-          stopEditing();
-        },
-        onError: (error) => {
-          if (error instanceof AccountRequestError && error.errors.length > 0) {
-            setErrors(
-              Object.fromEntries(
-                error.errors.map((fieldError) => [
-                  fieldError.field,
-                  fieldError.keyword === "IDA.PHONE.INVALID_FORMAT"
-                    ? (catalogueMessage(fieldError.keyword) ??
-                      fieldError.message)
-                    : fieldError.message,
-                ]),
-              ),
-            );
-          }
-        },
-      },
-    );
+    const savePhones = phonesChanged(rows, account.phones);
+    save.reset();
+    change.reset();
+    try {
+      // Phones first: if the email change is then refused, the saved list
+      // matches the account and a retry sends only the email.
+      if (savePhones) {
+        await save.mutateAsync(
+          rows.map((row) => ({ number: row.number, type: row.type! })),
+        );
+      }
+      if (email !== "") {
+        await change.mutateAsync(email);
+      }
+    } catch (error) {
+      if (error instanceof AccountRequestError && error.errors.length > 0) {
+        setErrors(
+          Object.fromEntries(
+            error.errors.map((fieldError) => [
+              fieldError.field,
+              fieldError.keyword === "IDA.PHONE.INVALID_FORMAT"
+                ? (catalogueMessage(fieldError.keyword) ?? fieldError.message)
+                : fieldError.message,
+            ]),
+          ),
+        );
+      }
+      return;
+    }
+    setIsSaved(savePhones || email !== "");
+    stopEditing();
   }
 
   // A refusal with no field errors (401, 500, offline) has only its message.
@@ -186,6 +236,15 @@ export default function ContactInformation({
     !(save.error instanceof AccountRequestError && save.error.errors.length > 0)
       ? save.error
       : null;
+  const emailError =
+    change.error &&
+    !(
+      change.error instanceof AccountRequestError &&
+      change.error.errors.length > 0
+    )
+      ? refusal(change.error, "Your email address was not changed.")
+      : null;
+  const isPending = save.isPending || change.isPending;
 
   return (
     <section aria-labelledby="contact-information" className={styles.section}>
@@ -200,7 +259,7 @@ export default function ContactInformation({
         </output>
       )}
 
-      <EmailAddress account={account} />
+      <EmailAddress account={account} isEditing={isEditing} />
 
       {isEditing ? (
         <form
@@ -208,7 +267,7 @@ export default function ContactInformation({
           className={styles.form}
           onSubmit={submit}
           noValidate
-          aria-label="Edit phone numbers"
+          aria-label="Edit contact information"
         >
           {Object.keys(errors).length > 0 && (
             <FieldErrorSummary
@@ -217,6 +276,21 @@ export default function ContactInformation({
               headingRef={summaryRef}
               onSelect={focusField}
             />
+          )}
+          {canChangeEmail && (
+            <div className={styles.email} data-field="email">
+              <TextField
+                label="New Email Address"
+                name="email"
+                type="email"
+                autoComplete="email"
+                value={newEmail}
+                onChange={setNewEmail}
+                isInvalid={Boolean(errors.email)}
+                errorMessage={errors.email}
+                description="Leave blank to keep your current address. We will email a link to a new address; your email address changes when you follow it."
+              />
+            </div>
           )}
           {rows.length === 0 && <p>No phone numbers. Add one below.</p>}
           {rows.map((row, i) => (
@@ -281,15 +355,22 @@ export default function ContactInformation({
               description={`Your changes were not saved. ${generalError.message}`}
             />
           )}
+          {emailError && (
+            <InlineAlert
+              variant={emailError.variant}
+              role="alert"
+              description={emailError.text}
+            />
+          )}
 
           <div className={styles.actions}>
-            <Button variant="primary" type="submit" isDisabled={save.isPending}>
+            <Button variant="primary" type="submit" isDisabled={isPending}>
               Save
             </Button>
             <Button
               variant="secondary"
               onPress={stopEditing}
-              isDisabled={save.isPending}
+              isDisabled={isPending}
             >
               Cancel
             </Button>
@@ -318,6 +399,7 @@ export default function ContactInformation({
 
 /** "phones[1].type" reads as "Phone number 2"; anything else as a whole. */
 function fieldName(field: string): string {
+  if (field === "email") return "New Email Address";
   const index = /^phones\[(\d+)\]/.exec(field)?.[1];
   return index === undefined
     ? "Phone numbers"

@@ -31,6 +31,9 @@ export const paths = {
   // One Income Assistance application: editable while a draft, read-only
   // once submitted. Started from the dashboard's "My applications".
   application: "/applications/:id",
+  // Every design system component on one page, for the designers (MYSS-355).
+  // A tech demo: behind the TechDemos flag, and in no menu.
+  designSystem: "/techdemos/design-system",
 } as const;
 
 export type AppPath = (typeof paths)[keyof typeof paths];

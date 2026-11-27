@@ -35,6 +35,11 @@ export default function TechDemos() {
             Attachments - scanned upload to object storage
           </Link>
         </li>
+        <li>
+          <Link to={paths.designSystem}>
+            Design system - every component and token on one page
+          </Link>
+        </li>
       </ul>
     </>
   );
