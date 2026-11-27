@@ -74,7 +74,9 @@ namespace Myss.AdminApi.Intake
 
         /// <summary>
         /// Downloads one supporting document. Sent as an attachment (never
-        /// rendered inline by the browser) with its stored content type.
+        /// rendered inline by the browser) with its stored content type, and
+        /// with headers that stop a browser from running anything in it or
+        /// keeping a copy.
         /// </summary>
         /// <param name="id">The application identifier.</param>
         /// <param name="attachmentId">The document identifier.</param>
@@ -92,6 +94,8 @@ namespace Myss.AdminApi.Intake
             }
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
+            Response.Headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
+            Response.Headers["Cache-Control"] = "private, no-store";
             return File(attachment.Content, attachment.ContentType, attachment.FileName);
         }
 

@@ -70,6 +70,27 @@ namespace Myss.AdminApi.Tests.Intake
         }
 
         [Fact]
+        public async Task ADownload_CanRunNothingAndIsNotCached()
+        {
+            using CitizenAndStaffTestHost host = NewHost();
+            Guid id = await host.Create("alice");
+            Guid attachmentId = await Upload(host, "alice", id, "paystub.pdf");
+            await host.Submit("alice", id, 1, new { firstName = "Ada" });
+
+            using HttpResponseMessage download = await host.Send(
+                "worker", HttpMethod.Get, $"{Route}/{id}/attachments/{attachmentId}/content");
+
+            Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+            Assert.Equal("nosniff", Assert.Single(download.Headers.GetValues("X-Content-Type-Options")));
+            Assert.Equal(
+                "default-src 'none'; sandbox",
+                Assert.Single(download.Headers.GetValues("Content-Security-Policy")));
+            Assert.True(download.Headers.CacheControl?.Private);
+            Assert.True(download.Headers.CacheControl?.NoStore);
+            Assert.Equal("attachment", download.Content.Headers.ContentDisposition?.DispositionType);
+        }
+
+        [Fact]
         public async Task OnlyTheDocumentsTheSubmitRecorded_AreShown()
         {
             using CitizenAndStaffTestHost host = NewHost();

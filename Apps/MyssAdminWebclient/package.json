@@ -25,6 +25,7 @@
         "@myss/web-common": "*",
         "@tanstack/react-query": "5.107.1",
         "oidc-client-ts": "3.5.0",
+        "pdfjs-dist": "6.5.438",
         "react": "19.3.1",
         "react-dom": "19.3.1",
         "react-oidc-context": "3.3.1",
